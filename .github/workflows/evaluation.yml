@@ -1,0 +1,24 @@
+# 摘要：评测工作流 — PR 不触发全量；按计划或手动运行（后续接入 50–100 条对话集）。
+name: evaluation
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+jobs:
+  eval:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: python -m pip install -q -e ".[dev]"
+      - name: Run eval harness (current = full pytest)
+        run: python scripts/ci/run_eval.py

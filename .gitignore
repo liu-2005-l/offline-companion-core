@@ -1,18 +1,77 @@
-# Build and Release Folders
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+
+# Models & local data (never commit)
+*.gguf
+*.gguf.*
+*.bin
+models/
+
+# Local app data / dev DB copies
+*.db
+*.db-journal
+*.sqlite
+companion_data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs（运行/调试/后续工具产生的日志，不纳入版本库）
+*.log
+*.log.*
+logs/
+log/
+
+# Cursor：规则、代理提示词、本地状态等（不纳入版本库）
+.cursor/
+.cursorrules
+.cursorignore
+
+# 本地提示词/指令资产（不纳入版本库；若需共享请改走显式文档流程）
+prompts/
+instructions/
+**/prompts/
+**/instructions/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Legacy (repo template)
 bin-debug/
 bin-release/
 [Oo]bj/
 [Bb]in/
-
-# Other files and folders
 .settings/
-
-# Executables
-*.swf
-*.air
-*.ipa
-*.apk
-
-# Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
-# should NOT be excluded as they contain compiler settings and other important
-# information for Eclipse / Flash Builder.

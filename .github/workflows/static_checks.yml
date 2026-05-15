@@ -1,0 +1,27 @@
+name: static_checks
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  checks:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Legacy companion import scan
+        run: python scripts/ci/check_legacy_companion.py
+      - name: Architecture import scan
+        run: python scripts/ci/check_imports.py
+      - name: Ruff
+        run: |
+          python -m pip install -q ruff
+          ruff check src tests scripts

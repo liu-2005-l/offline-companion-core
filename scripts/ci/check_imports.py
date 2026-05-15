@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+"""摘要：AST 级依赖与网络导入硬约束（违反即非零退出）。"""
+
+from __future__ import annotations
+
+import ast
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2] / "src" / "offline_companion"
+NET_MODULES = ("httpx", "requests", "urllib3", "socket", "aiohttp")
+ALLOW_NET_FILE = Path("offline_companion/shell/outbound_manager/connector.py")
+
+
+def _rel_posix(path: Path) -> str:
+    return path.relative_to(ROOT.parent).as_posix()
+
+
+def _collect_imports(tree: ast.AST) -> list[tuple[str, str]]:
+    """返回 (kind, module) 列表；module 可能为顶级包名或 from 前缀。"""
+    out: list[tuple[str, str]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                out.append(("import", alias.name.split(".")[0]))
+                out.append(("import_full", alias.name))
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                out.append(("from", node.module))
+                out.append(("from_root", node.module.split(".")[0]))
+    return out
+
+
+def _violates_network(rel: str, tree: ast.AST) -> list[str]:
+    if rel == ALLOW_NET_FILE.as_posix():
+        return []
+    bad: list[str] = []
+    for kind, mod in _collect_imports(tree):
+        if kind in {"import", "from_root"} and mod in NET_MODULES:
+            bad.append(f"{rel}: forbidden network module `{mod}`")
+        if kind == "from" and mod.split(".")[0] in NET_MODULES:
+            bad.append(f"{rel}: forbidden network import `{mod}`")
+    return bad
+
+
+def _violates_layers(rel: str, tree: ast.AST) -> list[str]:
+    bad: list[str] = []
+    imports = _collect_imports(tree)
+    for kind, mod in imports:
+        if kind == "import_full" and mod.startswith("offline_companion."):
+            full = mod
+        elif kind == "from" and mod.startswith("offline_companion."):
+            full = mod
+        else:
+            continue
+        if rel.startswith("offline_companion/core/") and full.startswith("offline_companion.shell"):
+            bad.append(f"{rel}: core must not import shell ({full})")
+        if rel.startswith("offline_companion/runtime/") and full.startswith(
+            ("offline_companion.shell", "offline_companion.core")
+        ):
+            bad.append(f"{rel}: runtime must not import shell/core ({full})")
+        if rel.startswith("offline_companion/shell/policy_engine/") and full.startswith(
+            "offline_companion.runtime"
+        ):
+            bad.append(f"{rel}: policy_engine must not import runtime ({full})")
+    return bad
+
+
+def main() -> int:
+    errors: list[str] = []
+    for path in sorted(ROOT.rglob("*.py")):
+        rel = _rel_posix(path)
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        except SyntaxError as e:
+            errors.append(f"{rel}: syntax error {e}")
+            continue
+        errors.extend(_violates_network(rel, tree))
+        errors.extend(_violates_layers(rel, tree))
+
+    if errors:
+        print("check_imports FAILED:\n" + "\n".join(errors), file=sys.stderr)
+        return 1
+    print("check_imports OK.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,9 @@
+# 记忆写入触发器默认配置（Phase 0 占位）
+version: 1
+triggers:
+  on_explicit_save:
+    enabled: true
+  on_summarize_request:
+    enabled: false
+  on_emotion_shift:
+    enabled: false

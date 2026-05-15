@@ -1,0 +1,4 @@
+# 固定话术库占位（B3 当前仍使用代码内常量；后续改为从此文件加载）
+version: 1
+locale: zh-CN
+notes: "MVP Phase 0 — classifier 仍读取 Python 常量以保持行为不变"
