@@ -13,7 +13,9 @@ from offline_companion.core.memory_lifecycle.manager import (
     apply_bundle_import,
     prepare_export_bundle,
 )
+from offline_companion.core.memory_lifecycle.explanation import get_memory_explanation
 from offline_companion.core.persona_session.persona_loader import load_persona_file
+from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.core.safety_boundary.classifier import SafetyTier, classify_user_text
 from offline_companion.shared.errors import InferenceBackendError
 from offline_companion.runtime.inference_backend import (
@@ -63,6 +65,7 @@ def cmd_chat(args: argparse.Namespace) -> int:
 
     persona_path = Path(args.persona).expanduser()
     persona = load_persona_file(persona_path)
+    session_core = PersonaSessionCore(persona)
     privacy = _parse_privacy(args.privacy)
 
     if args.memory is None:
@@ -151,23 +154,25 @@ def cmd_chat(args: argparse.Namespace) -> int:
 
         append_message(conn, session_id, "user", chat_text)
 
-        mem_block = ""
-        if memory_on:
-            hits = MemoryLifecycleManager.search_memory(conn, chat_text, limit=8)
-            mem_block = MemoryLifecycleManager.format_memory_block(hits)
-
         hist = recent_messages(conn, session_id, limit=history_limit)
         hist_for_model = hist[:-1] if hist and hist[-1].role == "user" else hist
 
-        reply = backend.generate(
-            system_prompt=persona.system_prompt,
-            history=hist_for_model,
+        turn = session_core.assemble_reply(
+            backend,
+            conn,
             user_message=chat_text,
-            memory_block=mem_block,
+            history=hist_for_model,
+            memory_enabled=memory_on,
             max_tokens=args.max_tokens,
         )
-        append_message(conn, session_id, "assistant", reply, meta={})
-        print("Bot>", reply)
+        if memory_on and turn.memory_recalls:
+            expl = get_memory_explanation(turn.memory_recalls)
+            print("(记忆召回", expl["count"], "条)")
+            for item in expl["matched"]:
+                print(f"  #{item['memory_id']}: {item['matched_on'].get('summary', '')}")
+
+        append_message(conn, session_id, "assistant", turn.reply, meta={})
+        print("Bot>", turn.reply)
 
     return 0
 

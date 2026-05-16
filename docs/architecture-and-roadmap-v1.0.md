@@ -82,7 +82,7 @@
 ### 已完成
 
 - 三层九域骨架、`shared` DTO、C2 SQLite/FTS/导出 IO、B2 CRUD/`#remember`/导出业务
-- B3 规则分级（话术仍为常量）、A1 CLI、A2 出站闸门、A3 Consent 落库
+- B3 规则分级 + **YAML 话术**（`configs/safety_replies/zh_v1.yaml`）、A1 CLI、A2 出站闸门、A3 Consent 落库
 - **C1**：`LlamaCppBackend`、`check_model()` / `create_llama_backend()`、`check-model` 子命令（**Phase 1 步骤 1 已落地**）
 - CI 双系统 + `check_imports` / `check_legacy_companion`
 
@@ -90,13 +90,9 @@
 
 | 缺口 | 域 | 说明 |
 |------|-----|------|
-| B1 `assemble_reply()` | B1 | 未统一装配；CLI 仍直接 `backend.generate` |
-| B2 主动 `recall()` + 衰减 + `matched_on` | B2 | 仅有被动 `search_memory` |
-| B1 自动注入记忆块 | B1+B2 | 需与 recall 联动 |
-| B3 YAML 话术 | B3 | 未读 `configs/safety_replies/` |
+| A2 Orchestrator | A2 | 逻辑仍在 `cli.py`（非阻塞） |
 | B4 润色 | B4 | 直通 |
 | A3 HTTP | A3 | 占位 |
-| A2 Orchestrator | A2 | 逻辑在 `cli.py` |
 | 知识 RAG 插件 | Phase 2 | 未开始 |
 | 评测 50–100 | 评测 | 未扩 |
 
@@ -109,10 +105,10 @@
 | 步骤 | 任务 | 模块 | 完成标准 | 状态 |
 |------|------|------|----------|------|
 | 1 | C1 稳固与健康检查 | C1 | GGUF 加载、`generate`、`check_model` | **已完成** |
-| 2 | B2 `recall()` + 衰减 + `matched_on` | B2 | 每轮可召回；结果含解释字段 | 待做 |
-| 3 | B1 `assemble_reply()` + **自动注入 recall** | B1 | 拼 prompt 调 C1；记忆块「你可能想起来的」 | 待做 |
-| 4 | CLI 经 B1 真实推理 | A1 | 默认 B1→C1；尊重记忆开关 | 待做 |
-| 5 | B3 话术 YAML 化 | B3 | 从 `configs/safety_replies/` 加载 | 待做 |
+| 2 | B2 `recall()` + 衰减 + `matched_on` | B2 | 每轮可召回；结果含解释字段 | **已完成** |
+| 3 | B1 `assemble_reply()` + **自动注入 recall** | B1 | 拼 prompt 调 C1；记忆块「你可能想起来的」 | **已完成** |
+| 4 | CLI 经 B1 真实推理 | A1 | 默认 B1→C1；尊重记忆开关 | **已完成** |
+| 5 | B3 话术 YAML 化 | B3 | 从 `configs/safety_replies/` 加载 | **已完成** |
 
 ### Phase 1：个人记忆 RAG（已确认，必做）
 

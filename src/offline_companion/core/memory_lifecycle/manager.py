@@ -12,6 +12,7 @@ from offline_companion.shared.errors import BundleFormatError
 from offline_companion.shared.types import BUNDLE_FORMAT, BUNDLE_VERSION, ExportBundlePayload
 
 from . import fts_ops
+from .recall import format_recall_prompt_block, recall
 
 
 def _table_jsonl(conn: sqlite3.Connection, table: str) -> str:
@@ -42,6 +43,8 @@ class MemoryLifecycleManager:
     update_memory_chunk = staticmethod(fts_ops.update_memory_chunk)
     maybe_extract_memory_commands = staticmethod(fts_ops.maybe_extract_memory_commands)
     format_memory_block = staticmethod(fts_ops.format_memory_block)
+    recall = staticmethod(recall)
+    format_recall_prompt_block = staticmethod(format_recall_prompt_block)
 
 
 def prepare_export_bundle(

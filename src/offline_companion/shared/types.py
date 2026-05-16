@@ -51,11 +51,23 @@ class MessageRow:
 
 @dataclass
 class MemoryHit:
-    """摘要：记忆检索命中项。"""
+    """摘要：记忆检索命中项（兼容旧接口）。"""
 
     id: int
     body: str
     score: float | None
+
+
+@dataclass
+class MemoryRecallHit:
+    """摘要：带可解释信息的记忆召回项（B2 `recall` 输出）。"""
+
+    id: int
+    body: str
+    created_at: float
+    combined_score: float
+    decay_factor: float
+    matched_on: dict[str, Any]
 
 
 @dataclass(frozen=True)

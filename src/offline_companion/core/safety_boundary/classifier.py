@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 
-from . import fixed_replies
+from .fixed_replies import SafetyRepliesBundle, ensure_safety_replies_loaded, load_safety_replies
 
 
 class SafetyTier(str, Enum):
@@ -25,39 +26,38 @@ class SafetyResult:
     block_model: bool
 
 
-_SELF_MARKERS = (
-    "自杀",
-    "自殺",
-    "结束生命",
-    "不想活了",
-    "kill myself",
-    "suicide",
-    "end my life",
-)
-_OTHER_MARKERS = (
-    "杀人",
-    "报复社会",
-    "炸弹怎么做",
-    "how to make a bomb",
-    "mass shooting",
-)
+def classify_user_text(text: str, *, replies_path: Path | None = None) -> SafetyResult:
+    """摘要：对用户输入做关键词分级并返回 YAML 中的固定话术（如命中）。
+
+    参数：
+        text: 用户输入。
+        replies_path: 可选，覆盖默认 ``configs/safety_replies/zh_v1.yaml``。
+
+    返回值：
+        ``SafetyResult``；命中危机层级时 ``block_model`` 为 True。
+    """
+    bundle = (
+        load_safety_replies(replies_path)
+        if replies_path
+        else ensure_safety_replies_loaded()
+    )
+    return _classify_with_bundle(text, bundle)
 
 
-def classify_user_text(text: str) -> SafetyResult:
-    """摘要：对用户输入做关键词分级并返回固定话术（如命中）。"""
+def _classify_with_bundle(text: str, bundle: SafetyRepliesBundle) -> SafetyResult:
     t = text.lower()
-    for m in _SELF_MARKERS:
+    for m in bundle.self_markers:
         if m.lower() in t or m in text:
             return SafetyResult(
                 tier=SafetyTier.CRISIS_SELF,
-                user_visible_reply=fixed_replies.SELF_REPLY_ZH,
+                user_visible_reply=bundle.self_reply,
                 block_model=True,
             )
-    for m in _OTHER_MARKERS:
+    for m in bundle.other_markers:
         if m.lower() in t or m in text:
             return SafetyResult(
                 tier=SafetyTier.CRISIS_OTHER,
-                user_visible_reply=fixed_replies.OTHER_REPLY_ZH,
+                user_visible_reply=bundle.other_reply,
                 block_model=True,
             )
     return SafetyResult(tier=SafetyTier.OK, user_visible_reply=None, block_model=False)
