@@ -1,6 +1,10 @@
-# Offline Companion — 方向清单（可延续上下文）
+# Offline Companion — 产品方向清单（历史一页纸）
 
-架构宪章（权威正文）：[`architecture_v1.0.md`](architecture_v1.0.md)；历史跳转：[`architecture-charter-v1.md`](architecture-charter-v1.md)。
+> **实施路线、Phase 缺口、记忆/知识 RAG** 见：[`architecture-and-roadmap-v1.0.md`](./architecture-and-roadmap-v1.0.md)  
+> **技术栈（已敲定）** 见：[`tech-stack-v1.0.md`](./tech-stack-v1.0.md)  
+> **架构宪章权威正文** 见：[`architecture_v1.0.md`](./architecture_v1.0.md)
+
+---
 
 ## 产品定位（已定）
 

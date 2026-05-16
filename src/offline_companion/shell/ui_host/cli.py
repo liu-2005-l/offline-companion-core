@@ -15,8 +15,12 @@ from offline_companion.core.memory_lifecycle.manager import (
 )
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.core.safety_boundary.classifier import SafetyTier, classify_user_text
-from offline_companion.runtime.inference_backend.backend import LlamaCppBackend, try_stderr_cuda_hint
-from offline_companion.runtime.inference_backend.mock import EchoBackend
+from offline_companion.shared.errors import InferenceBackendError
+from offline_companion.runtime.inference_backend import (
+    EchoBackend,
+    create_llama_backend,
+    try_stderr_cuda_hint,
+)
 from offline_companion.runtime.storage_index.engine import append_message, connect, new_session, recent_messages
 from offline_companion.runtime.storage_index.export_import import read_bundle_archive, write_bundle_archive
 from offline_companion.shared.types import AppPaths, OutboundPlan, OutboundScope, PrivacyMode
@@ -74,11 +78,18 @@ def cmd_chat(args: argparse.Namespace) -> int:
 
     if args.model:
         try_stderr_cuda_hint()
-        backend: EchoBackend | LlamaCppBackend = LlamaCppBackend(
-            args.model,
-            n_ctx=args.n_ctx,
-            n_gpu_layers=args.n_gpu_layers,
-        )
+        try:
+            backend = create_llama_backend(
+                args.model,
+                n_ctx=args.n_ctx,
+                n_gpu_layers=args.n_gpu_layers,
+                run_health_check=True,
+            )
+        except InferenceBackendError as e:
+            print("推理后端初始化失败:", e, file=sys.stderr)
+            return 1
+        report = backend.health_check()
+        print("推理:", report.message)
     else:
         backend = EchoBackend("no-model")
 
@@ -304,6 +315,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     chat.add_argument("--n-ctx", type=int, default=2048)
     chat.add_argument("--n-gpu-layers", type=int, default=0)
+    chat.add_argument(
+        "--probe-generate",
+        action="store_true",
+        help="启动时对模型做一次极短 generate 探测（更慢）",
+    )
     chat.add_argument("--history", type=int, default=30)
     chat.add_argument("--max-tokens", type=int, default=256)
     chat.add_argument(
@@ -314,6 +330,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     sub.add_parser("version", help="Print version")
+
+    check = sub.add_parser("check-model", help="检查 GGUF 模型与 llama-cpp 是否可用")
+    check.add_argument("--model", type=str, required=True, help="Path to .gguf")
+    check.add_argument("--n-ctx", type=int, default=512)
+    check.add_argument("--n-gpu-layers", type=int, default=0)
+    check.add_argument(
+        "--probe-generate",
+        action="store_true",
+        help="额外执行极短 generate 探测",
+    )
 
     return p
 
@@ -328,6 +354,18 @@ def main(argv: list[str] | None = None) -> None:
 
         print(__version__)
         raise SystemExit(0)
+    if args.cmd == "check-model":
+        from offline_companion.runtime.inference_backend import LlamaCppBackend
+
+        report = LlamaCppBackend.check_model(
+            args.model,
+            n_ctx=args.n_ctx,
+            n_gpu_layers=args.n_gpu_layers,
+            load_model=True,
+            probe_generate=args.probe_generate,
+        )
+        print(report.message)
+        raise SystemExit(0 if report.ok else 1)
     if args.cmd == "chat":
         mem = None if args.memory is None else bool(args.memory)
         ns = argparse.Namespace(**{**vars(args), "memory": mem})

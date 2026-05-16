@@ -2,8 +2,10 @@
 
 面向 **隐私优先** 的本地陪伴型 Agent **核心库**（Windows 首平台），在**显式同意**前提下为「可选云端增强」预留路径。本仓库是**引擎层**：**SQLite 会话**、**FTS5 记忆检索**、**YAML 人设与角色锁**、**本地危机固定话术**，以及 **ZIP 单文件导出/导入**（`manifest.json` + JSONL）。
 
-- 产品方向清单：[`docs/roadmap.md`](docs/roadmap.md)  
-- 架构宪章（权威正文）：[`docs/architecture_v1.0.md`](docs/architecture_v1.0.md)  
+- 架构宪章（原则权威）：[`docs/architecture_v1.0.md`](docs/architecture_v1.0.md)  
+- 实施路线图（Phase 0/1/2、记忆 RAG）：[`docs/architecture-and-roadmap-v1.0.md`](docs/architecture-and-roadmap-v1.0.md)  
+- 技术栈 v1.0（已敲定）：[`docs/tech-stack-v1.0.md`](docs/tech-stack-v1.0.md)  
+- 产品方向清单（历史）：[`docs/roadmap.md`](docs/roadmap.md)  
 - 历史文件名跳转：[`docs/architecture-charter-v1.md`](docs/architecture-charter-v1.md)
 
 ---
@@ -51,8 +53,9 @@ python -m venv .venv
 pip install -e ".[dev]"
 pip install -e ".[inference]"   # 可选：本地 GGUF 推理
 
+python -m offline_companion check-model --model C:\path\model.gguf
 python -m offline_companion chat --persona configs\personas\default.yaml --privacy local_only
-# 或：companion chat --persona configs\personas\default.yaml --model C:\path\model.gguf --n-gpu-layers 20
+# 本地 GGUF：companion chat --persona configs\personas\default.yaml --model C:\path\model.gguf --n-gpu-layers 20
 ```
 
 **REPL 内常用命令**

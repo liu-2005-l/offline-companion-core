@@ -1,6 +1,8 @@
 # 本地陪伴型 Agent · 架构宪章 v1.0（权威正文）
 
-> **说明**：本文为仓库内**唯一权威**架构宪章正文；历史文件名 `architecture-charter-v1.md` 仅保留跳转。
+> **说明**：本文为仓库内**架构原则与分层冻结**的权威正文；历史文件名 `architecture-charter-v1.md` 仅保留跳转。  
+> **Phase 0/1 现状、缺口、实施路线与维护纪律** 见 [`architecture-and-roadmap-v1.0.md`](./architecture-and-roadmap-v1.0.md)。  
+> **技术栈（已敲定）** 见 [`tech-stack-v1.0.md`](./tech-stack-v1.0.md)。
 
 ---
 
@@ -102,8 +104,10 @@
 
 ## 六、与仓库其他文档的关系
 
-- 产品方向清单：`docs/roadmap.md`
-- 实现与目录结构演进须符合本文 **分层、依赖方向、网络边界**；重大偏离须经评审并升版宪章。
+- 实施路线图与 Phase 缺口：`docs/architecture-and-roadmap-v1.0.md`
+- 技术栈 v1.0：`docs/tech-stack-v1.0.md`
+- 产品方向清单（历史一页纸）：`docs/roadmap.md`
+- 实现与目录结构演进须符合本文 **分层、依赖方向、网络边界**；重大偏离须经评审并升版宪章，并同步修订实施路线图文档。
 
 **版本**：v1.0  
 **状态**：权威正文（`architecture_v1.0.md`）

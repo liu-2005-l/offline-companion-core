@@ -17,3 +17,10 @@ class ConsentArtifactError(ValueError):
 
 class OutboundDenied(RuntimeError):
     """摘要：当前隐私策略或用户选择不允许出站。"""
+
+
+class InferenceBackendError(RuntimeError):
+    """摘要：本地推理后端不可用（路径、依赖或加载失败）。
+
+    说明：由 C1 在 health_check 或构造 LlamaCppBackend 失败时抛出。
+    """
