@@ -1,9 +1,12 @@
-# 记忆写入触发器默认配置（Phase 0 占位）
+# 记忆写入触发器（B2）；默认仅显式 #remember 开启
 version: 1
 triggers:
   on_explicit_save:
     enabled: true
+    description: "用户 #remember 或显式保存命令"
   on_summarize_request:
     enabled: false
+    description: "会话摘要写入记忆（Sprint 1 仅注册，默认关）"
   on_emotion_shift:
     enabled: false
+    description: "情绪转折写入（预留）"

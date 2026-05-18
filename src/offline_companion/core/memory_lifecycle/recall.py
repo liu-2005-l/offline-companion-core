@@ -192,8 +192,51 @@ def recall(
     return ranked[:limit]
 
 
+# 偏好/禁忌类记忆的正文标记（用于逐条【禁忌】标记，非 B3 安全分级）
+_TABOO_BODY_MARKERS = (
+    "讨厌",
+    "不喜欢",
+    "不要",
+    "别放",
+    "忌口",
+    "禁忌",
+    "过敏",
+    "不能吃",
+    "不爱吃",
+    "避免",
+    "拒绝",
+)
+
+
+def _memory_has_taboo_signal(body: str) -> bool:
+    """摘要：判断记忆正文是否表达偏好/禁忌（需模型严格遵守）。"""
+    text = body.strip()
+    if not text:
+        return False
+    return any(m in text for m in _TABOO_BODY_MARKERS)
+
+
+# 有记忆召回时始终追加（小模型对固定尾部指令跟随优于条件注入）
+_PREFERENCE_CONSTRAINT_BLOCK = (
+    "\n\n"
+    "【重要提醒：用户偏好与禁忌】\n"
+    "如果上述记忆中包含用户的偏好、禁忌、过敏、讨厌、不要或类似表述，"
+    "你在回答时必须严格遵守，不得推荐、建议或提及被禁止的事项。"
+    "如需给出相关建议，请主动提供替代方案。"
+    "例如：用户表示「讨厌香菜」，则所有涉及食物、菜品的建议中都不得出现香菜。"
+)
+
+
 def format_recall_prompt_block(hits: list[MemoryRecallHit], max_chars: int = 1400) -> str:
-    """摘要：将召回结果格式化为可注入模型的「你可能想起来的」记忆块。"""
+    """摘要：将召回结果格式化为可注入模型的「你可能想起来的」记忆块。
+
+    参数：
+        hits: 召回命中列表。
+        max_chars: 记忆块最大字符数（含固定约束段）。
+
+    返回值：
+        可拼入 system/user 上下文的记忆块；无命中时返回空字符串。
+    """
     if not hits:
         return ""
     lines: list[str] = [
@@ -203,11 +246,25 @@ def format_recall_prompt_block(hits: list[MemoryRecallHit], max_chars: int = 140
     n = sum(len(x) for x in lines)
     for h in hits:
         summary = str(h.matched_on.get("summary") or "")
-        line = f"- (记忆#{h.id}) {h.body}"
+        body = h.body.strip()
+        taboo = _memory_has_taboo_signal(body)
+        prefix = "【禁忌】" if taboo else ""
+        line = f"- (记忆#{h.id}) {prefix}{body}".strip()
         if summary:
             line += f"\n  为何想起：{summary}；时间衰减系数 {h.decay_factor:.2f}"
+        if taboo:
+            line += "\n  要求：回复中不得建议或包含本条禁止内容。"
         if n + len(line) > max_chars:
             break
         lines.append(line)
         n += len(line) + 1
-    return "\n".join(lines)
+    body_text = "\n".join(lines)
+    combined = body_text + _PREFERENCE_CONSTRAINT_BLOCK
+    if len(combined) <= max_chars:
+        return combined
+    # 超长时仍保留约束段，截断条目部分
+    budget = max(0, max_chars - len(_PREFERENCE_CONSTRAINT_BLOCK))
+    if budget <= 0:
+        return _PREFERENCE_CONSTRAINT_BLOCK.strip()
+    trimmed = body_text[:budget].rstrip()
+    return trimmed + _PREFERENCE_CONSTRAINT_BLOCK

@@ -71,14 +71,37 @@ class MemoryRecallHit:
 
 
 @dataclass(frozen=True)
+class TurnResult:
+    """摘要：``ConversationOrchestrator.run_turn`` 单轮结果（供 A1 渲染）。"""
+
+    reply: str | None = None
+    memory_on: bool = True
+    blocked_by_safety: bool = False
+    safety_tier: str | None = None
+    memory_saved: tuple[str, ...] = ()
+    memory_skipped_trigger: bool = False
+    memory_only: bool = False
+    memory_recalls: tuple[MemoryRecallHit, ...] = ()
+    memory_explanation: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
 class Persona:
-    """摘要：已加载人设；`role_lock` 为真时仅使用本系统提示。"""
+    """摘要：已加载人设；`role_lock` 为真时仅使用本系统提示。
+
+    说明：
+        `name` 为人设模板/catalog 显示名，非模型对用户的自称。
+        陪伴自称由 ``companion_display_name``（宿主注册）或
+        ``default_companion_display_name``（如「助手一号」）决定。
+    """
 
     persona_id: str
     name: str
     system_prompt: str
     role_lock: bool
     memory_default_on: bool
+    default_companion_display_name: str
+    companion_display_name: str | None
     raw: dict[str, Any]
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
-from offline_companion.core.memory_lifecycle.recall import recall
+from offline_companion.core.memory_lifecycle.recall import format_recall_prompt_block, recall
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.runtime.inference_backend.mock import EchoBackend
@@ -70,6 +70,8 @@ def test_assemble_reply_skips_memory_when_disabled(tmp_path) -> None:
         system_prompt="You are helpful.",
         role_lock=True,
         memory_default_on=False,
+        default_companion_display_name="助手一号",
+        companion_display_name=None,
         raw={},
     )
     core = PersonaSessionCore(persona)
@@ -88,6 +90,58 @@ def test_assemble_reply_skips_memory_when_disabled(tmp_path) -> None:
     assert result.memory_recalls == []
     assert result.memory_block == ""
     assert "香菜" not in result.reply
+
+
+def test_format_recall_block_contains_preference_constraint(tmp_path) -> None:
+    conn = connect(tmp_path / "taboo.db")
+    new_session(conn, "s1", "default", title=None)
+    MemoryLifecycleManager.add_memory_chunk(conn, "我讨厌香菜", session_id="s1", source="test")
+    hits = recall(conn, "今天想吃点菜", limit=5)
+    assert hits
+    block = format_recall_prompt_block(hits)
+    assert "不得推荐" in block
+    assert "替代方案" in block
+    assert "【禁忌】" in block
+    assert "香菜" in block
+
+
+def test_format_recall_block_always_appends_constraint_for_neutral_memory(tmp_path) -> None:
+    conn = connect(tmp_path / "neutral.db")
+    new_session(conn, "s1", "default", title=None)
+    MemoryLifecycleManager.add_memory_chunk(conn, "我的猫叫咪咪", session_id="s1", source="test")
+    hits = recall(conn, "咪咪", limit=5)
+    assert hits
+    block = format_recall_prompt_block(hits)
+    assert "重要提醒" in block
+    assert "替代方案" in block
+    assert "【禁忌】" not in block
+
+
+def test_default_persona_chinese_no_fixed_nickname() -> None:
+    persona = load_persona_file(
+        Path(__file__).resolve().parents[1] / "configs" / "personas" / "default.yaml"
+    )
+    assert persona.default_companion_display_name == "助手一号"
+    assert persona.companion_display_name is None
+    assert "陪伴" in persona.system_prompt
+    assert "小伴" not in persona.system_prompt
+    assert "online assistant" not in persona.system_prompt.lower()
+
+
+def test_companion_display_name_override() -> None:
+    from offline_companion.core.persona_session.persona_loader import (
+        apply_companion_display_name,
+        resolved_companion_display_name,
+    )
+
+    persona = load_persona_file(
+        Path(__file__).resolve().parents[1] / "configs" / "personas" / "default.yaml"
+    )
+    assert resolved_companion_display_name(persona) == "助手一号"
+    custom = apply_companion_display_name(persona, "阿青")
+    assert resolved_companion_display_name(custom) == "阿青"
+    core = PersonaSessionCore(custom)
+    assert "【当前自称】阿青" in core.system_prompt_locked
 
 
 def test_assemble_reply_injects_memory_when_enabled(tmp_path) -> None:
@@ -109,4 +163,5 @@ def test_assemble_reply_injects_memory_when_enabled(tmp_path) -> None:
     )
     assert result.memory_recalls
     assert "香菜" in result.memory_block or any("香菜" in h.body for h in result.memory_recalls)
+    assert "重要提醒" in result.memory_block
     assert "[memory]" in result.reply or "菜" in result.reply

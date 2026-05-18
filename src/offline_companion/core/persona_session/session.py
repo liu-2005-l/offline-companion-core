@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 from offline_companion.core.memory_lifecycle.recall import format_recall_prompt_block, recall
+from offline_companion.core.persona_session.persona_loader import resolved_companion_display_name
 from offline_companion.shared.types import MemoryRecallHit, MessageRow, Persona
 
 
@@ -42,8 +43,14 @@ class PersonaSessionCore:
 
     @property
     def system_prompt_locked(self) -> str:
-        """摘要：返回受角色锁约束的系统提示文本。"""
-        return self.persona.system_prompt
+        """摘要：返回受角色锁约束的系统提示文本（含当前陪伴自称）。"""
+        display = resolved_companion_display_name(self.persona)
+        # 自称由宿主注册或 default；避免在 YAML 中写死固定昵称
+        prefix = (
+            f"【当前自称】{display}\n"
+            "向用户介绍自己时使用上述自称；用户可在注册/设置中修改你的名字。\n\n"
+        )
+        return prefix + self.persona.system_prompt
 
     def assemble_reply(
         self,

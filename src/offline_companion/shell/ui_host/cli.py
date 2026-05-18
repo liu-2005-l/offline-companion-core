@@ -1,4 +1,4 @@
-"""cli：终端 UI 宿主入口（A1；编排 A2/B/C 以满足宪章依赖方向）。"""
+"""cli：终端 UI 宿主入口（A1；单轮编排委托 conversation_orchestrator）。"""
 
 from __future__ import annotations
 
@@ -13,22 +13,25 @@ from offline_companion.core.memory_lifecycle.manager import (
     apply_bundle_import,
     prepare_export_bundle,
 )
-from offline_companion.core.memory_lifecycle.explanation import get_memory_explanation
-from offline_companion.core.persona_session.persona_loader import load_persona_file
+from offline_companion.core.memory_lifecycle.triggers import load_triggers
+from offline_companion.core.persona_session.persona_loader import (
+    apply_companion_display_name,
+    load_persona_file,
+)
 from offline_companion.core.persona_session.session import PersonaSessionCore
-from offline_companion.core.safety_boundary.classifier import SafetyTier, classify_user_text
 from offline_companion.shared.errors import InferenceBackendError
 from offline_companion.runtime.inference_backend import (
     EchoBackend,
     create_llama_backend,
     try_stderr_cuda_hint,
 )
-from offline_companion.runtime.storage_index.engine import append_message, connect, new_session, recent_messages
+from offline_companion.runtime.storage_index.engine import connect, new_session
 from offline_companion.runtime.storage_index.export_import import read_bundle_archive, write_bundle_archive
 from offline_companion.shared.types import AppPaths, OutboundPlan, OutboundScope, PrivacyMode
 from offline_companion.shell.outbound_manager.consent import persist_consent_artifact
 from offline_companion.shell.policy_engine.engine import ensure_outbound_allowed
 from offline_companion.shell.policy_engine.rules import default_app_paths
+from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
 
 
 def _parse_privacy(s: str) -> PrivacyMode:
@@ -48,6 +51,21 @@ def _help_text() -> str:
     )
 
 
+def _render_turn_result(result) -> None:
+    """摘要：将编排结果打印到终端。"""
+    if result.memory_saved:
+        print("(saved memory:", "; ".join(result.memory_saved), ")")
+    if result.memory_skipped_trigger:
+        print("(memory save skipped: on_explicit_save trigger is OFF)")
+    if result.memory_explanation:
+        expl = result.memory_explanation
+        print("(记忆召回", expl["count"], "条)")
+        for item in expl["matched"]:
+            print(f"  #{item['memory_id']}: {item['matched_on'].get('summary', '')}")
+    if result.reply is not None:
+        print("Bot>", result.reply)
+
+
 def cmd_chat(args: argparse.Namespace) -> int:
     """摘要：启动本地 REPL 会话。"""
     paths = default_app_paths()
@@ -65,13 +83,13 @@ def cmd_chat(args: argparse.Namespace) -> int:
 
     persona_path = Path(args.persona).expanduser()
     persona = load_persona_file(persona_path)
+    if getattr(args, "companion_name", None):
+        persona = apply_companion_display_name(persona, args.companion_name)
     session_core = PersonaSessionCore(persona)
     privacy = _parse_privacy(args.privacy)
+    triggers = load_triggers()
 
-    if args.memory is None:
-        memory_on = persona.memory_default_on
-    else:
-        memory_on = bool(args.memory)
+    memory_on = persona.memory_default_on if args.memory is None else bool(args.memory)
 
     conn = connect(paths.db_path)
     session_id = args.session_id or str(uuid.uuid4())
@@ -91,17 +109,24 @@ def cmd_chat(args: argparse.Namespace) -> int:
         except InferenceBackendError as e:
             print("推理后端初始化失败:", e, file=sys.stderr)
             return 1
-        report = backend.health_check()
-        print("推理:", report.message)
+        print("推理:", backend.health_check().message)
     else:
         backend = EchoBackend("no-model")
+
+    orchestrator = ConversationOrchestrator(
+        session_core=session_core,
+        backend=backend,
+        conn=conn,
+        session_id=session_id,
+        triggers=triggers,
+        history_limit=args.history,
+        max_tokens=args.max_tokens,
+    )
 
     print("Session:", session_id)
     print("Privacy:", privacy.value, "| Memory:", "on" if memory_on else "off")
     print("Commands: /help /quit /memory … /export /import /cloud-demo")
     print("Tip: prefix a line with `#remember ...` to add memory without extra UI.\n")
-
-    history_limit = args.history
 
     while True:
         try:
@@ -127,52 +152,9 @@ def cmd_chat(args: argparse.Namespace) -> int:
             print("Unknown command. Try /help")
             continue
 
-        safety = classify_user_text(user)
-        if safety.tier != SafetyTier.OK:
-            assert safety.user_visible_reply
-            append_message(conn, session_id, "user", user, meta={"safety": safety.tier.value})
-            append_message(
-                conn,
-                session_id,
-                "assistant",
-                safety.user_visible_reply,
-                meta={"safety": "fixed_reply"},
-            )
-            print("Bot>", safety.user_visible_reply)
-            continue
-
-        chat_text, mem_lines = MemoryLifecycleManager.maybe_extract_memory_commands(user)
-        if memory_on and mem_lines:
-            for m in mem_lines:
-                MemoryLifecycleManager.add_memory_chunk(
-                    conn, m, session_id=session_id, source="user_hash_command"
-                )
-            print("(saved memory:", "; ".join(mem_lines), ")")
-
-        if not chat_text:
-            continue
-
-        append_message(conn, session_id, "user", chat_text)
-
-        hist = recent_messages(conn, session_id, limit=history_limit)
-        hist_for_model = hist[:-1] if hist and hist[-1].role == "user" else hist
-
-        turn = session_core.assemble_reply(
-            backend,
-            conn,
-            user_message=chat_text,
-            history=hist_for_model,
-            memory_enabled=memory_on,
-            max_tokens=args.max_tokens,
-        )
-        if memory_on and turn.memory_recalls:
-            expl = get_memory_explanation(turn.memory_recalls)
-            print("(记忆召回", expl["count"], "条)")
-            for item in expl["matched"]:
-                print(f"  #{item['memory_id']}: {item['matched_on'].get('summary', '')}")
-
-        append_message(conn, session_id, "assistant", turn.reply, meta={})
-        print("Bot>", turn.reply)
+        turn = orchestrator.run_turn(user, memory_on=memory_on)
+        memory_on = turn.memory_on
+        _render_turn_result(turn)
 
     return 0
 
@@ -332,6 +314,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         help="Override user data root for dev/tests",
+    )
+    chat.add_argument(
+        "--companion-name",
+        type=str,
+        default=None,
+        help="用户为陪伴指定的自称（等同注册页昵称）；省略则用 default_companion_display_name",
     )
 
     sub.add_parser("version", help="Print version")
