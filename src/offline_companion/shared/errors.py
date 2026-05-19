@@ -24,3 +24,14 @@ class InferenceBackendError(RuntimeError):
 
     说明：由 C1 在 health_check 或构造 LlamaCppBackend 失败时抛出。
     """
+
+
+class ReformatError(ValueError):
+    """摘要：B4 规则润色无法安全处理云端原文。
+
+    说明：编排层应触发本地硬降级，不得将未润色云端原文直接呈现用户。
+    """
+
+
+class CloudConnectorError(RuntimeError):
+    """摘要：A3 出站 HTTP 调用失败（配置、网络或响应格式）。"""

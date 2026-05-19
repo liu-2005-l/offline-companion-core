@@ -83,6 +83,24 @@ class TurnResult:
     memory_only: bool = False
     memory_recalls: tuple[MemoryRecallHit, ...] = ()
     memory_explanation: dict[str, Any] | None = None
+    cloud_used: bool = False
+    cloud_degraded: bool = False
+
+
+@dataclass(frozen=True)
+class CloudCompletionRequest:
+    """摘要：A3 出站推理请求（最小上传）。"""
+
+    user_message: str
+    purpose: str
+
+
+@dataclass(frozen=True)
+class CloudCompletionResponse:
+    """摘要：A3 出站推理响应。"""
+
+    text: str
+    raw: dict[str, Any]
 
 
 @dataclass(frozen=True)

@@ -13,10 +13,15 @@ from offline_companion.core.memory_lifecycle.triggers import (
     is_enabled,
     maybe_summarize_to_memory,
 )
+from offline_companion.core.local_reformatter.rule_reformatter import (
+    LOCAL_FALLBACK_PREFIX,
+    reformat_cloud_reply,
+)
 from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.core.safety_boundary.classifier import SafetyTier, classify_user_text
 from offline_companion.runtime.storage_index.engine import append_message, recent_messages
-from offline_companion.shared.types import TurnResult
+from offline_companion.shared.errors import CloudConnectorError, ReformatError
+from offline_companion.shared.types import CloudCompletionRequest, TurnResult
 
 
 @dataclass
@@ -30,6 +35,103 @@ class ConversationOrchestrator:
     triggers: TriggerRegistry
     history_limit: int = 30
     max_tokens: int = 256
+
+    def _local_fallback_reply(self, chat_text: str, *, memory_on: bool) -> str:
+        """摘要：B4 不可用或云端失败时，用本地 C1 生成并加固定前缀。"""
+        hist = recent_messages(self.conn, self.session_id, limit=self.history_limit)
+        assembled = self.session_core.assemble_reply(
+            self.backend,
+            self.conn,
+            user_message=chat_text,
+            history=hist,
+            memory_enabled=memory_on,
+            max_tokens=self.max_tokens,
+        )
+        return LOCAL_FALLBACK_PREFIX + assembled.reply
+
+    def run_cloud_turn(
+        self,
+        user_text: str,
+        *,
+        purpose: str,
+        memory_on: bool,
+        cloud_post,
+    ) -> TurnResult:
+        """摘要：经 A3 出站 → B4 润色；失败则硬降级为本地回复。
+
+        参数：
+            user_text: 用户问题（将最小上传）。
+            purpose: 出站目的说明（写入 Consent）。
+            memory_on: 本地降级路径是否启用记忆召回。
+            cloud_post: 可调用 ``(CloudCompletionRequest) -> CloudCompletionResponse`` 的 A3 函数。
+
+        返回值：
+            ``TurnResult``；``cloud_degraded`` 为真表示未使用云端原文。
+        """
+        safety = classify_user_text(user_text)
+        if safety.tier != SafetyTier.OK:
+            assert safety.user_visible_reply
+            append_message(
+                self.conn,
+                self.session_id,
+                "user",
+                user_text,
+                meta={"safety": safety.tier.value},
+            )
+            append_message(
+                self.conn,
+                self.session_id,
+                "assistant",
+                safety.user_visible_reply,
+                meta={"safety": "fixed_reply"},
+            )
+            return TurnResult(
+                reply=safety.user_visible_reply,
+                memory_on=memory_on,
+                blocked_by_safety=True,
+                safety_tier=safety.tier.value,
+            )
+
+        append_message(self.conn, self.session_id, "user", user_text, meta={"channel": "cloud"})
+        cloud_raw: str | None = None
+        try:
+            resp = cloud_post(
+                CloudCompletionRequest(user_message=user_text, purpose=purpose),
+            )
+            cloud_raw = resp.text
+            reply = reformat_cloud_reply(cloud_raw, self.session_core.persona)
+            append_message(
+                self.conn,
+                self.session_id,
+                "assistant",
+                reply,
+                meta={"channel": "cloud", "reformatted": True},
+            )
+            return TurnResult(
+                reply=reply,
+                memory_on=memory_on,
+                cloud_used=True,
+                cloud_degraded=False,
+            )
+        except (ReformatError, CloudConnectorError, Exception):
+            # 硬降级：不向用户展示未润色云端原文
+            reply = self._local_fallback_reply(user_text, memory_on=memory_on)
+            append_message(
+                self.conn,
+                self.session_id,
+                "assistant",
+                reply,
+                meta={
+                    "channel": "cloud_degraded",
+                    "had_cloud_raw": bool(cloud_raw),
+                },
+            )
+            return TurnResult(
+                reply=reply,
+                memory_on=memory_on,
+                cloud_used=True,
+                cloud_degraded=True,
+            )
 
     def run_turn(self, user_text: str, *, memory_on: bool) -> TurnResult:
         """摘要：处理一条非斜杠用户消息。

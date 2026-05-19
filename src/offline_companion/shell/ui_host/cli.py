@@ -29,6 +29,7 @@ from offline_companion.runtime.storage_index.engine import connect, new_session
 from offline_companion.runtime.storage_index.export_import import read_bundle_archive, write_bundle_archive
 from offline_companion.shared.types import AppPaths, OutboundPlan, OutboundScope, PrivacyMode
 from offline_companion.shell.outbound_manager.consent import persist_consent_artifact
+from offline_companion.shell.outbound_manager.connector import post_cloud_completion
 from offline_companion.shell.policy_engine.engine import ensure_outbound_allowed
 from offline_companion.shell.policy_engine.rules import default_app_paths
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
@@ -48,6 +49,7 @@ def _help_text() -> str:
         "/export PATH.zip Write portable bundle (manifest + jsonl)\n"
         "/import PATH.zip Import bundle with new session ids\n"
         "/cloud-demo      Exercise outbound consent gate (no network I/O)\n"
+        "/cloud-reason Q  Cloud assist (consent + A3 + B4; stub if env set)\n"
     )
 
 
@@ -62,6 +64,10 @@ def _render_turn_result(result) -> None:
         print("(记忆召回", expl["count"], "条)")
         for item in expl["matched"]:
             print(f"  #{item['memory_id']}: {item['matched_on'].get('summary', '')}")
+    if result.cloud_degraded:
+        print("(云端润色不可用，已用本地陪伴方式回答)")
+    elif result.cloud_used:
+        print("(本轮经云端增强，已润色)")
     if result.reply is not None:
         print("Bot>", result.reply)
 
@@ -136,6 +142,47 @@ def cmd_chat(args: argparse.Namespace) -> int:
             return 0
 
         if not user:
+            continue
+
+        if user.startswith("/cloud-reason"):
+            parts = user.split(maxsplit=1)
+            if len(parts) < 2:
+                print("Usage: /cloud-reason <your question>")
+                continue
+            question = parts[1].strip()
+            plan = OutboundPlan(
+                payload_excerpt=f"user: {question[:500]}",
+                will_send=["Current user question only"],
+                will_not_send=[
+                    "Full chat history",
+                    "Memory database contents",
+                    "Persona YAML file",
+                ],
+                purpose="Cloud reasoning assist for current question",
+                scope=OutboundScope.THIS_TURN,
+            )
+            try:
+                ensure_outbound_allowed(privacy, plan)
+                artifact = {
+                    "request_id": str(uuid.uuid4()),
+                    "scope": plan.scope.value,
+                    "purpose": plan.purpose,
+                    "user_decision": "allowed",
+                    "timestamp": time.time(),
+                    "data_category": "cloud_reason",
+                    "hash_of_uploaded_content": None,
+                }
+                persist_consent_artifact(conn, artifact)
+                turn = orchestrator.run_cloud_turn(
+                    question,
+                    purpose=plan.purpose,
+                    memory_on=memory_on,
+                    cloud_post=post_cloud_completion,
+                )
+                memory_on = turn.memory_on
+                _render_turn_result(turn)
+            except Exception as e:
+                print("Blocked or failed:", e)
             continue
 
         if user.startswith("/"):
