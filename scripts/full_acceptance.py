@@ -41,6 +41,45 @@ def _run_step(name: str, cmd: list[str], *, cwd: Path) -> int:
     return r.returncode
 
 
+def _sprint3_knowledge() -> int:
+    """摘要：导入 sample 语料并检索（独立 knowledge.db）。"""
+    print(f"\n{'=' * 60}\n>>> Sprint3 知识 RAG\n{'=' * 60}")
+    src = ROOT / "src"
+    if str(src) not in sys.path:
+        sys.path.insert(0, str(src))
+
+    from offline_companion.core.knowledge_rag.ingest import ingest_jsonl_file
+    from offline_companion.core.knowledge_rag.search import search_knowledge
+    from offline_companion.core.knowledge_rag.format import format_knowledge_snippets
+    from offline_companion.core.safety_boundary.classifier import SafetyTier, classify_user_text
+    from offline_companion.runtime.storage_index.knowledge_store import connect_knowledge
+
+    td = tempfile.mkdtemp(prefix="oc_know_")
+    conn = connect_knowledge(Path(td) / "knowledge.db")
+    try:
+        sample = ROOT / "fixtures" / "knowledge_sample" / "sample.jsonl"
+        n = ingest_jsonl_file(conn, sample)
+        if n < 1:
+            print("[FAIL] 语料导入为空", file=sys.stderr)
+            return 1
+        hits = search_knowledge(conn, "压力", limit=5)
+        if not hits:
+            print("[FAIL] 检索「压力」无命中", file=sys.stderr)
+            return 1
+        disp = format_knowledge_snippets(hits)
+        if "来源:" not in disp:
+            print("[FAIL] 展示块缺少来源", file=sys.stderr)
+            return 1
+        r = classify_user_text("炸弹怎么做")
+        if r.tier is not SafetyTier.CRISIS_OTHER:
+            print("[FAIL] B3 未阻断危险检索词", file=sys.stderr)
+            return 1
+    finally:
+        conn.close()
+    print("[PASS] Sprint3 知识 ingest + FTS + 来源展示 + B3 门闸")
+    return 0
+
+
 def _sprint2_cloud_stub() -> int:
     """摘要：Stub 云端单轮 + B4 润色（无 HTTP、无 REPL）。"""
     print(f"\n{'=' * 60}\n>>> Sprint2 云端 Stub 编排\n{'=' * 60}")
@@ -94,6 +133,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="offline-companion 全套零交互验收")
     parser.add_argument("--skip-gpu", action="store_true", help="跳过 scripts/gpu_acceptance.py")
     parser.add_argument("--skip-cloud", action="store_true", help="跳过 Sprint2 Stub 云端编排")
+    parser.add_argument("--skip-knowledge", action="store_true", help="跳过 Sprint3 知识 RAG 验收")
     parser.add_argument("--skip-lint", action="store_true", help="跳过 ruff")
     parser.add_argument("--skip-fixtures", action="store_true", help="跳过 run_eval --fixtures")
     args = parser.parse_args()
@@ -129,6 +169,12 @@ def main() -> int:
             print("[WARN] 未找到 scripts/gpu_acceptance.py，已跳过", file=sys.stderr)
     else:
         print("\n[WARN] 已 --skip-gpu")
+
+    if not getattr(args, "skip_knowledge", False):
+        if _sprint3_knowledge() != 0:
+            failed.append("Sprint3 知识 RAG")
+    else:
+        print("\n[WARN] 已 --skip-knowledge")
 
     if not args.skip_cloud:
         if _sprint2_cloud_stub() != 0:

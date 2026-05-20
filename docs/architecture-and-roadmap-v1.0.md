@@ -86,15 +86,27 @@
 - **C1**：`LlamaCppBackend`、`check_model()` / `create_llama_backend()`、`check-model` 子命令（**Phase 1 步骤 1 已落地**）
 - CI 双系统 + `check_imports` / `check_legacy_companion`
 
-### 明确缺口
+### 已闭合（Sprint 0～2）
+
+- B3 YAML 话术（`configs/safety_replies/`）
+- B1/B2 个人记忆 RAG：`recall()`、记忆块注入、`#remember` 显式写入
+- C1 本地 GGUF：`LlamaCppBackend`、`check-model`
+- **A2 编排**：`shell/ui_host/conversation_orchestrator.py`（`cli.py` 主循环委托 `run_turn`）
+- **B4 规则润色 + 硬降级**：`core/local_reformatter/rule_reformatter.py`；云端失败不回传原文
+- **A3 出站 HTTP**：`shell/outbound_manager/connector.py`；CLI `/cloud-reason`（Stub/真实 URL 可配置）
+- B2 触发器 YAML：`configs/triggers.yaml` + `on_explicit_save`
+- 验收：`scripts/full_acceptance.py`、`scripts/gpu_acceptance.py`
+
+### 明确缺口（Sprint 3 及以后）
 
 | 缺口 | 域 | 说明 |
 |------|-----|------|
-| A2 Orchestrator | A2 | 逻辑仍在 `cli.py`（非阻塞） |
-| B4 润色 | B4 | 直通 |
-| A3 HTTP | A3 | 占位 |
-| 知识 RAG 插件 | Phase 2 | 未开始 |
-| 评测 50–100 | 评测 | 未扩 |
+| 知识 RAG 插件 | B2 插件 | Sprint 3，见 [`sprint-3-plan.md`](./sprint-3-plan.md) |
+| Docker 环境 | 工程 | Sprint 3 |
+| 评测 50–100 | 评测 | Sprint 3.4 |
+| 向量嵌入 | B2 | 已砍，Sprint 4+（默认关） |
+
+联网知识检索：**不做**（宪章：仅 A3 + 显式同意；本地知识库优先）。
 
 ---
 
@@ -106,7 +118,7 @@
 |------|------|------|----------|------|
 | 1 | C1 稳固与健康检查 | C1 | GGUF 加载、`generate`、`check_model` | **已完成** |
 | 2 | B2 `recall()` + 衰减 + `matched_on` | B2 | 每轮可召回；结果含解释字段 | **已完成** |
-| 3 | B1 `assemble_reply()` + **自动注入 recall** | B1 | 拼 prompt 调 C1；记忆块「你可能想起来的」 | **已完成** |
+| 3 | B1 `assemble_reply()` + **自动注入记忆块** | B1 | 装配 prompt 调 C1；召回块注入 | **已完成** |
 | 4 | CLI 经 B1 真实推理 | A1 | 默认 B1→C1；尊重记忆开关 | **已完成** |
 | 5 | B3 话术 YAML 化 | B3 | 从 `configs/safety_replies/` 加载 | **已完成** |
 
@@ -137,7 +149,23 @@
 
 ---
 
-## 七、Phase 2 展望
+## 七、Sprint 3（已完成，2026-05）
+
+**实施计划（评审冻结）**：[`sprint-3-plan.md`](./sprint-3-plan.md)
+
+| 子项 | 状态 |
+|------|------|
+| 3.0 文档同步 | **已完成** |
+| 3.1 本地知识 RAG（`knowledge.db`） | **已完成** |
+| 3.2 Docker | **已完成** |
+| 3.4 评测 50+ | **已完成** |
+| 3.3 向量 | **已砍** |
+
+---
+
+## 八、Phase 2 展望（历史分组；与 Sprint 2/3 对应）
+
+*本节为早期规划快照；Sprint 2/3 的最新状态见第五节「已闭合 / 明确缺口」及 [`sprint-3-plan.md`](./sprint-3-plan.md)。*
 
 ### 7.1 记忆深化
 
@@ -153,7 +181,7 @@
 | 默认 | **关闭**；`knowledge` 模式或 `/search-knowledge` |
 | 索引 | **本地** SQLite FTS / BM25；离线语料（如维基摘要、安全手册）；核显可跑 |
 | 来源 | 回复**必须标注出处**，用户可核对 |
-| 润色 | 结果经 **B4**，符合人设语气 |
+| 润色 | `answer_after_search` 时经 **B4**；默认仅列片段则不过 B4（见 sprint-3-plan） |
 | 审计 | 本地检索写审计表；联网须 **A3 + Consent Artifact** |
 | 与记忆隔离 | **搜索结果默认不入** `memory_chunks`（除非用户 `#remember`） |
 
@@ -165,14 +193,14 @@
 
 ### 7.4 工程与其它
 
-- A3 真实 HTTP；B4 规则润色 + 硬降级  
-- A2 `ConversationOrchestrator`；`cli.py` 变薄  
-- 评测 50–100 条；**Docker** 锁版本 + 模型/语料 volume 下载（见 `tech-stack-v1.0.md`）  
+- ~~A3 真实 HTTP；B4 规则润色 + 硬降级~~（**Sprint 2 已完成**）  
+- ~~A2 `ConversationOrchestrator`；`cli.py` 变薄~~（**Sprint 1 已完成**）  
+- 评测 50–100 条（**Sprint 3.4**）；**Docker** 锁版本 + 模型/语料 volume（**Sprint 3**，见 `tech-stack-v1.0.md`）  
 - PyInstaller 便携 exe（Phase 3）；本地 WebUI 壳（127.0.0.1）
 
 ---
 
-## 八、维护纪律
+## 九、维护纪律
 
 1. 不得违反宪章六原则。  
 2. CI 硬门禁须通过。  
@@ -182,12 +210,13 @@
 
 ---
 
-## 文档关系
+## 十、文档关系
 
 | 文件 | 角色 |
 |------|------|
 | `architecture_v1.0.md` | 宪章原则（权威） |
 | `tech-stack-v1.0.md` | 技术栈 v1.0（已敲定） |
 | `architecture-and-roadmap-v1.0.md` | 本文：Phase + RAG + 缺口 |
+| `sprint-3-plan.md` | Sprint 3 可执行计划（评审冻结） |
 | `roadmap.md` | 产品方向历史清单 |
 | `architecture-charter-v1.md` | 旧文件名跳转 |

@@ -32,7 +32,13 @@ from offline_companion.shell.outbound_manager.consent import persist_consent_art
 from offline_companion.shell.outbound_manager.connector import post_cloud_completion
 from offline_companion.shell.policy_engine.engine import ensure_outbound_allowed
 from offline_companion.shell.policy_engine.rules import default_app_paths
+from offline_companion.core.knowledge_rag.config import load_knowledge_config
+from offline_companion.runtime.storage_index.knowledge_store import (
+    connect_knowledge,
+    default_knowledge_db_path,
+)
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
+from offline_companion.shell.ui_host.knowledge_turn import run_knowledge_search
 
 
 def _parse_privacy(s: str) -> PrivacyMode:
@@ -50,6 +56,7 @@ def _help_text() -> str:
         "/import PATH.zip Import bundle with new session ids\n"
         "/cloud-demo      Exercise outbound consent gate (no network I/O)\n"
         "/cloud-reason Q  Cloud assist (consent + A3 + B4; stub if env set)\n"
+        "/search-knowledge Q  Local knowledge FTS (B3 gate; snippets only by default)\n"
     )
 
 
@@ -129,10 +136,15 @@ def cmd_chat(args: argparse.Namespace) -> int:
         max_tokens=args.max_tokens,
     )
 
+    knowledge_cfg = load_knowledge_config()
+    knowledge_db_path = knowledge_cfg.db_path or default_knowledge_db_path(paths.root)
+    knowledge_conn = connect_knowledge(knowledge_db_path)
+
     print("Session:", session_id)
     print("Privacy:", privacy.value, "| Memory:", "on" if memory_on else "off")
     print("Commands: /help /quit /memory … /export /import /cloud-demo")
-    print("Tip: prefix a line with `#remember ...` to add memory without extra UI.\n")
+    print("Tip: prefix a line with `#remember ...` to add memory without extra UI.")
+    print("Knowledge DB:", knowledge_db_path, "| plugin enabled:", knowledge_cfg.enabled, "\n")
 
     while True:
         try:
@@ -142,6 +154,34 @@ def cmd_chat(args: argparse.Namespace) -> int:
             return 0
 
         if not user:
+            continue
+
+        if user.startswith("/search-knowledge"):
+            parts = user.split(maxsplit=1)
+            if len(parts) < 2:
+                print("Usage: /search-knowledge <query>")
+                continue
+            if not knowledge_cfg.enabled:
+                print("Knowledge plugin is disabled (configs/knowledge/default.yaml enabled: false).")
+                continue
+            q = parts[1].strip()
+            kr = run_knowledge_search(
+                query=q,
+                config=knowledge_cfg,
+                knowledge_conn=knowledge_conn,
+                companion_conn=conn,
+                session_id=session_id,
+                persona=persona,
+                session_core=session_core,
+                backend=backend,
+                memory_on=memory_on,
+            )
+            if kr.blocked_by_safety:
+                print("Bot>", kr.safety_reply)
+                continue
+            print(kr.snippet_display)
+            if kr.answer_after_search and kr.reply:
+                print("Bot>", kr.reply)
             continue
 
         if user.startswith("/cloud-reason"):

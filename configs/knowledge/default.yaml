@@ -1,0 +1,9 @@
+# 通用知识 RAG（Sprint 3）；默认关闭，不改变主聊天路径
+version: 1
+enabled: false
+top_k: 5
+max_snippet_chars: 1200
+# 为 true 时：检索后再调本地 C1，并经 B4 润色
+answer_after_search: false
+# 留空则使用 {AppPaths.root}/knowledge.db
+db_path:

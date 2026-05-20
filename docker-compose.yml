@@ -1,0 +1,21 @@
+# 本地开发环境（非公网服务；模型/语料/数据用 volume）
+services:
+  companion-dev:
+    build: .
+    image: offline-companion-core:dev
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    environment:
+      - OFFLINE_COMPANION_CLOUD_STUB=1
+    volumes:
+      - .:/app
+      - companion_models:/data/models:ro
+      - companion_knowledge:/data/knowledge
+      - companion_data:/data/app
+    # 不映射公网端口；仅 docker exec 进入
+
+volumes:
+  companion_models:
+  companion_knowledge:
+  companion_data:

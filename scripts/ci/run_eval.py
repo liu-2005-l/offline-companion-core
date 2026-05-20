@@ -26,8 +26,16 @@ def main() -> int:
         action="store_true",
         help="仅运行 fixtures/regression_dialogues.yaml 驱动测试",
     )
+    parser.add_argument(
+        "--category",
+        type=str,
+        default=None,
+        help="仅运行 test_knowledge_search 等（knowledge|regression）",
+    )
     args = parser.parse_args()
-    if args.fixtures:
+    if args.category == "knowledge":
+        targets = [str(ROOT / "tests" / "test_knowledge_search.py")]
+    elif args.fixtures:
         targets = [str(ROOT / "tests" / "test_regression_fixtures.py")]
     else:
         targets = [str(ROOT / "tests")]

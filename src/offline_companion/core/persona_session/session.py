@@ -61,6 +61,7 @@ class PersonaSessionCore:
         history: list[MessageRow],
         memory_enabled: bool,
         max_tokens: int = 256,
+        reference_block: str = "",
     ) -> AssembleReplyResult:
         """摘要：装配 prompt、注入记忆召回并调用推理后端。
 
@@ -71,13 +72,16 @@ class PersonaSessionCore:
             history: 不含当前条的近期历史。
             memory_enabled: 是否启用记忆召回注入；为 False 时不召回、不注入。
             max_tokens: 生成 token 上限。
+            reference_block: 外部参考块（如知识检索）；非空时优先于记忆块。
 
         返回值：
             助手回复文本及本轮召回明细。
         """
         recalls: list[MemoryRecallHit] = []
         memory_block = ""
-        if memory_enabled:
+        if reference_block.strip():
+            memory_block = reference_block.strip()
+        elif memory_enabled:
             recalls = recall(conn, user_message, limit=8)
             memory_block = format_recall_prompt_block(recalls)
 
