@@ -10,6 +10,9 @@ from typing import Any
 
 from offline_companion.shared.types import MemoryRecallHit
 
+from .embedding import embedding_candidates
+from .embedding_config import load_embedding_config
+
 # 半衰期（秒）：越久未更新/创建的记忆权重越低
 _DEFAULT_HALF_LIFE_SEC = 30.0 * 86400.0
 
@@ -186,6 +189,46 @@ def recall(
                         age_days=(now - created) / 86400.0,
                         decay_factor=decay,
                     ),
+                )
+
+    emb_cfg = load_embedding_config()
+    if emb_cfg.enabled:
+        for mid, body, sim, created in embedding_candidates(conn, query, config=emb_cfg):
+            decay = _time_decay(created, now, half_life_sec)
+            emb_rel = sim * emb_cfg.blend_weight
+            combined = emb_rel * decay
+            if mid in by_id:
+                hit = by_id[mid]
+                combined = max(hit.combined_score, combined)
+                matched_on = dict(hit.matched_on)
+                matched_on["match_type"] = "fts+embedding" if hit.matched_on.get("match_type") == "fts" else "embedding"
+                matched_on["embedding_cosine"] = round(sim, 4)
+                by_id[mid] = MemoryRecallHit(
+                    id=mid,
+                    body=hit.body,
+                    created_at=hit.created_at,
+                    combined_score=combined,
+                    decay_factor=hit.decay_factor,
+                    matched_on=matched_on,
+                )
+            else:
+                by_id[mid] = MemoryRecallHit(
+                    id=mid,
+                    body=body,
+                    created_at=created,
+                    combined_score=combined,
+                    decay_factor=decay,
+                    matched_on={
+                        **_build_matched_on(
+                            match_type="embedding",
+                            matched_keywords=[],
+                            fts_score=None,
+                            age_days=(now - created) / 86400.0,
+                            decay_factor=decay,
+                        ),
+                        "embedding_cosine": round(sim, 4),
+                        "summary": "向量相似度与当前问题相近",
+                    },
                 )
 
     ranked = sorted(by_id.values(), key=lambda h: h.combined_score, reverse=True)

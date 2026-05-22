@@ -310,6 +310,12 @@ def smoke_core_api(
             preview = (out.reply or "").replace("\n", " ")[:160]
             tag = "memory=on" if mem_on else "memory=off"
             step.ok(f"B1 推理 ({tag})", f"{gen_s:.1f}s, recalls={len(out.memory_recalls)}")
+            warn_sec = float(os.environ.get("OFFLINE_COMPANION_GPU_WARN_SEC", "30"))
+            if gen_s > warn_sec:
+                step.warn(
+                    f"B1 耗时 ({tag})",
+                    f"{gen_s:.1f}s > {warn_sec}s；请确认 CUDA 版 llama-cpp（见 docs/inference-cuda.md）",
+                )
             print(f"       用户: {user_msg}")
             print(f"       助手: {preview}...")
 

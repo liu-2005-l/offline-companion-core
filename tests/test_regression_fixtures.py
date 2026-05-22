@@ -14,6 +14,7 @@ from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.runtime.inference_backend.mock import EchoBackend
 from offline_companion.runtime.storage_index.engine import connect, new_session
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
+from offline_companion.core.memory_lifecycle.embedding_config import load_embedding_config
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
 
 
@@ -122,6 +123,15 @@ def test_orchestrator_fixtures_from_yaml(tmp_path) -> None:
                 assert r2.memory_recalls, c["id"]
                 kw = c["expect_recall_keyword"]
                 assert any(kw in h.body for h in r2.memory_recalls), c["id"]
+
+
+def test_memory_embedding_fixtures_from_yaml() -> None:
+    for c in _load_cases():
+        if c.get("category") != "memory_embedding":
+            continue
+        if c.get("expect_enabled") is False:
+            cfg = load_embedding_config()
+            assert cfg.enabled is False, c["id"]
 
 
 def test_knowledge_query_safety_fixtures_from_yaml() -> None:

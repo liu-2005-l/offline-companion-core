@@ -1,7 +1,7 @@
 # 项目状态总览（PROJECT_STATUS）
 
 > **一句话**：隐私优先的本地陪伴 Agent **核心库** — 人格锁、可解释记忆、可选本地知识库与显式云端增强。  
-> **当前版本**：`0.1.0`（`pyproject.toml`）· **当前 Sprint**：**Sprint 4 已基本完成**（4.2～4.4 已落地；发布前可记 Windows 手跑验收日期）
+> **当前版本**：`0.1.0`（`pyproject.toml`）· **当前 Sprint**：**Sprint 5 已完成**（2026-05）
 
 ---
 
@@ -22,17 +22,31 @@
 | 本地知识 RAG | ✅ | 独立 `knowledge.db`；`/search-knowledge`；默认关 |
 | Docker 开发环境 | ✅ | 见 [`docker.md`](./docker.md) |
 | 全套验收脚本 | ✅ | `scripts/full_acceptance.py`、`gpu_acceptance.py` |
+| 可选记忆向量 | ✅ | `configs/memory/embedding.yaml` **默认关**；哈希袋 + 余弦补强 FTS |
+| 长跑观测 | ✅ | `scripts/stress_test.py` |
 
 ## 明确非目标（当前不做）
 
 - 静默上云、自动路由上云（主线）
 - 联网知识检索
-- 向量检索主路径（Sprint 5 再议）
+- 向量检索**默认开启**（须显式改 `embedding.yaml`）
 - 知识块默认注入普通聊天主路径
-- PyInstaller / 公网 WebUI（Phase 3）
+- PyInstaller / 公网 WebUI（Phase 3 / Sprint 6）
 - LangChain / Chroma / faiss 主路径依赖
 
-## Sprint 4 进行中
+## Sprint 5（已完成）
+
+| 子项 | 内容 |
+|------|------|
+| 5.0 | 文档 — **已完成** |
+| 5.1 | 记忆 `embedding_blob` + 召回融合 — **已完成** |
+| 5.2 | `scripts/stress_test.py` — **已完成** |
+| 5.3 | `gpu_acceptance` 单轮超时 WARN — **已完成** |
+| 5.4 | 评测 + `full_acceptance` Sprint5 步骤 — **已完成** |
+
+计划全文：[`sprint-5-plan.md`](./sprint-5-plan.md) · 使用说明：[`memory-embedding.md`](./memory-embedding.md)
+
+## Sprint 4（已完成）
 
 | 子项 | 内容 |
 |------|------|
@@ -55,7 +69,8 @@
 | Phase / 缺口 / Sprint 历史 | [`architecture-and-roadmap-v1.0.md`](./architecture-and-roadmap-v1.0.md) |
 | 技术栈（Python、GGUF、SQLite） | [`tech-stack-v1.0.md`](./tech-stack-v1.0.md) |
 | Sprint 3（已完成） | [`sprint-3-plan.md`](./sprint-3-plan.md) |
-| Sprint 4（进行中） | [`sprint-4-plan.md`](./sprint-4-plan.md) |
+| Sprint 4（已完成） | [`sprint-4-plan.md`](./sprint-4-plan.md) |
+| Sprint 5（已完成） | [`sprint-5-plan.md`](./sprint-5-plan.md) · [`memory-embedding.md`](./memory-embedding.md) |
 | Docker 冷启动 | [`docker.md`](./docker.md) |
 | CUDA / 性能基线 | [`inference-cuda.md`](./inference-cuda.md) |
 | 产品方向（历史一页纸） | [`roadmap.md`](./roadmap.md) |
@@ -109,6 +124,8 @@ python scripts/ingest_knowledge.py fixtures/knowledge_sample/sample.jsonl
 | 跳过云端 Stub | 加 `--skip-cloud` |
 | 服务器全量 | `full_acceptance.py` + `OFFLINE_COMPANION_GGUF` |
 | 仅 GPU 子集 | `python scripts/gpu_acceptance.py --root .` |
+| 长跑观测 | `python scripts/stress_test.py --turns 50` |
+| 跳过压测 | `full_acceptance.py --skip-gpu --skip-stress` |
 
 **发布前建议**：在 **Windows** 与 **Linux** 各执行一次 `full_acceptance.py --skip-gpu` 并记录日期（见 sprint-4-plan §4.5）。
 
@@ -121,6 +138,7 @@ python scripts/ingest_knowledge.py fixtures/knowledge_sample/sample.jsonl
 | 人设 | `configs/personas/` |
 | 安全话术 | `configs/safety_replies/` |
 | 触发器 | `configs/triggers.yaml` |
+| 记忆向量（可选） | `configs/memory/embedding.yaml` |
 | 知识插件 | `configs/knowledge/default.yaml` |
 | 会话 DB | `{data_root}/companion.db` |
 | 知识 DB | `{data_root}/knowledge.db`（独立） |

@@ -106,9 +106,9 @@
 | 可执行评测 ≥50 | 评测 | Sprint 4.4（与 note 类 fixture 分列统计） |
 | Windows 逻辑验收 CI | 工程 | Sprint 4.5 → `acceptance_logic.yml` |
 | CUDA / 性能基线文档 | C1 运维 | Sprint 4.1 → [`inference-cuda.md`](./inference-cuda.md) |
-| 向量嵌入检索 | B2 | Sprint 5+（默认关；Sprint 4 仅预留文档） |
+| PyInstaller / 本地 WebUI | A1 / 工程 | Sprint 6 / Phase 3 |
 
-**已闭合（Sprint 3）**：本地知识 RAG、`knowledge.db`、Docker、fixture 51 条、[`sprint-3-plan.md`](./sprint-3-plan.md)。
+**已闭合（Sprint 3～5）**：知识 RAG、Docker、fixture 51+、记忆草稿、可选向量（`embedding.yaml` 默认关）、[`sprint-5-plan.md`](./sprint-5-plan.md)。
 
 联网知识检索：**不做**（宪章：仅 A3 + 显式同意；本地知识库优先）。
 
@@ -167,7 +167,7 @@
 
 ---
 
-## 七-B、Sprint 4（进行中，2026-05）
+## 七-B、Sprint 4（已完成，2026-05）
 
 **项目入口**：[`PROJECT_STATUS.md`](./PROJECT_STATUS.md)  
 **实施计划（评审冻结）**：[`sprint-4-plan.md`](./sprint-4-plan.md)
@@ -180,6 +180,20 @@
 | 4.2 记忆草稿 → 确认（规则优先） | **已完成** |
 | 4.3 知识运维文档（不进主路径） | **已完成** |
 | 4.4 可执行 fixture ≥50 | **已完成** |
+
+---
+
+## 七-C、Sprint 5（已完成，2026-05）
+
+**实施计划**：[`sprint-5-plan.md`](./sprint-5-plan.md) · [`memory-embedding.md`](./memory-embedding.md)
+
+| 子项 | 状态 |
+|------|------|
+| 5.0 文档同步 | **已完成** |
+| 5.1 可选向量召回（哈希袋，默认关） | **已完成** |
+| 5.2 `stress_test.py` | **已完成** |
+| 5.3 GPU 耗时 WARN | **已完成** |
+| 5.4 评测 + full_acceptance | **已完成** |
 
 ---
 
@@ -241,5 +255,7 @@
 | `sprint-4-plan.md` | Sprint 4 可执行计划（评审冻结） |
 | `PROJECT_STATUS.md` | 项目总览与冷启动（推荐入口） |
 | `inference-cuda.md` | CUDA 安装与性能基线 |
+| `sprint-5-plan.md` | Sprint 5 可执行计划 |
+| `memory-embedding.md` | 可选记忆向量说明 |
 | `roadmap.md` | 产品方向历史清单 |
 | `architecture-charter-v1.md` | 旧文件名跳转 |

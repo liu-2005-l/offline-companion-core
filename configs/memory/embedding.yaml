@@ -1,0 +1,9 @@
+# 个人记忆可选向量补强（Sprint 5）；默认关闭，不改变主路径
+version: 1
+enabled: false
+# 哈希袋维度（纯本地确定性算法，无外部 API）
+dimensions: 128
+# 向量分对 combined_score 的最大加成权重（0～1）
+blend_weight: 0.25
+# 余弦相似度下限，低于此不纳入候选
+min_cosine: 0.15

@@ -10,7 +10,7 @@ from typing import Any
 
 from offline_companion.shared.types import MessageRow
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -47,6 +47,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if ver < 2:
         _init_v2(conn)
         ver = 2
+    if ver < 3:
+        _init_v3(conn)
+        ver = 3
     conn.execute(
         "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
@@ -130,6 +133,13 @@ def _init_v2(conn: sqlite3.Connection) -> None:
             ON memory_drafts(session_id, status, created_at DESC);
         """
     )
+
+
+def _init_v3(conn: sqlite3.Connection) -> None:
+    """摘要：Sprint 5.1 记忆块可选向量 BLOB。"""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(memory_chunks);").fetchall()}
+    if "embedding_blob" not in cols:
+        conn.execute("ALTER TABLE memory_chunks ADD COLUMN embedding_blob BLOB;")
 
 
 def new_session(conn: sqlite3.Connection, session_id: str, persona_id: str, title: str | None) -> None:

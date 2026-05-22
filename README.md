@@ -12,6 +12,8 @@
 | [`docs/sprint-4-plan.md`](docs/sprint-4-plan.md) | 当前 Sprint 4 计划 |
 | [`docs/tech-stack-v1.0.md`](docs/tech-stack-v1.0.md) | 技术栈 v1.0 |
 | [`docs/inference-cuda.md`](docs/inference-cuda.md) | CUDA 安装与性能基线 |
+| [`docs/memory-embedding.md`](docs/memory-embedding.md) | 可选记忆向量（默认关） |
+| [`docs/sprint-5-plan.md`](docs/sprint-5-plan.md) | Sprint 5 计划 |
 | [`docs/docker.md`](docs/docker.md) | Docker 开发环境 |
 | [`docs/knowledge-ops.md`](docs/knowledge-ops.md) | 知识库导入与隔离说明 |
 
@@ -48,7 +50,7 @@ pip install -e ".[dev,cloud]"
 python scripts/full_acceptance.py --skip-gpu
 ```
 
-有 GPU 与 GGUF 时见 [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) 全量命令；CUDA 排障见 [`docs/inference-cuda.md`](docs/inference-cuda.md)。
+有 GPU 与 GGUF 时见 [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) 全量命令；CUDA 排障见 [`docs/inference-cuda.md`](docs/inference-cuda.md)。可选记忆向量见 [`docs/memory-embedding.md`](docs/memory-embedding.md)（**默认关闭**）。
 
 ---
 

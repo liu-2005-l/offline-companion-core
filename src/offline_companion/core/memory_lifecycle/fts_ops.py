@@ -8,6 +8,8 @@ import time
 
 from offline_companion.shared.types import MemoryHit
 
+from .embedding import maybe_write_embedding
+
 
 def _fts_escape_query(q: str) -> str:
     q = q.strip()
@@ -36,7 +38,9 @@ def add_memory_chunk(
     )
     rid = cur.lastrowid
     assert rid is not None
-    return int(rid)
+    chunk_id = int(rid)
+    maybe_write_embedding(conn, chunk_id, body)
+    return chunk_id
 
 
 def search_memory(conn: sqlite3.Connection, query: str, limit: int = 8) -> list[MemoryHit]:
@@ -77,10 +81,13 @@ def update_memory_chunk(conn: sqlite3.Connection, chunk_id: int, new_body: str) 
     new_body = new_body.strip()
     if not new_body:
         return False
+    now = time.time()
     cur = conn.execute(
         "UPDATE memory_chunks SET body = ?, updated_at = ? WHERE id = ?;",
-        (new_body, time.time(), chunk_id),
+        (new_body, now, chunk_id),
     )
+    if cur.rowcount > 0:
+        maybe_write_embedding(conn, chunk_id, new_body)
     return cur.rowcount > 0
 
 

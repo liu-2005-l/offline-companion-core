@@ -80,6 +80,33 @@ def _sprint3_knowledge() -> int:
     return 0
 
 
+def _sprint5_embedding_smoke() -> int:
+    """摘要：默认 embedding 关闭 + schema v3 列存在。"""
+    print(f"\n{'=' * 60}\n>>> Sprint5 记忆向量（默认关）\n{'=' * 60}")
+    src = ROOT / "src"
+    if str(src) not in sys.path:
+        sys.path.insert(0, str(src))
+
+    from offline_companion.core.memory_lifecycle.embedding_config import load_embedding_config
+    from offline_companion.runtime.storage_index.engine import connect
+
+    cfg = load_embedding_config()
+    if cfg.enabled:
+        print("[FAIL] embedding.yaml 默认应为 enabled: false", file=sys.stderr)
+        return 1
+    td = tempfile.mkdtemp(prefix="oc_emb_")
+    conn = connect(Path(td) / "c.db")
+    try:
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(memory_chunks);").fetchall()}
+        if "embedding_blob" not in cols:
+            print("[FAIL] memory_chunks 缺少 embedding_blob 列", file=sys.stderr)
+            return 1
+    finally:
+        conn.close()
+    print("[PASS] Sprint5 embedding 默认关 + schema v3")
+    return 0
+
+
 def _sprint2_cloud_stub() -> int:
     """摘要：Stub 云端单轮 + B4 润色（无 HTTP、无 REPL）。"""
     print(f"\n{'=' * 60}\n>>> Sprint2 云端 Stub 编排\n{'=' * 60}")
@@ -136,6 +163,7 @@ def main() -> int:
     parser.add_argument("--skip-knowledge", action="store_true", help="跳过 Sprint3 知识 RAG 验收")
     parser.add_argument("--skip-lint", action="store_true", help="跳过 ruff")
     parser.add_argument("--skip-fixtures", action="store_true", help="跳过 run_eval --fixtures")
+    parser.add_argument("--skip-stress", action="store_true", help="跳过 Sprint5 stress_test")
     args = parser.parse_args()
 
     py = sys.executable
@@ -146,7 +174,21 @@ def main() -> int:
     ]
     if not args.skip_lint:
         steps.append(
-            ("ruff", [py, "-m", "ruff", "check", "src", "tests", "scripts/gpu_acceptance.py", "scripts/full_acceptance.py"])
+            (
+                "ruff",
+                [
+                    py,
+                    "-m",
+                    "ruff",
+                    "check",
+                    "src",
+                    "tests",
+                    "scripts/gpu_acceptance.py",
+                    "scripts/full_acceptance.py",
+                    "scripts/stress_test.py",
+                    "scripts/ci/fixture_stats.py",
+                ],
+            )
         )
     steps.extend(
         [
@@ -175,6 +217,19 @@ def main() -> int:
             failed.append("Sprint3 知识 RAG")
     else:
         print("\n[WARN] 已 --skip-knowledge")
+
+    if _sprint5_embedding_smoke() != 0:
+        failed.append("Sprint5 记忆向量")
+
+    if not args.skip_stress:
+        stress = ROOT / "scripts" / "stress_test.py"
+        if stress.is_file():
+            if _run_step("Sprint5 stress_test", [py, str(stress), "--turns", "15"], cwd=ROOT) != 0:
+                failed.append("Sprint5 stress_test")
+        else:
+            print("[WARN] 未找到 scripts/stress_test.py", file=sys.stderr)
+    else:
+        print("\n[WARN] 已 --skip-stress")
 
     if not args.skip_cloud:
         if _sprint2_cloud_stub() != 0:

@@ -22,6 +22,7 @@ _AUTOMATED_CATEGORIES = frozenset(
         "memory_draft",
         "orchestrator",
         "knowledge",
+        "memory_embedding",
     }
 )
 

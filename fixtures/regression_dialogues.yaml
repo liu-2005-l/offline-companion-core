@@ -434,3 +434,13 @@ cases:
     memory_body: "我不吃辣"
     user_query: "点麻辣火锅行吗"
     expect_recall_contains: "辣"
+
+  - id: memory_embedding_default_off
+    kind: executable
+    category: memory_embedding
+    expect_enabled: false
+
+  - id: memory_embedding_config_path
+    kind: executable
+    category: memory_embedding
+    note: "covered by tests/test_memory_embedding.py"

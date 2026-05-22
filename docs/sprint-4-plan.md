@@ -1,6 +1,6 @@
 # Sprint 4 实施计划（评审冻结版）
 
-> **状态**：执行中（2026-05）  
+> **状态**：已完成（2026-05）  
 > **定位**：把 Sprint 0～3 成果「做硬」— 文档入口、跨平台 CI、推理交付说明、记忆草稿工作流  
 > **权威原则**：[`architecture_v1.0.md`](./architecture_v1.0.md)  
 > **项目地图**：[`PROJECT_STATUS.md`](./PROJECT_STATUS.md)  
