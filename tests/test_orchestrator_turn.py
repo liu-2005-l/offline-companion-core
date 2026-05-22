@@ -53,6 +53,27 @@ def test_orchestrator_remember_and_chat(tmp_path) -> None:
     assert hits
 
 
+def test_orchestrator_cloud_degrade_prefix(tmp_path) -> None:
+    """云端失败时使用本地硬降级前缀，不回传云端原文。"""
+    from offline_companion.core.local_reformatter.rule_reformatter import LOCAL_FALLBACK_PREFIX
+    from offline_companion.shared.errors import CloudConnectorError
+    from offline_companion.shared.types import CloudCompletionRequest, CloudCompletionResponse
+
+    orch, _conn = _orch(tmp_path, "cloud.db")
+
+    def _fail(_req: CloudCompletionRequest) -> CloudCompletionResponse:
+        raise CloudConnectorError("stub fail")
+
+    r = orch.run_cloud_turn(
+        "帮我写一句问候",
+        purpose="test",
+        memory_on=False,
+        cloud_post=_fail,
+    )
+    assert r.cloud_degraded
+    assert r.reply.startswith(LOCAL_FALLBACK_PREFIX)
+
+
 def test_orchestrator_memory_off_no_recall_in_turn(tmp_path) -> None:
     orch, _conn = _orch(tmp_path)
     orch.run_turn("#remember 测试", memory_on=True)

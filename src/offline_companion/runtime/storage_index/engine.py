@@ -10,7 +10,7 @@ from typing import Any
 
 from offline_companion.shared.types import MessageRow
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -43,11 +43,15 @@ def _migrate(conn: sqlite3.Connection) -> None:
     ver = int(row["value"]) if row else 0
     if ver < 1:
         _init_v1(conn)
-        conn.execute(
-            "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
-            "ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
-            (str(SCHEMA_VERSION),),
-        )
+        ver = 1
+    if ver < 2:
+        _init_v2(conn)
+        ver = 2
+    conn.execute(
+        "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
+        (str(ver),),
+    )
 
 
 def _init_v1(conn: sqlite3.Connection) -> None:
@@ -106,6 +110,24 @@ def _init_v1(conn: sqlite3.Connection) -> None:
             artifact_json TEXT NOT NULL,
             created_at REAL NOT NULL
         );
+        """
+    )
+
+
+def _init_v2(conn: sqlite3.Connection) -> None:
+    """摘要：Sprint 4.2 记忆摘要草稿表（与 memory_chunks 隔离）。"""
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS memory_drafts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+            body TEXT NOT NULL,
+            meta_json TEXT,
+            created_at REAL NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending'
+        );
+        CREATE INDEX IF NOT EXISTS idx_memory_drafts_session
+            ON memory_drafts(session_id, status, created_at DESC);
         """
     )
 

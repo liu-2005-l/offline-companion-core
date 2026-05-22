@@ -97,14 +97,18 @@
 - B2 触发器 YAML：`configs/triggers.yaml` + `on_explicit_save`
 - 验收：`scripts/full_acceptance.py`、`scripts/gpu_acceptance.py`
 
-### 明确缺口（Sprint 3 及以后）
+### 明确缺口（Sprint 4 及以后）
 
 | 缺口 | 域 | 说明 |
 |------|-----|------|
-| 知识 RAG 插件 | B2 插件 | Sprint 3，见 [`sprint-3-plan.md`](./sprint-3-plan.md) |
-| Docker 环境 | 工程 | Sprint 3 |
-| 评测 50–100 | 评测 | Sprint 3.4 |
-| 向量嵌入 | B2 | 已砍，Sprint 4+（默认关） |
+| 项目总览入口 | 文档 | Sprint 4.0 → [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) |
+| 记忆摘要草稿-确认 | B2 | Sprint 4.2，`on_summarize_request`，规则优先，默认关 |
+| 可执行评测 ≥50 | 评测 | Sprint 4.4（与 note 类 fixture 分列统计） |
+| Windows 逻辑验收 CI | 工程 | Sprint 4.5 → `acceptance_logic.yml` |
+| CUDA / 性能基线文档 | C1 运维 | Sprint 4.1 → [`inference-cuda.md`](./inference-cuda.md) |
+| 向量嵌入检索 | B2 | Sprint 5+（默认关；Sprint 4 仅预留文档） |
+
+**已闭合（Sprint 3）**：本地知识 RAG、`knowledge.db`、Docker、fixture 51 条、[`sprint-3-plan.md`](./sprint-3-plan.md)。
 
 联网知识检索：**不做**（宪章：仅 A3 + 显式同意；本地知识库优先）。
 
@@ -163,6 +167,22 @@
 
 ---
 
+## 七-B、Sprint 4（进行中，2026-05）
+
+**项目入口**：[`PROJECT_STATUS.md`](./PROJECT_STATUS.md)  
+**实施计划（评审冻结）**：[`sprint-4-plan.md`](./sprint-4-plan.md)
+
+| 子项 | 状态 |
+|------|------|
+| 4.0 `PROJECT_STATUS.md` + README | **已完成** |
+| 4.5 Windows/Ubuntu 逻辑验收 CI | **已完成** |
+| 4.1 CUDA / 性能基线文档 | **已完成** |
+| 4.2 记忆草稿 → 确认（规则优先） | **已完成** |
+| 4.3 知识运维文档（不进主路径） | **已完成** |
+| 4.4 可执行 fixture ≥50 | **已完成** |
+
+---
+
 ## 八、Phase 2 展望（历史分组；与 Sprint 2/3 对应）
 
 *本节为早期规划快照；Sprint 2/3 的最新状态见第五节「已闭合 / 明确缺口」及 [`sprint-3-plan.md`](./sprint-3-plan.md)。*
@@ -218,5 +238,8 @@
 | `tech-stack-v1.0.md` | 技术栈 v1.0（已敲定） |
 | `architecture-and-roadmap-v1.0.md` | 本文：Phase + RAG + 缺口 |
 | `sprint-3-plan.md` | Sprint 3 可执行计划（评审冻结） |
+| `sprint-4-plan.md` | Sprint 4 可执行计划（评审冻结） |
+| `PROJECT_STATUS.md` | 项目总览与冷启动（推荐入口） |
+| `inference-cuda.md` | CUDA 安装与性能基线 |
 | `roadmap.md` | 产品方向历史清单 |
 | `architecture-charter-v1.md` | 旧文件名跳转 |

@@ -32,11 +32,31 @@ def main() -> int:
         default=None,
         help="仅运行 test_knowledge_search 等（knowledge|regression）",
     )
+    parser.add_argument(
+        "--fixture-stats",
+        action="store_true",
+        help="打印 regression_dialogues.yaml executable/note 统计",
+    )
+    parser.add_argument(
+        "--min-executable",
+        type=int,
+        default=0,
+        help="与 --fixture-stats 联用：executable 数量下限",
+    )
     args = parser.parse_args()
+    if args.fixture_stats:
+        stats = ROOT / "scripts" / "ci" / "fixture_stats.py"
+        cmd = [sys.executable, str(stats)]
+        if args.min_executable:
+            cmd.extend(["--min-executable", str(args.min_executable)])
+        return subprocess.call(cmd, cwd=str(ROOT))
     if args.category == "knowledge":
         targets = [str(ROOT / "tests" / "test_knowledge_search.py")]
     elif args.fixtures:
-        targets = [str(ROOT / "tests" / "test_regression_fixtures.py")]
+        targets = [
+            str(ROOT / "tests" / "test_regression_fixtures.py"),
+            str(ROOT / "tests" / "test_fixture_inventory.py"),
+        ]
     else:
         targets = [str(ROOT / "tests")]
     cmd = [sys.executable, "-m", "pytest", "-q", *targets]

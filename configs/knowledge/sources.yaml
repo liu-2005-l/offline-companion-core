@@ -1,0 +1,8 @@
+# 知识语料清单（Sprint 4.3）；路径相对仓库根或绝对路径
+version: 1
+sources:
+  - id: knowledge_sample
+    path: fixtures/knowledge_sample/sample.jsonl
+    license_note: demo-only-not-for-redistribution
+    description: "CI 与 5 分钟体验用示例（减压/饮食/睡眠）"
+    ingest_command: "python scripts/ingest_knowledge.py fixtures/knowledge_sample/sample.jsonl"

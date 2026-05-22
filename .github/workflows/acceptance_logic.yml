@@ -1,0 +1,26 @@
+# 纯逻辑全套验收（无 GGUF / 无 GPU），Windows + Ubuntu 双平台门禁（Sprint 4.5）
+name: acceptance_logic
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  full_acceptance_skip_gpu:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install (dev + cloud stub)
+        run: python -m pip install -q -e ".[dev,cloud]"
+      - name: Full acceptance (logic only)
+        run: python scripts/full_acceptance.py --skip-gpu
+        env:
+          PYTHONPATH: src

@@ -8,6 +8,12 @@ import time
 import uuid
 from pathlib import Path
 
+from offline_companion.core.memory_lifecycle.drafts import (
+    confirm_draft,
+    create_draft_from_session,
+    discard_draft,
+    list_pending_drafts,
+)
 from offline_companion.core.memory_lifecycle.manager import (
     MemoryLifecycleManager,
     apply_bundle_import,
@@ -52,6 +58,10 @@ def _help_text() -> str:
         "/memory list     List recent memory rows\n"
         "/memory del ID   Delete a memory row\n"
         "/memory set ID text — Update body\n"
+        "/memory drafts   List pending summary drafts\n"
+        "/memory confirm ID — Promote draft to formal memory\n"
+        "/memory discard ID — Drop draft without saving\n"
+        "/summarize        Build rule-based summary draft (not saved until confirm)\n"
         "/export PATH.zip Write portable bundle (manifest + jsonl)\n"
         "/import PATH.zip Import bundle with new session ids\n"
         "/cloud-demo      Exercise outbound consent gate (no network I/O)\n"
@@ -262,10 +272,16 @@ def _handle_slash_command(
         print(_help_text())
         return True, memory_on
 
+    if user == "/summarize":
+        draft = create_draft_from_session(conn, session_id)
+        print(draft.body)
+        print(f"\n[草稿 id={draft.id}] 确认: /memory confirm {draft.id}  丢弃: /memory discard {draft.id}")
+        return True, memory_on
+
     if user.startswith("/memory"):
-        parts = user.split(maxsplit=2)
+        parts = user.split(maxsplit=3)
         if len(parts) < 2:
-            print("Usage: /memory on|off|list|del <id>|set <id> <text>")
+            print("Usage: /memory on|off|list|drafts|confirm <id>|discard <id>|del <id>|set <id> <text>")
             return True, memory_on
         sub = parts[1].lower()
         if sub == "on":
@@ -277,6 +293,33 @@ def _handle_slash_command(
         if sub == "list":
             for h in MemoryLifecycleManager.list_recent_memory(conn, limit=30):
                 print(f"{h.id}: {h.body}")
+            return True, memory_on
+        if sub == "drafts":
+            drafts = list_pending_drafts(conn, session_id)
+            if not drafts:
+                print("No pending drafts.")
+            for d in drafts:
+                preview = d.body.replace("\n", " ")[:100]
+                print(f"draft {d.id}: {preview}…")
+            return True, memory_on
+        if sub == "confirm":
+            if len(parts) != 3:
+                print("Usage: /memory confirm <draft_id>")
+                return True, memory_on
+            mid = confirm_draft(conn, int(parts[2]))
+            if mid:
+                print(f"Saved as memory chunk id={mid}.")
+            else:
+                print("Draft not found or not pending.")
+            return True, memory_on
+        if sub == "discard":
+            if len(parts) != 3:
+                print("Usage: /memory discard <draft_id>")
+                return True, memory_on
+            if discard_draft(conn, int(parts[2])):
+                print("Draft discarded.")
+            else:
+                print("Draft not found or not pending.")
             return True, memory_on
         if sub == "del":
             if len(parts) != 3:
@@ -298,7 +341,7 @@ def _handle_slash_command(
                 print("Not found or empty.")
             return True, memory_on
 
-        print("Usage: /memory on|off|list|del <id>|set <id> <text>")
+        print("Usage: /memory on|off|list|drafts|confirm <id>|discard <id>|del <id>|set <id> <text>")
         return True, memory_on
 
     if user.startswith("/export"):
