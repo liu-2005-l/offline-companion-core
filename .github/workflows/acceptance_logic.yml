@@ -25,3 +25,5 @@ jobs:
         run: python scripts/full_acceptance.py --skip-gpu
         env:
           PYTHONPATH: src
+          # Windows runner 默认 cp1252；步骤名含中文时需 UTF-8
+          PYTHONIOENCODING: utf-8

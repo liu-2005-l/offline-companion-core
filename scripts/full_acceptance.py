@@ -30,10 +30,26 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _configure_stdio_utf8() -> None:
+    """摘要：Windows CI 控制台常为 cp1252，打印中文步骤名会 UnicodeEncodeError。"""
+    if sys.platform != "win32":
+        return
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
+
+def _subprocess_env(cwd: Path) -> dict[str, str]:
+    """摘要：子进程环境（含 PYTHONPATH 与 UTF-8 输出）。"""
+    env = {**os.environ, "PYTHONPATH": str(cwd / "src")}
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    return env
+
+
 def _run_step(name: str, cmd: list[str], *, cwd: Path) -> int:
     print(f"\n{'=' * 60}\n>>> {name}\n{'=' * 60}")
     print("$", " ".join(cmd))
-    r = subprocess.run(cmd, cwd=str(cwd), env={**os.environ, "PYTHONPATH": str(cwd / "src")})
+    r = subprocess.run(cmd, cwd=str(cwd), env=_subprocess_env(cwd))
     if r.returncode != 0:
         print(f"[FAIL] {name} (exit {r.returncode})", file=sys.stderr)
     else:
@@ -157,6 +173,7 @@ def _sprint2_cloud_stub() -> int:
 
 def main() -> int:
     """摘要：按顺序执行全套验收子步骤。"""
+    _configure_stdio_utf8()
     parser = argparse.ArgumentParser(description="offline-companion 全套零交互验收")
     parser.add_argument("--skip-gpu", action="store_true", help="跳过 scripts/gpu_acceptance.py")
     parser.add_argument("--skip-cloud", action="store_true", help="跳过 Sprint2 Stub 云端编排")
