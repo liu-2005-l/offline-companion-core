@@ -106,7 +106,7 @@
 | 可执行评测 ≥50 | 评测 | Sprint 4.4（与 note 类 fixture 分列统计） |
 | Windows 逻辑验收 CI | 工程 | Sprint 4.5 → `acceptance_logic.yml` |
 | CUDA / 性能基线文档 | C1 运维 | Sprint 4.1 → [`inference-cuda.md`](./inference-cuda.md) |
-| PyInstaller / 本地 WebUI | A1 / 工程 | Sprint 6 / Phase 3 |
+| PyInstaller / 本地 WebUI | A1 / 工程 | **Sprint 6 进行中** → [`sprint-6-plan.md`](./sprint-6-plan.md) |
 
 **已闭合（Sprint 3～5）**：知识 RAG、Docker、fixture 51+、记忆草稿、可选向量（`embedding.yaml` 默认关）、[`sprint-5-plan.md`](./sprint-5-plan.md)。
 
@@ -197,6 +197,22 @@
 
 ---
 
+## 七-D、Sprint 6（已冻结，2026-05）
+
+**实施计划**：[`sprint-6-plan.md`](./sprint-6-plan.md)
+
+| 子项 | 状态 |
+|------|------|
+| §零 Sprint 5 收口 | **已完成** |
+| 6.0 文档同步 | **已完成** |
+| 6.1 PyInstaller PoC（Echo only） | 待开始 |
+| 6.2 Flask WebUI（127.0.0.1） | 待开始 |
+| 6.3 打包运行时约定 | 待开始 |
+| 6.4 冒烟 + WebUI 20 轮手动基线 | 待开始 |
+| 6.5 executable ≥80 | 待开始（可选） |
+
+---
+
 ## 八、Phase 2 展望（历史分组；与 Sprint 2/3 对应）
 
 *本节为早期规划快照；Sprint 2/3 的最新状态见第五节「已闭合 / 明确缺口」及 [`sprint-3-plan.md`](./sprint-3-plan.md)。*
@@ -257,5 +273,6 @@
 | `inference-cuda.md` | CUDA 安装与性能基线 |
 | `sprint-5-plan.md` | Sprint 5 可执行计划 |
 | `memory-embedding.md` | 可选记忆向量说明 |
+| `sprint-6-plan.md` | Sprint 6 可执行计划（评审冻结） |
 | `roadmap.md` | 产品方向历史清单 |
 | `architecture-charter-v1.md` | 旧文件名跳转 |

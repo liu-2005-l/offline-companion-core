@@ -22,3 +22,5 @@ jobs:
         run: python -m pip install -q -e ".[dev]"
       - name: Run eval harness (current = full pytest)
         run: python scripts/ci/run_eval.py
+        env:
+          PYTHONIOENCODING: utf-8

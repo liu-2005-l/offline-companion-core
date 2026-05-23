@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import tempfile
 import time
 import tracemalloc
 from pathlib import Path
@@ -37,47 +38,48 @@ def main() -> int:
     parser.add_argument("--memory-on", action="store_true", help="开启记忆召回")
     args = parser.parse_args()
 
-    db = ROOT / ".stress_companion.db"
-    if db.is_file():
-        db.unlink()
-    conn = connect(db)
-    persona = load_persona_file(ROOT / "configs" / "personas" / "default.yaml")
-    new_session(conn, "stress", persona.persona_id, title=None)
-    orch = ConversationOrchestrator(
-        session_core=PersonaSessionCore(persona),
-        backend=EchoBackend("stress"),
-        conn=conn,
-        session_id="stress",
-        triggers=load_triggers(),
-    )
+    # 临时目录，避免在仓库根写入 .stress_companion.db（Windows 锁文件 / CI 污染）
+    with tempfile.TemporaryDirectory(prefix="offline_stress_") as tmp:
+        db = Path(tmp) / "companion.db"
+        conn = connect(db)
+        persona = load_persona_file(ROOT / "configs" / "personas" / "default.yaml")
+        new_session(conn, "stress", persona.persona_id, title=None)
+        orch = ConversationOrchestrator(
+            session_core=PersonaSessionCore(persona),
+            backend=EchoBackend("stress"),
+            conn=conn,
+            session_id="stress",
+            triggers=load_triggers(),
+        )
 
-    tracemalloc.start()
-    times: list[float] = []
-    t0 = time.perf_counter()
-    for i in range(args.turns):
-        user = f"第{i + 1}轮：今天有点累，想聊聊" if i % 5 else f"#remember 偏好条目{i}"
-        t1 = time.perf_counter()
-        orch.run_turn(user, memory_on=args.memory_on or (i % 3 == 0))
-        times.append(time.perf_counter() - t1)
-    total = time.perf_counter() - t0
-    _cur, peak = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
+        tracemalloc.start()
+        times: list[float] = []
+        t0 = time.perf_counter()
+        for i in range(args.turns):
+            user = f"第{i + 1}轮：今天有点累，想聊聊" if i % 5 else f"#remember 偏好条目{i}"
+            t1 = time.perf_counter()
+            orch.run_turn(user, memory_on=args.memory_on or (i % 3 == 0))
+            times.append(time.perf_counter() - t1)
+        total = time.perf_counter() - t0
+        _cur, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
 
-    mem_n = MemoryLifecycleManager.list_recent_memory(conn, limit=500)
-    msg_n = conn.execute("SELECT COUNT(*) FROM messages;").fetchone()[0]
-    db_size = db.stat().st_size if db.is_file() else 0
+        mem_n = MemoryLifecycleManager.list_recent_memory(conn, limit=500)
+        msg_n = conn.execute("SELECT COUNT(*) FROM messages;").fetchone()[0]
+        db_size = db.stat().st_size if db.is_file() else 0
 
-    print("=" * 60)
-    print("stress_test 报告")
-    print(f"  turns: {args.turns}")
-    print(f"  total_wall_s: {total:.2f}")
-    print(f"  avg_turn_s: {sum(times) / len(times):.3f}")
-    print(f"  max_turn_s: {max(times):.3f}")
-    print(f"  tracemalloc_peak_mb: {peak / 1024 / 1024:.2f}")
-    print(f"  messages: {msg_n}")
-    print(f"  memory_chunks: {len(mem_n)}")
-    print(f"  db_bytes: {db_size}")
-    print("=" * 60)
+        print("=" * 60)
+        print("stress_test 报告")
+        print(f"  turns: {args.turns}")
+        print(f"  total_wall_s: {total:.2f}")
+        print(f"  avg_turn_s: {sum(times) / len(times):.3f}")
+        print(f"  max_turn_s: {max(times):.3f}")
+        print(f"  tracemalloc_peak_mb: {peak / 1024 / 1024:.2f}")
+        print(f"  messages: {msg_n}")
+        print(f"  memory_chunks: {len(mem_n)}")
+        print(f"  db_bytes: {db_size}")
+        print("=" * 60)
+        conn.close()
     return 0
 
 

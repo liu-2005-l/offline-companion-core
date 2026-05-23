@@ -33,6 +33,7 @@ models/
 *.db
 *.db-journal
 *.sqlite
+.stress_companion.db
 companion_data/
 
 # IDE

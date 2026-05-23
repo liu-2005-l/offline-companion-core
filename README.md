@@ -9,7 +9,7 @@
 | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | **项目总览（推荐入口）** |
 | [`docs/architecture_v1.0.md`](docs/architecture_v1.0.md) | 架构宪章（原则权威） |
 | [`docs/architecture-and-roadmap-v1.0.md`](docs/architecture-and-roadmap-v1.0.md) | Phase / Sprint 路线图 |
-| [`docs/sprint-4-plan.md`](docs/sprint-4-plan.md) | 当前 Sprint 4 计划 |
+| [`docs/sprint-6-plan.md`](docs/sprint-6-plan.md) | **当前 Sprint 6 计划** |
 | [`docs/tech-stack-v1.0.md`](docs/tech-stack-v1.0.md) | 技术栈 v1.0 |
 | [`docs/inference-cuda.md`](docs/inference-cuda.md) | CUDA 安装与性能基线 |
 | [`docs/memory-embedding.md`](docs/memory-embedding.md) | 可选记忆向量（默认关） |

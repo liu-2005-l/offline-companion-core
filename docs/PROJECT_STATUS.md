@@ -1,7 +1,7 @@
 # 项目状态总览（PROJECT_STATUS）
 
 > **一句话**：隐私优先的本地陪伴 Agent **核心库** — 人格锁、可解释记忆、可选本地知识库与显式云端增强。  
-> **当前版本**：`0.1.0`（`pyproject.toml`）· **当前 Sprint**：**Sprint 5 已完成**（2026-05）
+> **当前版本**：`0.1.0`（`pyproject.toml`）· **当前 Sprint**：**Sprint 6 已冻结**（2026-05）
 
 ---
 
@@ -31,7 +31,7 @@
 - 联网知识检索
 - 向量检索**默认开启**（须显式改 `embedding.yaml`）
 - 知识块默认注入普通聊天主路径
-- PyInstaller / 公网 WebUI（Phase 3 / Sprint 6）
+- PyInstaller / 公网 WebUI（Phase 3 / **Sprint 6 进行中**）
 - LangChain / Chroma / faiss 主路径依赖
 
 ## Sprint 5（已完成）
@@ -45,6 +45,20 @@
 | 5.4 | 评测 + `full_acceptance` Sprint5 步骤 — **已完成** |
 
 计划全文：[`sprint-5-plan.md`](./sprint-5-plan.md) · 使用说明：[`memory-embedding.md`](./memory-embedding.md)
+
+## Sprint 6（已冻结，执行中）
+
+| 子项 | 内容 |
+|------|------|
+| §零 | Sprint 5 收口（UTF-8 CI、`stress_test` tempfile 等） |
+| 6.0 | 文档 — **已完成** |
+| 6.1 | PyInstaller PoC（**仅 EchoBackend**） |
+| 6.2 | 127.0.0.1 Flask WebUI 壳 |
+| 6.3 | 打包运行时约定 |
+| 6.4 | 打包冒烟 + WebUI 20 轮手动性能基线 |
+| 6.5 | executable fixture ≥80（可选） |
+
+计划全文：[`sprint-6-plan.md`](./sprint-6-plan.md)
 
 ## Sprint 4（已完成）
 
@@ -71,6 +85,7 @@
 | Sprint 3（已完成） | [`sprint-3-plan.md`](./sprint-3-plan.md) |
 | Sprint 4（已完成） | [`sprint-4-plan.md`](./sprint-4-plan.md) |
 | Sprint 5（已完成） | [`sprint-5-plan.md`](./sprint-5-plan.md) · [`memory-embedding.md`](./memory-embedding.md) |
+| Sprint 6（执行中） | [`sprint-6-plan.md`](./sprint-6-plan.md) |
 | Docker 冷启动 | [`docker.md`](./docker.md) |
 | CUDA / 性能基线 | [`inference-cuda.md`](./inference-cuda.md) |
 | 产品方向（历史一页纸） | [`roadmap.md`](./roadmap.md) |
