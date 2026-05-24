@@ -5,11 +5,15 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from offline_companion.shared.runtime_paths import data_root
 from offline_companion.shared.types import AppPaths
 
 
 def default_data_root() -> Path:
-    """摘要：解析操作系统用户数据根目录。"""
+    """摘要：解析操作系统用户数据根目录（不含 ``OfflineCompanion`` 子目录）。"""
+    root = data_root()
+    if root.name == "OfflineCompanion":
+        return root.parent
     if os.name == "nt":
         la = os.environ.get("LOCALAPPDATA")
         if la:
@@ -22,7 +26,7 @@ def default_data_root() -> Path:
 
 def default_app_paths() -> AppPaths:
     """摘要：构造默认应用数据路径（含数据库与导出目录）。"""
-    base = default_data_root() / "OfflineCompanion"
+    base = data_root()
     base.mkdir(parents=True, exist_ok=True)
     personas = base / "personas"
     personas.mkdir(parents=True, exist_ok=True)

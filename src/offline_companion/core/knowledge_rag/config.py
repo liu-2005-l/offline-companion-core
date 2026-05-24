@@ -20,10 +20,12 @@ class KnowledgeConfig:
     config_path: Path
 
 
+from offline_companion.shared.runtime_paths import configs_dir
+
+
 def default_knowledge_config_path() -> Path:
     """摘要：默认 ``configs/knowledge/default.yaml`` 路径。"""
-    root = Path(__file__).resolve().parents[4]
-    return root / "configs" / "knowledge" / "default.yaml"
+    return configs_dir() / "knowledge" / "default.yaml"
 
 
 def load_knowledge_config(path: Path | None = None) -> KnowledgeConfig:

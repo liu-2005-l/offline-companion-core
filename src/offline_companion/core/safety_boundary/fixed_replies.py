@@ -30,8 +30,11 @@ class SafetyRepliesBundle:
 _CACHE_BY_PATH: dict[Path, SafetyRepliesBundle] = {}
 
 
+from offline_companion.shared.runtime_paths import configs_dir
+
+
 def default_safety_replies_path() -> Path:
-    """摘要：解析默认话术库路径（仓库内 ``configs/safety_replies/zh_v1.yaml``）。
+    """摘要：解析默认话术库路径（``configs/safety_replies/zh_v1.yaml``）。
 
     返回值：
         话术 YAML 的绝对路径。
@@ -42,9 +45,7 @@ def default_safety_replies_path() -> Path:
     env = os.environ.get("OFFLINE_COMPANION_SAFETY_REPLIES")
     if env:
         return Path(env).expanduser().resolve()
-    # fixed_replies.py → safety_boundary → core → offline_companion → src → 仓库根
-    root = Path(__file__).resolve().parents[4]
-    return root / "configs" / "safety_replies" / "zh_v1.yaml"
+    return configs_dir() / "safety_replies" / "zh_v1.yaml"
 
 
 def _parse_bundle(path: Path, data: dict[str, Any]) -> SafetyRepliesBundle:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 import uuid
@@ -400,6 +401,14 @@ def _handle_slash_command(
     return False, memory_on
 
 
+def _default_persona_path() -> str:
+    """摘要：默认 persona YAML（便携模式可读环境变量覆盖）。"""
+    env = os.environ.get("OFFLINE_COMPANION_PERSONA_PATH")
+    if env:
+        return env
+    return str(Path("configs") / "personas" / "default.yaml")
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="companion")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -408,7 +417,7 @@ def build_parser() -> argparse.ArgumentParser:
     chat.add_argument(
         "--persona",
         type=str,
-        default=str(Path("configs") / "personas" / "default.yaml"),
+        default=_default_persona_path(),
     )
     chat.add_argument("--session-id", type=str, default=None)
     chat.add_argument("--title", type=str, default=None)

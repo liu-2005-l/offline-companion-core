@@ -19,10 +19,12 @@ class MemoryEmbeddingConfig:
     config_path: Path
 
 
+from offline_companion.shared.runtime_paths import configs_dir
+
+
 def default_embedding_config_path() -> Path:
     """摘要：默认 ``configs/memory/embedding.yaml`` 路径。"""
-    root = Path(__file__).resolve().parents[4]
-    return root / "configs" / "memory" / "embedding.yaml"
+    return configs_dir() / "memory" / "embedding.yaml"
 
 
 def load_embedding_config(path: Path | None = None) -> MemoryEmbeddingConfig:

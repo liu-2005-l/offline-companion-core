@@ -20,14 +20,16 @@ class TriggerRegistry:
     enabled: dict[str, bool]
 
 
+from offline_companion.shared.runtime_paths import configs_dir
+
+
 def default_triggers_path() -> Path:
     """摘要：默认 ``configs/triggers.yaml`` 路径。
 
     返回值：
-        仓库内 triggers 配置绝对路径。
+        triggers 配置绝对路径。
     """
-    root = Path(__file__).resolve().parents[4]
-    return root / "configs" / "triggers.yaml"
+    return configs_dir() / "triggers.yaml"
 
 
 def load_triggers(path: Path | None = None) -> TriggerRegistry:

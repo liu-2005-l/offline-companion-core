@@ -205,9 +205,9 @@
 |------|------|
 | §零 Sprint 5 收口 | **已完成** |
 | 6.0 文档同步 | **已完成** |
-| 6.1 PyInstaller PoC（Echo only） | 待开始 |
-| 6.2 Flask WebUI（127.0.0.1） | 待开始 |
-| 6.3 打包运行时约定 | 待开始 |
+| 6.3 打包运行时约定 | **已完成** |
+| 6.1 PyInstaller PoC（Echo only） | **已完成** |
+| 6.2 Flask WebUI（127.0.0.1） | **下一步** |
 | 6.4 冒烟 + WebUI 20 轮手动基线 | 待开始 |
 | 6.5 executable ≥80 | 待开始（可选） |
 
@@ -274,5 +274,6 @@
 | `sprint-5-plan.md` | Sprint 5 可执行计划 |
 | `memory-embedding.md` | 可选记忆向量说明 |
 | `sprint-6-plan.md` | Sprint 6 可执行计划（评审冻结） |
+| `packaging.md` | Sprint 6.3 打包运行时约定 |
 | `roadmap.md` | 产品方向历史清单 |
 | `architecture-charter-v1.md` | 旧文件名跳转 |

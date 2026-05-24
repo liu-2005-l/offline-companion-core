@@ -50,15 +50,15 @@
 
 | 子项 | 内容 |
 |------|------|
-| §零 | Sprint 5 收口（UTF-8 CI、`stress_test` tempfile 等） |
+| §零 | Sprint 5 收口 — **已完成** |
 | 6.0 | 文档 — **已完成** |
-| 6.1 | PyInstaller PoC（**仅 EchoBackend**） |
-| 6.2 | 127.0.0.1 Flask WebUI 壳 |
-| 6.3 | 打包运行时约定 |
+| 6.3 | 打包运行时约定 — **已完成**（[`packaging.md`](./packaging.md)） |
+| 6.1 | PyInstaller Echo PoC — **已完成**（`scripts/build_portable.py`） |
+| 6.2 | 127.0.0.1 Flask WebUI 壳 — **下一步** |
 | 6.4 | 打包冒烟 + WebUI 20 轮手动性能基线 |
 | 6.5 | executable fixture ≥80（可选） |
 
-计划全文：[`sprint-6-plan.md`](./sprint-6-plan.md)
+计划全文：[`sprint-6-plan.md`](./sprint-6-plan.md) · 打包约定：[`packaging.md`](./packaging.md)
 
 ## Sprint 4（已完成）
 
@@ -85,7 +85,7 @@
 | Sprint 3（已完成） | [`sprint-3-plan.md`](./sprint-3-plan.md) |
 | Sprint 4（已完成） | [`sprint-4-plan.md`](./sprint-4-plan.md) |
 | Sprint 5（已完成） | [`sprint-5-plan.md`](./sprint-5-plan.md) · [`memory-embedding.md`](./memory-embedding.md) |
-| Sprint 6（执行中） | [`sprint-6-plan.md`](./sprint-6-plan.md) |
+| Sprint 6（执行中） | [`sprint-6-plan.md`](./sprint-6-plan.md) · [`packaging.md`](./packaging.md) |
 | Docker 冷启动 | [`docker.md`](./docker.md) |
 | CUDA / 性能基线 | [`inference-cuda.md`](./inference-cuda.md) |
 | 产品方向（历史一页纸） | [`roadmap.md`](./roadmap.md) |
