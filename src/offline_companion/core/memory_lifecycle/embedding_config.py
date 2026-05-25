@@ -7,6 +7,8 @@ from pathlib import Path
 
 import yaml
 
+from offline_companion.shared.runtime_paths import configs_dir
+
 
 @dataclass(frozen=True)
 class MemoryEmbeddingConfig:
@@ -17,9 +19,6 @@ class MemoryEmbeddingConfig:
     blend_weight: float
     min_cosine: float
     config_path: Path
-
-
-from offline_companion.shared.runtime_paths import configs_dir
 
 
 def default_embedding_config_path() -> Path:

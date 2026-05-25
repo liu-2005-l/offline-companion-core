@@ -5,20 +5,10 @@ from __future__ import annotations
 import os
 import shutil
 import sys
-from pathlib import Path
 
 from offline_companion.shared.runtime_paths import configs_dir, data_root, dev_repo_root
 
-
-def _patch_platform_user_data_home(monkeypatch, user_base: Path) -> None:
-    """摘要：按 OS 注入用户数据根父目录（与 ``data_root()`` 一致，勿仅用 LOCALAPPDATA）。"""
-    monkeypatch.delenv("OFFLINE_COMPANION_DATA_DIR", raising=False)
-    if os.name == "nt":
-        monkeypatch.setenv("LOCALAPPDATA", str(user_base))
-        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
-    else:
-        monkeypatch.setenv("XDG_DATA_HOME", str(user_base))
-        monkeypatch.delenv("LOCALAPPDATA", raising=False)
+from tests.conftest import patch_platform_user_data_home
 
 
 def test_dev_repo_root_has_configs():
@@ -53,7 +43,7 @@ def test_portable_seed_copies_configs(tmp_path, monkeypatch):
 
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     monkeypatch.setattr(sys, "_MEIPASS", str(bundle), raising=False)
-    _patch_platform_user_data_home(monkeypatch, user_base)
+    patch_platform_user_data_home(monkeypatch, user_base)
 
     root = portable_runtime.setup_portable_env()
     assert root == data.resolve()

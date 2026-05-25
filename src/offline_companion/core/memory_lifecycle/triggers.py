@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+
 import yaml
+
+from offline_companion.shared.runtime_paths import configs_dir
 
 TRIGGER_ON_EXPLICIT_SAVE = "on_explicit_save"
 TRIGGER_ON_SUMMARIZE_REQUEST = "on_summarize_request"
@@ -18,9 +21,6 @@ class TriggerRegistry:
     version: int
     path: Path
     enabled: dict[str, bool]
-
-
-from offline_companion.shared.runtime_paths import configs_dir
 
 
 def default_triggers_path() -> Path:

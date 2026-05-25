@@ -9,6 +9,8 @@ from typing import Any
 
 import yaml
 
+from offline_companion.shared.runtime_paths import configs_dir
+
 # 兼容旧引用（测试或外部 import）；内容由默认 YAML 填充
 SELF_REPLY_ZH: str = ""
 OTHER_REPLY_ZH: str = ""
@@ -28,9 +30,6 @@ class SafetyRepliesBundle:
 
 
 _CACHE_BY_PATH: dict[Path, SafetyRepliesBundle] = {}
-
-
-from offline_companion.shared.runtime_paths import configs_dir
 
 
 def default_safety_replies_path() -> Path:

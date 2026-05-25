@@ -7,6 +7,8 @@ from pathlib import Path
 
 import yaml
 
+from offline_companion.shared.runtime_paths import configs_dir
+
 
 @dataclass(frozen=True)
 class KnowledgeConfig:
@@ -18,9 +20,6 @@ class KnowledgeConfig:
     answer_after_search: bool
     db_path: Path | None
     config_path: Path
-
-
-from offline_companion.shared.runtime_paths import configs_dir
 
 
 def default_knowledge_config_path() -> Path:
