@@ -47,6 +47,38 @@ def test_echo_backend_health_check() -> None:
     assert report.backend == "echo"
 
 
+def test_llama_generate_merges_memory_into_single_system_message(tmp_path: Path) -> None:
+    """记忆块应并入同一条 system，避免多条 system 被 chat 模板丢弃。"""
+    from offline_companion.runtime.inference_backend.backend import LlamaCppBackend
+    from offline_companion.shared.types import MessageRow
+
+    gguf = tmp_path / "tiny.gguf"
+    gguf.write_bytes(b"FAKE")
+    backend = LlamaCppBackend(gguf, skip_load=True)
+    captured: dict[str, object] = {}
+
+    class _FakeLlama:
+        def create_chat_completion(self, *, messages, max_tokens):
+            captured["messages"] = messages
+            return {"choices": [{"message": {"content": "ok"}}]}
+
+    backend._llama = _FakeLlama()
+    backend.generate(
+        system_prompt="sys",
+        history=[MessageRow(role="user", content="hi", created_at=0.0, meta={})],
+        user_message="q",
+        memory_block="mem-block",
+        max_tokens=8,
+    )
+    msgs = captured["messages"]
+    assert isinstance(msgs, list)
+    assert len(msgs) == 3
+    assert msgs[0]["role"] == "system"
+    assert "sys" in msgs[0]["content"]
+    assert "mem-block" in msgs[0]["content"]
+    assert all(m["role"] != "system" or i == 0 for i, m in enumerate(msgs))
+
+
 def test_create_llama_backend_raises_on_bad_path() -> None:
     from offline_companion.runtime.inference_backend import create_llama_backend
 

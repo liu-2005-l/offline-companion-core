@@ -23,7 +23,8 @@ def connect(db_path: Path) -> sqlite3.Connection:
         已启用 foreign_keys 的连接。
     """
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path), isolation_level=None)
+    # A1 宿主（Flask threaded、pywebview JS bridge）可能跨线程访问同一连接
+    conn = sqlite3.connect(str(db_path), isolation_level=None, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
     _migrate(conn)
@@ -169,6 +170,21 @@ def append_message(
     assert mid is not None
     touch_session(conn, session_id)
     return int(mid)
+
+
+def clear_session_messages(conn: sqlite3.Connection, session_id: str) -> int:
+    """摘要：删除指定会话的全部消息（不清除会话行与记忆库）。
+
+    参数：
+        conn: SQLite 连接。
+        session_id: 会话 ID。
+
+    返回值：
+        删除的消息行数。
+    """
+    cur = conn.execute("DELETE FROM messages WHERE session_id = ?;", (session_id,))
+    touch_session(conn, session_id)
+    return int(cur.rowcount)
 
 
 def recent_messages(conn: sqlite3.Connection, session_id: str, limit: int) -> list[MessageRow]:

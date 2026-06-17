@@ -1,0 +1,16 @@
+{
+  "type": "skill",
+  "name": "bad-version-skill",
+  "version": "not-a-version",
+  "description": "version 不可解析",
+  "market_id": "bad-version-skill@not-a-version",
+  "trust": "user_installed",
+  "entrypoint": {
+    "type": "local_api",
+    "host": "127.0.0.1",
+    "port": 9105,
+    "path": "/v1/complete"
+  },
+  "permissions": [],
+  "output_mode": "block"
+}

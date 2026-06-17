@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Offline Companion</title>
+  <link rel="stylesheet" href="/shell.css">
+</head>
+<body>
+  <div id="app">
+    <div id="titlebar">Offline Companion · 本地陪伴</div>
+    <div id="body">
+      <nav id="activity-bar" aria-label="侧栏导航">
+        <button type="button" class="nav-btn active" data-panel="chat" title="会话">💬</button>
+        <button type="button" class="nav-btn" data-panel="persona" title="人格">👤</button>
+        <button type="button" class="nav-btn" data-panel="skill" title="Skill">🧩</button>
+        <button type="button" class="nav-btn" data-panel="memory" title="记忆">📝</button>
+        <button type="button" class="nav-btn" data-panel="settings" title="设置">⚙️</button>
+      </nav>
+      <aside id="sidebar-panel">
+        <div id="panel-chat" class="panel-section active">
+          <h3>会话</h3>
+          <p>当前人格：<strong id="persona-label">—</strong></p>
+          <p class="placeholder-box">多会话切换将在后续版本提供。清空对话请使用主区右上角按钮。</p>
+        </div>
+        <div id="panel-persona" class="panel-section">
+          <h3>人格</h3>
+          <p class="placeholder-box">只读展示；切换与编辑入口 Sprint 8。</p>
+        </div>
+        <div id="panel-skill" class="panel-section">
+          <h3>Skill</h3>
+          <p class="placeholder-box">Sprint 7 接入：列表、安装与运行。</p>
+        </div>
+        <div id="panel-memory" class="panel-section">
+          <h3>记忆</h3>
+          <p class="placeholder-box">清空对话不会删除 #remember 写入的记忆库。记忆 CRUD 可视化 Sprint 8。</p>
+        </div>
+        <div id="panel-settings" class="panel-section">
+          <h3>设置</h3>
+          <p class="placeholder-box">完整设置页 Sprint 8。</p>
+          <p><button type="button" id="consent-demo">Consent 槽位演示</button></p>
+        </div>
+      </aside>
+      <main id="main">
+        <div id="chat-toolbar">
+          <button type="button" id="clear-chat" title="清空当前会话对话记录">清空对话</button>
+        </div>
+        <div id="chat" aria-live="polite"></div>
+        <form id="composer">
+          <input id="input" autocomplete="off" placeholder="说点什么吧…（可用 #remember 保存记忆）" />
+          <button type="submit" id="send">发送</button>
+        </form>
+      </main>
+    </div>
+    <footer id="statusbar">
+      <span class="status-item" id="status-privacy">隐私 · —</span>
+      <label class="status-item">
+        <input type="checkbox" id="memory-on"> 记忆
+      </label>
+      <span class="status-item" id="status-model">模型 · —</span>
+      <span class="status-item" id="status-session">会话 · —</span>
+    </footer>
+  </div>
+
+  <div id="consent-modal" role="dialog" aria-modal="true" aria-labelledby="consent-title">
+    <div class="modal-card">
+      <h4 id="consent-title">出站同意</h4>
+      <p id="consent-body"></p>
+      <div class="modal-actions">
+        <button type="button" id="consent-close">关闭</button>
+        <button type="button" class="primary" disabled>同意（占位）</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/shell.js"></script>
+</body>
+</html>

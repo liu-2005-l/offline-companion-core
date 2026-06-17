@@ -43,7 +43,7 @@ def _append_startup_log(logs_dir: Path) -> None:
 
 
 def setup_portable_env() -> Path:
-    """摘要：按 ``docs/packaging.md`` 初始化便携包数据目录与环境变量。
+    """摘要：按 ``docs/ARCHITECTURE_v2.0_zh.md`` §六 初始化便携包数据目录与环境变量。
 
     返回值：
         解析后的数据根路径。

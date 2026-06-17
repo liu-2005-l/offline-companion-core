@@ -1,0 +1,16 @@
+{
+  "type": "skill",
+  "name": "bad-perm-skill",
+  "version": "1.0.0",
+  "description": "permissions 非法 fixture",
+  "market_id": "bad-perm-skill@1.0.0",
+  "trust": "user_installed",
+  "entrypoint": {
+    "type": "local_api",
+    "host": "127.0.0.1",
+    "port": 9103,
+    "path": "/v1/complete"
+  },
+  "permissions": ["write_memory"],
+  "output_mode": "block"
+}

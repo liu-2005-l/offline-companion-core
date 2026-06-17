@@ -231,9 +231,11 @@ class LlamaCppBackend:
         if self._llama is None:
             raise InferenceBackendError("模型未加载，无法 generate")
 
-        messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+        # 合并为单条 system：Qwen 等模板的 chat 格式对多条 system 支持不稳定
+        full_system = system_prompt.rstrip()
         if memory_block.strip():
-            messages.append({"role": "system", "content": memory_block})
+            full_system = f"{full_system}\n\n{memory_block.strip()}"
+        messages: list[dict[str, str]] = [{"role": "system", "content": full_system}]
         for m in history:
             if m.role in ("user", "assistant"):
                 messages.append({"role": m.role, "content": m.content})

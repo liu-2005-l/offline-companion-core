@@ -105,6 +105,17 @@ def test_format_recall_block_contains_preference_constraint(tmp_path) -> None:
     assert "香菜" in block
 
 
+def test_format_recall_block_contains_answer_directive(tmp_path) -> None:
+    conn = connect(tmp_path / "name.db")
+    new_session(conn, "s1", "default", title=None)
+    MemoryLifecycleManager.add_memory_chunk(conn, "我叫Master", session_id="s1", source="test")
+    hits = recall(conn, "我叫什么", limit=5)
+    assert hits
+    block = format_recall_prompt_block(hits)
+    assert "【回答要求】" in block
+    assert "不要重复对话历史中无关寒暄" in block
+
+
 def test_format_recall_block_always_appends_constraint_for_neutral_memory(tmp_path) -> None:
     conn = connect(tmp_path / "neutral.db")
     new_session(conn, "s1", "default", title=None)

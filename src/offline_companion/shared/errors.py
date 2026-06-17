@@ -35,3 +35,11 @@ class ReformatError(ValueError):
 
 class CloudConnectorError(RuntimeError):
     """摘要：A3 出站 HTTP 调用失败（配置、网络或响应格式）。"""
+
+
+class SkillManifestError(ValueError):
+    """摘要：Skill manifest 未通过 Schema 或 registry 语义校验。"""
+
+
+class SkillPolicyDenied(RuntimeError):
+    """摘要：当前隐私模式或策略不允许启用/调用该 Skill。"""

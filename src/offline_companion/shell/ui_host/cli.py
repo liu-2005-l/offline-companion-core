@@ -45,6 +45,7 @@ from offline_companion.runtime.storage_index.knowledge_store import (
     default_knowledge_db_path,
 )
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
+from offline_companion.shell.ui_host.model_registry import resolve_default_gguf_path, resolve_n_gpu_layers
 from offline_companion.shell.ui_host.knowledge_turn import run_knowledge_search
 
 
@@ -121,13 +122,16 @@ def cmd_chat(args: argparse.Namespace) -> int:
     if not row:
         new_session(conn, session_id, persona.persona_id, title=args.title)
 
-    if args.model:
+    gguf_path = Path(args.model).expanduser() if args.model else resolve_default_gguf_path()
+    n_gpu = resolve_n_gpu_layers(args.n_gpu_layers)
+
+    if gguf_path is not None:
         try_stderr_cuda_hint()
         try:
             backend = create_llama_backend(
-                args.model,
+                gguf_path,
                 n_ctx=args.n_ctx,
-                n_gpu_layers=args.n_gpu_layers,
+                n_gpu_layers=n_gpu,
                 run_health_check=True,
             )
         except InferenceBackendError as e:
@@ -401,6 +405,43 @@ def _handle_slash_command(
     return False, memory_on
 
 
+def cmd_web(args: argparse.Namespace) -> int:
+    """摘要：启动 127.0.0.1 Flask WebUI（Echo 默认；编排走 ``ConversationOrchestrator``）。"""
+    from offline_companion.shell.ui_host.bootstrap import bootstrap_ui_session_or_exit
+    from offline_companion.shell.ui_host.web_server import WebRuntime, run_web
+
+    bundle = bootstrap_ui_session_or_exit(args, session_title="WebUI")
+    if args.model:
+        print("推理:", bundle.orchestrator.backend.health_check().message)
+
+    runtime = WebRuntime(
+        orchestrator=bundle.orchestrator,
+        memory_on=bundle.memory_on,
+        session_id=bundle.session_id,
+    )
+    url = f"http://127.0.0.1:{args.port}"
+    print(f"WebUI 已启动 → {url}  （仅本机；Memory: {'on' if bundle.memory_on else 'off'}）")
+    try:
+        run_web(runtime, port=args.port)
+    except ImportError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_desktop(args: argparse.Namespace) -> int:
+    """摘要：启动 pywebview 桌面壳（产品 UI）。"""
+    from offline_companion.shell.ui_host.desktop.app import run_desktop
+
+    if args.persona is None:
+        args.persona = _default_persona_path()
+    try:
+        return run_desktop(args)
+    except ImportError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+
+
 def _default_persona_path() -> str:
     """摘要：默认 persona YAML（便携模式可读环境变量覆盖）。"""
     env = os.environ.get("OFFLINE_COMPANION_PERSONA_PATH")
@@ -473,6 +514,34 @@ def build_parser() -> argparse.ArgumentParser:
         help="额外执行极短 generate 探测",
     )
 
+    web = sub.add_parser("web", help="启动 127.0.0.1 本地 WebUI（Flask）")
+    web.add_argument("--port", type=int, default=8765, help="监听端口（仅 localhost）")
+    web.add_argument(
+        "--persona",
+        type=str,
+        default=_default_persona_path(),
+    )
+    web.add_argument("--session-id", type=str, default="webui-default")
+    web.add_argument("--data-dir", type=str, default=None)
+    web.add_argument(
+        "--memory",
+        type=int,
+        default=None,
+        help="1=on 0=off；省略则用人设 default",
+    )
+    web.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help="Path to .gguf（省略则 Echo）",
+    )
+    web.add_argument("--n-ctx", type=int, default=2048)
+    web.add_argument("--n-gpu-layers", type=int, default=0)
+
+    from offline_companion.shell.ui_host.desktop.app import register_desktop_subcommand
+
+    register_desktop_subcommand(sub)
+
     return p
 
 
@@ -502,6 +571,14 @@ def main(argv: list[str] | None = None) -> None:
         mem = None if args.memory is None else bool(args.memory)
         ns = argparse.Namespace(**{**vars(args), "memory": mem})
         raise SystemExit(cmd_chat(ns))
+    if args.cmd == "web":
+        mem = None if args.memory is None else bool(args.memory)
+        ns = argparse.Namespace(**{**vars(args), "memory": mem})
+        raise SystemExit(cmd_web(ns))
+    if args.cmd == "desktop":
+        mem = None if args.memory is None else bool(args.memory)
+        ns = argparse.Namespace(**{**vars(args), "memory": mem})
+        raise SystemExit(cmd_desktop(ns))
     parser.error("Unknown command")
 
 

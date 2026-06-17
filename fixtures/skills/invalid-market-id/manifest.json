@@ -1,0 +1,16 @@
+{
+  "type": "skill",
+  "name": "novel-writer",
+  "version": "1.2.0",
+  "description": "market_id name 不一致",
+  "market_id": "other-name@1.2.0",
+  "trust": "user_installed",
+  "entrypoint": {
+    "type": "local_api",
+    "host": "127.0.0.1",
+    "port": 9104,
+    "path": "/v1/complete"
+  },
+  "permissions": [],
+  "output_mode": "block"
+}

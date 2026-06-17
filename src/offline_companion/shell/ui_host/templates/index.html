@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Offline Companion</title>
+  <style>
+    body { max-width: 640px; margin: 2rem auto; font-family: system-ui, sans-serif; padding: 0 1rem; }
+    h2 { margin-bottom: 0.5rem; }
+    .meta { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+    #chat { border: 1px solid #ccc; border-radius: 6px; padding: 1rem; height: 400px; overflow-y: auto; margin-bottom: 1rem; background: #fafafa; }
+    .msg { margin: 0.5rem 0; white-space: pre-wrap; word-break: break-word; }
+    .user { color: #333; }
+    .bot { color: #0070c9; }
+    .blocked { color: #c00; font-style: italic; }
+    .system { color: #666; font-size: 0.85rem; }
+    #toolbar { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
+    #form { display: flex; gap: 0.5rem; }
+    #input { flex: 1; padding: 0.5rem; }
+    button { padding: 0.5rem 1rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h2>Offline Companion</h2>
+  <p class="meta">本地 WebUI · 127.0.0.1 · Echo / 本地推理</p>
+  <div id="toolbar">
+    <label><input type="checkbox" id="memory-on"> 记忆开启（#remember / 召回）</label>
+  </div>
+  <div id="chat"></div>
+  <form id="form">
+    <input id="input" autocomplete="off" placeholder="输入消息…（可用 #remember …）">
+    <button type="submit">发送</button>
+  </form>
+  <script>
+    const chatEl = document.getElementById("chat");
+    const inputEl = document.getElementById("input");
+    const memoryEl = document.getElementById("memory-on");
+    const formEl = document.getElementById("form");
+
+    async function loadStatus() {
+      const res = await fetch("/api/status");
+      const data = await res.json();
+      memoryEl.checked = !!data.memory_on;
+    }
+
+    memoryEl.addEventListener("change", async () => {
+      await fetch("/api/memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: memoryEl.checked })
+      });
+      addMsg("system", memoryEl.checked ? "记忆已开启" : "记忆已关闭");
+    });
+
+    formEl.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = inputEl.value.trim();
+      if (!msg) return;
+      addMsg("user", msg);
+      inputEl.value = "";
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg })
+      });
+      const data = await res.json();
+      if (data.memory_saved && data.memory_saved.length) {
+        addMsg("system", "已保存记忆：" + data.memory_saved.join("；"));
+      }
+      if (data.memory_recall_count > 0) {
+        addMsg("system", "本轮召回记忆 " + data.memory_recall_count + " 条");
+      }
+      const cls = data.blocked ? "blocked" : "bot";
+      addMsg(cls, data.reply || "（无回复）");
+    });
+
+    function addMsg(cls, txt) {
+      const d = document.createElement("div");
+      d.className = "msg " + cls;
+      d.textContent = txt;
+      chatEl.appendChild(d);
+      d.scrollIntoView({ behavior: "smooth" });
+    }
+
+    loadStatus();
+    inputEl.focus();
+  </script>
+</body>
+</html>

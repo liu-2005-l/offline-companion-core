@@ -314,7 +314,7 @@ def smoke_core_api(
             if gen_s > warn_sec:
                 step.warn(
                     f"B1 耗时 ({tag})",
-                    f"{gen_s:.1f}s > {warn_sec}s；请确认 CUDA 版 llama-cpp（见 docs/inference-cuda.md）",
+                    f"{gen_s:.1f}s > {warn_sec}s；请确认 CUDA 版 llama-cpp（见 docs/USER_MANUAL_v1.0_zh.md §七）",
                 )
             print(f"       用户: {user_msg}")
             print(f"       助手: {preview}...")

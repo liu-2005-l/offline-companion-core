@@ -1,0 +1,16 @@
+# 本地 GGUF 模型登记（Agent 主体读取；.gguf 文件请放在本目录，不入 Git）
+#
+# 使用步骤：
+# 1. 将 Qwen2.5-1.5B-Instruct 的 .gguf 放入本目录
+# 2. 若文件名与下方 file 不一致，请修改 file 字段
+# 3. 启动 desktop / chat（无需 --model）
+
+active: qwen2.5-1.5b-instruct-q4_k_m
+
+entries:
+  - id: qwen2.5-1.5b-instruct-q4_k_m
+    file: Qwen2.5-1.5B-Instruct-Q4_K_M.gguf
+    family: qwen2.5
+    params: 1.5B
+    quant: Q4_K_M
+    description: 体验档默认本地模型（见 docs/USER_MANUAL_v1.0_zh.md §二）

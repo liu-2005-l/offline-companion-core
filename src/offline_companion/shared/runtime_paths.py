@@ -59,3 +59,27 @@ def configs_dir() -> Path:
     if bundled is not None:
         return bundled
     return dev_repo_root() / "configs"
+
+
+def models_dir(*, data_root_override: Path | None = None) -> Path:
+    """摘要：本地 GGUF 模型目录。
+
+    优先级：
+        ``OFFLINE_COMPANION_MODELS_DIR`` →
+        仓库 ``models/``（存在 ``registry.yaml`` 时，便于开发）→
+        ``{data_root}/models/``。
+    """
+    env = os.environ.get("OFFLINE_COMPANION_MODELS_DIR")
+    if env:
+        path = Path(env).expanduser().resolve()
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    repo_models = dev_repo_root() / "models"
+    if (repo_models / "registry.yaml").is_file():
+        return repo_models
+
+    root = data_root_override if data_root_override is not None else data_root()
+    path = root / "models"
+    path.mkdir(parents=True, exist_ok=True)
+    return path

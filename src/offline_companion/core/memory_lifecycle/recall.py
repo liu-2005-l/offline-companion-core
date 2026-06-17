@@ -269,6 +269,17 @@ _PREFERENCE_CONSTRAINT_BLOCK = (
     "例如：用户表示「讨厌香菜」，则所有涉及食物、菜品的建议中都不得出现香菜。"
 )
 
+# 召回命中时追加：避免小模型模仿历史中错误寒暄而忽略记忆块（用户画像优先于上下文）
+_ANSWER_DIRECTIVE_BLOCK = (
+    "\n\n"
+    "【回答要求】\n"
+    "若上述记忆与当前用户问题直接相关，必须根据记忆作答（可自然说「记得你说过…」），"
+    "不要重复对话历史中无关寒暄，也不要说不知道。"
+)
+
+# 记忆块尾部固定段（截断预算须一并保留）
+_RECALL_TRAILING_BLOCKS = _PREFERENCE_CONSTRAINT_BLOCK + _ANSWER_DIRECTIVE_BLOCK
+
 
 def format_recall_prompt_block(hits: list[MemoryRecallHit], max_chars: int = 1400) -> str:
     """摘要：将召回结果格式化为可注入模型的「你可能想起来的」记忆块。
@@ -302,12 +313,12 @@ def format_recall_prompt_block(hits: list[MemoryRecallHit], max_chars: int = 140
         lines.append(line)
         n += len(line) + 1
     body_text = "\n".join(lines)
-    combined = body_text + _PREFERENCE_CONSTRAINT_BLOCK
+    combined = body_text + _RECALL_TRAILING_BLOCKS
     if len(combined) <= max_chars:
         return combined
-    # 超长时仍保留约束段，截断条目部分
-    budget = max(0, max_chars - len(_PREFERENCE_CONSTRAINT_BLOCK))
+    # 超长时仍保留尾部约束段，截断条目部分
+    budget = max(0, max_chars - len(_RECALL_TRAILING_BLOCKS))
     if budget <= 0:
-        return _PREFERENCE_CONSTRAINT_BLOCK.strip()
+        return _RECALL_TRAILING_BLOCKS.strip()
     trimmed = body_text[:budget].rstrip()
-    return trimmed + _PREFERENCE_CONSTRAINT_BLOCK
+    return trimmed + _RECALL_TRAILING_BLOCKS

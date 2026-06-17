@@ -18,7 +18,18 @@ def _load_cases() -> list[dict]:
     return list(data.get("cases") or [])
 
 
+def test_fixture_executable_count_at_least_80() -> None:
+    r = subprocess.run(
+        [sys.executable, str(STATS), "--min-executable", "80"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
 def test_fixture_executable_count_at_least_50() -> None:
+    """摘要：保留 50 下限子集检查（向后兼容）。"""
     r = subprocess.run(
         [sys.executable, str(STATS), "--min-executable", "50"],
         cwd=str(ROOT),
@@ -30,6 +41,6 @@ def test_fixture_executable_count_at_least_50() -> None:
 
 def test_fixture_has_kind_or_inferable() -> None:
     cases = _load_cases()
-    assert len(cases) >= 51
+    assert len(cases) >= 80
     explicit = sum(1 for c in cases if c.get("kind") in ("executable", "note"))
     assert explicit >= 10

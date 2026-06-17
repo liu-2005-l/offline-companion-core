@@ -171,6 +171,17 @@ def _sprint2_cloud_stub() -> int:
     return 0
 
 
+def _sprint6_packaged_smoke(py: str) -> int:
+    """摘要：Sprint6 便携包冒烟；无 dist 时子脚本返回 0 并 WARN。"""
+    script = ROOT / "scripts" / "packaged_smoke.py"
+    if not script.is_file():
+        print("[WARN] 未找到 scripts/packaged_smoke.py", file=sys.stderr)
+        return 0
+    print(f"\n{'=' * 60}\n>>> Sprint6 便携包冒烟\n{'=' * 60}")
+    print("$", " ".join([py, str(script)]))
+    return subprocess.run([py, str(script)], cwd=str(ROOT), env=_subprocess_env(ROOT)).returncode
+
+
 def main() -> int:
     """摘要：按顺序执行全套验收子步骤。"""
     _configure_stdio_utf8()
@@ -181,6 +192,11 @@ def main() -> int:
     parser.add_argument("--skip-lint", action="store_true", help="跳过 ruff")
     parser.add_argument("--skip-fixtures", action="store_true", help="跳过 run_eval --fixtures")
     parser.add_argument("--skip-stress", action="store_true", help="跳过 Sprint5 stress_test")
+    parser.add_argument(
+        "--skip-packaged",
+        action="store_true",
+        help="跳过 Sprint6 便携包冒烟（scripts/packaged_smoke.py）",
+    )
     args = parser.parse_args()
 
     py = sys.executable
@@ -203,6 +219,10 @@ def main() -> int:
                     "scripts/gpu_acceptance.py",
                     "scripts/full_acceptance.py",
                     "scripts/stress_test.py",
+                    "scripts/build_portable.py",
+                    "scripts/packaged_smoke.py",
+                    "src/offline_companion/shell/ui_host/web_server.py",
+                    "src/offline_companion/shell/ui_host/packaged_smoke_lib.py",
                     "scripts/ci/fixture_stats.py",
                 ],
             )
@@ -253,6 +273,15 @@ def main() -> int:
             failed.append("Sprint2 云端 Stub")
     else:
         print("\n[WARN] 已 --skip-cloud")
+
+    if not getattr(args, "skip_packaged", False):
+        if _sprint6_packaged_smoke(py) != 0:
+            print(
+                "[WARN] Sprint6 便携包冒烟未通过（PoC 阶段不阻断 full_acceptance）",
+                file=sys.stderr,
+            )
+    else:
+        print("\n[WARN] 已 --skip-packaged")
 
     print(f"\n{'=' * 60}")
     if failed:

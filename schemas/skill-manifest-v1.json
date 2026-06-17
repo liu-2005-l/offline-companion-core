@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://offline-companion.local/schemas/skill-manifest-v1.json",
+  "title": "Offline Companion Extension Manifest v1",
+  "type": "object",
+  "required": ["type", "name", "version", "description", "market_id", "trust"],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["skill", "plugin", "tool"]
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "version": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "market_id": {
+      "type": "string"
+    },
+    "trust": {
+      "type": "string",
+      "enum": ["user_installed", "bundled"]
+    },
+    "entrypoint": {
+      "type": "object",
+      "required": ["type", "host", "port", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["local_api"]
+        },
+        "host": {
+          "type": "string",
+          "enum": ["127.0.0.1"]
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        }
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["cloud_inference", "network_egress", "read_session_context"]
+      },
+      "uniqueItems": true
+    },
+    "required_api_keys": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "uniqueItems": true
+    },
+    "output_mode": {
+      "type": "string",
+      "enum": ["stream", "block"]
+    },
+    "ui_contributions": {
+      "type": "object"
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "content_security_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowed_domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "allow_local_fetch": {
+          "type": "boolean"
+        }
+      }
+    },
+    "error_codes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "skill"
+          }
+        },
+        "required": ["type"]
+      },
+      "then": {
+        "required": ["entrypoint", "permissions", "output_mode"]
+      }
+    }
+  ]
+}
