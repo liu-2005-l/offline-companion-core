@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
-from offline_companion.shell.ui_host.turn_payload import process_chat_message, turn_result_to_payload
+from offline_companion.shell.ui_host.turn_payload import process_chat_message
 
 _TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 _ALLOWED_HOST = "127.0.0.1"

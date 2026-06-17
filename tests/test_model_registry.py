@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from offline_companion.shared.runtime_paths import dev_repo_root, models_dir
 from offline_companion.shell.ui_host.model_registry import (
     load_registry,
