@@ -6,6 +6,7 @@ import sqlite3
 from typing import Any
 
 from offline_companion.shared.errors import ConsentArtifactError
+from offline_companion.shared.types import PurposeType
 
 _REQUIRED_KEYS = frozenset(
     {
@@ -41,3 +42,8 @@ def validate_consent_artifact(artifact: dict[str, Any]) -> None:
         raise ConsentArtifactError(f"Consent artifact missing keys: {missing}")
     if not isinstance(artifact.get("request_id"), str):
         raise ConsentArtifactError("request_id must be str")
+    purpose = artifact.get("purpose")
+    if not isinstance(purpose, str) or purpose not in {m.value for m in PurposeType}:
+        raise ConsentArtifactError(
+            f"purpose 必须为合法 PurposeType 枚举值，当前为 {purpose!r}"
+        )

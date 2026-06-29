@@ -12,6 +12,15 @@ BUNDLE_FORMAT = "offline-companion-bundle"
 BUNDLE_VERSION = 1
 
 
+class PurposeType(str, Enum):
+    """摘要：Consent 用途类型（A3；四类覆盖 Skill 调用与商城操作）。"""
+
+    SKILL_INVOKE = "skill_invoke"
+    SKILL_CLOUD_CALL = "skill_cloud_call"
+    SKILL_MARKET_INDEX = "skill_market_index"
+    SKILL_MARKET_DOWNLOAD = "skill_market_download"
+
+
 class PrivacyMode(str, Enum):
     """摘要：出站/云端相关隐私模式。"""
 

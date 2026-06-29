@@ -43,3 +43,10 @@ class SkillManifestError(ValueError):
 
 class SkillPolicyDenied(RuntimeError):
     """摘要：当前隐私模式或策略不允许启用/调用该 Skill。"""
+
+
+class SkillInvocationError(RuntimeError):
+    """摘要：Skill 进程启动、调用或鉴权失败。
+
+    说明：由 invoker 在端口分配、子进程启动、API Key 校验失败时抛出。
+    """

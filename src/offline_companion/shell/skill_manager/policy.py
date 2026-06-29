@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from offline_companion.shared.errors import SkillPolicyDenied
-from offline_companion.shared.types import PrivacyMode
+from offline_companion.shared.types import PrivacyMode, PurposeType
 
 from .manifest import SkillManifest
 
@@ -18,11 +18,18 @@ _LOCAL_ONLY_DENY_MSG = "当前隐私模式下不可用"
 
 @dataclass(frozen=True)
 class SkillPolicyResult:
-    """摘要：策略评估结果（调用方据此走 Consent / 阻断）。"""
+    """摘要：策略评估结果（调用方据此走 Consent / 阻断）。
+
+    参数：
+        allowed: 是否允许调用。
+        requires_consent: 是否需要触发 A3 Consent。
+        purpose_hint: Consent 用途类型枚举；为 None 表示不生成 Consent。
+        reason: 人类可读原因（中文）。
+    """
 
     allowed: bool
     requires_consent: bool
-    purpose_hint: str | None
+    purpose_hint: PurposeType | None
     reason: str
 
 
@@ -63,14 +70,14 @@ def evaluate_skill_policy(
         return SkillPolicyResult(
             allowed=True,
             requires_consent=True,
-            purpose_hint="skill_cloud_call",
+            purpose_hint=PurposeType.SKILL_CLOUD_CALL,
             reason="Skill 声明 cloud_inference，须经 A3 Consent",
         )
 
     return SkillPolicyResult(
         allowed=True,
         requires_consent=False,
-        purpose_hint="skill_invoke",
+        purpose_hint=PurposeType.SKILL_INVOKE,
         reason="本地 Skill 调用",
     )
 

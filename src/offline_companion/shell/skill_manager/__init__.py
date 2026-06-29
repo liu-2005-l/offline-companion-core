@@ -1,5 +1,8 @@
-"""skill_manager：A2 Skill 外骨骼（registry / policy；安装与调用见 Sprint 7.3+）。"""
+"""skill_manager：A2 Skill 外骨骼（registry / policy / invoker；安装与调用见 Sprint 7.3+）。"""
 
+from offline_companion.shared.types import PurposeType
+
+from offline_companion.shell.skill_manager.invoker import SkillInvoker, SkillProcess
 from offline_companion.shell.skill_manager.manifest import SkillEntrypoint, SkillManifest
 from offline_companion.shell.skill_manager.policy import (
     SkillPolicyResult,
@@ -23,9 +26,12 @@ from offline_companion.shell.skill_manager.registry import (
 )
 
 __all__ = [
+    "PurposeType",
     "SkillEntrypoint",
+    "SkillInvoker",
     "SkillManifest",
     "SkillPolicyResult",
+    "SkillProcess",
     "check_read_context",
     "compare_versions",
     "evaluate_skill_policy",
