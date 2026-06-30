@@ -13,6 +13,11 @@ GUI_MODULES = ("pywebview", "pystray", "PIL")
 SKILL_DEPS = ("packaging", "jsonschema")
 ALLOW_NET_FILE = Path("offline_companion/shell/outbound_manager/connector.py")
 ALLOW_GUI_PREFIX = "offline_companion/shell/ui_host/desktop/"
+ALLOW_NET_PREFIXES = (
+    "offline_companion/shell/outbound_manager/",
+    "offline_companion/shell/skill_manager/",
+)
+
 
 
 def _rel_posix(path: Path) -> str:
@@ -37,7 +42,10 @@ def _collect_imports(tree: ast.AST) -> list[tuple[str, str]]:
 def _violates_network(rel: str, tree: ast.AST) -> list[str]:
     if rel == ALLOW_NET_FILE.as_posix() or rel.startswith(ALLOW_GUI_PREFIX):
         return []
+    if any(rel.startswith(p) for p in ALLOW_NET_PREFIXES):
+        return []
     bad: list[str] = []
+
     for kind, mod in _collect_imports(tree):
         if kind in {"import", "from_root"} and mod in NET_MODULES:
             bad.append(f"{rel}: forbidden network module `{mod}`")

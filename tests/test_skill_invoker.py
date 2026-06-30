@@ -75,8 +75,10 @@ class TestSkillInvoker:
             'assert "OFFLINE_COMPANION_HOST_PID" in os.environ\n'
             "# 保持运行直到被终止\n"
             "while True:\n"
-            "    time.sleep(1)\n"
+            "    time.sleep(1)\n",
+            encoding="utf-8",
         )
+
         return SkillManifest(
             name="dummy",
             version=Version("1.0.0"),
