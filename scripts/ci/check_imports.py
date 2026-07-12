@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
-import sys
 
 ROOT = Path(__file__).resolve().parents[2] / "src" / "offline_companion"
 NET_MODULES = ("httpx", "requests", "urllib3", "socket", "aiohttp")
