@@ -1,5 +1,65 @@
 """shared：跨层 DTO 与异常定义（禁止依赖 shell/core/runtime）。"""
 
-from .errors import *
-from .messages import *
-from .types import *
+from .errors import (
+    BundleFormatError,
+    CheckImportsError,
+    CircuitBreakerOpenError,
+    CloudConnectorError,
+    ConsentArtifactError,
+    InferenceBackendError,
+    OutboundDenied,
+    ReformatError,
+    SkillInvocationError,
+    SkillManifestError,
+    SkillPolicyDenied,
+    SkillSourceValidationError,
+)
+from .messages import BaseMessage, MessageDirection, MessageLayer
+from .types import (
+    AppPaths,
+    BUNDLE_FORMAT,
+    BUNDLE_VERSION,
+    CloudCompletionRequest,
+    CloudCompletionResponse,
+    ExportBundlePayload,
+    MemoryHit,
+    MemoryRecallHit,
+    OutboundPlan,
+    OutboundScope,
+    Persona,
+    PrivacyMode,
+    PurposeType,
+    TurnResult,
+)
+
+__all__ = [
+    "AppPaths",
+    "BUNDLE_FORMAT",
+    "BUNDLE_VERSION",
+    "BaseMessage",
+    "BundleFormatError",
+    "CheckImportsError",
+    "CircuitBreakerOpenError",
+    "CloudCompletionRequest",
+    "CloudCompletionResponse",
+    "CloudConnectorError",
+    "ConsentArtifactError",
+    "ExportBundlePayload",
+    "InferenceBackendError",
+    "MemoryHit",
+    "MemoryRecallHit",
+    "MessageDirection",
+    "MessageLayer",
+    "OutboundDenied",
+    "OutboundPlan",
+    "OutboundScope",
+    "Persona",
+    "PrivacyMode",
+    "PurposeType",
+    "ReformatError",
+    "SkillInvocationError",
+    "SkillManifestError",
+    "SkillPolicyDenied",
+    "SkillSourceValidationError",
+    "TurnResult",
+]

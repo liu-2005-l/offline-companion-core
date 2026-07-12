@@ -5,10 +5,11 @@ from __future__ import annotations
 import socket
 from pathlib import Path
 
+import os
 import pytest
 from packaging.version import Version
 
-from offline_companion.shared.errors import SkillInvocationError, SkillSourceValidationError
+from offline_companion.shared.errors import CircuitBreakerOpenError, SkillInvocationError, SkillSourceValidationError
 from offline_companion.shell.skill_manager.invoker import (
     SkillInvoker,
     _env_key_name,
@@ -101,6 +102,7 @@ class TestSkillInvoker:
     def test_start_and_stop(self, dummy_manifest: SkillManifest, tmp_path: Path) -> None:
         """启动后应分配端口和 Key；停止后进程应退出。"""
         invoker = SkillInvoker()
+        os.environ["OFFLINE_COMPANION_HOST_PID"] = str(os.getpid())
         sp = invoker.start(dummy_manifest, tmp_path)
         assert sp.port > 0
         assert len(sp.api_key) == 64
@@ -116,6 +118,7 @@ class TestSkillInvoker:
     ) -> None:
         """重复启动同一 Skill 应抛出异常。"""
         invoker = SkillInvoker()
+        os.environ["OFFLINE_COMPANION_HOST_PID"] = str(os.getpid())
         invoker.start(dummy_manifest, tmp_path)
         with pytest.raises(SkillInvocationError, match="已在运行"):
             invoker.start(dummy_manifest, tmp_path)
@@ -129,6 +132,7 @@ class TestSkillInvoker:
     def test_stop_all(self, dummy_manifest: SkillManifest, tmp_path: Path) -> None:
         """stop_all 应停止所有进程。"""
         invoker = SkillInvoker()
+        os.environ["OFFLINE_COMPANION_HOST_PID"] = str(os.getpid())
         sp1 = invoker.start(dummy_manifest, tmp_path)
         invoker.stop_all()
         assert invoker.get_process("dummy") is None
@@ -140,6 +144,7 @@ class TestSkillInvoker:
     ) -> None:
         """正确的 Bearer token 应通过鉴权。"""
         invoker = SkillInvoker()
+        os.environ["OFFLINE_COMPANION_HOST_PID"] = str(os.getpid())
         sp = invoker.start(dummy_manifest, tmp_path)
         assert invoker.verify_authorization("dummy", f"Bearer {sp.api_key}")
         invoker.stop("dummy")
@@ -149,6 +154,7 @@ class TestSkillInvoker:
     ) -> None:
         """错误的 token 应拒绝。"""
         invoker = SkillInvoker()
+        os.environ["OFFLINE_COMPANION_HOST_PID"] = str(os.getpid())
         invoker.start(dummy_manifest, tmp_path)
         assert not invoker.verify_authorization("dummy", "Bearer wrong_key")
         assert not invoker.verify_authorization("dummy", None)
@@ -176,6 +182,7 @@ class TestSkillInvoker:
     def test_circuit_breaker(self, dummy_manifest: SkillManifest, tmp_path: Path) -> None:
         """熔断计数器应在连续失败后打开。"""
         invoker = SkillInvoker()
+        os.environ["OFFLINE_COMPANION_HOST_PID"] = str(os.getpid())
         invoker.start(dummy_manifest, tmp_path)
 
         assert not invoker.is_circuit_open("dummy")
@@ -195,7 +202,7 @@ class TestSkillInvoker:
         invoker.record_failure("dummy")
         invoker.record_failure("dummy")
         invoker.record_failure("dummy")
-        with pytest.raises(SkillInvocationError, match="熔断已打开"):
+        with pytest.raises(CircuitBreakerOpenError, match="熔断已打开"):
             invoker.start(dummy_manifest, tmp_path)
 
     def test_start_missing_script(self, dummy_manifest: SkillManifest, tmp_path: Path) -> None:

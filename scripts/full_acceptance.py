@@ -182,6 +182,29 @@ def _sprint6_packaged_smoke(py: str) -> int:
     return subprocess.run([py, str(script)], cwd=str(ROOT), env=_subprocess_env(ROOT)).returncode
 
 
+def _sprint7_security_gate(py: str) -> int:
+    """摘要：Sprint7 安全闭环验收；覆盖沙箱、Skill、CI 检查与兼容性测试。"""
+    print(f"\n{'=' * 60}\n>>> Sprint7 安全闭环验收\n{'=' * 60}")
+    cmd = [
+        py,
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_runtime_sandbox.py",
+        "tests/test_skill_invoker.py",
+        "tests/test_ci_checks.py",
+        "tests/test_check_imports.py",
+        "tests/test_export_import_compat.py",
+    ]
+    print("$", " ".join(cmd))
+    r = subprocess.run(cmd, cwd=str(ROOT), env=_subprocess_env(ROOT))
+    if r.returncode != 0:
+        print("[FAIL] Sprint7 安全闭环验收", file=sys.stderr)
+        return r.returncode
+    print("[PASS] Sprint7 安全闭环验收")
+    return 0
+
+
 def main() -> int:
     """摘要：按顺序执行全套验收子步骤。"""
     _configure_stdio_utf8()
@@ -267,6 +290,9 @@ def main() -> int:
             print("[WARN] 未找到 scripts/stress_test.py", file=sys.stderr)
     else:
         print("\n[WARN] 已 --skip-stress")
+
+    if _sprint7_security_gate(py) != 0:
+        failed.append("Sprint7 安全闭环")
 
     if not args.skip_cloud:
         if _sprint2_cloud_stub() != 0:

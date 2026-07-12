@@ -18,11 +18,18 @@ ALLOW_NET_PREFIXES = (
     "offline_companion/shell/outbound_manager/",
     "offline_companion/shell/skill_manager/",
 )
+ALLOW_NET_FILES = {
+    Path("offline_companion/shared/runtime_sandbox.py"),
+}
 # TODO(sprint7-close): 目前仅做 AST 级最小检查；后续需补充更细粒度的层级白名单与测试覆盖。
 
 
 def _rel_posix(path: Path) -> str:
     return path.relative_to(ROOT.parent).as_posix()
+
+
+def path_matches(rel: str, paths: set[Path]) -> bool:
+    return any(rel == p.as_posix() for p in paths)
 
 
 def _collect_imports(tree: ast.AST) -> list[tuple[str, str]]:
@@ -42,6 +49,8 @@ def _collect_imports(tree: ast.AST) -> list[tuple[str, str]]:
 
 def _violates_network(rel: str, tree: ast.AST) -> list[str]:
     if rel == ALLOW_NET_FILE.as_posix() or rel.startswith(ALLOW_GUI_PREFIX):
+        return []
+    if path_matches(rel, ALLOW_NET_FILES):
         return []
     if any(rel.startswith(p) for p in ALLOW_NET_PREFIXES):
         return []

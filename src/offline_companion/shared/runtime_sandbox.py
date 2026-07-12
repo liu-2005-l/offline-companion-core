@@ -7,7 +7,6 @@ import importlib
 import socket
 import urllib.request
 from contextlib import contextmanager
-from types import TracebackType
 from typing import Iterator
 
 from offline_companion.shared.errors import SkillInvocationError
