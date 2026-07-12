@@ -5,10 +5,13 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
-
-from offline_companion.shared.errors import CheckImportsError
+import sys
 
 ROOT = Path(__file__).resolve().parents[2] / "src" / "offline_companion"
+if str(ROOT.parent) not in sys.path:
+    sys.path.insert(0, str(ROOT.parent))
+
+from offline_companion.shared.errors import CheckImportsError
 NET_MODULES = ("httpx", "requests", "urllib3", "socket", "aiohttp")
 GUI_MODULES = ("pywebview", "pystray", "PIL")
 SKILL_DEPS = ("packaging", "jsonschema")
