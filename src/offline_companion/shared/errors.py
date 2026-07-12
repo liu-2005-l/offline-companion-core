@@ -50,3 +50,15 @@ class SkillInvocationError(RuntimeError):
 
     说明：由 invoker 在端口分配、子进程启动、API Key 校验失败时抛出。
     """
+
+
+class SkillSourceValidationError(SkillInvocationError):
+    """摘要：Skill 请求来源 PID 校验失败。"""
+
+
+class CircuitBreakerOpenError(RuntimeError):
+    """摘要：目标服务熔断已打开，当前调用应快速失败。"""
+
+
+class CheckImportsError(RuntimeError):
+    """摘要：分层或危险导入检查未通过。"""

@@ -60,6 +60,9 @@ def ensure_outbound_allowed(
             raise OutboundDenied("User did not consent to outbound request.")
 
     if plan.scope is OutboundScope.GLOBAL and global_double_confirm:
-        ans = input("GLOBAL scope: type GLOBAL OK to confirm (extra guard): ").strip()
-        if ans != "GLOBAL OK":
+        if confirm is None:
+            ans = input("GLOBAL scope: type GLOBAL OK to confirm (extra guard): ").strip()
+            if ans != "GLOBAL OK":
+                raise OutboundDenied("Global scope not confirmed.")
+        elif not confirm(plan):
             raise OutboundDenied("Global scope not confirmed.")

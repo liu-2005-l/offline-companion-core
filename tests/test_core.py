@@ -94,3 +94,14 @@ def test_outbound_ask_accepts_with_confirm() -> None:
         scope=OutboundScope.THIS_TURN,
     )
     ensure_outbound_allowed(PrivacyMode.ASK_BEFORE_CLOUD, plan, confirm=lambda p: True)
+
+
+def test_outbound_global_can_use_confirm_callable() -> None:
+    plan = OutboundPlan(
+        payload_excerpt="x",
+        will_send=["a"],
+        will_not_send=["b"],
+        purpose="p",
+        scope=OutboundScope.GLOBAL,
+    )
+    ensure_outbound_allowed(PrivacyMode.ASK_BEFORE_CLOUD, plan, confirm=lambda p: True)

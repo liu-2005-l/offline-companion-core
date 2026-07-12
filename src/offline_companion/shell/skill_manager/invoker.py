@@ -11,7 +11,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from offline_companion.shared.errors import SkillInvocationError
+from offline_companion.shared.errors import (
+    CircuitBreakerOpenError,
+    SkillInvocationError,
+    SkillSourceValidationError,
+)
 
 if TYPE_CHECKING:
     from .manifest import SkillManifest
@@ -70,6 +74,7 @@ class SkillInvoker:
     # --- 熔断占位（Sprint 7.9 完善） ---
     _failure_counts: dict[str, int] = field(default_factory=dict)
     _circuit_open: dict[str, bool] = field(default_factory=dict)
+    # TODO(sprint7-close): 熔断策略当前仅有最小闭环，后续应补半开探测与恢复窗口。
 
     def start(self, manifest: SkillManifest, install_dir: Path) -> SkillProcess:
         """摘要：启动 Skill 子进程。
@@ -87,6 +92,7 @@ class SkillInvoker:
         name = manifest.name
         if name in self._processes:
             raise SkillInvocationError(f"Skill {name!r} 已在运行")
+        self.ensure_circuit_closed(name)
 
         port = _find_free_port()
         api_key = _generate_api_key()
@@ -126,6 +132,10 @@ class SkillInvoker:
             raise SkillInvocationError(
                 f"启动 Skill {name!r} 失败: {e}"
             ) from e
+
+        if not self.verify_source_pid():
+            proc.terminate()
+            raise SkillInvocationError(f"Skill {name!r} 来源校验失败")
 
         sp = SkillProcess(
             manifest=manifest,
@@ -178,14 +188,32 @@ class SkillInvoker:
         token = auth_header[len("Bearer "):]
         return secrets.compare_digest(token, sp.api_key)
 
-    def verify_source_pid(self) -> bool:
+    def verify_source_pid(self, *, current_pid: int | None = None) -> bool:
         """摘要：来源校验 — 仅接受主进程 PID 的连接。
 
-        MVP 阶段通过环境变量 ``OFFLINE_COMPANION_HOST_PID`` 传递主进程 PID，
-        子进程可据此校验请求来源。当前为占位实现，恒返回 True。
-        Sprint 7.9 完善为实际 PID 校验。
+        参数：
+            current_pid: 可注入的当前进程 PID，便于测试与宿主侧自检。
+
+        返回：
+            True 表示当前进程来源与宿主 PID 一致。
+
+        Raises:
+            SkillSourceValidationError: 宿主 PID 缺失或不匹配。
         """
-        _ = os.getpid()
+        host_pid_raw = os.environ.get("OFFLINE_COMPANION_HOST_PID", "").strip()
+        if not host_pid_raw:
+            raise SkillSourceValidationError("缺少 OFFLINE_COMPANION_HOST_PID")
+        try:
+            host_pid = int(host_pid_raw)
+        except ValueError as e:
+            raise SkillSourceValidationError(
+                f"OFFLINE_COMPANION_HOST_PID 非法: {host_pid_raw!r}"
+            ) from e
+        pid = os.getpid() if current_pid is None else int(current_pid)
+        if host_pid != pid:
+            raise SkillSourceValidationError(
+                f"来源 PID 不匹配：host={host_pid} current={pid}"
+            )
         return True
 
     # --- 熔断占位（Sprint 7.9 完善） ---
@@ -195,6 +223,15 @@ class SkillInvoker:
         self._failure_counts[name] = self._failure_counts.get(name, 0) + 1
         if self._failure_counts[name] >= 3:
             self._circuit_open[name] = True
+
+    def ensure_circuit_closed(self, name: str) -> None:
+        """摘要：在调用前检查熔断状态。
+
+        Raises:
+            CircuitBreakerOpenError: 目标 Skill 已进入熔断状态。
+        """
+        if self.is_circuit_open(name):
+            raise CircuitBreakerOpenError(f"Skill {name!r} 熔断已打开")
 
     def record_success(self, name: str) -> None:
         """摘要：记录一次调用成功（重置熔断计数器）。"""

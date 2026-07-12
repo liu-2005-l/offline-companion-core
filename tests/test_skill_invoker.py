@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from packaging.version import Version
 
-from offline_companion.shared.errors import SkillInvocationError
+from offline_companion.shared.errors import SkillInvocationError, SkillSourceValidationError
 from offline_companion.shell.skill_manager.invoker import (
     SkillInvoker,
     _env_key_name,
@@ -160,10 +160,18 @@ class TestSkillInvoker:
         invoker = SkillInvoker()
         assert not invoker.verify_authorization("nonexistent", "Bearer key")
 
-    def test_verify_source_pid(self) -> None:
-        """来源校验占位实现应恒返回 True。"""
+    def test_verify_source_pid(self, monkeypatch) -> None:
+        """来源校验应与宿主 PID 一致。"""
         invoker = SkillInvoker()
-        assert invoker.verify_source_pid()
+        monkeypatch.setenv("OFFLINE_COMPANION_HOST_PID", str(__import__("os").getpid()))
+        assert invoker.verify_source_pid(current_pid=__import__("os").getpid())
+
+    def test_verify_source_pid_missing(self, monkeypatch) -> None:
+        """缺少宿主 PID 时应拒绝。"""
+        invoker = SkillInvoker()
+        monkeypatch.delenv("OFFLINE_COMPANION_HOST_PID", raising=False)
+        with pytest.raises(SkillSourceValidationError, match="缺少 OFFLINE_COMPANION_HOST_PID"):
+            invoker.verify_source_pid()
 
     def test_circuit_breaker(self, dummy_manifest: SkillManifest, tmp_path: Path) -> None:
         """熔断计数器应在连续失败后打开。"""
@@ -180,6 +188,15 @@ class TestSkillInvoker:
         assert not invoker.is_circuit_open("dummy")
 
         invoker.stop("dummy")
+
+    def test_start_rejected_when_circuit_open(self, dummy_manifest: SkillManifest, tmp_path: Path) -> None:
+        """熔断打开时应拒绝启动。"""
+        invoker = SkillInvoker()
+        invoker.record_failure("dummy")
+        invoker.record_failure("dummy")
+        invoker.record_failure("dummy")
+        with pytest.raises(SkillInvocationError, match="熔断已打开"):
+            invoker.start(dummy_manifest, tmp_path)
 
     def test_start_missing_script(self, dummy_manifest: SkillManifest, tmp_path: Path) -> None:
         """入口脚本不存在时应抛出异常。"""

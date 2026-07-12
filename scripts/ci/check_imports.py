@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 import ast
-import sys
 from pathlib import Path
+
+from offline_companion.shared.errors import CheckImportsError
 
 ROOT = Path(__file__).resolve().parents[2] / "src" / "offline_companion"
 NET_MODULES = ("httpx", "requests", "urllib3", "socket", "aiohttp")
@@ -17,7 +18,7 @@ ALLOW_NET_PREFIXES = (
     "offline_companion/shell/outbound_manager/",
     "offline_companion/shell/skill_manager/",
 )
-
+# TODO(sprint7-close): 目前仅做 AST 级最小检查；后续需补充更细粒度的层级白名单与测试覆盖。
 
 
 def _rel_posix(path: Path) -> str:
@@ -126,8 +127,7 @@ def main() -> int:
         errors.extend(_violates_layers(rel, tree))
 
     if errors:
-        print("check_imports FAILED:\n" + "\n".join(errors), file=sys.stderr)
-        return 1
+        raise CheckImportsError("\n".join(errors))
     print("check_imports OK.")
     return 0
 
