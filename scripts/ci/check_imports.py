@@ -8,10 +8,6 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[2] / "src" / "offline_companion"
-if str(ROOT.parent) not in sys.path:
-    sys.path.insert(0, str(ROOT.parent))
-
-from offline_companion.shared.errors import CheckImportsError
 NET_MODULES = ("httpx", "requests", "urllib3", "socket", "aiohttp")
 GUI_MODULES = ("pywebview", "pystray", "PIL")
 SKILL_DEPS = ("packaging", "jsonschema")
@@ -124,6 +120,12 @@ def _violates_layers(rel: str, tree: ast.AST) -> list[str]:
     return bad
 
 
+def _raise_check_imports_error(message: str) -> None:
+    from offline_companion.shared.errors import CheckImportsError
+
+    raise CheckImportsError(message)
+
+
 def main() -> int:
     errors: list[str] = []
     for path in sorted(ROOT.rglob("*.py")):
@@ -139,7 +141,7 @@ def main() -> int:
         errors.extend(_violates_layers(rel, tree))
 
     if errors:
-        raise CheckImportsError("\n".join(errors))
+        _raise_check_imports_error("\n".join(errors))
     print("check_imports OK.")
     return 0
 
