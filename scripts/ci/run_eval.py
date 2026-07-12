@@ -60,7 +60,16 @@ def main() -> int:
     else:
         targets = [str(ROOT / "tests")]
     cmd = [sys.executable, "-m", "pytest", "-q", *targets]
-    return subprocess.call(cmd, cwd=str(ROOT))
+    code = subprocess.call(cmd, cwd=str(ROOT))
+    if code != 0:
+        return code
+    security_targets = [
+        str(ROOT / "tests" / "test_skill_invoker.py"),
+        str(ROOT / "tests" / "test_runtime_sandbox.py"),
+        str(ROOT / "tests" / "test_ci_checks.py"),
+    ]
+    sec_cmd = [sys.executable, "-m", "pytest", "-q", *security_targets]
+    return subprocess.call(sec_cmd, cwd=str(ROOT))
 
 
 if __name__ == "__main__":

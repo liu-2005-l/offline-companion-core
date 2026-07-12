@@ -105,9 +105,9 @@ Distribution channel, not the only entry. **Local folder install is required** f
 | Lifecycle | Close→tray; single instance | ✅ |
 | UI | Sakura pink; Consent Codex cards | ✅ |
 | Dev host | Flask `web` non-production acceptance | ✅ |
-| Hardware detection | Auto-detect GPU VRAM / RAM / disk before install; VRAM ≥8GB recommends full-feature mode, 4-6GB warns some advanced features limited (IdleThink, CosyVoice), <4GB recommends pure CPU mode + disk vector optimization | backlog |
-| Honest prompt | Enabling proactive thinking features (IdleThink, GoalManager) requires ≥6GB VRAM; if not met, gray out the option in settings with label "Not supported by current hardware" | backlog |
-| Status visualization | When IdleThink runs in background, tray icon or corner character uses breathing light effect; Skill call shows "executing task" animation; long idle → character enters "standby" pose. Users perceive AI state through these micro-interactions without checking logs | backlog |
+| Hardware detection | Auto-detect GPU VRAM / RAM / disk before install; VRAM ≥8GB recommends full-feature mode, 4-6GB warns some advanced features limited (IdleThink, CosyVoice), <4GB recommends pure CPU mode + disk vector optimization | 🔲 待做 |
+| Honest prompt | Enabling proactive thinking features (IdleThink, GoalManager) requires ≥6GB VRAM; if not met, gray out the option in settings with label "Not supported by current hardware" | 🔲 待做 |
+| Status visualization | When IdleThink runs in background, tray icon or corner character uses breathing light effect; Skill call shows "executing task" animation; long idle → character enters "standby" pose. Users perceive AI state through these micro-interactions without checking logs | 🔲 待做 |
 
 ### 6.2 A2 Policy
 
@@ -133,10 +133,10 @@ User input / system event
 
 | Item | Consensus | Status |
 |------|-----------|--------|
-| Dynamic sandbox | Temp constraints injected into prompt; not in memory; this round/today/duration | S8+ |
-| Session gap | B2 `last_active_at`; injected before assembly | S8+ |
+| Dynamic sandbox | Temp constraints injected into prompt; not in memory; this round/today/duration | 📅 S8+ |
+| Session gap | B2 `last_active_at`; injected before assembly | 📅 S8+ |
 | LOCAL_ONLY | Hard deny `network_egress` / `cloud_inference` | ✅ Skill policy |
-| Tool tri-state | ALLOW / ASK / DENY (PermissionEngine future) | S9+ Tool |
+| Tool tri-state | ALLOW / ASK / DENY (PermissionEngine future) | 📅 S9+ Tool |
 
 ### 6.3 B2 Memory
 
@@ -166,7 +166,22 @@ User input / system event
 
 ### 6.6 A3 Consent
 
-Codex cards; sakura pink; `purpose_type` per Skill guide (including `skill_*` four categories).
+Codex cards; sakura pink. This document is self-contained for `purpose_type`; all egress, sandbox downgrade, high-risk Plugin/Tool calls, and Native risk prompts use one unified audit table.
+
+| `purpose_type` | Trigger | Audit fields | Validity | Reusable |
+|---|---|---|---|---|
+| `skill_network_egress` | Skill declares network access | `skill_id`, `domain_allowlist`, `reason` | single session | No |
+| `skill_file_access` | Skill declares external file access | `skill_id`, `path_allowlist`, `reason` | single session | No |
+| `skill_code_execution` | Skill declares code execution | `skill_id`, `runtime`, `reason` | single session | No |
+| `skill_cloud_inference` | Skill requires cloud inference | `skill_id`, `model`, `reason` | single session | No |
+| `cloud_routing` | AutoRouter chooses cloud model | `model_name`, `token_estimate`, `cost_estimate`, `reason` | single session | No |
+| `sandbox_downgrade` | CubeSandbox → Docker → Native downgrade | `from_mode`, `to_mode`, `reason` | single session | No |
+| `native_risk_prompt` | Native mode risk warning | `skill_id`, `risk_level`, `reason` | single session | No |
+| `plugin_high_risk_skill` | Plugin calls a high-risk Skill | `plugin_id`, `skill_id`, `risk_level`, `reason` | single session | No |
+| `tool_external_enable` | Explicitly enable external Tool | `tool_name`, `scope`, `reason` | single session | No |
+| `agent_toolbox_high_risk` | High-risk agent-toolbox invocation | `caller_skill_id`, `operation`, `reason` | single session | No |
+
+**Note**: `purpose_type` is always one-shot audited; all records store `created_at`, `trace_id`, and `actor`.
 
 ### 6.7 A2 PlanOrchestrator (S9)
 
@@ -174,12 +189,12 @@ Task planning & execution monitoring core, decomposing complex user goals into e
 
 | Item | Consensus | Status |
 |------|-----------|--------|
-| Task decomposition | Break goal into ordered steps (Step 1 → Step 2 → Step 3) | backlog |
-| Dependency management | Declare data dependencies between steps | backlog |
-| State tracking | pending / running / done / failed per step | backlog |
-| Error recovery | Retry strategy or fallback path on failure; each step may declare `idempotent` flag — idempotent steps reuse cached results on retry, non-idempotent steps skip directly or ask user confirmation | backlog |
-| TaskContext | Temp data space; Skills read/write during execution; optional write to B2 memory on completion | backlog |
-| A3 relationship | Still goes through A3 Consent when calling Skills; B/C layers unaware | backlog |
+| Task decomposition | Break goal into ordered steps (Step 1 → Step 2 → Step 3) | 📅 S9A |
+| Dependency management | Declare data dependencies between steps | 📅 S9A |
+| State tracking | pending / running / done / failed per step | 📅 S9A |
+| Error recovery | Retry strategy or fallback path on failure; each step may declare `idempotent` flag — idempotent steps reuse cached results on retry, non-idempotent steps skip directly or ask user confirmation | 📅 S9A |
+| TaskContext | Temp data space; Skills read/write during execution; optional write to B2 memory on completion | 📅 S9A |
+| A3 relationship | Still goes through A3 Consent when calling Skills; B/C layers unaware | 📅 S9A |
 
 **PlanNotebook**: frontend UI for PlanOrchestrator — user-visible plan management interface (desktop shell sidebar or settings) for viewing progress, pausing/resuming/canceling plans.
 
@@ -189,11 +204,11 @@ Long-term goal management subsystem, evolving Agent from "passive responder" to 
 
 | Item | Consensus | Status |
 |------|-----------|--------|
-| Goal storage | User long-term goals stored in B2 memory, `memory_type: goal` | backlog |
-| Progress evaluation | Periodically evaluate goal progress (when, what to check) | backlog |
-| Trigger reminder | When conditions met, proactively mention via B1 prompt assembly | backlog |
-| Frequency control | Hard cap on proactive reminders (e.g., max once per hour), user can disable | backlog |
-| Reminder decision | Utility function: Utility = Value_of_Reminder - Cost_of_Distraction. Low-utility reminders auto-degrade (popup → tray icon blink) when user is focused; high-utility reminders (user-explicit urgent) unrestricted | backlog |
+| Goal storage | User long-term goals stored in B2 memory, `memory_type: goal` | 📅 S9B |
+| Progress evaluation | Periodically evaluate goal progress (when, what to check) | 📅 S9B |
+| Trigger reminder | When conditions met, proactively mention via B1 prompt assembly | 📅 S9B |
+| Frequency control | Hard cap on proactive reminders (e.g., max once per hour), user can disable | 📅 S9B |
+| Reminder decision | Utility function: Utility = Value_of_Reminder - Cost_of_Distraction. Low-utility reminders auto-degrade (popup → tray icon blink) when user is focused; high-utility reminders (user-explicit urgent) unrestricted | 📅 S9B |
 
 ### 6.9 C-layer IdleThink loop (S9)
 

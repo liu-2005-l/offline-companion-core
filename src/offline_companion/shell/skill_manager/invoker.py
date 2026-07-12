@@ -10,6 +10,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.error import URLError
 
 from offline_companion.shared.errors import (
     CircuitBreakerOpenError,
@@ -74,7 +75,8 @@ class SkillInvoker:
     # --- 熔断占位（Sprint 7.9 完善） ---
     _failure_counts: dict[str, int] = field(default_factory=dict)
     _circuit_open: dict[str, bool] = field(default_factory=dict)
-    # TODO(sprint7-close): 熔断策略当前仅有最小闭环，后续应补半开探测与恢复窗口。
+    _half_open_probe: dict[str, bool] = field(default_factory=dict)
+    # TODO(sprint7-close): 熔断策略当前仅有最小闭环，后续应补半开探测、恢复窗口与指数退避。
 
     def start(self, manifest: SkillManifest, install_dir: Path) -> SkillProcess:
         """摘要：启动 Skill 子进程。
@@ -223,21 +225,52 @@ class SkillInvoker:
         self._failure_counts[name] = self._failure_counts.get(name, 0) + 1
         if self._failure_counts[name] >= 3:
             self._circuit_open[name] = True
+            self._half_open_probe.pop(name, None)
 
     def ensure_circuit_closed(self, name: str) -> None:
         """摘要：在调用前检查熔断状态。
 
         Raises:
-            CircuitBreakerOpenError: 目标 Skill 已进入熔断状态。
+            CircuitBreakerOpenError: 目标 Skill 已进入熔断状态且不允许半开探测。
         """
-        if self.is_circuit_open(name):
+        if self.is_circuit_open(name) and not self.allow_half_open_probe(name):
             raise CircuitBreakerOpenError(f"Skill {name!r} 熔断已打开")
+
+    def allow_half_open_probe(self, name: str) -> bool:
+        """摘要：熔断后允许一次半开探测。
+
+        返回：
+            True 表示允许发起一次探测；False 表示已探测过或未处于熔断态。
+        """
+        return self.should_probe_half_open(name)
+
+    def record_probe_result(self, name: str, success: bool) -> None:
+        """摘要：记录半开探测结果。"""
+        if success:
+            self.record_success(name)
+        else:
+            self.record_failure(name)
+            self._circuit_open[name] = True
 
     def record_success(self, name: str) -> None:
         """摘要：记录一次调用成功（重置熔断计数器）。"""
         self._failure_counts.pop(name, None)
         self._circuit_open.pop(name, None)
+        self._half_open_probe.pop(name, None)
 
     def is_circuit_open(self, name: str) -> bool:
         """摘要：检查熔断是否已打开。"""
         return self._circuit_open.get(name, False)
+
+    def should_probe_half_open(self, name: str) -> bool:
+        """摘要：半开状态下是否允许一次探测。"""
+        if not self.is_circuit_open(name):
+            return False
+        if self._half_open_probe.get(name, False):
+            return False
+        self._half_open_probe[name] = True
+        return True
+
+    def clear_half_open_probe(self, name: str) -> None:
+        """摘要：清除半开探测占位，供恢复或失败后重试。"""
+        self._half_open_probe.pop(name, None)

@@ -190,8 +190,15 @@ class TestSkillInvoker:
         invoker.record_failure("dummy")
         invoker.record_failure("dummy")
         assert invoker.is_circuit_open("dummy")
+        assert invoker.allow_half_open_probe("dummy")
+        assert not invoker.allow_half_open_probe("dummy")
 
-        invoker.record_success("dummy")
+        invoker.record_probe_result("dummy", success=False)
+        assert invoker.is_circuit_open("dummy")
+
+        invoker.clear_half_open_probe("dummy")
+        assert invoker.allow_half_open_probe("dummy")
+        invoker.record_probe_result("dummy", success=True)
         assert not invoker.is_circuit_open("dummy")
 
         invoker.stop("dummy")

@@ -17,11 +17,19 @@ _ORIGINAL_IMPORT_MODULE = importlib.import_module
 _ORIGINAL_EVAL = builtins.eval
 _ORIGINAL_EXEC = builtins.exec
 _SANDBOX_ENABLED = False
+_ALLOWED_IMPORTS = {"math", "json", "datetime", "pathlib", "typing"}
 # TODO(sprint7-close): 目前仅覆盖最小危险能力集合；后续需补充更多运行时边界白名单与子进程级兜底。
 
 
 def _blocked(*_args, **_kwargs):
     raise SkillInvocationError("当前运行模式禁止使用受限能力")
+
+
+def _safe_import(name: str, *args, **kwargs):
+    top = name.split(".", 1)[0]
+    if top not in _ALLOWED_IMPORTS:
+        raise SkillInvocationError(f"当前运行模式禁止导入模块: {name}")
+    return _ORIGINAL_IMPORT_MODULE(name, *args, **kwargs)
 
 
 def enable_runtime_sandbox() -> None:
@@ -31,7 +39,7 @@ def enable_runtime_sandbox() -> None:
         return
     socket.socket = _blocked  # type: ignore[assignment]
     urllib.request.urlopen = _blocked  # type: ignore[assignment]
-    importlib.import_module = _blocked  # type: ignore[assignment]
+    importlib.import_module = _safe_import  # type: ignore[assignment]
     builtins.eval = _blocked  # type: ignore[assignment]
     builtins.exec = _blocked  # type: ignore[assignment]
     _SANDBOX_ENABLED = True

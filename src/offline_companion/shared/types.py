@@ -13,12 +13,18 @@ BUNDLE_VERSION = 1
 
 
 class PurposeType(str, Enum):
-    """摘要：Consent 用途类型（A3；四类覆盖 Skill 调用与商城操作）。"""
+    """摘要：Consent 用途类型（A3；覆盖 Skill / 模组 / 路由 / 沙箱降级）。"""
 
-    SKILL_INVOKE = "skill_invoke"
-    SKILL_CLOUD_CALL = "skill_cloud_call"
-    SKILL_MARKET_INDEX = "skill_market_index"
-    SKILL_MARKET_DOWNLOAD = "skill_market_download"
+    SKILL_NETWORK_EGRESS = "skill_network_egress"
+    SKILL_FILE_ACCESS = "skill_file_access"
+    SKILL_CODE_EXECUTION = "skill_code_execution"
+    SKILL_CLOUD_INFERENCE = "skill_cloud_inference"
+    CLOUD_ROUTING = "cloud_routing"
+    SANDBOX_DOWNGRADE = "sandbox_downgrade"
+    NATIVE_RISK_PROMPT = "native_risk_prompt"
+    PLUGIN_HIGH_RISK_SKILL = "plugin_high_risk_skill"
+    TOOL_EXTERNAL_ENABLE = "tool_external_enable"
+    AGENT_TOOLBOX_HIGH_RISK = "agent_toolbox_high_risk"
 
 
 class PrivacyMode(str, Enum):

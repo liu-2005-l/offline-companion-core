@@ -19,6 +19,8 @@ _REQUIRED_KEYS = frozenset(
     }
 )
 
+_OPTIONAL_COMPAT_KEYS = frozenset({"purpose_type"})
+
 
 def persist_consent_artifact(conn: sqlite3.Connection, artifact: dict[str, Any]) -> None:
     """摘要：校验 Artifact 并写入 C2 审计表（A3 编排 C2）。"""
@@ -42,8 +44,12 @@ def validate_consent_artifact(artifact: dict[str, Any]) -> None:
         raise ConsentArtifactError(f"Consent artifact missing keys: {missing}")
     if not isinstance(artifact.get("request_id"), str):
         raise ConsentArtifactError("request_id must be str")
-    purpose = artifact.get("purpose")
+    purpose = artifact.get("purpose") or artifact.get("purpose_type")
     if not isinstance(purpose, str) or purpose not in {m.value for m in PurposeType}:
         raise ConsentArtifactError(
-            f"purpose 必须为合法 PurposeType 枚举值，当前为 {purpose!r}"
+            f"purpose/purpose_type 必须为合法 PurposeType 枚举值，当前为 {purpose!r}"
         )
+    scope = artifact.get("scope")
+    if not isinstance(scope, str) or not scope.strip():
+        raise ConsentArtifactError("scope must be a non-empty str")
+    artifact.setdefault("purpose_type", purpose)
