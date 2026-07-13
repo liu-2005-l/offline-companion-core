@@ -24,3 +24,5 @@ jobs:
         run: python scripts/ci/run_eval.py
         env:
           PYTHONIOENCODING: utf-8
+      - name: Security summary
+        run: python scripts/ci/security_summary.py --static-checks --security-pytests --dependency-audit

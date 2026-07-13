@@ -18,6 +18,8 @@ from offline_companion.shell.skill_manager.invoker import (
 )
 from offline_companion.shell.skill_manager.manifest import SkillEntrypoint, SkillManifest
 
+pytestmark = pytest.mark.security
+
 
 class TestFindFreePort:
     """测试：动态端口分配。"""

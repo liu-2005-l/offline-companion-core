@@ -10,7 +10,6 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
-from urllib.error import URLError
 
 from offline_companion.shared.errors import (
     CircuitBreakerOpenError,
@@ -94,7 +93,8 @@ class SkillInvoker:
         name = manifest.name
         if name in self._processes:
             raise SkillInvocationError(f"Skill {name!r} 已在运行")
-        self.ensure_circuit_closed(name)
+        if self.is_circuit_open(name):
+            raise CircuitBreakerOpenError(f"Skill {name!r} 熔断已打开")
 
         port = _find_free_port()
         api_key = _generate_api_key()

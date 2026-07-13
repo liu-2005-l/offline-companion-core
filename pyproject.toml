@@ -58,6 +58,9 @@ include = ["offline_companion*", "companion"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+  "security: security-related tests",
+]
 
 [tool.ruff]
 line-length = 100

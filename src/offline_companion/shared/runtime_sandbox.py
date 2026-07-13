@@ -17,7 +17,21 @@ _ORIGINAL_IMPORT_MODULE = importlib.import_module
 _ORIGINAL_EVAL = builtins.eval
 _ORIGINAL_EXEC = builtins.exec
 _SANDBOX_ENABLED = False
-_ALLOWED_IMPORTS = {"math", "json", "datetime", "pathlib", "typing"}
+_ALLOWED_IMPORTS = {
+    "math",
+    "json",
+    "datetime",
+    "pathlib",
+    "typing",
+    "dataclasses",
+    "enum",
+    "functools",
+    "itertools",
+    "collections",
+    "statistics",
+    "fractions",
+    "decimal",
+}
 # TODO(sprint7-close): 目前仅覆盖最小危险能力集合；后续需补充更多运行时边界白名单与子进程级兜底。
 
 
@@ -26,10 +40,15 @@ def _blocked(*_args, **_kwargs):
 
 
 def _safe_import(name: str, *args, **kwargs):
-    top = name.split(".", 1)[0]
-    if top not in _ALLOWED_IMPORTS:
-        raise SkillInvocationError(f"当前运行模式禁止导入模块: {name}")
-    return _ORIGINAL_IMPORT_MODULE(name, *args, **kwargs)
+    raise SkillInvocationError(f"当前运行模式禁止动态导入模块: {name}")
+
+
+def _safe_socket(*args, **kwargs):
+    raise SkillInvocationError("当前运行模式禁止创建网络 socket")
+
+
+def _safe_urlopen(*args, **kwargs):
+    raise SkillInvocationError("当前运行模式禁止发起网络请求")
 
 
 def enable_runtime_sandbox() -> None:
@@ -37,8 +56,8 @@ def enable_runtime_sandbox() -> None:
     global _SANDBOX_ENABLED
     if _SANDBOX_ENABLED:
         return
-    socket.socket = _blocked  # type: ignore[assignment]
-    urllib.request.urlopen = _blocked  # type: ignore[assignment]
+    socket.socket = _safe_socket  # type: ignore[assignment]
+    urllib.request.urlopen = _safe_urlopen  # type: ignore[assignment]
     importlib.import_module = _safe_import  # type: ignore[assignment]
     builtins.eval = _blocked  # type: ignore[assignment]
     builtins.exec = _blocked  # type: ignore[assignment]

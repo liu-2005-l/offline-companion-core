@@ -201,6 +201,16 @@ def _sprint7_security_gate(py: str) -> int:
     if r.returncode != 0:
         print("[FAIL] Sprint7 安全闭环验收", file=sys.stderr)
         return r.returncode
+    summary = ROOT / "scripts" / "ci" / "security_summary.py"
+    summary_cmd = [
+        py,
+        str(summary),
+        "--static-checks",
+        "--security-pytests",
+        "--dependency-audit",
+    ]
+    print("$", " ".join(summary_cmd))
+    subprocess.run(summary_cmd, cwd=str(ROOT), env=_subprocess_env(ROOT))
     print("[PASS] Sprint7 安全闭环验收")
     return 0
 
@@ -253,6 +263,7 @@ def main() -> int:
     steps.extend(
         [
             ("check_imports", [py, "scripts/ci/check_imports.py"]),
+            ("security summary", [py, "scripts/ci/security_summary.py", "--static-checks", "--dependency-audit"]),
         ]
     )
     if not args.skip_fixtures:

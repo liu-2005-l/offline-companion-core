@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from scripts.ci.check_imports import main
 
+import pytest
+
+pytestmark = pytest.mark.security
+
 
 def test_check_imports_script_passes() -> None:
     """当前仓库应通过 AST 分层检查。"""

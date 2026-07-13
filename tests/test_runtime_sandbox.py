@@ -16,6 +16,8 @@ from offline_companion.shared.runtime_sandbox import (
     runtime_sandbox,
 )
 
+pytestmark = pytest.mark.security
+
 
 def test_runtime_sandbox_blocks_dangerous_capabilities():
     enable_runtime_sandbox()

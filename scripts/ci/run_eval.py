@@ -68,8 +68,19 @@ def main() -> int:
         str(ROOT / "tests" / "test_runtime_sandbox.py"),
         str(ROOT / "tests" / "test_ci_checks.py"),
     ]
-    sec_cmd = [sys.executable, "-m", "pytest", "-q", *security_targets]
-    return subprocess.call(sec_cmd, cwd=str(ROOT))
+    sec_cmd = [sys.executable, "-m", "pytest", "-q", "-m", "security", *security_targets]
+    sec_code = subprocess.call(sec_cmd, cwd=str(ROOT))
+    summary = ROOT / "scripts" / "ci" / "security_summary.py"
+    summary_args = [
+        sys.executable,
+        str(summary),
+        "--static-checks",
+        "--dependency-audit",
+    ]
+    if sec_code == 0:
+        summary_args.append("--security-pytests")
+    subprocess.call(summary_args, cwd=str(ROOT))
+    return sec_code
 
 
 if __name__ == "__main__":
