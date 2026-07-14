@@ -264,9 +264,9 @@ Plugin 形态：WebView 内 JS/CSS 片段 + `ui_contributions`；详见 [`PLUGIN
 
 #### 6.3.2.1 PlanOrchestrator（空文件 → 最小闭环）
 
-- **原则**：不要一开始就上 LLM 自主拆解，风险高且难调试。
+- **为什么先做规则引擎**：不要一开始就上 LLM 自主拆解，风险高且难调试。
 - **MVP 路径**：规则引擎 → 单步规划 → 执行 → 状态更新。
-- **建议实现**：先用 YAML/JSON 定义预设任务模板，Orchestrator 只负责按条件执行步骤并更新状态。
+- **最小实现约束**：先用 YAML/JSON 定义预设任务模板，Orchestrator 只负责按条件执行步骤并更新状态。
 
 ```python
 steps = load_template(plan_id)
@@ -277,28 +277,45 @@ for step in steps:
 return context.state.to_result()
 ```
 
+- **验收标准**：
+  1. 能从模板加载步骤序列；
+  2. 能基于 context/state 做条件判断；
+  3. 能按步骤调用 Skill 并回写结果；
+  4. 能输出可追踪的最终状态结果。
 - **后续演进**：在最小闭环跑通后，再引入 LLM 生成动态 DAG。
 
 #### 6.3.2.2 StateManager（基础封装 → 事件驱动）
 
 - **当前状态**：已具备 `session / task / system` 三域统一读写入口。
 - **下一步**：补“监听”能力，作为 IdleThink、Self-Reflection、Orchestrator 联动的神经中枢。
-- **建议实现**：引入简易 Pub/Sub。
+- **最小机制**：先做简易 Pub/Sub，再考虑更完整的事件总线。
 
 ```python
 state_manager.subscribe("task.progress", on_progress)
 state_manager.set("task.progress", 0.7)  # 自动触发回调
 ```
 
+- **验收标准**：
+  1. 监听器可按 domain/key 订阅；
+  2. 状态变更可触发回调；
+  3. 回调失败不应破坏主写入流程；
+  4. Orchestrator 与 IdleThink 可复用同一状态事件通道。
+
 #### 6.3.2.3 AutoRouter（骨架 → 策略引擎）
 
-- **当前状态**：MessageRouter 已能完成基础 Intent → Handler/Skill 分发。
+- **当前状态**：`MessageRouter` 已能完成基础 Intent → Handler/Skill 分发。
 - **下一步**：在此基础上叠加策略层，形成 AutoRouter。
-- **建议策略**：
-  - `privacy_mode == local_only` → 强制本地
-  - `query.complexity > threshold` → 评估云端
-  - `cloud.cost > budget` → 降级或拒绝
+- **推荐策略顺序**：
+  1. `privacy_mode == local_only` → 强制本地；
+  2. `query.complexity > threshold` → 评估云端；
+  3. `cloud.cost > budget` → 降级或拒绝。
 - **建议链路**：FallbackChain：Local → Cloud（DeepSeek）→ Echo/Cache。
+
+- **验收标准**：
+  1. 策略判断独立于消息分发；
+  2. 路由决策可审计、可回放；
+  3. 路由结果可降级且不破坏主对话链路；
+  4. `local_only` 模式不得被云端分支绕过。
 
 #### 6.3.2.4 文档同步标注
 

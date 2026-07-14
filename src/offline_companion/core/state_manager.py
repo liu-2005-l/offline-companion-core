@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from threading import RLock
@@ -14,6 +15,8 @@ from offline_companion.runtime.storage_index.engine import connect
 STATE_DOMAIN_SESSION = "session"
 STATE_DOMAIN_TASK = "task"
 STATE_DOMAIN_SYSTEM = "system"
+
+StateChangeCallback = Callable[["StateRecord", "StateRecord | None"], None]
 
 
 @dataclass(frozen=True)
@@ -33,6 +36,7 @@ class StateManager:
         self._conn = connect(Path(db_path))
         self._lock = RLock()
         self._cache: dict[tuple[str, str], StateRecord] = {}
+        self._subscribers: dict[tuple[str, str], list[StateChangeCallback]] = {}
         self._ensure_schema()
         self._warm_cache()
 
@@ -62,6 +66,21 @@ class StateManager:
                 updated_at=float(updated_at),
             )
 
+    def subscribe(self, domain: str, key: str, callback: StateChangeCallback) -> None:
+        """摘要：订阅某个 domain/key 的状态变更。"""
+        if not callable(callback):
+            raise TypeError("callback must be callable")
+        with self._lock:
+            self._subscribers.setdefault((domain, key), []).append(callback)
+
+    def _notify(self, new_record: StateRecord, old_record: StateRecord | None) -> None:
+        callbacks = list(self._subscribers.get((new_record.domain, new_record.key), []))
+        for callback in callbacks:
+            try:
+                callback(new_record, old_record)
+            except Exception:
+                continue
+
     def get(self, domain: str, key: str, default: Any = None) -> Any:
         record = self._cache.get((domain, key))
         if record is not None:
@@ -80,6 +99,7 @@ class StateManager:
     def set(self, domain: str, key: str, value: Any) -> StateRecord:
         updated_at = time()
         payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
+        old_record = self._cache.get((domain, key))
         with self._lock, self._conn:
             self._conn.execute(
                 """
@@ -92,15 +112,19 @@ class StateManager:
             )
         record = StateRecord(domain=domain, key=key, value=value, updated_at=updated_at)
         self._cache[(domain, key)] = record
+        self._notify(record, old_record)
         return record
 
     def delete(self, domain: str, key: str) -> None:
+        old_record = self._cache.get((domain, key))
         with self._lock, self._conn:
             self._conn.execute(
                 "DELETE FROM state_store WHERE domain = ? AND key = ?;",
                 (domain, key),
             )
         self._cache.pop((domain, key), None)
+        if old_record is not None:
+            self._notify(StateRecord(domain=domain, key=key, value=None, updated_at=time()), old_record)
 
     def get_session_state(self, key: str, default: Any = None) -> Any:
         """摘要：读取会话域状态。"""
