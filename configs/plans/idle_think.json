@@ -1,0 +1,21 @@
+[
+  {
+    "step_id": "scan_session",
+    "skill_id": "inspect_session_state",
+    "result_key": "session_snapshot"
+  },
+  {
+    "step_id": "reflect",
+    "skill_id": "self_reflection",
+    "result_key": "reflection",
+    "condition_key": "session_snapshot",
+    "condition_value": true
+  },
+  {
+    "step_id": "summarize",
+    "skill_id": "summarize_idle_think",
+    "result_key": "idle_summary",
+    "condition_key": "reflection",
+    "condition_value": true
+  }
+]

@@ -15,6 +15,7 @@ from offline_companion.runtime.storage_index.engine import connect
 STATE_DOMAIN_SESSION = "session"
 STATE_DOMAIN_TASK = "task"
 STATE_DOMAIN_SYSTEM = "system"
+STATE_WILDCARD_KEY = "*"
 
 StateChangeCallback = Callable[["StateRecord", "StateRecord | None"], None]
 
@@ -29,6 +30,17 @@ class StateRecord:
     updated_at: float
 
 
+@dataclass(frozen=True)
+class StateEventError:
+    """摘要：状态回调异常记录。"""
+
+    domain: str
+    key: str
+    callback_name: str
+    error: str
+    occurred_at: float
+
+
 class StateManager:
     """摘要：按 domain/key 统一管理会话、任务、系统与配置状态。"""
 
@@ -37,6 +49,7 @@ class StateManager:
         self._lock = RLock()
         self._cache: dict[tuple[str, str], StateRecord] = {}
         self._subscribers: dict[tuple[str, str], list[StateChangeCallback]] = {}
+        self._event_errors: list[StateEventError] = []
         self._ensure_schema()
         self._warm_cache()
 
@@ -70,15 +83,52 @@ class StateManager:
         """摘要：订阅某个 domain/key 的状态变更。"""
         if not callable(callback):
             raise TypeError("callback must be callable")
+        normalized_key = (key or "").strip() or STATE_WILDCARD_KEY
         with self._lock:
-            self._subscribers.setdefault((domain, key), []).append(callback)
+            self._subscribers.setdefault((domain, normalized_key), []).append(callback)
+
+    def unsubscribe(self, domain: str, key: str, callback: StateChangeCallback) -> bool:
+        """摘要：取消订阅某个 domain/key 的状态变更。"""
+        normalized_key = (key or "").strip() or STATE_WILDCARD_KEY
+        with self._lock:
+            callbacks = self._subscribers.get((domain, normalized_key))
+            if not callbacks:
+                return False
+            try:
+                callbacks.remove(callback)
+            except ValueError:
+                return False
+            if not callbacks:
+                self._subscribers.pop((domain, normalized_key), None)
+            return True
+
+    def get_event_errors(self) -> list[StateEventError]:
+        """摘要：获取状态回调异常记录。"""
+        return list(self._event_errors)
+
+    def clear_event_errors(self) -> None:
+        """摘要：清空状态回调异常记录。"""
+        self._event_errors.clear()
+
+    def _record_event_error(self, domain: str, key: str, callback: StateChangeCallback, error: Exception) -> None:
+        self._event_errors.append(
+            StateEventError(
+                domain=domain,
+                key=key,
+                callback_name=getattr(callback, "__name__", callback.__class__.__name__),
+                error=str(error),
+                occurred_at=time(),
+            )
+        )
 
     def _notify(self, new_record: StateRecord, old_record: StateRecord | None) -> None:
         callbacks = list(self._subscribers.get((new_record.domain, new_record.key), []))
+        callbacks.extend(self._subscribers.get((new_record.domain, STATE_WILDCARD_KEY), []))
         for callback in callbacks:
             try:
                 callback(new_record, old_record)
-            except Exception:
+            except Exception as exc:
+                self._record_event_error(new_record.domain, new_record.key, callback, exc)
                 continue
 
     def get(self, domain: str, key: str, default: Any = None) -> Any:
@@ -149,3 +199,7 @@ class StateManager:
     def set_system_state(self, key: str, value: Any) -> StateRecord:
         """摘要：写入系统域状态。"""
         return self.set(STATE_DOMAIN_SYSTEM, key, value)
+
+    def trigger_idle_think(self) -> None:
+        """摘要：空闲态触发入口，供 Orchestrator / IdleThink 监听器接管。"""
+        self.set_system_state("idle_think_requested", True)
