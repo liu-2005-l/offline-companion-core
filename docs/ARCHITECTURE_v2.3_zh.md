@@ -258,6 +258,85 @@ Plugin 形态：WebView 内 JS/CSS 片段 + `ui_contributions`；详见 [`PLUGIN
 - 所有模块读写状态必须通过 StateManager 统一 API，禁止直接互调或跨模块读字段。
 - 每个中间件只能修改 message 中自己专属命名空间的字段（如 Policy 只改 `policy_result`，PlanOrchestrator 只改 `task_steps`）。跨字段修改视为架构违规，CI 直接阻断。
 
+### 6.3.2 Auto 模式（Sprint 7+ 落地建议）
+
+> **定位**：面向后续 Sprint 的最小闭环规划；当前代码仅覆盖基础骨架，先规则引擎、后 LLM 自主化。
+
+#### 6.3.2.1 PlanOrchestrator（空文件 → 最小闭环）
+
+- **原则**：不要一开始就上 LLM 自主拆解，风险高且难调试。
+- **MVP 路径**：规则引擎 → 单步规划 → 执行 → 状态更新。
+- **建议实现**：先用 YAML/JSON 定义预设任务模板，Orchestrator 只负责按条件执行步骤并更新状态。
+
+```python
+steps = load_template(plan_id)
+for step in steps:
+    if step.condition_met(context.state):
+        result = invoke_skill(step.skill_id, context)
+        context.state.update(step.result_key, result)
+return context.state.to_result()
+```
+
+- **后续演进**：在最小闭环跑通后，再引入 LLM 生成动态 DAG。
+
+#### 6.3.2.2 StateManager（基础封装 → 事件驱动）
+
+- **当前状态**：已具备 `session / task / system` 三域统一读写入口。
+- **下一步**：补“监听”能力，作为 IdleThink、Self-Reflection、Orchestrator 联动的神经中枢。
+- **建议实现**：引入简易 Pub/Sub。
+
+```python
+state_manager.subscribe("task.progress", on_progress)
+state_manager.set("task.progress", 0.7)  # 自动触发回调
+```
+
+#### 6.3.2.3 AutoRouter（骨架 → 策略引擎）
+
+- **当前状态**：MessageRouter 已能完成基础 Intent → Handler/Skill 分发。
+- **下一步**：在此基础上叠加策略层，形成 AutoRouter。
+- **建议策略**：
+  - `privacy_mode == local_only` → 强制本地
+  - `query.complexity > threshold` → 评估云端
+  - `cloud.cost > budget` → 降级或拒绝
+- **建议链路**：FallbackChain：Local → Cloud（DeepSeek）→ Echo/Cache。
+
+#### 6.3.2.4 文档同步标注
+
+- 本节属于 **Sprint 7+ 的落地建议**，不是当前已完成事实。
+- 当代码实现尚未落地时，需在架构图 / 任务清单中标注为 **Planned / In Progress**，避免误解为已交付。
+- 实际实现完成后，再将本节条目同步迁移到“已落地基础能力”或对应 Sprint 验收章节。
+
+### 6.3 A2.3.2 自动模式规划（预留 Sprint）
+
+> **定位**：当前仅定义规划骨架，作为后续 Sprint 的落地目标；代码实现仍需后续补齐。
+
+#### 6.3.2.1 目标
+
+- **PlanOrchestrator**：负责复杂目标分解、步骤编排、依赖管理、状态追踪与恢复。
+- **AutoRouter**：负责在本地优先 / 云端路由 / 工具执行之间做策略选择。
+- **StateManager**：承载 `session / task / system` 三域状态，为自动模式提供统一状态读写入口。
+
+#### 6.3.2.2 现阶段代码落地程度
+
+| 能力 | 文档目标 | 代码现状 | 备注 |
+|------|----------|----------|------|
+| StateManager | 三域统一状态入口 | 已落地基础骨架 | 目前仅为 key-value 统一封装，后续可扩展域级约束 |
+| PlanOrchestrator | 任务分解与步骤编排 | 仅有占位文件 | 需要后续 Sprint 实现 |
+| AutoRouter | 自动路由决策 | 尚未实现独立模块 | 当前仅有 `MessageRouter` 骨架，需后续补齐 |
+
+#### 6.3.2.3 推荐落地 Sprint
+
+- **Sprint 8**：先实现 `PlanOrchestrator` 的最小可用版本（任务拆解、步骤状态机、失败重试）。
+- **Sprint 9**：补齐 `AutoRouter` 的路由策略（本地 / 云端 / 工具）与审计记录。
+- **Sprint 10**：将自动模式接入 A2 控制面，并与 `StateManager`、`MessageRouter`、`Consent` 联动。
+
+#### 6.3.2.4 验收标准
+
+1. 复杂目标能够被拆分为有序步骤序列。
+2. 每一步状态可在 `StateManager` 中查询。
+3. 路由决策可审计、可回放。
+4. 自动模式不得绕过 A3 Consent 与 B4 闸门。
+
 **A2 内部模块调用顺序**：每个请求进入 A2 层后，按以下顺序经过各模块处理：
 
 ```text
