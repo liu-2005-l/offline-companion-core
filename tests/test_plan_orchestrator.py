@@ -90,3 +90,39 @@ def test_plan_orchestrator_empty_template_marks_empty(tmp_path: Path) -> None:
 
     assert context.state["status"] == "empty"
     assert sm.get_task_state("plan.missing.status") == "empty"
+
+
+def test_plan_orchestrator_records_retry_and_error(tmp_path: Path) -> None:
+    templates_dir = tmp_path / "plans"
+    templates_dir.mkdir()
+    (templates_dir / "retry.json").write_text(
+        json.dumps(
+            [
+                {
+                    "step_id": "step-1",
+                    "skill_id": "prepare",
+                    "result_key": "prepared",
+                    "retry_count": 1,
+                }
+            ],
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    sm = StateManager(tmp_path / "state.db")
+    orchestrator = PlanOrchestrator(sm, templates_dir)
+    attempts = {"count": 0}
+
+    def invoke_skill(step, context):
+        attempts["count"] += 1
+        raise RuntimeError("boom")
+
+    try:
+        orchestrator.execute_plan("retry", invoke_skill=invoke_skill)
+    except RuntimeError:
+        pass
+
+    assert attempts["count"] == 2
+    assert sm.get_task_state("plan.retry.status") == "failed"
+    assert sm.get_task_state("plan.retry.error") == "boom"
