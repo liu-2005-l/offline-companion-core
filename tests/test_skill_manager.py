@@ -9,7 +9,7 @@ import pytest
 from packaging.version import Version
 
 from offline_companion.shared.errors import SkillManifestError, SkillPolicyDenied
-from offline_companion.shared.types import PrivacyMode
+from offline_companion.shared.types import PrivacyMode, PurposeType
 from offline_companion.shell.skill_manager import (
     check_read_context,
     compare_versions,
@@ -97,6 +97,15 @@ def test_10_cloud_inference_local_only_denied() -> None:
     assert not result.allowed
     with pytest.raises(SkillPolicyDenied, match="当前隐私模式下不可用"):
         require_skill_allowed(manifest, privacy_mode=PrivacyMode.LOCAL_ONLY)
+
+
+def test_cloud_inference_uses_cloud_inference_purpose_type() -> None:
+    """cloud_inference 放行时必须返回正式 Consent 用途枚举。"""
+    manifest = load_manifest_file(_VALID)
+    result = evaluate_skill_policy(manifest, privacy_mode=PrivacyMode.ASK_BEFORE_CLOUD)
+    assert result.allowed
+    assert result.requires_consent
+    assert result.purpose_hint is PurposeType.SKILL_CLOUD_INFERENCE
 
 
 def test_11_empty_installed_dir_returns_empty_list(tmp_path) -> None:

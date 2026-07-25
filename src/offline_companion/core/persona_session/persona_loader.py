@@ -7,6 +7,7 @@ from pathlib import Path
 
 import yaml
 
+from offline_companion.shared.errors import B1PersonaAssembleError
 from offline_companion.shared.types import Persona
 
 _DEFAULT_COMPANION_DISPLAY_NAME = "助手一号"
@@ -29,7 +30,7 @@ def load_persona_file(path: Path) -> Persona:
     name = str(data.get("name") or pid)
     system_prompt = str(data.get("system_prompt") or "").strip()
     if not system_prompt:
-        raise ValueError(f"Persona {path} missing system_prompt")
+        raise B1PersonaAssembleError(f"Persona {path} missing system_prompt")
     role_lock = bool(data.get("role_lock", True))
     memory_default_on = bool(data.get("memory_default_on", True))
     default_display = str(data.get("default_companion_display_name") or _DEFAULT_COMPANION_DISPLAY_NAME).strip()

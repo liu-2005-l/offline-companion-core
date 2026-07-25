@@ -12,6 +12,8 @@ from offline_companion.shared.errors import BundleFormatError
 from offline_companion.shared.types import BUNDLE_FORMAT, BUNDLE_VERSION, ExportBundlePayload
 
 from . import fts_ops
+from .decision_engine import MemoryDecision, MemoryDecisionEngine
+from .reader import MemoryReader
 from .recall import format_recall_prompt_block, recall
 
 
@@ -36,15 +38,26 @@ def _read_jsonl(text: str) -> list[dict[str, Any]]:
 class MemoryLifecycleManager:
     """摘要：对外暴露记忆 CRUD、导出载荷组装与导入应用。"""
 
+    decision_engine = MemoryDecisionEngine()
     add_memory_chunk = staticmethod(fts_ops.add_memory_chunk)
     search_memory = staticmethod(fts_ops.search_memory)
     list_recent_memory = staticmethod(fts_ops.list_recent_memory)
+    list_memory_rows = staticmethod(fts_ops.list_memory_rows)
+    latest_profile_memory = staticmethod(fts_ops.latest_profile_memory)
     delete_memory_chunk = staticmethod(fts_ops.delete_memory_chunk)
     update_memory_chunk = staticmethod(fts_ops.update_memory_chunk)
+    invalidate_memory_chunk = staticmethod(fts_ops.invalidate_memory_chunk)
+    restore_memory_chunk = staticmethod(fts_ops.restore_memory_chunk)
+    count_memory_rows = staticmethod(fts_ops.count_memory_rows)
     maybe_extract_memory_commands = staticmethod(fts_ops.maybe_extract_memory_commands)
     format_memory_block = staticmethod(fts_ops.format_memory_block)
     recall = staticmethod(recall)
     format_recall_prompt_block = staticmethod(format_recall_prompt_block)
+    memory_reader = MemoryReader()
+
+    @staticmethod
+    def decide_memory(user_text: str) -> MemoryDecision:
+        return MemoryLifecycleManager.decision_engine.decide(user_text)
 
 
 def prepare_export_bundle(
@@ -141,14 +154,14 @@ def apply_bundle_import(
         old_sid = mem.get("session_id")
         new_sid = id_map.get(str(old_sid)) if old_sid else None
         conn.execute(
-            "INSERT INTO memory_chunks(session_id, source, body, created_at, updated_at, meta_json) "
+            "INSERT INTO memory_chunks(session_id, source, body, created_at, modified_at, meta_json) "
             "VALUES(?,?,?,?,?,?);",
             (
                 new_sid,
                 str(mem["source"]),
                 str(mem["body"]),
                 float(mem["created_at"]),
-                float(mem["updated_at"]),
+                float(mem["modified_at"]),
                 str(mem.get("meta_json") or "{}"),
             ),
         )

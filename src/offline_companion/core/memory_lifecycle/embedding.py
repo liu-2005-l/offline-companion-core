@@ -6,6 +6,7 @@ import json
 import math
 import re
 import sqlite3
+import time
 
 from .embedding_config import MemoryEmbeddingConfig, load_embedding_config
 
@@ -110,6 +111,26 @@ def maybe_write_embedding(
     )
 
 
+def _parse_ts(value: object) -> float:
+    """摘要：统一时间解析，兼容 float / int / ISO 8601 字符串 / 数字字符串。
+
+    返回值：
+        解析后的 Unix 时间戳（float）；解析失败时回退当前时间。
+    """
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value)
+    try:
+        return float(text)
+    except ValueError:
+        try:
+            from datetime import datetime
+
+            return datetime.fromisoformat(text.replace("Z", "+00:00")).timestamp()
+        except Exception:
+            return time.time()
+
+
 def embedding_candidates(
     conn: sqlite3.Connection,
     query: str,
@@ -124,7 +145,8 @@ def embedding_candidates(
     qvec = embed_text(query, dimensions=cfg.dimensions)
     rows = conn.execute(
         "SELECT id, body, embedding_blob, created_at FROM memory_chunks "
-        "WHERE embedding_blob IS NOT NULL ORDER BY updated_at DESC LIMIT ?;",
+        "WHERE status = 'active' AND embedding_blob IS NOT NULL "
+        "ORDER BY modified_at DESC LIMIT ?;",
         (scan_limit,),
     ).fetchall()
     out: list[tuple[int, str, float, float]] = []
@@ -134,6 +156,6 @@ def embedding_candidates(
             continue
         sim = cosine_similarity(qvec, vec)
         if sim >= cfg.min_cosine:
-            out.append((int(r["id"]), str(r["body"]), sim, float(r["created_at"])))
+            out.append((int(r["id"]), str(r["body"]), sim, _parse_ts(r["created_at"])))
     out.sort(key=lambda x: x[2], reverse=True)
     return out

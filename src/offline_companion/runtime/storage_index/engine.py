@@ -1,4 +1,4 @@
-"""engine：SQLite 连接、迁移与会话/消息表访问（C2）。"""
+"""engine：SQLite 连接、迁移与消息访问。"""
 
 from __future__ import annotations
 
@@ -10,23 +10,18 @@ from typing import Any
 
 from offline_companion.shared.types import MessageRow
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 6
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
-    """摘要：打开数据库并执行迁移。
-
-    参数：
-        db_path: SQLite 文件路径。
-
-    返回值：
-        已启用 foreign_keys 的连接。
-    """
+    """摘要：打开数据库并执行迁移。"""
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    # A1 宿主（Flask threaded、pywebview JS bridge）可能跨线程访问同一连接
     conn = sqlite3.connect(str(db_path), isolation_level=None, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
+    conn.execute("PRAGMA busy_timeout = 5000;")
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA synchronous = NORMAL;")
     _migrate(conn)
     return conn
 
@@ -41,20 +36,29 @@ def _migrate(conn: sqlite3.Connection) -> None:
         """
     )
     row = conn.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()
-    ver = int(row["value"]) if row else 0
-    if ver < 1:
+    version = int(row["value"]) if row else 0
+    if version < 1:
         _init_v1(conn)
-        ver = 1
-    if ver < 2:
+        version = 1
+    if version < 2:
         _init_v2(conn)
-        ver = 2
-    if ver < 3:
+        version = 2
+    if version < 3:
         _init_v3(conn)
-        ver = 3
+        version = 3
+    if version < 4:
+        _init_v4(conn)
+        version = 4
+    if version < 5:
+        _init_v5(conn)
+        version = 5
+    if version < 6:
+        _init_v6(conn)
+        version = 6
     conn.execute(
         "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
-        (str(ver),),
+        (str(version),),
     )
 
 
@@ -73,7 +77,8 @@ def _init_v1(conn: sqlite3.Connection) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
             role TEXT NOT NULL,
-            content TEXT NOT NULL,
+            content TEXT NOT NULL DEFAULT '',
+            emotion TEXT,
             created_at REAL NOT NULL,
             meta_json TEXT
         );
@@ -82,30 +87,41 @@ def _init_v1(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS memory_chunks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+            content TEXT NOT NULL,
+            body TEXT,
+            memory_type TEXT NOT NULL DEFAULT 'fact',
+            status TEXT NOT NULL DEFAULT 'active',
             source TEXT NOT NULL,
-            body TEXT NOT NULL,
-            created_at REAL NOT NULL,
-            updated_at REAL NOT NULL,
+            created_at TEXT NOT NULL,
+            modified_at TEXT NOT NULL,
+            metadata TEXT NOT NULL DEFAULT '{}',
             meta_json TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_memory_created ON memory_chunks(created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_memory_modified ON memory_chunks(modified_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_memory_type_status ON memory_chunks(memory_type, status);
 
         CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(
+            content,
             body,
             content='memory_chunks',
             content_rowid='id',
-            tokenize = 'unicode61'
+            tokenize='unicode61'
         );
 
         CREATE TRIGGER IF NOT EXISTS memory_ai AFTER INSERT ON memory_chunks BEGIN
-            INSERT INTO memory_fts(rowid, body) VALUES (new.id, new.body);
+            INSERT INTO memory_fts(rowid, content, body)
+            VALUES (new.id, new.content, COALESCE(new.body, new.content));
         END;
         CREATE TRIGGER IF NOT EXISTS memory_ad AFTER DELETE ON memory_chunks BEGIN
-            INSERT INTO memory_fts(memory_fts, rowid, body) VALUES('delete', old.id, old.body);
+            INSERT INTO memory_fts(memory_fts, rowid, content, body)
+            VALUES('delete', old.id, old.content, COALESCE(old.body, old.content));
         END;
         CREATE TRIGGER IF NOT EXISTS memory_au AFTER UPDATE ON memory_chunks BEGIN
-            INSERT INTO memory_fts(memory_fts, rowid, body) VALUES('delete', old.id, old.body);
-            INSERT INTO memory_fts(rowid, body) VALUES (new.id, new.body);
+            INSERT INTO memory_fts(memory_fts, rowid, content, body)
+            VALUES('delete', old.id, old.content, COALESCE(old.body, old.content));
+            INSERT INTO memory_fts(rowid, content, body)
+            VALUES (new.id, new.content, COALESCE(new.body, new.content));
         END;
 
         CREATE TABLE IF NOT EXISTS consent_artifacts (
@@ -119,7 +135,6 @@ def _init_v1(conn: sqlite3.Connection) -> None:
 
 
 def _init_v2(conn: sqlite3.Connection) -> None:
-    """摘要：Sprint 4.2 记忆摘要草稿表（与 memory_chunks 隔离）。"""
     conn.executescript(
         """
         CREATE TABLE IF NOT EXISTS memory_drafts (
@@ -137,10 +152,45 @@ def _init_v2(conn: sqlite3.Connection) -> None:
 
 
 def _init_v3(conn: sqlite3.Connection) -> None:
-    """摘要：Sprint 5.1 记忆块可选向量 BLOB。"""
-    cols = {r[1] for r in conn.execute("PRAGMA table_info(memory_chunks);").fetchall()}
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(memory_chunks);").fetchall()}
     if "embedding_blob" not in cols:
         conn.execute("ALTER TABLE memory_chunks ADD COLUMN embedding_blob BLOB;")
+
+
+def _init_v4(conn: sqlite3.Connection) -> None:
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(memory_chunks);").fetchall()}
+    required = {
+        "content": "TEXT NOT NULL DEFAULT ''",
+        "body": "TEXT",
+        "memory_type": "TEXT NOT NULL DEFAULT 'fact'",
+        "status": "TEXT NOT NULL DEFAULT 'active'",
+        "source": "TEXT NOT NULL DEFAULT 'user_explicit'",
+        "created_at": "TEXT NOT NULL DEFAULT ''",
+        "modified_at": "TEXT NOT NULL DEFAULT ''",
+        "metadata": "TEXT NOT NULL DEFAULT '{}'",
+        "meta_json": "TEXT",
+    }
+    for name, ddl in required.items():
+        if name not in cols:
+            conn.execute(f"ALTER TABLE memory_chunks ADD COLUMN {name} {ddl};")
+
+
+def _init_v5(conn: sqlite3.Connection) -> None:
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(memory_chunks);").fetchall()}
+    required = {
+        "embedding_blob": "BLOB",
+        "embedding_model": "TEXT",
+        "embedding_dim": "INTEGER",
+    }
+    for name, ddl in required.items():
+        if name not in cols:
+            conn.execute(f"ALTER TABLE memory_chunks ADD COLUMN {name} {ddl};")
+
+
+def _init_v6(conn: sqlite3.Connection) -> None:
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(messages);").fetchall()}
+    if "emotion" not in cols:
+        conn.execute("ALTER TABLE messages ADD COLUMN emotion TEXT;")
 
 
 def new_session(conn: sqlite3.Connection, session_id: str, persona_id: str, title: str | None) -> None:
@@ -161,30 +211,22 @@ def append_message(
     role: str,
     content: str,
     meta: dict[str, Any] | None = None,
+    emotion: str | None = None,
 ) -> int:
-    mid = conn.execute(
-        "INSERT INTO messages(session_id, role, content, created_at, meta_json) "
-        "VALUES(?,?,?,?,?);",
-        (session_id, role, content, time.time(), json.dumps(meta or {})),
+    message_id = conn.execute(
+        "INSERT INTO messages(session_id, role, content, emotion, created_at, meta_json) "
+        "VALUES(?,?,?,?,?,?);",
+        (session_id, role, content, emotion, time.time(), json.dumps(meta or {})),
     ).lastrowid
-    assert mid is not None
+    assert message_id is not None
     touch_session(conn, session_id)
-    return int(mid)
+    return int(message_id)
 
 
 def clear_session_messages(conn: sqlite3.Connection, session_id: str) -> int:
-    """摘要：删除指定会话的全部消息（不清除会话行与记忆库）。
-
-    参数：
-        conn: SQLite 连接。
-        session_id: 会话 ID。
-
-    返回值：
-        删除的消息行数。
-    """
-    cur = conn.execute("DELETE FROM messages WHERE session_id = ?;", (session_id,))
+    cursor = conn.execute("DELETE FROM messages WHERE session_id = ?;", (session_id,))
     touch_session(conn, session_id)
-    return int(cur.rowcount)
+    return int(cursor.rowcount)
 
 
 def recent_messages(conn: sqlite3.Connection, session_id: str, limit: int) -> list[MessageRow]:
@@ -193,14 +235,14 @@ def recent_messages(conn: sqlite3.Connection, session_id: str, limit: int) -> li
         "WHERE session_id = ? ORDER BY id DESC LIMIT ?;",
         (session_id, limit),
     ).fetchall()
-    out: list[MessageRow] = []
-    for r in reversed(rows):
-        out.append(
+    messages: list[MessageRow] = []
+    for row in reversed(rows):
+        messages.append(
             MessageRow(
-                role=r["role"],
-                content=r["content"],
-                created_at=float(r["created_at"]),
-                meta=json.loads(r["meta_json"] or "{}"),
+                role=row["role"],
+                content=row["content"],
+                created_at=float(row["created_at"]),
+                meta=json.loads(row["meta_json"] or "{}"),
             )
         )
-    return out
+    return messages

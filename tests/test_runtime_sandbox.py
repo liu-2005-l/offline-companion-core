@@ -26,8 +26,14 @@ def test_runtime_sandbox_blocks_dangerous_capabilities():
             socket.socket()
         with pytest.raises(SkillInvocationError):
             urllib.request.urlopen("https://example.com")
+        assert importlib.import_module("json").loads("{}") == {}
+        assert importlib.import_module("sqlite3").connect(":memory:") is not None
         with pytest.raises(SkillInvocationError):
-            importlib.import_module("json")
+            builtins.__import__("socket")
+        with pytest.raises(SkillInvocationError):
+            builtins.__import__("os")
+        assert builtins.__import__("json").loads("{}") == {}
+        assert builtins.__import__("sqlite3").connect(":memory:") is not None
         with pytest.raises(SkillInvocationError):
             builtins.eval("1 + 1")
         with pytest.raises(SkillInvocationError):
@@ -41,3 +47,4 @@ def test_runtime_sandbox_context_manager_restores_state():
         with pytest.raises(SkillInvocationError):
             socket.socket()
     assert socket.socket is not None
+    assert builtins.__import__("os") is not None

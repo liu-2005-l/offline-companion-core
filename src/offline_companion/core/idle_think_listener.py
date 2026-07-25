@@ -101,7 +101,9 @@ class IdleThinkOrchestratorBridge:
         }
 
     def _on_idle_think(self) -> None:
-        self.plan_orchestrator.execute_plan(
+        context = self.plan_orchestrator.execute_plan(
             self.plan_id,
             invoke_skill=self._default_invoke_skill,
         )
+        self.state_manager.set_task_state(f"plan.{self.plan_id}.status", context.status.value)
+        self.state_manager.set_task_state(f"plan.{self.plan_id}.context", context.to_snapshot())

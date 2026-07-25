@@ -10,6 +10,7 @@ from offline_companion.runtime.inference_backend import (
     resolve_gguf_path,
 )
 from offline_companion.shared.errors import InferenceBackendError
+from offline_companion.shared.types import ModelRuntimeConfig
 
 
 def test_resolve_gguf_missing_file(tmp_path: Path) -> None:
@@ -58,8 +59,9 @@ def test_llama_generate_merges_memory_into_single_system_message(tmp_path: Path)
     captured: dict[str, object] = {}
 
     class _FakeLlama:
-        def create_chat_completion(self, *, messages, max_tokens):
+        def create_chat_completion(self, *, messages, max_tokens, stop=None):
             captured["messages"] = messages
+            captured["stop"] = stop
             return {"choices": [{"message": {"content": "ok"}}]}
 
     backend._llama = _FakeLlama()
@@ -77,6 +79,41 @@ def test_llama_generate_merges_memory_into_single_system_message(tmp_path: Path)
     assert "sys" in msgs[0]["content"]
     assert "mem-block" in msgs[0]["content"]
     assert all(m["role"] != "system" or i == 0 for i, m in enumerate(msgs))
+
+
+def test_llama_backend_applies_stop_tokens_and_strips_tags(tmp_path: Path) -> None:
+    """C1 应使用模型配置中的 stop_tokens，并剥离特殊输出标签。"""
+    from offline_companion.runtime.inference_backend.backend import LlamaCppBackend
+
+    gguf = tmp_path / "tiny.gguf"
+    gguf.write_bytes(b"FAKE")
+    backend = LlamaCppBackend(
+        gguf,
+        skip_load=True,
+        model_config=ModelRuntimeConfig(
+            model_id="test",
+            stop_tokens=("<stop>",),
+            strip_output_tags=("think",),
+        ),
+    )
+    captured: dict[str, object] = {}
+
+    class _FakeLlama:
+        def create_chat_completion(self, *, messages, max_tokens, stop=None):
+            captured["stop"] = stop
+            return {"choices": [{"message": {"content": "<think>hidden</think>visible"}}]}
+
+    backend._llama = _FakeLlama()
+    result = backend.generate(
+        system_prompt="sys",
+        history=[],
+        user_message="q",
+        memory_block="",
+        max_tokens=8,
+    )
+
+    assert result == "visible"
+    assert captured["stop"] == ["<stop>"]
 
 
 def test_create_llama_backend_raises_on_bad_path() -> None:

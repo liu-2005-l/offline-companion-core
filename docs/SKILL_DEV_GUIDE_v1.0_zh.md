@@ -57,7 +57,7 @@ Skill 扩展 **Agent 能力**（能做什么），以 **独立进程 + localhost
 
 | 权限 | 行为 |
 |------|------|
-| `cloud_inference` | Consent `skill_cloud_call`（每条 manifest 至多触发一条云端 Consent） |
+| `cloud_inference` | Consent `skill_cloud_inference`（每条 manifest 至多触发一条云端 Consent） |
 | `network_egress` | 出站；`LOCAL_ONLY` **硬拒** |
 | `read_session_context` | 远期；MVP `check_read_context()` 恒 False |
 
@@ -111,7 +111,7 @@ novel-writer/                     # 仓库根 = 安装目录名
 | 隐私模式 | 权限 | 结果 |
 |----------|------|------|
 | `LOCAL_ONLY` | `network_egress` 或 `cloud_inference` | 硬拒 |
-| 其他 | `cloud_inference` | 允许 + `skill_cloud_call` |
+| 其他 | `cloud_inference` | 允许 + `skill_cloud_inference` |
 | 其他 | 仅本地 | `skill_invoke` |
 
 实现：`shell/skill_manager/policy.py`。
@@ -134,7 +134,7 @@ novel-writer/                     # 仓库根 = 安装目录名
 | 类型 | 场景 |
 |------|------|
 | `skill_invoke` | 纯本地 |
-| `skill_cloud_call` | 含 `cloud_inference` |
+| `skill_cloud_inference` | 含 `cloud_inference` |
 | `skill_market_index` | 商城索引 |
 | `skill_market_download` | 拉包 |
 

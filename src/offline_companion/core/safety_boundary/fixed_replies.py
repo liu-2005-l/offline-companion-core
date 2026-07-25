@@ -9,6 +9,7 @@ from typing import Any
 
 import yaml
 
+from offline_companion.shared.errors import B3RepliesConfigError, B3RepliesConfigNotFoundError
 from offline_companion.shared.runtime_paths import configs_dir
 
 # 兼容旧引用（测试或外部 import）；内容由默认 YAML 填充
@@ -50,19 +51,19 @@ def default_safety_replies_path() -> Path:
 def _parse_bundle(path: Path, data: dict[str, Any]) -> SafetyRepliesBundle:
     tiers = data.get("tiers")
     if not isinstance(tiers, dict):
-        raise ValueError(f"话术库 {path} 缺少 tiers 节点")
+        raise B3RepliesConfigError(f"话术库 {path} 缺少 tiers 节点")
 
     def _tier(name: str) -> tuple[tuple[str, ...], str]:
         block = tiers.get(name)
         if not isinstance(block, dict):
-            raise ValueError(f"话术库 {path} 缺少 tiers.{name}")
+            raise B3RepliesConfigError(f"话术库 {path} 缺少 tiers.{name}")
         markers_raw = block.get("markers")
         if not isinstance(markers_raw, list) or not markers_raw:
-            raise ValueError(f"话术库 {path} tiers.{name}.markers 无效")
+            raise B3RepliesConfigError(f"话术库 {path} tiers.{name}.markers 无效")
         markers = tuple(str(m).strip() for m in markers_raw if str(m).strip())
         reply = str(block.get("reply") or "").strip()
         if not reply:
-            raise ValueError(f"话术库 {path} tiers.{name}.reply 为空")
+            raise B3RepliesConfigError(f"话术库 {path} tiers.{name}.reply 为空")
         return markers, reply
 
     self_markers, self_reply = _tier("crisis_self")
@@ -100,11 +101,11 @@ def load_safety_replies(path: Path | None = None, *, reload: bool = False) -> Sa
         return _CACHE_BY_PATH[resolved]
 
     if not resolved.is_file():
-        raise FileNotFoundError(f"安全话术库不存在: {resolved}")
+        raise B3RepliesConfigNotFoundError(f"安全话术库不存在: {resolved}")
 
     raw = yaml.safe_load(resolved.read_text(encoding="utf-8")) or {}
     if not isinstance(raw, dict):
-        raise ValueError(f"话术库格式错误: {resolved}")
+        raise B3RepliesConfigError(f"话术库格式错误: {resolved}")
 
     bundle = _parse_bundle(resolved, raw)
     _CACHE_BY_PATH[resolved] = bundle

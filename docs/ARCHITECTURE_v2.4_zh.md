@@ -1,6 +1,6 @@
-# Offline Companion · 开发思路与架构 v2.4（中文 · 权威）
+﻿# Offline Companion · 开发思路与架构 v2.4（中文 · 权威）
 
-> **版本**：v2.3 · **日期**：2026-07-15（安全闭环修订）
+> **版本**：v2.4 · **日期**：2026-07-15（安全闭环修订）
 > **历史基线**：[`architecture_v1.0.md`](./architecture_v1.0.md)（只读，冲突以本文为准）
 > **英文**：[`ARCHITECTURE_v2.3_en.md`](./ARCHITECTURE_v2.3_en.md)（英文版同步中）
 
@@ -140,7 +140,9 @@ TaskContext：一个临时的、与任务绑定的数据空间，Skill 执行时
 - **Native 模式文件系统沙箱**：Native 模式下默认限制 Skill 文件访问范围为 `extensions/installed/<skill-name>/` 目录。如需访问外部路径（如 `exports/`），须在 manifest 中声明 `file_access` 权限并列出具体路径，经 A2 策略检查 + A3 Consent 确认后才放行。高风险 Skill（如 agent-toolbox）在 Native 模式下默认禁用文件操作、网络等高危能力，需用户手动授予。实现方式：A2 层在调用 Skill 前校验请求路径前缀，拦截超出 `extensions/installed/<skill-name>/` 的访问；Native 模式下通过 Python `os.path` 模块做路径规范化后再比对，防止 `../` 穿越。
 - **内置 Skill 文件哈希校验**：所有内置 Skill 启动前做文件哈希校验，和官方预置的哈希值比对，不一致直接拒绝运行。Native 模式下强制开启此校验，Docker 模式下可选。不解决校验问题，仅靠「官方内置」的标签防不住本地文件篡改。
 - **Native 模式系统调用级拦截**：Native 模式下补充系统调用级拦截，分平台实现：
-  - **Linux**：使用 seccomp-bpf 限制系统调用白名单，只开放 Skill 声明权限对应的系统调用（如纯计算 Skill 只开放 read/write/exit 等基础调用，禁止 socket/clone/mount 等）。
+  - **Linux**：使用 seccomp-bpf 限制系统调用白名单。Sprint 8 的实际边界是：默认阻断网络（`socket*`）、进程扩张（`clone/fork/vfork`）、执行（`execve/execveat`）、提权/调试（`ptrace`）、挂载（`mount/umount2`）以及内核攻击面（`bpf` / `perf_event_open` / `kexec_load`）。由于 Python 运行时依赖 `open/openat` 完成脚本加载与动态 `import`，**compute profile 当前允许文件读写**。
+  - **Linux / file_io profile**：在 compute 基础上额外开放文件管理类 syscall（如 `mkdir/mkdirat`、`rename/renameat`、`unlink/unlinkat`、`chmod/fchmod/fchmodat`、`chown/fchown/fchownat`、`ftruncate/truncate`、`linkat`、`symlinkat`），形成真正有意义的文件能力增量。
+  - **路径级文件访问控制**：不由 Sprint 8 的 seccomp 解决，后续通过 **Landlock**（Sprint 9+）补充路径级拦截。
   - **macOS**：使用 sandbox-exec 配置沙箱，限制文件系统访问、网络访问和进程创建。
   - **Windows**：使用 Job Object + 受限令牌，限制进程创建、文件系统访问和网络访问。
   系统调用级拦截在 Skill 进程启动时由 A2 层配置，Skill 进程内无法绕过。实现优先级：Linux seccomp-bpf 优先（Sprint 8），macOS 和 Windows 后续补充（Sprint 9+）。
@@ -670,12 +672,12 @@ A1 检测用户 N 分钟无交互
 
 | 项 | 共识 | 状态 |
 |----|------|------|
-| iframe 沙箱隔离 | 每个 Plugin 运行在独立 iframe，禁止访问主页面 DOM，仅通过 postMessage 与 Bridge 通信 | 📅 S8 |
+| iframe 沙箱隔离 | 每个 Plugin 运行在独立 iframe，禁止访问主页面 DOM，仅通过 postMessage 与 Bridge 通信；首期已落 mock 宿主与会话校验骨架 | 🔶 部分完成 |
 | Bridge 签名校验 | 每个 Plugin 分配独立令牌，校验权限范围；参数做严格类型 + 值域校验 | 📅 S8 |
 | 上架安全扫描 | 检测危险 API、XSS payload、越权调用尝试，不通过禁止上架 | 📅 S8 |
-| iframe sandbox 最小化 | 默认仅 `allow-scripts`，按需开启其他属性 | 📅 S8 |
+| iframe sandbox 最小化 | 默认仅 `allow-scripts`，按需开启其他属性；当前 mock 宿主已按该最小集挂载 | 🔶 部分完成 |
 | 存储完全隔离 | 每个 Plugin 的 localStorage、cookie、IndexedDB 完全独立 | 📅 S8 |
-| Skill 调用白名单 | Plugin 可调用的 Skill 必须在 plugin.json 声明，未声明直接拦截；高危调用走 A3 Consent | 📅 S8 |
+| Skill 调用白名单 | Plugin 可调用的 Skill 必须在 plugin.json 声明，未声明直接拦截；高危调用走 A3 Consent。当前宿主已对未授权 capability 与错误 schema 做硬拒绝 | 🔶 部分完成 |
 
 ---
 
@@ -839,7 +841,7 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 
 ### Sprint 9A（核心骨架）
 
-**AutoRouter**（TaskProfiler 规则引擎版 + CostPredictor + 决策引擎 + 云端路由 Consent；初期对接前置规则过滤器，S9B 对接 Router LLM）；Tool（`tool_registry` + 分级）；**PlanOrchestrator + TaskContext**；**PlanNotebook**；**消息队列升级**（agent-toolbox ZeroMQ/nanomsg 通信模式 + A2 MessageRouter）；**ResourceArbitrator**；**A 层语义封装 + CI prompt 关键词扫描**（Skill 能力描述生成、反向相似度校验、B 层 prompt 解耦、B 层模板关键词扫描、Skill 新增解耦集成测试）；**记忆三路混合检索**（向量语义 + BM25 + FTS5 融合排序、引用标记、召回去重）；**Tool 迁移收口**：S9 收尾前完成所有 external Tool → 微型 Skill 迁移，届时移除 external 入口。
+**AutoRouter**（TaskProfiler 规则引擎版 + CostPredictor + 决策引擎 + 云端路由 Consent；初期对接前置规则过滤器，S9B 对接 Router LLM）；Tool（`tool_registry` + 分级）；**PlanOrchestrator + TaskContext**；**PlanNotebook**；**消息队列升级**（agent-toolbox ZeroMQ/nanomsg 通信模式 + A2 MessageRouter）；**ResourceArbitrator**；**A 层语义封装 + CI prompt 关键词扫描**（Skill 能力描述生成、反向相似度校验、B 层 prompt 解耦、B 层模板关键词扫描、Skill 新增解耦集成测试）；**模型适配 P0：模型自动发现 + 对话模板配置化**（启动时扫描 `models/` 目录，读取 GGUF metadata：架构、上下文窗口、`tokenizer.chat_template`、BOS/EOS、特殊 token；能完整识别则自动注册为可用模型，缺少关键字段则标记为「需手动配置」并提示补 `configs/models/<model>.yaml`；不兼容架构标记为「不兼容」，避免加载失败才暴露；B1 `assemble_reply` 不再硬编码 Qwen/ChatML 格式；配置包含 `chat_template`、`stop_tokens`、`supports_system_role`、`n_ctx`、`add_bos_token`、`eos_token`、默认推理参数，并为 MoE 预留 `moe` 字段）；**模型适配 P0：特殊输出格式剥离**（B4 增加模型感知的输出清理器，根据模型配置剥离 `<think>...</think>`、Qwen3 Thinking、DeepSeek-R1 等思考链标签，避免推理过程直接展示给用户）；**记忆三路混合检索**（向量语义 + BM25 + FTS5 融合排序、引用标记、召回去重）；**Tool 迁移收口**：S9 收尾前完成所有 external Tool → 微型 Skill 迁移，届时移除 external 入口。
 
 > 9A 目标：先跑通复杂任务编排骨架，确保 PlanOrchestrator 能正确分解、执行和恢复任务。同步完成 Tool 后门封堵。
 
@@ -848,10 +850,11 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 
 ### Sprint 9B（软能力）
 
-**GoalManager + IdleThink 循环**（被动画像的前置）；**AttentionAwareness**；**Router LLM + Self-Reflection**；桌面二次元小人；**UI 微交互**（呼吸灯 + 执行动画 + 待机姿态，与二次元小人并列）。
+**GoalManager + IdleThink 循环**（被动画像的前置）；**AttentionAwareness**；**Router LLM + Self-Reflection**；**模型适配 P1：能力画像层 + Prompt 分层解耦**（为每个模型声明 `capability_profile`：`instruction_following`、`roleplay_quality`、`safety_sensitivity`、`reasoning_ability`、`max_context`；B1/B3/B4 根据能力画像动态调整人格提示、安全提示、润色强度和上下文压缩阈值；Prompt 拆为内容层与格式层，内容层模型无关，格式层由 chat template / role map / stop tokens 决定）；桌面二次元小人；**UI 微交互**（呼吸灯 + 执行动画 + 待机姿态，与二次元小人并列）。
 
 **Sprint 9B 补充**：
 - **场景静默 + 频率硬锁 + 负反馈硬降权 + 语义负反馈 + 紧急仅用户标记 + B4 闸门 + 默认关闭渐进解锁**
+- **模型适配验证基础**：增加 Qwen / Llama / Mistral / DeepSeek 等主流本地模型的最小 smoke 样例，覆盖模板装配、停止词、system role 兼容与 `<think>` 等特殊输出剥离策略。
 
 | 子项 | 内容 | 状态 |
 |------|------|------|
@@ -863,6 +866,13 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 ### Sprint 10+（远期探索）
 
 - **AutoRouter 升级**：TaskProfiler 升级微型 LLM；引入用户反馈学习 + ResourceArbitrator 资源状态反馈，实现个性化路由；**成本预估模型自优化**（根据实际消耗回传数据持续校准预估准确率）
+- **模型适配 P2：统一 Backend 适配层**：扩充 C1 `LLMBackend`，覆盖本地 GGUF（llama.cpp）、OpenAI-compatible 云端 API、特殊模型专用适配（多模态、思考链模型等）；云端模型统一优先走 OpenAI-compatible 适配，避免每新增一个模型就重写一套调用链。
+- **模型适配 P2：流式输出统一处理**：C1 Backend 抽象层提供统一 `stream_generate` 接口，本地 llama-cpp-python generator 与云端 OpenAI-compatible SSE 均适配为同一事件流，上层 B1/B4/UI 不感知本地或云端差异。
+- **模型适配 P2：错误码统一映射**：将云端鉴权失败、额度不足、限流、内容违规、网络超时、服务不可用等厂商差异错误统一映射到项目 ErrorCode Schema，供 AutoRouter 回退、熔断计数、Consent 审计使用。
+- **模型适配 P2：云端成本计量**：OpenAI-compatible Backend 记录实际输入/输出 token、模型名、费用估算与请求 ID，回写到路由审计和 Consent Artifact，用于成本展示和 S10+ 成本预估模型自校准。
+- **模型适配 P2：Function Calling 格式统一（低优先）**：若后续云端模型承担工具调用建议，不同厂商 function calling 差异在 C1 适配层归一；当前 Skill 调用仍由 A 层编排，B/C 不直接调工具，因此不阻塞主线。
+- **模型适配 P2：模型切换验证闭环**：建立「能跑」之外的切换验收，包括人格一致性、安全通过率、JSON/Markdown 输出格式稳定性、停止词稳定性、上下文压缩质量；每个候选模型需至少通过基础 smoke + 核心对话样例后才能进入推荐清单。
+- **模型适配 P3：热切换评估**：默认只要求冷切换（重启加载模型）；热切换仅作为远期探索，需要 llama.cpp router mode 或多进程模型管理，除非产品场景明确需要，否则不进入主交付路径。
 - **局域网 WebUI 接入**：手机/平板通过局域网访问同一台主机的助理，数据全在本地
 - **低代码模组脚手架**：常见场景填参数生成 Skill/Plugin 包
 - **跨端同步**：端到端加密多端同步，不经过中心服务器
@@ -895,7 +905,14 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 | **CubeSandbox 启动速度** | <60ms（实验值） |
 | **CubeSandbox 并发上限** | 20 个实例（实验值；Docker 模式 3 个，Native 模式 1 个） |
 | **模型路由配置** | `configs/model_routing.yaml`（成本、延迟、能力标签、阈值） |
+| **模型适配配置** | `configs/models/<model>.yaml`（`chat_template`、`stop_tokens`、`supports_system_role`、`n_ctx`、`add_bos_token`、`eos_token`、默认推理参数、`capability_profile`、`strip_output_tags`、`moe` 预留字段） |
 | **能力标签枚举** | `shared/` 层统一定义（`chat`、`code_generation`、`complex_reasoning`、`tool_use`、`simple_qa`） |
+
+**模型适配 MVP 落地顺序**：
+1. 抽 `ModelConfig` 数据结构 + 启动时从 GGUF metadata 自动读取并注册模型；主流架构自动识别，缺关键字段提示手动补 YAML。
+2. B1 装配器改用 chat template / role map / stop tokens 渲染，不再硬编码 Qwen/ChatML 格式。
+3. 内置 3 组模型配置与 smoke：Qwen2.5-1.5B、Llama 3 8B、Mistral 7B；补 DeepSeek-R1 / Qwen3 Thinking 的 `<think>` 标签剥离样例。
+4. 模型选择 UI 先做冷切换（重启加载），热切换不进入 MVP。
 
 **不引入**：torch、langchain、chromadb、faiss、Electron、npm 构建链（Plugin 亦零构建）。
 

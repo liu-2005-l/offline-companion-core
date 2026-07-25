@@ -27,6 +27,14 @@ class PurposeType(str, Enum):
     AGENT_TOOLBOX_HIGH_RISK = "agent_toolbox_high_risk"
 
 
+class RoutingMode(str, Enum):
+    """摘要：路由模式枚举（跨层共享，无 shell 依赖）。"""
+
+    LOCAL = "local"
+    CLOUD = "cloud"
+    ECHO = "echo"
+
+
 class PrivacyMode(str, Enum):
     """摘要：出站/云端相关隐私模式。"""
 
@@ -83,6 +91,16 @@ class MemoryRecallHit:
     combined_score: float
     decay_factor: float
     matched_on: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ModelRuntimeConfig:
+    """摘要：模型运行时配置（由 A1 解析，传给 C1 使用）。"""
+
+    model_id: str
+    chat_template: str = ""
+    stop_tokens: tuple[str, ...] = ()
+    strip_output_tags: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

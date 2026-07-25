@@ -1,6 +1,21 @@
 """shared：跨层 DTO 与异常定义（禁止依赖 shell/core/runtime）。"""
 
 from .errors import (
+    A2PlanExecutionError,
+    A2PlanTemplateNotFoundError,
+    A2PlanValidationError,
+    B0EmotionConfidenceLow,
+    B0EmotionInferenceTimeout,
+    B0EmotionModelLoadError,
+    B0EmotionTokenizerError,
+    B1PersonaAssembleError,
+    B2MemoryWriteError,
+    B2RecallError,
+    B2TriggerConfigError,
+    B2TriggerConfigNotFoundError,
+    B3RepliesConfigError,
+    B3RepliesConfigNotFoundError,
+    B3SecurityError,
     BundleFormatError,
     CheckImportsError,
     CircuitBreakerOpenError,
@@ -14,6 +29,7 @@ from .errors import (
     SkillPolicyDenied,
     SkillSourceValidationError,
 )
+from .error_codes import ErrorCode, ErrorCodeSpec, error_log_fields
 from .messages import BaseMessage, MessageDirection, MessageLayer
 from .types import (
     AppPaths,
@@ -24,6 +40,7 @@ from .types import (
     ExportBundlePayload,
     MemoryHit,
     MemoryRecallHit,
+    ModelRuntimeConfig,
     OutboundPlan,
     OutboundScope,
     Persona,
@@ -33,7 +50,22 @@ from .types import (
 )
 
 __all__ = [
+    "A2PlanExecutionError",
+    "A2PlanTemplateNotFoundError",
+    "A2PlanValidationError",
     "AppPaths",
+    "B0EmotionConfidenceLow",
+    "B0EmotionInferenceTimeout",
+    "B0EmotionModelLoadError",
+    "B0EmotionTokenizerError",
+    "B1PersonaAssembleError",
+    "B2MemoryWriteError",
+    "B2RecallError",
+    "B2TriggerConfigError",
+    "B2TriggerConfigNotFoundError",
+    "B3RepliesConfigError",
+    "B3RepliesConfigNotFoundError",
+    "B3SecurityError",
     "BUNDLE_FORMAT",
     "BUNDLE_VERSION",
     "BaseMessage",
@@ -45,9 +77,12 @@ __all__ = [
     "CloudConnectorError",
     "ConsentArtifactError",
     "ExportBundlePayload",
+    "ErrorCode",
+    "ErrorCodeSpec",
     "InferenceBackendError",
     "MemoryHit",
     "MemoryRecallHit",
+    "ModelRuntimeConfig",
     "MessageDirection",
     "MessageLayer",
     "OutboundDenied",
@@ -62,4 +97,5 @@ __all__ = [
     "SkillPolicyDenied",
     "SkillSourceValidationError",
     "TurnResult",
+    "error_log_fields",
 ]

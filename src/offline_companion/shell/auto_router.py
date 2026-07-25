@@ -1,18 +1,12 @@
-"""auto_router：A2 自动路由策略引擎最小实现。"""
+"""auto_router：A2 自动路由策略引擎。"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable
+from typing import Any, Callable, Protocol
 
 from offline_companion.shared.messages import BaseMessage
-
-
-class RoutingMode(str, Enum):
-    LOCAL = "local"
-    CLOUD = "cloud"
-    ECHO = "echo"
+from offline_companion.shared.types import PrivacyMode, RoutingMode
 
 
 @dataclass(frozen=True)
@@ -33,45 +27,132 @@ class RoutingDecision:
 
     mode: RoutingMode
     reason: str
+    confidence: float = 1.0
+    policy_blocked: bool = False
+    requires_consent: bool = False
+    fallback_chain: tuple[RoutingMode, ...] = ()
+    selected_by: str = "rule"
+
+
+class RoutingPolicy(Protocol):
+    """摘要：路由硬约束策略。"""
+
+    def decide(self, context: RoutingContext) -> RoutingDecision | None:
+        """返回拦截/强制决策；None 表示放行给 AutoRouter。"""
+
+
+class RouterAdvisor(Protocol):
+    """摘要：可选的路由 LLM/语义建议层。"""
+
+    def advise(self, context: RoutingContext, candidates: tuple[RoutingMode, ...]) -> RoutingDecision | None:
+        """在候选路径上给出建议；None 表示不介入。"""
+
+
+class DefaultRoutingPolicy:
+    """摘要：最小硬约束策略。"""
+
+    def decide(self, context: RoutingContext) -> RoutingDecision | None:
+        if context.privacy_mode == PrivacyMode.LOCAL_ONLY.value:
+            return RoutingDecision(
+                mode=RoutingMode.LOCAL,
+                reason="privacy_mode=local_only",
+                policy_blocked=True,
+                requires_consent=bool(context.metadata.get("requires_consent")),
+                selected_by="policy",
+            )
+        if context.metadata.get("force_echo"):
+            return RoutingDecision(
+                mode=RoutingMode.ECHO,
+                reason="forced_echo",
+                requires_consent=bool(context.metadata.get("requires_consent")),
+                selected_by="policy",
+            )
+        if context.metadata.get("requires_consent"):
+            return RoutingDecision(
+                mode=RoutingMode.LOCAL,
+                reason="requires_consent",
+                requires_consent=True,
+                selected_by="policy",
+            )
+        return None
 
 
 class AutoRouter:
-    """摘要：规则优先的自动路由策略引擎。
+    """摘要：规则优先的自动路由策略引擎。"""
 
-    说明：
-        当前实现遵循最小策略：
-        1. local_only 强制本地；
-        2. 复杂度高且预算允许时可走云端；
-        3. 云端成本超预算时降级；
-        4. 其余情况默认本地。
-    """
-
-    def __init__(self, *, complexity_threshold: int = 5) -> None:
+    def __init__(
+        self,
+        *,
+        complexity_threshold: int = 5,
+        policy: RoutingPolicy | None = None,
+        advisor: RouterAdvisor | None = None,
+    ) -> None:
         self._complexity_threshold = complexity_threshold
+        self._policy = policy or DefaultRoutingPolicy()
+        self._advisor = advisor
 
     def decide(self, context: RoutingContext) -> RoutingDecision:
-        if context.privacy_mode == "local_only":
-            return RoutingDecision(RoutingMode.LOCAL, "privacy_mode=local_only")
+        policy_decision = self._policy.decide(context)
+        if policy_decision is not None:
+            policy_decision = self._with_fallback_chain(policy_decision, context)
+            return policy_decision
+
+        candidates = tuple(self.fallback_chain(context))
+        advisor_decision = self._advisor.advise(context, candidates) if self._advisor is not None else None
+        if advisor_decision is not None:
+            return self._with_fallback_chain(advisor_decision, context)
 
         if context.complexity > self._complexity_threshold:
             if context.cloud_cost <= context.cloud_budget:
-                return RoutingDecision(RoutingMode.CLOUD, "complexity_threshold_exceeded")
-            return RoutingDecision(RoutingMode.LOCAL, "cloud_cost_over_budget")
+                return self._with_fallback_chain(
+                    RoutingDecision(
+                        RoutingMode.CLOUD,
+                        "complexity_threshold_exceeded",
+                        confidence=0.82,
+                        selected_by="rule",
+                    ),
+                    context,
+                )
+            return self._with_fallback_chain(
+                RoutingDecision(
+                    RoutingMode.LOCAL,
+                    "cloud_cost_over_budget",
+                    confidence=0.95,
+                    selected_by="rule",
+                ),
+                context,
+            )
 
-        if context.metadata.get("force_echo"):
-            return RoutingDecision(RoutingMode.ECHO, "forced_echo")
-
-        return RoutingDecision(RoutingMode.LOCAL, "default_local")
+        return self._with_fallback_chain(
+            RoutingDecision(
+                RoutingMode.LOCAL,
+                "default_local",
+                confidence=0.9,
+                selected_by="rule",
+            ),
+            context,
+        )
 
     def fallback_chain(self, context: RoutingContext) -> list[RoutingMode]:
         """摘要：生成 Local → Cloud → Echo 的降级链。"""
-        if context.privacy_mode == "local_only":
+        if context.privacy_mode == PrivacyMode.LOCAL_ONLY.value:
             return [RoutingMode.LOCAL]
         chain = [RoutingMode.LOCAL]
         if context.cloud_cost <= context.cloud_budget:
             chain.append(RoutingMode.CLOUD)
         chain.append(RoutingMode.ECHO)
         return chain
+
+    def _with_fallback_chain(self, decision: RoutingDecision, context: RoutingContext) -> RoutingDecision:
+        return RoutingDecision(
+            mode=decision.mode,
+            reason=decision.reason,
+            confidence=decision.confidence,
+            policy_blocked=decision.policy_blocked,
+            requires_consent=decision.requires_consent,
+            fallback_chain=decision.fallback_chain or tuple(self.fallback_chain(context)),
+            selected_by=decision.selected_by,
+        )
 
 
 @dataclass

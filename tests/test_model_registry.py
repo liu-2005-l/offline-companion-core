@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from offline_companion.shared.runtime_paths import dev_repo_root, models_dir
 from offline_companion.shell.ui_host.model_registry import (
+    load_model_config,
     load_registry,
+    resolve_default_model_config,
     resolve_default_gguf_path,
     resolve_n_gpu_layers,
 )
@@ -62,3 +64,18 @@ def test_repo_registry_template() -> None:
     assert models_dir() == dev_repo_root() / "models"
     data = load_registry()
     assert data.get("active") == "qwen2.5-1.5b-instruct-q4_k_m"
+
+
+def test_model_config_loads_chat_template_and_stop_tokens() -> None:
+    """模型配置应加载 chat_template、stop_tokens 与输出剥离标签。"""
+    cfg = load_model_config("qwen2.5-1.5b-instruct-q4_k_m")
+    assert "<|im_start|>" in cfg.chat_template
+    assert "<|im_end|>" in cfg.stop_tokens
+    assert "think" in cfg.strip_output_tags
+
+
+def test_resolve_default_model_config_from_registry() -> None:
+    """默认模型配置应跟随 registry active 项。"""
+    cfg = resolve_default_model_config()
+    assert cfg is not None
+    assert cfg.model_id == "qwen2.5-1.5b-instruct-q4_k_m"

@@ -45,7 +45,11 @@ from offline_companion.runtime.storage_index.knowledge_store import (
     default_knowledge_db_path,
 )
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
-from offline_companion.shell.ui_host.model_registry import resolve_default_gguf_path, resolve_n_gpu_layers
+from offline_companion.shell.ui_host.model_registry import (
+    resolve_default_gguf_path,
+    resolve_default_model_config,
+    resolve_n_gpu_layers,
+)
 from offline_companion.shell.ui_host.knowledge_turn import run_knowledge_search
 
 
@@ -123,6 +127,7 @@ def cmd_chat(args: argparse.Namespace) -> int:
         new_session(conn, session_id, persona.persona_id, title=args.title)
 
     gguf_path = Path(args.model).expanduser() if args.model else resolve_default_gguf_path()
+    model_config = None if args.model else resolve_default_model_config()
     n_gpu = resolve_n_gpu_layers(args.n_gpu_layers)
 
     if gguf_path is not None:
@@ -133,6 +138,7 @@ def cmd_chat(args: argparse.Namespace) -> int:
                 n_ctx=args.n_ctx,
                 n_gpu_layers=n_gpu,
                 run_health_check=True,
+                model_config=model_config,
             )
         except InferenceBackendError as e:
             print("推理后端初始化失败:", e, file=sys.stderr)

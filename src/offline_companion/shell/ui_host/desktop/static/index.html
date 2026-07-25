@@ -12,53 +12,87 @@
     <div id="body">
       <nav id="activity-bar" aria-label="侧栏导航">
         <button type="button" class="nav-btn active" data-panel="chat" title="会话">💬</button>
-        <button type="button" class="nav-btn" data-panel="persona" title="人格">👤</button>
-        <button type="button" class="nav-btn" data-panel="skill" title="Skill">🧩</button>
-        <button type="button" class="nav-btn" data-panel="memory" title="记忆">📝</button>
+        <button type="button" class="nav-btn" data-panel="persona" title="人格">🧑</button>
+        <button type="button" class="nav-btn" data-panel="skill" title="Plugin">🧩</button>
+        <button type="button" class="nav-btn" data-panel="memory" title="记忆">🧠</button>
         <button type="button" class="nav-btn" data-panel="settings" title="设置">⚙️</button>
       </nav>
       <aside id="sidebar-panel">
-        <div id="panel-chat" class="panel-section active">
-          <h3>会话</h3>
-          <p>当前人格：<strong id="persona-label">—</strong></p>
-          <p class="placeholder-box">多会话切换将在后续版本提供。清空对话请使用主区右上角按钮。</p>
-        </div>
-        <div id="panel-persona" class="panel-section">
-          <h3>人格</h3>
-          <p class="placeholder-box">只读展示；切换与编辑入口 Sprint 8。</p>
-        </div>
-        <div id="panel-skill" class="panel-section">
-          <h3>Skill</h3>
-          <p class="placeholder-box">Sprint 7 接入：列表、安装与运行。</p>
-        </div>
-        <div id="panel-memory" class="panel-section">
-          <h3>记忆</h3>
-          <p class="placeholder-box">清空对话不会删除 #remember 写入的记忆库。记忆 CRUD 可视化 Sprint 8。</p>
-        </div>
-        <div id="panel-settings" class="panel-section">
-          <h3>设置</h3>
-          <p class="placeholder-box">完整设置页 Sprint 8。</p>
-          <p><button type="button" id="consent-demo">Consent 槽位演示</button></p>
-        </div>
+        <div class="placeholder-box">点击左侧图标切换主工作区。</div>
       </aside>
       <main id="main">
-        <div id="chat-toolbar">
-          <button type="button" id="clear-chat" title="清空当前会话对话记录">清空对话</button>
-        </div>
-        <div id="chat" aria-live="polite"></div>
-        <form id="composer">
-          <input id="input" autocomplete="off" placeholder="说点什么吧…（可用 #remember 保存记忆）" />
-          <button type="submit" id="send">发送</button>
-        </form>
+        <section id="view-chat" class="workspace-view active">
+          <div id="chat-toolbar">
+            <button type="button" id="clear-chat" title="清空当前会话对话记录">清空对话</button>
+          </div>
+          <div id="route-panel" class="route-panel">
+            <div class="route-chip" id="route-mode">route · -</div>
+            <div class="route-chip" id="route-reason">reason · -</div>
+            <div class="route-chip" id="route-consent">consent · -</div>
+            <div class="route-chip" id="route-fallback">fallback · -</div>
+          </div>
+          <div id="chat" aria-live="polite"></div>
+          <form id="composer">
+            <input id="input" autocomplete="off" placeholder="说点什么吧……（可用 #remember 保存记忆）">
+            <button type="submit" id="send">发送</button>
+          </form>
+        </section>
+        <section id="view-persona" class="workspace-view">
+          <div class="workspace-header">
+            <h2>人格</h2>
+            <p>当前人格：<strong id="persona-label">-</strong></p>
+          </div>
+          <div class="workspace-card">
+            <p class="placeholder-box">这里先展示只读人格信息，后续再补充编辑与切换能力。</p>
+          </div>
+        </section>
+        <section id="view-skill" class="workspace-view">
+          <div class="workspace-header">
+            <h2>Plugin 沙箱</h2>
+            <p>当前阶段先用 mock Plugin 验证 `iframe + postMessage` 安全边界。</p>
+          </div>
+          <div class="workspace-card plugin-workspace">
+            <div class="plugin-list-panel">
+              <div id="plugin-list" class="plugin-list"></div>
+            </div>
+            <div class="plugin-frame-panel">
+              <div class="plugin-frame-header">
+                <span id="plugin-frame-title">未加载 Plugin</span>
+                <span id="plugin-frame-status" class="plugin-frame-status">待命</span>
+              </div>
+              <iframe
+                id="plugin-frame"
+                title="Plugin 沙箱"
+                sandbox="allow-scripts"
+                referrerpolicy="no-referrer"
+              ></iframe>
+            </div>
+          </div>
+        </section>
+        <section id="view-memory" class="workspace-view">
+          <div class="workspace-header">
+            <h2>记忆库</h2>
+            <p>记忆默认开启；无效记忆会单独标记，可恢复为有效。</p>
+          </div>
+          <div id="memory-list" class="memory-list"></div>
+        </section>
+        <section id="view-settings" class="workspace-view">
+          <div class="workspace-header">
+            <h2>设置</h2>
+          </div>
+          <div class="workspace-card">
+            <p class="placeholder-box">完整设置页后续补齐。</p>
+            <p><button type="button" id="consent-demo">Consent 占位演示</button></p>
+          </div>
+        </section>
       </main>
     </div>
     <footer id="statusbar">
-      <span class="status-item" id="status-privacy">隐私 · —</span>
-      <label class="status-item">
-        <input type="checkbox" id="memory-on"> 记忆
-      </label>
-      <span class="status-item" id="status-model">模型 · —</span>
-      <span class="status-item" id="status-session">会话 · —</span>
+      <span class="status-item" id="status-privacy">隐私 · -</span>
+      <span class="status-item" id="memory-on-label">记忆 · 常开</span>
+      <input type="checkbox" id="memory-on" checked hidden>
+      <span class="status-item" id="status-model">模型 · -</span>
+      <span class="status-item" id="status-session">会话 · -</span>
     </footer>
   </div>
 

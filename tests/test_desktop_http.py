@@ -37,6 +37,7 @@ def _runtime(tmp_path) -> DesktopRuntime:
         persona_name="助手一号",
         privacy_mode=PrivacyMode.LOCAL_ONLY,
         model_label=ECHO_NO_MODEL_LABEL,
+        triggers=load_triggers(),
     )
 
 

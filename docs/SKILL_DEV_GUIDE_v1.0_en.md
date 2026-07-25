@@ -35,7 +35,7 @@ Install target: `{data_root}/extensions/installed/<name>/`. `skill_manager` load
 
 ## Consent (7.2)
 
-`skill_invoke` | `skill_cloud_call` | `skill_market_index` | `skill_market_download`  
+`skill_invoke` | `skill_cloud_inference` | `skill_market_index` | `skill_market_download`
 Market API from **separate skill-market repo**.
 
 ---

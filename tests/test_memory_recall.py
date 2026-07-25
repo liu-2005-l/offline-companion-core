@@ -41,14 +41,14 @@ def test_recall_time_decay_prefers_newer_when_keyword_tie(tmp_path) -> None:
     old_t = time.time() - 60.0 * 86400.0
     new_t = time.time() - 1.0 * 86400.0
     conn.execute(
-        "INSERT INTO memory_chunks(session_id, source, body, created_at, updated_at, meta_json) "
-        "VALUES(?,?,?,?,?,?);",
-        ("s1", "test", "我喜欢吃苹果", old_t, old_t, "{}"),
+        "INSERT INTO memory_chunks(session_id, content, source, body, created_at, modified_at, meta_json) "
+        "VALUES(?,?,?,?,?,?,?);",
+        ("s1", "我喜欢吃苹果", "test", "我喜欢吃苹果", old_t, old_t, "{}"),
     )
     conn.execute(
-        "INSERT INTO memory_chunks(session_id, source, body, created_at, updated_at, meta_json) "
-        "VALUES(?,?,?,?,?,?);",
-        ("s1", "test", "我也喜欢苹果派", new_t, new_t, "{}"),
+        "INSERT INTO memory_chunks(session_id, content, source, body, created_at, modified_at, meta_json) "
+        "VALUES(?,?,?,?,?,?,?);",
+        ("s1", "我也喜欢苹果派", "test", "我也喜欢苹果派", new_t, new_t, "{}"),
     )
     # 同步 FTS（触发器应已写入；若无则手动）
     for row in conn.execute("SELECT id, body FROM memory_chunks;").fetchall():

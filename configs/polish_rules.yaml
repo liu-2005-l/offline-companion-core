@@ -1,0 +1,31 @@
+version: 1
+
+polish_rules:
+  anger:
+    avoid_punctuation: ["!"]
+    append_suffix: "我会一直在这里陪你。"
+    max_exclamation: 0
+  anxiety:
+    avoid_punctuation: ["!"]
+    append_suffix: "别担心，我一直都在。"
+    max_exclamation: 0
+  joy:
+    allow_emoji: true
+    append_suffix: ""
+    max_exclamation: 3
+  sadness:
+    avoid_punctuation: ["!"]
+    append_suffix: "我会陪着你。"
+    max_exclamation: 0
+  surprise:
+    allow_emoji: true
+    append_suffix: ""
+    max_exclamation: 2
+  disgust:
+    avoid_punctuation: ["!"]
+    append_suffix: "我们换个话题聊聊吧。"
+    max_exclamation: 0
+  neutral:
+    allow_emoji: false
+    append_suffix: ""
+    max_exclamation: 1

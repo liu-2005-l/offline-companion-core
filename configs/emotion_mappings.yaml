@@ -1,0 +1,67 @@
+# emotion_mappings.yaml — 情绪→共情策略/语气/模板映射
+# B0 输出情绪标签 → B1 系统指令片段 + B4 润色规则
+# 编辑后无需重启，由各模块在初始化时加载
+
+version: 1
+
+# ── 情绪→B1 系统指令注入 ─────────────────────────────────────
+emotion_strategies:
+  anger:
+    strategy: calm_reassurance
+    system_instruction: "用户当前情绪为愤怒。请先承认其情绪，不要立即反驳或解释，待情绪平复后再引导。语气保持平和、理性。"
+    tone_modifier: "温和、理性"
+  anxiety:
+    strategy: deep_empathy
+    system_instruction: "用户感到焦虑或不安。请先安抚情绪，避免给出压力性建议，可主动提供陪伴感。语气温柔、包容。"
+    tone_modifier: "温柔、包容"
+  joy:
+    strategy: joy_amplify
+    system_instruction: "用户情绪积极愉悦。可以适当使用活泼语气和正面回应，呼应其喜悦情绪。"
+    tone_modifier: "活泼、积极"
+  sadness:
+    strategy: warm_comfort
+    system_instruction: "用户感到悲伤或失落。请用温暖、共情的语气回应，给予情感支持，避免轻飘飘的安慰。"
+    tone_modifier: "温暖、共情"
+  surprise:
+    strategy: curious_engage
+    system_instruction: "用户表现出惊讶或好奇。可以适当展开话题，提供更多相关信息，保持开放和探索的语气。"
+    tone_modifier: "开放、好奇"
+  disgust:
+    strategy: gentle_redirect
+    system_instruction: "用户表现出反感或不满。请先表示理解，然后温和地引导话题转向积极方向，避免强化负面情绪。"
+    tone_modifier: "理解、温和"
+  neutral:
+    strategy: neutral_follow
+    system_instruction: ""
+    tone_modifier: "自然"
+
+# ── 情绪→B4 润色规则 ─────────────────────────────────────────
+polish_rules:
+  anger:
+    avoid_punctuation: ["!"]
+    append_suffix: "我会一直在这里陪你。"
+    max_exclamation: 0
+  anxiety:
+    avoid_punctuation: ["!"]
+    append_suffix: "别担心，我一直都在。"
+    max_exclamation: 0
+  joy:
+    allow_emoji: true
+    append_suffix: ""
+    max_exclamation: 3
+  sadness:
+    avoid_punctuation: ["!"]
+    append_suffix: "我会陪着你。"
+    max_exclamation: 0
+  surprise:
+    allow_emoji: true
+    append_suffix: ""
+    max_exclamation: 2
+  disgust:
+    avoid_punctuation: ["!"]
+    append_suffix: "我们换个话题聊聊吧。"
+    max_exclamation: 0
+  neutral:
+    allow_emoji: false
+    append_suffix: ""
+    max_exclamation: 1

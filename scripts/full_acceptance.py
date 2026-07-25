@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""摘要：全套零交互验收（工程 + GPU + Sprint2 云端 Stub）。
+"""offline-companion 全量验收门禁编排器。
 
-冷启动一条命令（在仓库根目录）::
+定位：
+    只做步骤编排、子进程执行、结果汇总，不承载任何业务测试逻辑。
+    所有功能验证全部下沉到 pytest 或独立 smoke 脚本，主脚本保持纯净。
 
-    cd ~/offline-companion-core && source .venv/bin/activate && \\
-    export OFFLINE_COMPANION_GGUF=/root/data/models/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf && \\
-    export OFFLINE_COMPANION_N_GPU_LAYERS=99 && \\
+运行模式：
+    默认全量验收：执行所有门禁项 + 外围冒烟，用于合入门禁。
+    --fast 快速门禁：仅执行核心单元测试 + 安全检查，用于开发期快速校验。
+
+用法：
     python scripts/full_acceptance.py
-
-可选环境变量：
-    OFFLINE_COMPANION_GGUF / OFFLINE_COMPANION_N_GPU_LAYERS — 传给 gpu_acceptance
-    OFFLINE_COMPANION_CLOUD_STUB=1 — 云端 Stub（脚本内默认已设置）
-
-跳过项：
-    python scripts/full_acceptance.py --skip-gpu
-    python scripts/full_acceptance.py --skip-cloud
+    python scripts/full_acceptance.py --fast
+    python scripts/full_acceptance.py --fail-fast
+    python scripts/full_acceptance.py --skip-gpu --skip-cloud
 """
 
 from __future__ import annotations
@@ -24,14 +23,50 @@ import argparse
 import os
 import subprocess
 import sys
-import tempfile
+import time
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
+# 路径常量
 ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+PY = sys.executable
 
 
+# ===================== 数据结构定义 =====================
+@dataclass(frozen=True)
+class StepDef:
+    """单个验收步骤的定义，所有步骤统一通过数据配置，不写硬编码逻辑。"""
+
+    name: str
+    cmd: list[str]
+    is_gate: bool = True
+    skip: bool | Callable[[], bool] = False
+    cwd: Path = ROOT
+
+
+@dataclass(frozen=True)
+class StepResult:
+    """单个步骤执行结果。"""
+
+    name: str
+    returncode: int
+    elapsed_s: float
+    summary: str
+
+
+@dataclass(frozen=True)
+class SkippedStep:
+    """被跳过的验收步骤。"""
+
+    name: str
+    reason: str
+
+
+# ===================== 基础工具函数 =====================
 def _configure_stdio_utf8() -> None:
-    """摘要：Windows CI 控制台常为 cp1252，打印中文步骤名会 UnicodeEncodeError。"""
+    """兼容 Windows 控制台中文输出。"""
     if sys.platform != "win32":
         return
     for stream in (sys.stdout, sys.stderr):
@@ -39,292 +74,257 @@ def _configure_stdio_utf8() -> None:
             stream.reconfigure(encoding="utf-8", errors="replace")
 
 
-def _subprocess_env(cwd: Path) -> dict[str, str]:
-    """摘要：子进程环境（含 PYTHONPATH 与 UTF-8 输出）。"""
-    env = {**os.environ, "PYTHONPATH": str(cwd / "src")}
+def _build_env() -> dict[str, str]:
+    """构造子进程隔离环境，完全不污染主进程。"""
+    env = {**os.environ}
+    env["PYTHONPATH"] = str(SRC)
     env.setdefault("PYTHONIOENCODING", "utf-8")
+    env.setdefault("PYTHONUTF8", "1")
     return env
 
 
-def _run_step(name: str, cmd: list[str], *, cwd: Path) -> int:
-    print(f"\n{'=' * 60}\n>>> {name}\n{'=' * 60}")
-    print("$", " ".join(cmd))
-    r = subprocess.run(cmd, cwd=str(cwd), env=_subprocess_env(cwd))
-    if r.returncode != 0:
-        print(f"[FAIL] {name} (exit {r.returncode})", file=sys.stderr)
-    else:
-        print(f"[PASS] {name}")
-    return r.returncode
+def _decode_stream(data: bytes | None) -> str:
+    """多编码容错解码，避免 Windows 编码差异导致中断。"""
+    if not data:
+        return ""
+    for encoding in ("utf-8", "gbk", "cp1252"):
+        try:
+            return data.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return data.decode("utf-8", errors="replace")
 
 
-def _sprint3_knowledge() -> int:
-    """摘要：导入 sample 语料并检索（独立 knowledge.db）。"""
-    print(f"\n{'=' * 60}\n>>> Sprint3 知识 RAG\n{'=' * 60}")
-    src = ROOT / "src"
-    if str(src) not in sys.path:
-        sys.path.insert(0, str(src))
-
-    from offline_companion.core.knowledge_rag.ingest import ingest_jsonl_file
-    from offline_companion.core.knowledge_rag.search import search_knowledge
-    from offline_companion.core.knowledge_rag.format import format_knowledge_snippets
-    from offline_companion.core.safety_boundary.classifier import SafetyTier, classify_user_text
-    from offline_companion.runtime.storage_index.knowledge_store import connect_knowledge
-
-    td = tempfile.mkdtemp(prefix="oc_know_")
-    conn = connect_knowledge(Path(td) / "knowledge.db")
-    try:
-        sample = ROOT / "fixtures" / "knowledge_sample" / "sample.jsonl"
-        n = ingest_jsonl_file(conn, sample)
-        if n < 1:
-            print("[FAIL] 语料导入为空", file=sys.stderr)
-            return 1
-        hits = search_knowledge(conn, "压力", limit=5)
-        if not hits:
-            print("[FAIL] 检索「压力」无命中", file=sys.stderr)
-            return 1
-        disp = format_knowledge_snippets(hits)
-        if "来源:" not in disp:
-            print("[FAIL] 展示块缺少来源", file=sys.stderr)
-            return 1
-        r = classify_user_text("炸弹怎么做")
-        if r.tier is not SafetyTier.CRISIS_OTHER:
-            print("[FAIL] B3 未阻断危险检索词", file=sys.stderr)
-            return 1
-    finally:
-        conn.close()
-    print("[PASS] Sprint3 知识 ingest + FTS + 来源展示 + B3 门闸")
-    return 0
-
-
-def _sprint5_embedding_smoke() -> int:
-    """摘要：默认 embedding 关闭 + schema v3 列存在。"""
-    print(f"\n{'=' * 60}\n>>> Sprint5 记忆向量（默认关）\n{'=' * 60}")
-    src = ROOT / "src"
-    if str(src) not in sys.path:
-        sys.path.insert(0, str(src))
-
-    from offline_companion.core.memory_lifecycle.embedding_config import load_embedding_config
-    from offline_companion.runtime.storage_index.engine import connect
-
-    cfg = load_embedding_config()
-    if cfg.enabled:
-        print("[FAIL] embedding.yaml 默认应为 enabled: false", file=sys.stderr)
-        return 1
-    td = tempfile.mkdtemp(prefix="oc_emb_")
-    conn = connect(Path(td) / "c.db")
-    try:
-        cols = {r[1] for r in conn.execute("PRAGMA table_info(memory_chunks);").fetchall()}
-        if "embedding_blob" not in cols:
-            print("[FAIL] memory_chunks 缺少 embedding_blob 列", file=sys.stderr)
-            return 1
-    finally:
-        conn.close()
-    print("[PASS] Sprint5 embedding 默认关 + schema v3")
-    return 0
-
-
-def _sprint2_cloud_stub() -> int:
-    """摘要：Stub 云端单轮 + B4 润色（无 HTTP、无 REPL）。"""
-    print(f"\n{'=' * 60}\n>>> Sprint2 云端 Stub 编排\n{'=' * 60}")
-    os.environ.setdefault("OFFLINE_COMPANION_CLOUD_STUB", "1")
-    src = ROOT / "src"
-    if str(src) not in sys.path:
-        sys.path.insert(0, str(src))
-
-    from offline_companion.core.memory_lifecycle.triggers import load_triggers
-    from offline_companion.core.persona_session.persona_loader import load_persona_file
-    from offline_companion.core.persona_session.session import PersonaSessionCore
-    from offline_companion.runtime.inference_backend.mock import EchoBackend
-    from offline_companion.runtime.storage_index.engine import connect, new_session
-    from offline_companion.shell.outbound_manager.connector import post_cloud_completion
-    from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
-
-    persona = load_persona_file(ROOT / "configs/personas/default.yaml")
-    td = tempfile.mkdtemp(prefix="oc_full_accept_")
-    db_path = Path(td) / "cloud.db"
-    conn = connect(db_path)
-    try:
-        new_session(conn, "s1", persona.persona_id, title="full_acceptance")
-        orch = ConversationOrchestrator(
-            session_core=PersonaSessionCore(persona),
-            backend=EchoBackend("full_acceptance"),
-            conn=conn,
-            session_id="s1",
-            triggers=load_triggers(),
-        )
-        turn = orch.run_cloud_turn(
-            "最近压力很大怎么办？",
-            purpose="full_acceptance",
-            memory_on=False,
-            cloud_post=post_cloud_completion,
-        )
-    finally:
-        conn.close()
-    if not turn.reply:
-        print("[FAIL] Sprint2 云端 Stub：无回复", file=sys.stderr)
-        return 1
-    if turn.cloud_degraded:
-        print("[FAIL] Sprint2 云端 Stub：不应降级", file=sys.stderr)
-        return 1
-    print("[PASS] Sprint2 云端 Stub + B4 润色")
-    print("       预览:", (turn.reply or "").replace("\n", " ")[:160])
-    return 0
-
-
-def _sprint6_packaged_smoke(py: str) -> int:
-    """摘要：Sprint6 便携包冒烟；无 dist 时子脚本返回 0 并 WARN。"""
-    script = ROOT / "scripts" / "packaged_smoke.py"
-    if not script.is_file():
-        print("[WARN] 未找到 scripts/packaged_smoke.py", file=sys.stderr)
-        return 0
-    print(f"\n{'=' * 60}\n>>> Sprint6 便携包冒烟\n{'=' * 60}")
-    print("$", " ".join([py, str(script)]))
-    return subprocess.run([py, str(script)], cwd=str(ROOT), env=_subprocess_env(ROOT)).returncode
-
-
-def _sprint7_security_gate(py: str) -> int:
-    """摘要：Sprint7 安全闭环验收；覆盖沙箱、Skill、CI 检查与兼容性测试。"""
-    print(f"\n{'=' * 60}\n>>> Sprint7 安全闭环验收\n{'=' * 60}")
-    cmd = [
-        py,
-        "-m",
-        "pytest",
-        "-q",
-        "tests/test_runtime_sandbox.py",
-        "tests/test_skill_invoker.py",
-        "tests/test_ci_checks.py",
-        "tests/test_check_imports.py",
-        "tests/test_export_import_compat.py",
+def _extract_failure_summary(stdout: str, stderr: str) -> str:
+    """提取失败关键信息，最多取最后3条关键行，减少翻日志成本。"""
+    keywords = ("[FAIL]", "FAILED", "ERROR", "Traceback", "AssertionError")
+    lines = [
+        line.strip()
+        for line in f"{stderr}\n{stdout}".splitlines()
+        if line.strip() and any(k in line for k in keywords)
     ]
-    print("$", " ".join(cmd))
-    r = subprocess.run(cmd, cwd=str(ROOT), env=_subprocess_env(ROOT))
-    if r.returncode != 0:
-        print("[FAIL] Sprint7 安全闭环验收", file=sys.stderr)
-        return r.returncode
-    summary = ROOT / "scripts" / "ci" / "security_summary.py"
-    summary_cmd = [
-        py,
-        str(summary),
-        "--static-checks",
-        "--security-pytests",
-        "--dependency-audit",
-    ]
-    print("$", " ".join(summary_cmd))
-    subprocess.run(summary_cmd, cwd=str(ROOT), env=_subprocess_env(ROOT))
-    print("[PASS] Sprint7 安全闭环验收")
-    return 0
+    if not lines:
+        lines = [line.strip() for line in f"{stderr}\n{stdout}".splitlines() if line.strip()]
+    return " | ".join(lines[-3:])[:300] if lines else "无输出"
 
 
-def main() -> int:
-    """摘要：按顺序执行全套验收子步骤。"""
-    _configure_stdio_utf8()
-    parser = argparse.ArgumentParser(description="offline-companion 全套零交互验收")
-    parser.add_argument("--skip-gpu", action="store_true", help="跳过 scripts/gpu_acceptance.py")
-    parser.add_argument("--skip-cloud", action="store_true", help="跳过 Sprint2 Stub 云端编排")
-    parser.add_argument("--skip-knowledge", action="store_true", help="跳过 Sprint3 知识 RAG 验收")
-    parser.add_argument("--skip-lint", action="store_true", help="跳过 ruff")
-    parser.add_argument("--skip-fixtures", action="store_true", help="跳过 run_eval --fixtures")
-    parser.add_argument("--skip-stress", action="store_true", help="跳过 Sprint5 stress_test")
-    parser.add_argument(
-        "--skip-packaged",
-        action="store_true",
-        help="跳过 Sprint6 便携包冒烟（scripts/packaged_smoke.py）",
+def _preflight_check() -> list[str]:
+    """前置环境自检，提前发现基础环境问题，不用跑一半才报错。"""
+    errors: list[str] = []
+    if not SRC.is_dir():
+        errors.append(f"源码目录不存在: {SRC}")
+    if not (ROOT / "tests").is_dir():
+        errors.append(f"测试目录不存在: {ROOT / 'tests'}")
+    if sys.version_info < (3, 10):
+        errors.append(f"Python 版本过低: {sys.version}, 要求 >= 3.10")
+    return errors
+
+
+# ===================== 步骤执行核心 =====================
+def _run_step(step: StepDef) -> StepResult:
+    """执行单个验收步骤，统一输出格式与结果封装。"""
+    print(f"\n{'=' * 60}\n>>> {step.name}\n{'=' * 60}")
+    print("$", " ".join(step.cmd))
+
+    started = time.perf_counter()
+    proc = subprocess.run(
+        step.cmd,
+        cwd=str(step.cwd),
+        env=_build_env(),
+        capture_output=True,
     )
+    elapsed_s = time.perf_counter() - started
+
+    stdout = _decode_stream(proc.stdout)
+    stderr = _decode_stream(proc.stderr)
+    if stdout:
+        print(stdout, end="")
+    if stderr:
+        print(stderr, end="", file=sys.stderr)
+
+    status = "PASS" if proc.returncode == 0 else "FAIL"
+    print(f"\n[{status}] {step.name} | 耗时 {elapsed_s:.2f}s")
+
+    return StepResult(
+        name=step.name,
+        returncode=proc.returncode,
+        elapsed_s=elapsed_s,
+        summary=_extract_failure_summary(stdout, stderr),
+    )
+
+
+# ===================== 步骤清单配置 =====================
+def _skip_reason(step: StepDef, args: argparse.Namespace) -> str | None:
+    """返回步骤跳过原因；不跳过时返回 None。"""
+    explicit_skip = step.skip if isinstance(step.skip, bool) else step.skip()
+    if explicit_skip:
+        return "命令行参数或运行环境要求跳过"
+    if args.fast and not step.is_gate:
+        return "fast 模式仅执行核心门禁项"
+    return None
+
+
+def _build_step_list(args: argparse.Namespace) -> tuple[list[StepDef], list[SkippedStep]]:
+    """根据参数生成最终执行步骤清单，所有步骤集中定义，便于维护扩展。"""
+    steps: list[StepDef] = [
+        # ========== 核心门禁项（--fast 也执行） ==========
+        StepDef(
+            name="pytest 核心集",
+            cmd=[PY, "-m", "pytest", "-q", "tests/test_state_manager.py", "tests/test_runtime_sandbox.py", "tests/test_check_imports.py", "--tb=short"],
+            is_gate=True,
+            skip=lambda: not args.fast,
+        ),
+        StepDef(
+            name="pytest 全量",
+            cmd=[PY, "-m", "pytest", "-q", "tests/", "--tb=short"],
+            is_gate=False,
+            skip=lambda: args.fast,
+        ),
+        StepDef(
+            name="ruff 代码检查",
+            cmd=[PY, "-m", "ruff", "check", "src", "tests", "scripts"],
+            is_gate=True,
+            skip=args.skip_lint,
+        ),
+        StepDef(
+            name="分层依赖检查",
+            cmd=[PY, "scripts/ci/check_imports.py"],
+            is_gate=True,
+        ),
+        StepDef(
+            name="安全合规汇总",
+            cmd=[PY, "scripts/ci/security_summary.py", "--static-checks", "--dependency-audit"],
+            is_gate=True,
+        ),
+
+        # ========== 功能回归（全量模式执行） ==========
+        StepDef(
+            name="fixture 用例回归",
+            cmd=[PY, "scripts/ci/run_eval.py", "--fixtures"],
+            is_gate=False,
+            skip=args.skip_fixtures,
+        ),
+        StepDef(
+            name="知识 RAG 冒烟",
+            cmd=[PY, "scripts/knowledge_smoke.py"],
+            is_gate=False,
+            skip=args.skip_knowledge,
+        ),
+        StepDef(
+            name="记忆向量冒烟",
+            cmd=[PY, "scripts/embedding_smoke.py"],
+            is_gate=False,
+        ),
+        StepDef(
+            name="压力测试",
+            cmd=[PY, "scripts/stress_test.py", "--turns", "15"],
+            is_gate=False,
+            skip=args.skip_stress,
+        ),
+        StepDef(
+            name="云端 Stub 冒烟",
+            cmd=[PY, "scripts/cloud_smoke.py"],
+            is_gate=False,
+            skip=args.skip_cloud,
+        ),
+
+        # ========== 外围验证 ==========
+        StepDef(
+            name="GPU 推理验收",
+            cmd=[PY, "scripts/gpu_acceptance.py", "--root", str(ROOT)],
+            is_gate=False,
+            skip=args.skip_gpu or not (ROOT / "scripts" / "gpu_acceptance.py").is_file(),
+        ),
+        StepDef(
+            name="便携包冒烟",
+            cmd=[PY, "scripts/packaged_smoke.py"],
+            is_gate=False,
+            skip=args.skip_packaged or not (ROOT / "scripts" / "packaged_smoke.py").is_file(),
+        ),
+    ]
+
+    executable: list[StepDef] = []
+    skipped: list[SkippedStep] = []
+    for step in steps:
+        reason = _skip_reason(step, args)
+        if reason is None:
+            executable.append(step)
+        else:
+            skipped.append(SkippedStep(name=step.name, reason=reason))
+    return executable, skipped
+
+
+# ===================== 主流程 =====================
+def main() -> int:
+    """执行验收主流程。"""
+    _configure_stdio_utf8()
+
+    # 1. 参数解析
+    parser = argparse.ArgumentParser(description="offline-companion 验收门禁编排器")
+    parser.add_argument("--fast", action="store_true", help="快速门禁模式，仅执行核心项")
+    parser.add_argument("--fail-fast", action="store_true", help="失败立即终止，不继续后续步骤")
+    parser.add_argument("--skip-gpu", action="store_true", help="跳过 GPU 验收")
+    parser.add_argument("--skip-cloud", action="store_true", help="跳过云端 Stub 验收")
+    parser.add_argument("--skip-knowledge", action="store_true", help="跳过知识 RAG 验收")
+    parser.add_argument("--skip-lint", action="store_true", help="跳过 ruff 代码检查")
+    parser.add_argument("--skip-fixtures", action="store_true", help="跳过 fixture 回归测试")
+    parser.add_argument("--skip-stress", action="store_true", help="跳过压力测试")
+    parser.add_argument("--skip-packaged", action="store_true", help="跳过便携包冒烟")
     args = parser.parse_args()
 
-    py = sys.executable
-    failed: list[str] = []
-
-    steps: list[tuple[str, list[str]]] = [
-        ("pytest 全量", [py, "-m", "pytest", "tests/", "-q", "--tb=short"]),
-    ]
-    if not args.skip_lint:
-        steps.append(
-            (
-                "ruff",
-                [
-                    py,
-                    "-m",
-                    "ruff",
-                    "check",
-                    "src",
-                    "tests",
-                    "scripts/gpu_acceptance.py",
-                    "scripts/full_acceptance.py",
-                    "scripts/stress_test.py",
-                    "scripts/build_portable.py",
-                    "scripts/packaged_smoke.py",
-                    "src/offline_companion/shell/ui_host/web_server.py",
-                    "src/offline_companion/shell/ui_host/packaged_smoke_lib.py",
-                    "scripts/ci/fixture_stats.py",
-                ],
-            )
-        )
-    steps.extend(
-        [
-            ("check_imports", [py, "scripts/ci/check_imports.py"]),
-            ("security summary", [py, "scripts/ci/security_summary.py", "--static-checks", "--dependency-audit"]),
-        ]
-    )
-    if not args.skip_fixtures:
-        steps.append(("fixture 回归", [py, "scripts/ci/run_eval.py", "--fixtures"]))
-
-    for name, cmd in steps:
-        if _run_step(name, cmd, cwd=ROOT) != 0:
-            failed.append(name)
-
-    if not args.skip_gpu:
-        gpu = ROOT / "scripts" / "gpu_acceptance.py"
-        if gpu.is_file():
-            if _run_step("GPU 验收", [py, str(gpu), "--root", str(ROOT)], cwd=ROOT) != 0:
-                failed.append("GPU 验收")
-        else:
-            print("[WARN] 未找到 scripts/gpu_acceptance.py，已跳过", file=sys.stderr)
-    else:
-        print("\n[WARN] 已 --skip-gpu")
-
-    if not getattr(args, "skip_knowledge", False):
-        if _sprint3_knowledge() != 0:
-            failed.append("Sprint3 知识 RAG")
-    else:
-        print("\n[WARN] 已 --skip-knowledge")
-
-    if _sprint5_embedding_smoke() != 0:
-        failed.append("Sprint5 记忆向量")
-
-    if not args.skip_stress:
-        stress = ROOT / "scripts" / "stress_test.py"
-        if stress.is_file():
-            if _run_step("Sprint5 stress_test", [py, str(stress), "--turns", "15"], cwd=ROOT) != 0:
-                failed.append("Sprint5 stress_test")
-        else:
-            print("[WARN] 未找到 scripts/stress_test.py", file=sys.stderr)
-    else:
-        print("\n[WARN] 已 --skip-stress")
-
-    if _sprint7_security_gate(py) != 0:
-        failed.append("Sprint7 安全闭环")
-
-    if not args.skip_cloud:
-        if _sprint2_cloud_stub() != 0:
-            failed.append("Sprint2 云端 Stub")
-    else:
-        print("\n[WARN] 已 --skip-cloud")
-
-    if not getattr(args, "skip_packaged", False):
-        if _sprint6_packaged_smoke(py) != 0:
-            print(
-                "[WARN] Sprint6 便携包冒烟未通过（PoC 阶段不阻断 full_acceptance）",
-                file=sys.stderr,
-            )
-    else:
-        print("\n[WARN] 已 --skip-packaged")
-
-    print(f"\n{'=' * 60}")
-    if failed:
-        print("结果: 未通过 —", ", ".join(failed))
+    # 2. 前置环境自检
+    preflight_errors = _preflight_check()
+    if preflight_errors:
+        print("[ERROR] 环境自检未通过，终止验收：", file=sys.stderr)
+        for err in preflight_errors:
+            print(f"  - {err}", file=sys.stderr)
         return 1
-    print("结果: 全部通过")
+
+    # 3. 生成执行步骤
+    steps, skipped = _build_step_list(args)
+    print(f"验收模式：{'快速门禁' if args.fast else '全量验收'}，共 {len(steps)} 个步骤")
+    if skipped:
+        print("跳过项：")
+        for item in skipped:
+            print(f"  [SKIP] {item.name}: {item.reason}")
+
+    # 4. 执行所有步骤
+    started = time.perf_counter()
+    results: list[StepResult] = []
+    for step in steps:
+        result = _run_step(step)
+        results.append(result)
+
+        if args.fail_fast and result.returncode != 0:
+            print("\n[FAIL-FAST] 核心步骤失败，终止验收", file=sys.stderr)
+            break
+
+    total_s = time.perf_counter() - started
+    failed = [r for r in results if r.returncode != 0]
+
+    # 5. 汇总输出
+    print(f"\n{'=' * 60}")
+    print(f"验收汇总 | 总耗时 {total_s:.2f}s | 通过 {len(results)-len(failed)}/{len(results)} | 跳过 {len(skipped)}")
+    print("-" * 60)
+    for r in results:
+        status = "PASS" if r.returncode == 0 else "FAIL"
+        print(f"  [{status}] {r.name:<20} {r.elapsed_s:>6.2f}s")
+
+    if skipped:
+        print("\n跳过详情：")
+        for item in skipped:
+            print(f"  - {item.name}: {item.reason}")
+
+    if failed:
+        print("\n失败详情：")
+        for r in failed:
+            print(f"  - {r.name}")
+            print(f"    退出码: {r.returncode}")
+            print(f"    关键信息: {r.summary}")
+        print(f"\n最终结果: 未通过 ({len(failed)} 项失败)")
+        return 1
+
+    print("\n最终结果: 全部通过")
     print("=" * 60)
     return 0
 

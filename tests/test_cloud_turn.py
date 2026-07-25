@@ -73,3 +73,20 @@ def test_cloud_turn_degrades_on_reformat_error(tmp_path) -> None:
         )
     assert turn.cloud_degraded
     assert turn.reply.startswith(LOCAL_FALLBACK_PREFIX)
+
+
+def test_cloud_turn_uses_emotion_context_for_polish(tmp_path) -> None:
+    orch, _conn = _orch(tmp_path)
+
+    def fake_post(req):
+        return CloudCompletionResponse(text="I know this feels hard.", raw={})
+
+    turn = orch.run_cloud_turn(
+        "我现在真的很难过",
+        purpose="test",
+        memory_on=False,
+        cloud_post=fake_post,
+    )
+    assert turn.cloud_used
+    assert not turn.cloud_degraded
+    assert "我会陪着你" in turn.reply

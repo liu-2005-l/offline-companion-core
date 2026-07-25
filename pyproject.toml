@@ -12,6 +12,8 @@ license = { text = "BSD-2-Clause" }
 authors = [{ name = "Liujiarong" }]
 dependencies = [
   "pyyaml>=6.0",
+  "onnxruntime>=1.17",
+  "tokenizers>=0.15",
 ]
 
 [project.optional-dependencies]
@@ -60,10 +62,10 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 markers = [
   "security: security-related tests",
+  "linux_seccomp: Linux seccomp runtime validation tests",
 ]
 
 [tool.ruff]
 line-length = 100
 target-version = "py310"
 src = ["src", "tests", "scripts"]
-

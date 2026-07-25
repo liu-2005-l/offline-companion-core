@@ -7,11 +7,13 @@ from pathlib import Path
 
 import yaml
 
+from offline_companion.shared.errors import B2TriggerConfigError, B2TriggerConfigNotFoundError
 from offline_companion.shared.runtime_paths import configs_dir
 
 TRIGGER_ON_EXPLICIT_SAVE = "on_explicit_save"
 TRIGGER_ON_SUMMARIZE_REQUEST = "on_summarize_request"
 TRIGGER_ON_EMOTION_SHIFT = "on_emotion_shift"
+TRIGGER_ON_SEMANTIC_MEMORY = "on_semantic_memory"
 
 
 @dataclass(frozen=True)
@@ -24,74 +26,44 @@ class TriggerRegistry:
 
 
 def default_triggers_path() -> Path:
-    """摘要：默认 ``configs/triggers.yaml`` 路径。
-
-    返回值：
-        triggers 配置绝对路径。
-    """
+    """摘要：默认 ``configs/triggers.yaml`` 路径。"""
     return configs_dir() / "triggers.yaml"
 
 
 def load_triggers(path: Path | None = None) -> TriggerRegistry:
-    """摘要：从 YAML 加载触发器开关。
-
-    参数：
-        path: 配置文件；默认 ``default_triggers_path()``。
-
-    返回值：
-        ``TriggerRegistry``。
-
-    异常：
-        FileNotFoundError：文件不存在。
-        ValueError：结构非法。
-    """
+    """摘要：从 YAML 加载触发器开关。"""
     resolved = (path or default_triggers_path()).resolve()
     if not resolved.is_file():
-        raise FileNotFoundError(f"触发器配置不存在: {resolved}")
+        raise B2TriggerConfigNotFoundError(f"触发器配置不存在: {resolved}")
     raw = yaml.safe_load(resolved.read_text(encoding="utf-8")) or {}
     if not isinstance(raw, dict):
-        raise ValueError(f"触发器配置格式错误: {resolved}")
+        raise B2TriggerConfigError(f"触发器配置格式错误: {resolved}")
     triggers = raw.get("triggers")
     if not isinstance(triggers, dict):
-        raise ValueError(f"触发器配置缺少 triggers: {resolved}")
+        raise B2TriggerConfigError(f"触发器配置缺少 triggers: {resolved}")
     enabled: dict[str, bool] = {}
     for name, block in triggers.items():
         if isinstance(block, dict):
             enabled[str(name)] = bool(block.get("enabled", False))
         else:
             enabled[str(name)] = bool(block)
-    return TriggerRegistry(
-        version=int(raw.get("version") or 1),
-        path=resolved,
-        enabled=enabled,
-    )
+    return TriggerRegistry(version=int(raw.get("version") or 1), path=resolved, enabled=enabled)
 
 
-def is_enabled(registry: TriggerRegistry, name: str) -> bool:
-    """摘要：查询某触发器是否开启。
-
-    参数：
-        registry: 已加载注册表。
-        name: 触发器名，如 ``on_explicit_save``。
-
-    返回值：
-        配置中存在且 ``enabled`` 为真时 True；未配置视为 False。
-    """
+def is_enabled(registry: TriggerRegistry | None, name: str) -> bool:
+    """摘要：检查触发器是否启用；registry 为 None 时视为未启用。"""
+    if registry is None:
+        return False
     return bool(registry.enabled.get(name, False))
 
 
+def _looks_like_memory(user_text: str) -> bool:
+    text = user_text.strip()
+    keywords = ["记住", "别忘了", "以后叫我", "我的名字是", "我叫", "偏好", "生日", "地址", "电话", "一直记得"]
+    return any(k in text for k in keywords)
+
+
 def maybe_summarize_to_memory(user_text: str, registry: TriggerRegistry) -> list[str] | None:
-    """摘要：``on_summarize_request`` 钩子（默认关闭，Phase 2 扩展）。
-
-    参数：
-        user_text: 用户输入。
-        registry: 触发器注册表。
-
-    返回值：
-        待写入记忆的行列表；未启用或暂无逻辑时返回 None。
-    """
-    if not is_enabled(registry, TRIGGER_ON_SUMMARIZE_REQUEST):
+    if not is_enabled(registry, TRIGGER_ON_SEMANTIC_MEMORY):
         return None
-    _ = user_text
-    # Sprint 1：仅注册扩展点，不静默写入
-    return None
+    return [user_text.strip()] if _looks_like_memory(user_text) else None

@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2] / "src" / "offline_companion"
 NET_MODULES = ("httpx", "requests", "urllib3", "socket", "aiohttp")
 GUI_MODULES = ("pywebview", "pystray", "PIL")
 SKILL_DEPS = ("packaging", "jsonschema")
+B_LAYER_COMPUTE_DEPS = ("onnxruntime", "tokenizers")
 ALLOW_NET_FILE = Path("offline_companion/shell/outbound_manager/connector.py")
 ALLOW_GUI_PREFIX = "offline_companion/shell/ui_host/desktop/"
 ALLOW_NET_PREFIXES = (
@@ -92,6 +93,12 @@ def _violates_skill_deps(rel: str, tree: ast.AST) -> list[str]:
     return bad
 
 
+def _violates_b_compute_deps(rel: str, tree: ast.AST) -> list[str]:
+    """摘要：B 层计算依赖白名单显式放行，其他层暂不限制。"""
+    _ = rel, tree, B_LAYER_COMPUTE_DEPS
+    return []
+
+
 def _violates_layers(rel: str, tree: ast.AST) -> list[str]:
     bad: list[str] = []
     imports = _collect_imports(tree)
@@ -137,6 +144,7 @@ def main() -> int:
         errors.extend(_violates_network(rel, tree))
         errors.extend(_violates_gui(rel, tree))
         errors.extend(_violates_skill_deps(rel, tree))
+        errors.extend(_violates_b_compute_deps(rel, tree))
         errors.extend(_violates_layers(rel, tree))
 
     if errors:

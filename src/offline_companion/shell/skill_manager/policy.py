@@ -52,7 +52,7 @@ def evaluate_skill_policy(
     权限矩阵（MVP）：
         - ``network_egress`` + ``LOCAL_ONLY`` → 硬拒绝，不生成 Consent
         - ``cloud_inference`` + ``LOCAL_ONLY`` → 硬拒绝，不生成 Consent
-        - ``cloud_inference`` + 其他模式 → 允许，须 ``skill_cloud_call`` Consent
+        - ``cloud_inference`` + 其他模式 → 允许，须 ``skill_cloud_inference`` Consent
         - 纯本地 Skill → ``skill_invoke``
     """
     perms = set(manifest.permissions)
@@ -70,7 +70,7 @@ def evaluate_skill_policy(
         return SkillPolicyResult(
             allowed=True,
             requires_consent=True,
-            purpose_hint=PurposeType.SKILL_CLOUD_CALL,
+            purpose_hint=PurposeType.SKILL_CLOUD_INFERENCE,
             reason="Skill 声明 cloud_inference，须经 A3 Consent",
         )
 

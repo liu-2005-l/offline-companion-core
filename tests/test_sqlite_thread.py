@@ -23,3 +23,14 @@ def test_connect_allows_other_thread_read(tmp_path) -> None:
     t.start()
     t.join()
     assert not err
+
+
+def test_connect_enables_wal_and_normal_sync(tmp_path) -> None:
+    """连接初始化应启用 WAL 与 NORMAL 同步策略。"""
+    conn = connect(tmp_path / "wal.db")
+    busy_timeout = conn.execute("PRAGMA busy_timeout;").fetchone()[0]
+    journal_mode = conn.execute("PRAGMA journal_mode;").fetchone()[0]
+    synchronous = conn.execute("PRAGMA synchronous;").fetchone()[0]
+    assert int(busy_timeout) == 5000
+    assert str(journal_mode).lower() == "wal"
+    assert int(synchronous) == 1

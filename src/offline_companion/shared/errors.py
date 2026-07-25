@@ -1,55 +1,139 @@
-"""errors：跨层异常类型（中文说明遵循项目文档字符串规范）。"""
+"""摘要：跨层异常类型。"""
+
+from __future__ import annotations
+
+from offline_companion.shared.error_codes import ErrorCode
 
 
-class BundleFormatError(ValueError):
-    """摘要：导出包格式非法或缺少必需条目。
+class ErrorCodeMixin:
+    """摘要：为异常类型提供结构化 ErrorCode。"""
 
-    说明：由 C2 在读取 ZIP/manifest 失败时抛出；调用方应提示用户文件损坏或版本不兼容。
-    """
+    error_code: ErrorCode
+
+    def to_log_fields(self) -> dict[str, object]:
+        from offline_companion.shared.error_codes import error_log_fields
+
+        return error_log_fields(self)
+
+
+class BundleFormatError(ErrorCodeMixin, ValueError):
+    error_code = ErrorCode.E_C2_BUNDLE_FORMAT_INVALID
 
 
 class ConsentArtifactError(ValueError):
-    """摘要：Consent Artifact 未通过 A3 侧结构校验。
-
-    说明：在写入 C2 审计表之前由 `validate_consent_artifact` 抛出；携带可读原因便于日志与 UI。
-    """
+    """摘要：Consent Artifact 未通过结构校验。"""
 
 
 class OutboundDenied(RuntimeError):
-    """摘要：当前隐私策略或用户选择不允许出站。"""
+    """摘要：当前策略或用户选择不允许出站。"""
 
 
-class InferenceBackendError(RuntimeError):
-    """摘要：本地推理后端不可用（路径、依赖或加载失败）。
-
-    说明：由 C1 在 health_check 或构造 LlamaCppBackend 失败时抛出。
-    """
+class InferenceBackendError(ErrorCodeMixin, RuntimeError):
+    error_code = ErrorCode.E_C1_INFERENCE_BACKEND_FAILED
 
 
-class ReformatError(ValueError):
-    """摘要：B4 规则润色无法安全处理云端原文。
+class ReformatError(ErrorCodeMixin, ValueError):
+    error_code = ErrorCode.E_B4_REFORMAT_FAILED
 
-    说明：编排层应触发本地硬降级，不得将未润色云端原文直接呈现用户。
-    """
+
+class B1PersonaAssembleError(ErrorCodeMixin, RuntimeError):
+    error_code = ErrorCode.E_B1_PERSONA_ASSEMBLE_FAILED
+
+
+class A2PlanValidationError(ErrorCodeMixin, ValueError):
+    error_code = ErrorCode.E_A2_PLAN_VALIDATION_FAILED
+
+
+class A2PlanExecutionError(ErrorCodeMixin, RuntimeError):
+    error_code = ErrorCode.E_A2_PLAN_EXECUTION_FAILED
+
+
+class A2PlanTemplateNotFoundError(ErrorCodeMixin, FileNotFoundError):
+    error_code = ErrorCode.E_A2_PLAN_TEMPLATE_NOT_FOUND
+
+
+class B2RecallError(ErrorCodeMixin, RuntimeError):
+    error_code = ErrorCode.E_B2_RECALL_FAILED
+
+
+class B2MemoryWriteError(ErrorCodeMixin, ValueError):
+    error_code = ErrorCode.E_B2_MEMORY_WRITE_FAILED
+
+
+class B2TriggerConfigError(ErrorCodeMixin, ValueError):
+    error_code = ErrorCode.E_B2_TRIGGER_CONFIG_INVALID
+
+
+class B2TriggerConfigNotFoundError(ErrorCodeMixin, FileNotFoundError):
+    error_code = ErrorCode.E_B2_TRIGGER_CONFIG_MISSING
+
+
+class B3SecurityError(ErrorCodeMixin, RuntimeError):
+    error_code = ErrorCode.E_B3_SECURITY_BLOCKED
+
+
+class B3RepliesConfigError(ErrorCodeMixin, ValueError):
+    error_code = ErrorCode.E_B3_REPLIES_CONFIG_INVALID
+
+
+class B3RepliesConfigNotFoundError(ErrorCodeMixin, FileNotFoundError):
+    error_code = ErrorCode.E_B3_REPLIES_CONFIG_MISSING
+
+
+class B0EmotionModelLoadError(ErrorCodeMixin, RuntimeError):
+    error_code = ErrorCode.E_B0_EMOTION_MODEL_LOAD_FAILED
+
+
+class B0EmotionInferenceTimeout(ErrorCodeMixin, TimeoutError):
+    error_code = ErrorCode.E_B0_EMOTION_INFERENCE_TIMEOUT
+
+
+class B0EmotionTokenizerError(ErrorCodeMixin, RuntimeError):
+    error_code = ErrorCode.E_B0_EMOTION_TOKENIZER_ERROR
+
+
+class B0EmotionConfidenceLow(ErrorCodeMixin, RuntimeError):
+    error_code = ErrorCode.E_B0_EMOTION_CONFIDENCE_LOW
 
 
 class CloudConnectorError(RuntimeError):
-    """摘要：A3 出站 HTTP 调用失败（配置、网络或响应格式）。"""
+    """摘要：A3 出站 HTTP 调用失败。"""
 
 
 class SkillManifestError(ValueError):
-    """摘要：Skill manifest 未通过 Schema 或 registry 语义校验。"""
+    """摘要：Skill manifest 未通过校验。"""
 
 
 class SkillPolicyDenied(RuntimeError):
-    """摘要：当前隐私模式或策略不允许启用/调用该 Skill。"""
+    """摘要：当前隐私模式或策略不允许启用或调用 Skill。"""
 
 
 class SkillInvocationError(RuntimeError):
-    """摘要：Skill 进程启动、调用或鉴权失败。
+    """摘要：Skill 进程启动、调用或鉴权失败。"""
 
-    说明：由 invoker 在端口分配、子进程启动、API Key 校验失败时抛出。
-    """
+
+class SkillSupplyChainError(ErrorCodeMixin, SkillInvocationError):
+    """摘要：Skill 供应链校验失败。"""
+
+
+class SkillHashMissingError(SkillSupplyChainError):
+    error_code = ErrorCode.E_SKILL_HASH_MISSING
+
+
+class SkillHashMismatchError(SkillSupplyChainError):
+    error_code = ErrorCode.E_SKILL_HASH_MISMATCH
+
+
+class SkillBuiltinHashMissingError(SkillSupplyChainError):
+    error_code = ErrorCode.E_SKILL_BUILTIN_HASH_MISSING
+
+
+class SkillBuiltinHashMismatchError(SkillSupplyChainError):
+    error_code = ErrorCode.E_SKILL_BUILTIN_HASH_MISMATCH
+
+
+class SkillTrustAnchorMissingError(SkillSupplyChainError):
+    error_code = ErrorCode.E_SKILL_TRUST_ANCHOR_MISSING
 
 
 class SkillSourceValidationError(SkillInvocationError):
@@ -57,7 +141,7 @@ class SkillSourceValidationError(SkillInvocationError):
 
 
 class CircuitBreakerOpenError(RuntimeError):
-    """摘要：目标服务熔断已打开，当前调用应快速失败。"""
+    """摘要：目标服务熔断已打开。"""
 
 
 class CheckImportsError(RuntimeError):

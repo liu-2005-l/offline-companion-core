@@ -37,6 +37,7 @@ def _bridge(tmp_path) -> DesktopBridge:
         persona_name="助手一号",
         privacy_mode=PrivacyMode.LOCAL_ONLY,
         model_label=ECHO_NO_MODEL_LABEL,
+        triggers=load_triggers(),
     )
     return DesktopBridge(runtime)
 
@@ -67,4 +68,4 @@ def test_bridge_consent_placeholder(tmp_path) -> None:
     br = _bridge(tmp_path)
     data = br.consent_placeholder()
     assert "title" in data
-    assert data["purpose_type"] == "skill_cloud_call"
+    assert data["purpose_type"] == "skill_cloud_inference"

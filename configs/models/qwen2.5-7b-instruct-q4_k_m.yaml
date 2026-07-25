@@ -1,0 +1,18 @@
+id: qwen2.5-7b-instruct-q4_k_m
+family: qwen2.5
+chat_template: |-
+  {% for message in messages %}
+  {% if message['role'] == 'system' %}<|im_start|>system
+  {{ message['content'] }}<|im_end|>
+  {% elif message['role'] == 'user' %}<|im_start|>user
+  {{ message['content'] }}<|im_end|>
+  {% elif message['role'] == 'assistant' %}<|im_start|>assistant
+  {{ message['content'] }}<|im_end|>
+  {% endif %}
+  {% endfor %}<|im_start|>assistant
+stop_tokens:
+  - <|im_end|>
+  - <|endoftext|>
+  - <|im_start|>
+strip_output_tags:
+  - think

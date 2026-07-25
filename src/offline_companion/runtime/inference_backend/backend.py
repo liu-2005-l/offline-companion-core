@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import sys
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from offline_companion.shared.errors import InferenceBackendError
-from offline_companion.shared.types import MessageRow
+from offline_companion.shared.types import MessageRow, ModelRuntimeConfig
 
 
 @runtime_checkable
@@ -90,6 +91,7 @@ class LlamaCppBackend:
         n_gpu_layers: int = 0,
         verbose: bool = False,
         skip_load: bool = False,
+        model_config: ModelRuntimeConfig | None = None,
     ) -> None:
         """摘要：加载 GGUF 模型。
 
@@ -103,6 +105,7 @@ class LlamaCppBackend:
         self.model_path = resolve_gguf_path(model_path)
         self.n_ctx = n_ctx
         self.n_gpu_layers = n_gpu_layers
+        self.model_config = model_config or ModelRuntimeConfig(model_id=self.model_path.stem)
         self._llama = None
         if skip_load:
             return
@@ -242,7 +245,10 @@ class LlamaCppBackend:
         messages.append({"role": "user", "content": user_message})
 
         try:
-            out = self._llama.create_chat_completion(messages=messages, max_tokens=max_tokens)
+            kwargs = {"messages": messages, "max_tokens": max_tokens}
+            if self.model_config.stop_tokens:
+                kwargs["stop"] = list(self.model_config.stop_tokens)
+            out = self._llama.create_chat_completion(**kwargs)
         except Exception as e:  # pragma: no cover
             raise InferenceBackendError(f"推理失败: {e}") from e
 
@@ -253,7 +259,22 @@ class LlamaCppBackend:
         content = msg.get("content")
         if not content:
             raise InferenceBackendError(f"推理响应无内容: {out!r}")
-        return str(content).strip()
+        return self._strip_output_tags(str(content).strip())
+
+    def _strip_output_tags(self, text: str) -> str:
+        """摘要：按模型配置剥离不应展示给用户的特殊输出标签。"""
+        cleaned = text
+        for tag in self.model_config.strip_output_tags:
+            tag_name = tag.strip().strip("<>/")
+            if not tag_name:
+                continue
+            cleaned = re.sub(
+                rf"<{re.escape(tag_name)}\b[^>]*>.*?</{re.escape(tag_name)}>",
+                "",
+                cleaned,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
+        return cleaned.strip()
 
 
 def create_llama_backend(
@@ -263,6 +284,7 @@ def create_llama_backend(
     n_gpu_layers: int = 0,
     verbose: bool = False,
     run_health_check: bool = True,
+    model_config: ModelRuntimeConfig | None = None,
 ) -> LlamaCppBackend:
     """摘要：工厂方法：可选先轻量 health_check 再构造已加载的 ``LlamaCppBackend``。
 
@@ -293,6 +315,7 @@ def create_llama_backend(
         n_ctx=n_ctx,
         n_gpu_layers=n_gpu_layers,
         verbose=verbose,
+        model_config=model_config,
     )
 
 

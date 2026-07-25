@@ -1,66 +1,44 @@
 from __future__ import annotations
 
-from offline_companion.shared.messages import BaseMessage
-from offline_companion.shell.auto_router import AutoRouter, AutoRoutingAdapter, RoutingContext, RoutingMode
+from offline_companion.shell.auto_router import AutoRouter, RoutingContext, RoutingDecision, RoutingMode
+from offline_companion.shared.types import PrivacyMode
 
 
-def test_auto_router_forces_local_in_local_only_mode() -> None:
+def test_policy_forces_local_only() -> None:
     router = AutoRouter()
-    decision = router.decide(RoutingContext(query="hello", privacy_mode="local_only"))
+    decision = router.decide(RoutingContext(query="x", privacy_mode=PrivacyMode.LOCAL_ONLY.value))
 
-    assert decision.mode == RoutingMode.LOCAL
-    assert decision.reason == "privacy_mode=local_only"
-
-
-def test_auto_router_uses_cloud_when_complex_and_budget_allows() -> None:
-    router = AutoRouter(complexity_threshold=3)
-    decision = router.decide(
-        RoutingContext(query="complex task", complexity=5, cloud_cost=0.2, cloud_budget=1.0)
-    )
-
-    assert decision.mode == RoutingMode.CLOUD
+    assert decision.mode is RoutingMode.LOCAL
+    assert decision.policy_blocked is True
+    assert decision.selected_by == "policy"
+    assert decision.fallback_chain == (RoutingMode.LOCAL,)
 
 
-def test_auto_router_falls_back_when_cloud_over_budget() -> None:
-    router = AutoRouter(complexity_threshold=3)
-    decision = router.decide(
-        RoutingContext(query="complex task", complexity=5, cloud_cost=2.0, cloud_budget=1.0)
-    )
-
-    assert decision.mode == RoutingMode.LOCAL
-    assert decision.reason == "cloud_cost_over_budget"
-
-
-def test_auto_router_fallback_chain_includes_echo() -> None:
+def test_policy_marks_requires_consent() -> None:
     router = AutoRouter()
-    chain = router.fallback_chain(RoutingContext(query="hi", cloud_cost=0.2, cloud_budget=1.0))
+    decision = router.decide(RoutingContext(query="x", metadata={"requires_consent": True}))
 
-    assert chain[0].value == "local"
-    assert chain[-1].value == "echo"
+    assert decision.requires_consent is True
+    assert decision.selected_by == "policy"
+    assert decision.reason == "requires_consent"
 
 
-def test_auto_routing_adapter_routes_message() -> None:
-    router = AutoRouter()
+def test_router_uses_advisor_when_policy_allows() -> None:
+    class Advisor:
+        def advise(self, context: RoutingContext, candidates: tuple[RoutingMode, ...]) -> RoutingDecision | None:
+            return RoutingDecision(RoutingMode.CLOUD, "advisor_selected", confidence=0.66, selected_by="llm")
 
-    adapter = AutoRoutingAdapter(
-        router,
-        lambda message: RoutingContext(
-            query=message.topic,
-            privacy_mode="local_only" if message.meta.get("local_only") else "hybrid",
-            complexity=int(message.meta.get("complexity", 0)),
-            cloud_cost=float(message.meta.get("cloud_cost", 0.0)),
-            cloud_budget=float(message.meta.get("cloud_budget", 1.0)),
-            metadata=dict(message.meta),
-        ),
-    )
+    router = AutoRouter(advisor=Advisor())
+    decision = router.decide(RoutingContext(query="x", privacy_mode=PrivacyMode.ALWAYS_ASK.value))
 
-    decision = adapter.route(
-        BaseMessage(
-            message_id="m-1",
-            topic="task.plan",
-            source="shell",
-            meta={"complexity": 10, "cloud_cost": 0.2, "cloud_budget": 1.0},
-        )
-    )
+    assert decision.mode is RoutingMode.CLOUD
+    assert decision.selected_by == "llm"
+    assert decision.fallback_chain == (RoutingMode.LOCAL, RoutingMode.CLOUD, RoutingMode.ECHO)
 
-    assert decision.mode == RoutingMode.CLOUD
+
+def test_default_rule_falls_back_to_local() -> None:
+    router = AutoRouter(complexity_threshold=5)
+    decision = router.decide(RoutingContext(query="x", privacy_mode=PrivacyMode.ALWAYS_ASK.value, complexity=1))
+
+    assert decision.mode is RoutingMode.LOCAL
+    assert decision.reason == "default_local"

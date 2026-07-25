@@ -57,6 +57,21 @@ def _bm25_to_relevance(bm25_score: float | None) -> float:
     return 1.0 / (1.0 + abs(float(bm25_score)))
 
 
+def _parse_ts(value: Any) -> float:
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value)
+    try:
+        return float(text)
+    except ValueError:
+        try:
+            from datetime import datetime
+
+            return datetime.fromisoformat(text.replace("Z", "+00:00")).timestamp()
+        except Exception:
+            return time.time()
+
+
 def _time_decay(created_at: float, now: float, half_life_sec: float) -> float:
     age = max(0.0, now - created_at)
     if half_life_sec <= 0:
@@ -123,20 +138,20 @@ def recall(
             rows = conn.execute(
                 "SELECT m.id, m.body, m.created_at, bm25(memory_fts) AS s "
                 "FROM memory_fts JOIN memory_chunks AS m ON m.id = memory_fts.rowid "
-                "WHERE memory_fts MATCH ? ORDER BY s LIMIT ?;",
+                "WHERE memory_fts MATCH ? AND m.status = 'active' ORDER BY s LIMIT ?;",
                 (fts_q, pool),
             ).fetchall()
         except sqlite3.OperationalError:
             rows = conn.execute(
                 "SELECT m.id, m.body, m.created_at, NULL AS s "
                 "FROM memory_fts JOIN memory_chunks AS m ON m.id = memory_fts.rowid "
-                "WHERE memory_fts MATCH ? LIMIT ?;",
+                "WHERE memory_fts MATCH ? AND m.status = 'active' LIMIT ?;",
                 (fts_q, pool),
             ).fetchall()
 
         for r in rows:
             mid = int(r["id"])
-            created = float(r["created_at"])
+            created = _parse_ts(r["created_at"])
             fts_s = r["s"]
             rel = _bm25_to_relevance(fts_s)
             decay = _time_decay(created, now, half_life_sec)
@@ -156,13 +171,12 @@ def recall(
                     decay_factor=decay,
                 ),
             )
-
-  # 关键词补强：FTS 漏检时（如「食物」与「香菜」），用重叠词元扫描近期记忆
+    # 关键词补强：FTS 漏检时（如「食物」与「香菜」），用重叠词元扫描近期记忆
     if len(by_id) < limit:
         tokens = _tokenize_for_overlap(query)
         if tokens:
             rows = conn.execute(
-                "SELECT id, body, created_at FROM memory_chunks ORDER BY updated_at DESC LIMIT 200;"
+                "SELECT id, body, created_at FROM memory_chunks WHERE status = 'active' ORDER BY modified_at DESC, id DESC LIMIT 200;"
             ).fetchall()
             for r in rows:
                 mid = int(r["id"])
@@ -172,7 +186,7 @@ def recall(
                 matched = [t for t in tokens if t in body_l]
                 if not matched:
                     continue
-                created = float(r["created_at"])
+                created = _parse_ts(r["created_at"])
                 rel = min(1.0, 0.35 + 0.15 * len(matched))
                 decay = _time_decay(created, now, half_life_sec)
                 combined = rel * decay

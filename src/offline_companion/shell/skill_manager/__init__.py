@@ -4,11 +4,32 @@ from offline_companion.shared.types import PurposeType
 
 from offline_companion.shell.skill_manager.invoker import SkillInvoker, SkillProcess
 from offline_companion.shell.skill_manager.manifest import SkillEntrypoint, SkillManifest
+from offline_companion.shell.skill_manager.seccomp import (
+    SECCOMP_PROFILE_COMPUTE,
+    SECCOMP_PROFILE_FILE_IO,
+    SECCOMP_PROFILE_NETWORK,
+    SeccompLoadResult,
+    load_profile,
+    seccomp_runtime_supported,
+    select_seccomp_profile,
+)
 from offline_companion.shell.skill_manager.policy import (
     SkillPolicyResult,
     check_read_context,
     evaluate_skill_policy,
     require_skill_allowed,
+)
+from offline_companion.shell.skill_manager.supply_chain import (
+    audit_supply_chain_failure,
+    bundled_hash_manifest_path,
+    host_trust_anchor_path,
+    register_bundled_trust_anchor,
+    sbom_path,
+    sha256_file,
+    verify_bundled_skill_integrity,
+    verify_requirements_hashes,
+    verify_supply_chain,
+    write_sbom,
 )
 from offline_companion.shell.skill_manager.registry import (
     MANIFEST_TYPE_PLUGIN,
@@ -32,6 +53,10 @@ __all__ = [
     "SkillManifest",
     "SkillPolicyResult",
     "SkillProcess",
+    "SeccompLoadResult",
+    "SECCOMP_PROFILE_COMPUTE",
+    "SECCOMP_PROFILE_FILE_IO",
+    "SECCOMP_PROFILE_NETWORK",
     "check_read_context",
     "compare_versions",
     "evaluate_skill_policy",
@@ -47,4 +72,17 @@ __all__ = [
     "require_skill_allowed",
     "skill_install_dir",
     "validate_manifest_dict",
+    "bundled_hash_manifest_path",
+    "host_trust_anchor_path",
+    "register_bundled_trust_anchor",
+    "audit_supply_chain_failure",
+    "load_profile",
+    "sbom_path",
+    "seccomp_runtime_supported",
+    "select_seccomp_profile",
+    "sha256_file",
+    "verify_bundled_skill_integrity",
+    "verify_requirements_hashes",
+    "verify_supply_chain",
+    "write_sbom",
 ]

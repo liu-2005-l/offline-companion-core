@@ -19,6 +19,7 @@ class WebRuntime:
     orchestrator: ConversationOrchestrator
     memory_on: bool
     session_id: str
+    triggers: object | None = None
 
 
 def create_app(runtime: WebRuntime):

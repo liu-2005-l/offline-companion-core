@@ -6,7 +6,11 @@ from pathlib import Path
 
 import yaml
 
-from offline_companion.core.memory_lifecycle.embedding import cosine_similarity, embed_text
+from offline_companion.core.memory_lifecycle.embedding import (
+    cosine_similarity,
+    embed_text,
+    embedding_candidates,
+)
 from offline_companion.core.memory_lifecycle.embedding_config import (
     MemoryEmbeddingConfig,
     load_embedding_config,
@@ -90,6 +94,22 @@ def test_recall_embedding_boosts_related_chunk(tmp_path, monkeypatch) -> None:
     hits = recall(conn, "花生酱能吃吗", limit=5)
     assert hits
     assert any("花生" in h.body for h in hits)
+
+
+def test_cancelled_memory_excluded_from_recall_and_embedding_candidates(tmp_path, monkeypatch) -> None:
+    """cancelled 记忆不得被召回或进入向量候选。"""
+    cfg = _enabled_config(tmp_path)
+    _patch_embedding_config(monkeypatch, cfg)
+    conn = connect(tmp_path / "e_cancelled.db")
+    new_session(conn, "s1", "default", title=None)
+    mid = MemoryLifecycleManager.add_memory_chunk(conn, "我喜欢榴莲蛋糕", session_id="s1", source="t")
+    conn.execute("UPDATE memory_chunks SET status = 'cancelled' WHERE id = ?;", (mid,))
+
+    hits = recall(conn, "榴莲蛋糕", limit=5)
+    candidates = embedding_candidates(conn, "榴莲蛋糕", config=cfg)
+
+    assert all(h.id != mid for h in hits)
+    assert all(item[0] != mid for item in candidates)
 
 
 def test_cosine_identical() -> None:

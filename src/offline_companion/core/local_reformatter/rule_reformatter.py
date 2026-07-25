@@ -4,11 +4,76 @@ from __future__ import annotations
 
 import re
 
+import yaml
+
+from offline_companion.core.emotion_analyzer.context import EmotionContext
 from offline_companion.shared.errors import ReformatError
+from offline_companion.shared.runtime_paths import configs_dir, dev_repo_root
 from offline_companion.shared.types import Persona
 
-# 硬降级时前缀（与 A2 编排约定一致）
 LOCAL_FALLBACK_PREFIX = "我现在用自己的方式回答你："
+
+_POLISH_RULES: dict[str, dict] | None = None
+
+
+def _load_polish_rules() -> dict[str, dict]:
+    """摘要：加载情绪润色规则。"""
+    global _POLISH_RULES
+    if _POLISH_RULES is not None:
+        return _POLISH_RULES
+
+    candidates = [
+        configs_dir() / "polish_rules.yaml",
+        configs_dir() / "emotion_mappings.yaml",
+        dev_repo_root() / "configs" / "polish_rules.yaml",
+        dev_repo_root() / "configs" / "emotion_mappings.yaml",
+    ]
+    raw: dict | None = None
+    for candidate in candidates:
+        if not candidate.is_file():
+            continue
+        loaded = yaml.safe_load(candidate.read_text(encoding="utf-8")) or {}
+        raw = loaded if isinstance(loaded, dict) else {}
+        break
+
+    if raw is None:
+        _POLISH_RULES = {}
+        return _POLISH_RULES
+
+    rules = raw.get("polish_rules", {})
+    _POLISH_RULES = {key: value for key, value in rules.items() if isinstance(value, dict)}
+    return _POLISH_RULES
+
+
+def _apply_emotion_polish(text: str, emotion_context: EmotionContext | None) -> str:
+    """摘要：根据情绪上下文对文本做润色。"""
+    if emotion_context is None or emotion_context.emotion == "neutral":
+        return text
+
+    rules = _load_polish_rules()
+    entry = rules.get(emotion_context.emotion)
+    if not entry:
+        return text
+
+    result = text
+    max_exclamation = int(entry.get("max_exclamation", 1))
+    exclamation_count = result.count("！") + result.count("!")
+    if exclamation_count > max_exclamation:
+        kept = 0
+        chars = list(result)
+        for index, char in enumerate(chars):
+            if char not in ("！", "!"):
+                continue
+            if kept >= max_exclamation:
+                chars[index] = "。"
+            else:
+                kept += 1
+        result = "".join(chars)
+
+    suffix = str(entry.get("append_suffix") or "").strip()
+    if suffix and emotion_context.valence < 0 and not result.rstrip().endswith(suffix):
+        result = result.rstrip() + "\n\n" + suffix
+    return result
 
 
 def _reformat_config(persona: Persona) -> dict:
@@ -19,78 +84,74 @@ def _reformat_config(persona: Persona) -> dict:
 def _tone_keywords(persona: Persona) -> list[str]:
     raw = persona.raw.get("tone_keywords")
     if isinstance(raw, list) and raw:
-        return [str(x) for x in raw if str(x).strip()]
-    return ["呢", "吧"]
+        return [str(item) for item in raw if str(item).strip()]
+    return ["呀", "呢"]
 
 
 def latin_letter_ratio(text: str) -> float:
-    """摘要：估算拉丁字母占比（用于检测英文过重）。"""
-    letters = [c for c in text if c.isalpha()]
+    """摘要：估算拉丁字母占比。"""
+    letters = [char for char in text if char.isalpha()]
     if not letters:
         return 0.0
-    latin = sum(1 for c in letters if ord(c) < 128)
+    latin = sum(1 for char in letters if ord(char) < 128)
     return latin / len(letters)
 
 
 def should_reformat(text: str, persona: Persona) -> bool:
-    """摘要：判断是否应对云端原文做规则润色。
-
-    参数：
-        text: 云端原始文本。
-        persona: 当前人设（读取 ``reformat`` / ``tone_keywords`` 配置）。
-
-    返回值：
-        过短或英文占比过高时为 True。
-    """
+    """摘要：判断是否需要对云端原文做规则润色。"""
     body = text.strip()
     if not body:
         return True
-    cfg = _reformat_config(persona)
-    min_chars = int(cfg.get("min_chars", 8))
-    max_latin = float(cfg.get("max_latin_ratio", 0.35))
+    config = _reformat_config(persona)
+    min_chars = int(config.get("min_chars", 8))
+    max_latin_ratio = float(config.get("max_latin_ratio", 0.35))
     if len(body) < min_chars:
         return True
-    return latin_letter_ratio(body) > max_latin
+    return latin_letter_ratio(body) > max_latin_ratio
 
 
-def reformat_cloud_reply(text: str, persona: Persona) -> str:
-    """摘要：将云端返回文本用规则管线压回人设风格（不改事实、不删数字）。
-
-    参数：
-        text: 云端原始文本。
-        persona: 当前人设。
-
-    返回值：
-        润色后文本。
-
-    异常：
-        ReformatError：输入为空或无法安全润色。
-    """
+def reformat_cloud_reply(
+    text: str,
+    persona: Persona,
+    emotion_context: EmotionContext | None = None,
+) -> str:
+    """摘要：将云端返回文本压回人格风格。"""
     body = text.strip()
     if not body:
         raise ReformatError("云端返回为空")
 
-    cfg = _reformat_config(persona)
-    min_chars = int(cfg.get("min_chars", 8))
+    config = _reformat_config(persona)
+    min_chars = int(config.get("min_chars", 8))
     tones = _tone_keywords(persona)
-    out = body
+    result = _apply_emotion_polish(body, emotion_context)
 
-    # 英文过重：加中文陪伴框架，保留原文信息
-    if latin_letter_ratio(out) > float(cfg.get("max_latin_ratio", 0.35)):
-        out = f"我整理成中文跟你说：{out}"
+    if latin_letter_ratio(result) > float(config.get("max_latin_ratio", 0.35)):
+        result = f"我整理成中文跟你说：{result}"
 
-    # 过短：补足陪伴语气，不删除原句
-    if len(out) < min_chars:
-        tail = tones[0] if tones else "呢"
-        out = f"{out}，{tail}要是还想聊我可以陪你多说几句。"
+    if len(result) < min_chars:
+        tail = tones[0] if tones else "呀"
+        result = f"{result}，{tail}，要是还想聊我可以陪你多说几句。"
 
-    # 句末语气词（仅当尚无常见语气收束）
-    if tones and not re.search(r"[呢吧哦哈呐]$", out.rstrip("。！？.!?")):
-        if out[-1] in "。！？.!?":
-            out = out[:-1] + "，" + tones[0] + "。"
+    if tones and not re.search(r"[呀呢吧啦哈哦]$", result.rstrip("。！？?!")):
+        if result[-1] in "。！？?!":
+            result = result[:-1] + "，" + tones[0] + "。"
         else:
-            out = out + "，" + tones[0] + "。"
+            result = result + "，" + tones[0] + "。"
 
-    if not out.strip():
+    if not result.strip():
         raise ReformatError("润色结果为空")
-    return out.strip()
+    return result.strip()
+
+
+def reformat_local_reply(
+    text: str,
+    emotion_context: EmotionContext | None = None,
+) -> str:
+    """摘要：对本地模型输出执行 B4 情绪润色。"""
+    body = text.strip()
+    if not body:
+        raise ReformatError("本地回复为空")
+    result = _apply_emotion_polish(body, emotion_context)
+    if not result.strip():
+        raise ReformatError("本地润色结果为空")
+    return result.strip()

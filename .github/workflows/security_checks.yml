@@ -32,5 +32,8 @@ jobs:
           pip-audit
       - name: Security pytest gate
         run: python -m pytest -q -m security
+      - name: Linux seccomp runtime gate
+        if: runner.os == 'Linux'
+        run: python -m pytest -q -m linux_seccomp
       - name: Security summary
         run: python scripts/ci/security_summary.py --static-checks --security-pytests --dependency-audit

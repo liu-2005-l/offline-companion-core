@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from offline_companion.core.state_manager import StateManager
+from offline_companion.core.state_manager import (
+    StateAccessError,
+    StateEventFormatError,
+    StateManager,
+    StateVersionConflictError,
+)
 
 
 def test_state_manager_domain_roundtrip(tmp_path: Path) -> None:
@@ -30,7 +35,7 @@ def test_state_manager_subscribe_triggers_on_update(tmp_path: Path) -> None:
             )
         )
 
-    sm.subscribe("task", "progress", on_change)
+    sm.subscribe("task", "progress", on_change, role="task")
     sm.set_task_state("progress", 0.7)
     sm.set_task_state("progress", 0.9)
 
@@ -45,8 +50,8 @@ def test_state_manager_unsubscribe_stops_notifications(tmp_path: Path) -> None:
     def on_change(new_record, old_record) -> None:
         events.append(new_record.value)
 
-    sm.subscribe("system", "mode", on_change)
-    assert sm.unsubscribe("system", "mode", on_change)
+    sm.subscribe("system", "mode", on_change, role="system")
+    assert sm.unsubscribe("system", "mode", on_change, role="system")
     sm.set_system_state("mode", "auto")
 
     assert events == []
@@ -59,7 +64,7 @@ def test_state_manager_wildcard_subscription(tmp_path: Path) -> None:
     def on_change(new_record, old_record) -> None:
         events.append((new_record.domain, new_record.key, new_record.value))
 
-    sm.subscribe("task", "*", on_change)
+    sm.subscribe("task", "*", on_change, role="task")
     sm.set_task_state("status", "running")
     sm.set_task_state("progress", 1.0)
 
@@ -72,7 +77,7 @@ def test_state_manager_records_callback_errors(tmp_path: Path) -> None:
     def failing_callback(new_record, old_record) -> None:
         raise RuntimeError("boom")
 
-    sm.subscribe("session", "active", failing_callback)
+    sm.subscribe("session", "active", failing_callback, role="session")
     sm.set_session_state("active", True)
 
     errors = sm.get_event_errors()
@@ -88,22 +93,63 @@ def test_state_manager_clear_event_errors(tmp_path: Path) -> None:
     def failing_callback(new_record, old_record) -> None:
         raise RuntimeError("boom")
 
-    sm.subscribe("session", "active", failing_callback)
+    sm.subscribe("session", "active", failing_callback, role="session")
     sm.set_session_state("active", True)
     assert sm.get_event_errors()
     sm.clear_event_errors()
     assert sm.get_event_errors() == []
 
 
-def test_state_manager_trigger_idle_think(tmp_path: Path) -> None:
+def test_state_manager_rejects_invalid_domain(tmp_path: Path) -> None:
     sm = StateManager(tmp_path / "state.db")
-    events: list[bool] = []
 
-    def on_idle_request(new_record, old_record) -> None:
-        events.append(bool(new_record.value))
+    try:
+        sm.set("invalid", "key", "value")
+    except StateAccessError as exc:
+        assert exc.code == "E_STATE_DOMAIN_DENIED"
+    else:  # pragma: no cover - safety guard
+        raise AssertionError("expected StateAccessError")
 
-    sm.subscribe("system", "idle_think_requested", on_idle_request)
-    sm.trigger_idle_think()
 
-    assert sm.get_system_state("idle_think_requested") is True
-    assert events == [True]
+def test_state_manager_version_conflict(tmp_path: Path) -> None:
+    sm = StateManager(tmp_path / "state.db")
+    record = sm.set_task_state("progress", 0.1)
+
+    try:
+        sm.set_if_version("task", "progress", 0.2, expected_version=record.version + 1)
+    except StateVersionConflictError as exc:
+        assert exc.code == "E_STATE_VERSION_CONFLICT"
+    else:  # pragma: no cover - safety guard
+        raise AssertionError("expected StateVersionConflictError")
+
+
+def test_state_manager_rejects_invalid_event_name(tmp_path: Path) -> None:
+    sm = StateManager(tmp_path / "state.db")
+
+    try:
+        sm.publish_event("system", "InvalidEvent", {"trace_id": "t-1", "data": {}})
+    except StateEventFormatError as exc:
+        assert exc.code == "E_STATE_EVENT_INVALID"
+    else:  # pragma: no cover - safety guard
+        raise AssertionError("expected StateEventFormatError")
+
+
+def test_state_manager_records_audit_log(tmp_path: Path) -> None:
+    sm = StateManager(tmp_path / "state.db")
+    sm.set_system_state("mode", "auto")
+    row = sm._conn.execute(
+        "SELECT domain, key, actor, operation, version FROM state_audit_log LIMIT 1;"
+    ).fetchone()
+
+    assert tuple(row) == ("system", "mode", "system", "set", 1)
+
+
+def test_state_manager_rejects_role_mismatch(tmp_path: Path) -> None:
+    sm = StateManager(tmp_path / "state.db")
+
+    try:
+        sm.set_task_state("progress", 1.0, role="session")
+    except StateAccessError as exc:
+        assert exc.code == "E_STATE_DOMAIN_DENIED"
+    else:  # pragma: no cover - safety guard
+        raise AssertionError("expected StateAccessError")

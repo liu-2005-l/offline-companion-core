@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from offline_companion.core.memory_lifecycle.triggers import TriggerRegistry
 from offline_companion.shell.ui_host.bootstrap import UISessionBundle
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
 from offline_companion.shared.types import PrivacyMode
@@ -19,6 +20,7 @@ class DesktopRuntime:
     persona_name: str
     privacy_mode: PrivacyMode
     model_label: str
+    triggers: TriggerRegistry
 
     @classmethod
     def from_bundle(cls, bundle: UISessionBundle) -> DesktopRuntime:
@@ -30,4 +32,5 @@ class DesktopRuntime:
             persona_name=bundle.persona_name,
             privacy_mode=bundle.privacy_mode,
             model_label=bundle.model_label,
+            triggers=TriggerRegistry(version=1, path=bundle.paths.root / "triggers.yaml", enabled={"on_summarize_request": False, "on_explicit_save": True, "on_emotion_shift": False}),
         )
