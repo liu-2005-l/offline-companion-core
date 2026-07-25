@@ -4,7 +4,10 @@ import sqlite3
 from pathlib import Path
 
 from offline_companion.core.plan_orchestrator import ConsentRequest, PlanOrchestrator
-from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway, build_consent_artifact
+from offline_companion.shell.outbound_manager.a3_gateway import (
+    UIHostConsentGateway,
+    build_consent_artifact,
+)
 
 
 def test_a3_gateway_builds_and_decides_artifact(tmp_path: Path) -> None:

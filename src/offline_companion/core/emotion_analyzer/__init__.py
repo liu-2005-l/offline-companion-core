@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from offline_companion.core.emotion_analyzer.classifier import EmotionClassifier, RuleEmotionClassifier
+from offline_companion.core.emotion_analyzer.classifier import (
+    EmotionClassifier,
+    RuleEmotionClassifier,
+)
 from offline_companion.core.emotion_analyzer.context import EmotionContext
 
 __all__ = [

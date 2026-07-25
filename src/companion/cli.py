@@ -12,4 +12,4 @@ warnings.warn(
     stacklevel=2,
 )
 
-__all__ = ["main", "cmd_chat", "build_parser"]
+__all__ = ["build_parser", "cmd_chat", "main"]

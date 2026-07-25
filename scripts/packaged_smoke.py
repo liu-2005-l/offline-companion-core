@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """摘要：Sprint 6.4 便携包（PyInstaller）零交互冒烟（Echo；Windows 优先）。
 
 用法::
@@ -24,7 +23,7 @@ _SRC = ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from offline_companion.shell.ui_host.packaged_smoke_lib import run_packaged_smoke  # noqa: E402
+from offline_companion.shell.ui_host.packaged_smoke_lib import run_packaged_smoke
 
 
 def default_portable_exe() -> Path:

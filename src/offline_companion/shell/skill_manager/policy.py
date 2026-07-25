@@ -57,14 +57,13 @@ def evaluate_skill_policy(
     """
     perms = set(manifest.permissions)
 
-    if privacy_mode == PrivacyMode.LOCAL_ONLY:
-        if PERM_NETWORK in perms or PERM_CLOUD in perms:
-            return SkillPolicyResult(
-                allowed=False,
-                requires_consent=False,
-                purpose_hint=None,
-                reason=_LOCAL_ONLY_DENY_MSG,
-            )
+    if privacy_mode == PrivacyMode.LOCAL_ONLY and (PERM_NETWORK in perms or PERM_CLOUD in perms):
+        return SkillPolicyResult(
+            allowed=False,
+            requires_consent=False,
+            purpose_hint=None,
+            reason=_LOCAL_ONLY_DENY_MSG,
+        )
 
     if PERM_CLOUD in perms:
         return SkillPolicyResult(

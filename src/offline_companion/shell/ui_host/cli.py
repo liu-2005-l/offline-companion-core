@@ -9,6 +9,7 @@ import time
 import uuid
 from pathlib import Path
 
+from offline_companion.core.knowledge_rag.config import load_knowledge_config
 from offline_companion.core.memory_lifecycle.drafts import (
     confirm_draft,
     create_draft_from_session,
@@ -26,31 +27,33 @@ from offline_companion.core.persona_session.persona_loader import (
     load_persona_file,
 )
 from offline_companion.core.persona_session.session import PersonaSessionCore
-from offline_companion.shared.errors import InferenceBackendError
 from offline_companion.runtime.inference_backend import (
     EchoBackend,
     create_llama_backend,
     try_stderr_cuda_hint,
 )
 from offline_companion.runtime.storage_index.engine import connect, new_session
-from offline_companion.runtime.storage_index.export_import import read_bundle_archive, write_bundle_archive
-from offline_companion.shared.types import AppPaths, OutboundPlan, OutboundScope, PrivacyMode
-from offline_companion.shell.outbound_manager.consent import persist_consent_artifact
-from offline_companion.shell.outbound_manager.connector import post_cloud_completion
-from offline_companion.shell.policy_engine.engine import ensure_outbound_allowed
-from offline_companion.shell.policy_engine.rules import default_app_paths
-from offline_companion.core.knowledge_rag.config import load_knowledge_config
+from offline_companion.runtime.storage_index.export_import import (
+    read_bundle_archive,
+    write_bundle_archive,
+)
 from offline_companion.runtime.storage_index.knowledge_store import (
     connect_knowledge,
     default_knowledge_db_path,
 )
+from offline_companion.shared.errors import InferenceBackendError
+from offline_companion.shared.types import AppPaths, OutboundPlan, OutboundScope, PrivacyMode
+from offline_companion.shell.outbound_manager.connector import post_cloud_completion
+from offline_companion.shell.outbound_manager.consent import persist_consent_artifact
+from offline_companion.shell.policy_engine.engine import ensure_outbound_allowed
+from offline_companion.shell.policy_engine.rules import default_app_paths
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
+from offline_companion.shell.ui_host.knowledge_turn import run_knowledge_search
 from offline_companion.shell.ui_host.model_registry import (
     resolve_default_gguf_path,
     resolve_default_model_config,
     resolve_n_gpu_layers,
 )
-from offline_companion.shell.ui_host.knowledge_turn import run_knowledge_search
 
 
 def _parse_privacy(s: str) -> PrivacyMode:

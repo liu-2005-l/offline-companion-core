@@ -84,6 +84,7 @@ def run_packaged_smoke(
             env=env,
             timeout=timeout_sec,
             cwd=str(exe.parent),
+            check=False,
         )
         combined = _decode_stream(proc.stdout) + _decode_stream(proc.stderr)
         errors = validate_smoke_stdout(combined)

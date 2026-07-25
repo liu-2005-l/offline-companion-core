@@ -43,8 +43,7 @@ def test_runtime_sandbox_blocks_dangerous_capabilities():
 
 
 def test_runtime_sandbox_context_manager_restores_state():
-    with runtime_sandbox():
-        with pytest.raises(SkillInvocationError):
-            socket.socket()
+    with runtime_sandbox(), pytest.raises(SkillInvocationError):
+        socket.socket()
     assert socket.socket is not None
     assert builtins.__import__("os") is not None

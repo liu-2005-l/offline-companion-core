@@ -77,9 +77,7 @@ class MemoryDecisionEngine:
         return None
 
     def _is_ambiguous(self, candidate: SemanticMemoryCandidate, text: str) -> bool:
-        if candidate.memory_type == "assistant_profile" and self._looks_like_style_description(text):
-            return True
-        return False
+        return candidate.memory_type == "assistant_profile" and self._looks_like_style_description(text)
 
     def _build_clarify_prompt(self, candidate: SemanticMemoryCandidate) -> str:
         if candidate.memory_type == "assistant_profile":

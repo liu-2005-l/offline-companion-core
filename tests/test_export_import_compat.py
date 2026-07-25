@@ -6,7 +6,10 @@ from pathlib import Path
 
 from offline_companion.core.memory_lifecycle.manager import prepare_export_bundle
 from offline_companion.runtime.storage_index.engine import connect, new_session
-from offline_companion.runtime.storage_index.export_import import read_bundle_archive, write_bundle_archive
+from offline_companion.runtime.storage_index.export_import import (
+    read_bundle_archive,
+    write_bundle_archive,
+)
 
 
 def test_bundle_archive_roundtrip_cross_platform_path(tmp_path: Path) -> None:

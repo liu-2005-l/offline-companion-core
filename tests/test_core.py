@@ -11,7 +11,10 @@ from offline_companion.core.memory_lifecycle.manager import (
 )
 from offline_companion.core.safety_boundary.classifier import SafetyTier, classify_user_text
 from offline_companion.runtime.storage_index.engine import append_message, connect, new_session
-from offline_companion.runtime.storage_index.export_import import read_bundle_archive, write_bundle_archive
+from offline_companion.runtime.storage_index.export_import import (
+    read_bundle_archive,
+    write_bundle_archive,
+)
 from offline_companion.shared.errors import OutboundDenied
 from offline_companion.shared.types import OutboundPlan, OutboundScope, PrivacyMode
 from offline_companion.shell.policy_engine.engine import ensure_outbound_allowed

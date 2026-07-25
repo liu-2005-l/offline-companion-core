@@ -21,7 +21,7 @@ def _table_jsonl(conn: sqlite3.Connection, table: str) -> str:
     rows = conn.execute(f"SELECT * FROM {table};").fetchall()
     lines: list[str] = []
     for r in rows:
-        lines.append(json.dumps({k: r[k] for k in r.keys()}, ensure_ascii=False))
+        lines.append(json.dumps({k: r[k] for k in r}, ensure_ascii=False))
     return "\n".join(lines) + ("\n" if lines else "")
 
 

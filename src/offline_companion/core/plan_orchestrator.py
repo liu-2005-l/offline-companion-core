@@ -677,7 +677,6 @@ class PlanOrchestrator:
             return context
 
         fallback_chain = tuple(context.context_vars.get("fallback_chain", []) or ())
-        fallback_index = int(context.context_vars.get("fallback_index", 0) or 0)
         if fallback_chain and "route_mode" not in context.context_vars:
             context.context_vars["route_mode"] = fallback_chain[0]
             context.context_vars["fallback_index"] = 0

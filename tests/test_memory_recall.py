@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
 from offline_companion.core.memory_lifecycle.recall import format_recall_prompt_block, recall
@@ -9,7 +10,6 @@ from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.runtime.inference_backend.mock import EchoBackend
 from offline_companion.runtime.storage_index.engine import connect, new_session
 from offline_companion.shared.types import Persona
-from pathlib import Path
 
 
 def test_recall_matched_on_non_empty(tmp_path) -> None:

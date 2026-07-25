@@ -39,10 +39,9 @@ def _collect_imports(tree: ast.AST) -> list[tuple[str, str]]:
             for alias in node.names:
                 out.append(("import", alias.name.split(".")[0]))
                 out.append(("import_full", alias.name))
-        elif isinstance(node, ast.ImportFrom):
-            if node.module:
-                out.append(("from", node.module))
-                out.append(("from_root", node.module.split(".")[0]))
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            out.append(("from", node.module))
+            out.append(("from_root", node.module.split(".")[0]))
     return out
 
 
@@ -66,7 +65,7 @@ def _violates_network(rel: str, tree: ast.AST) -> list[str]:
 def _violates_gui(rel: str, tree: ast.AST) -> list[str]:
     if rel.startswith(ALLOW_GUI_PREFIX):
         return []
-    if not (rel.startswith("offline_companion/core/") or rel.startswith("offline_companion/runtime/")):
+    if not rel.startswith(("offline_companion/core/", "offline_companion/runtime/")):
         return []
     bad: list[str] = []
     for kind, mod in _collect_imports(tree):
@@ -79,10 +78,7 @@ def _violates_gui(rel: str, tree: ast.AST) -> list[str]:
 
 def _violates_skill_deps(rel: str, tree: ast.AST) -> list[str]:
     """B/C 禁止 import skill_manager 及其可选依赖 packaging/jsonschema。"""
-    if not (
-        rel.startswith("offline_companion/core/")
-        or rel.startswith("offline_companion/runtime/")
-    ):
+    if not rel.startswith(("offline_companion/core/", "offline_companion/runtime/")):
         return []
     bad: list[str] = []
     for kind, mod in _collect_imports(tree):
@@ -103,9 +99,7 @@ def _violates_layers(rel: str, tree: ast.AST) -> list[str]:
     bad: list[str] = []
     imports = _collect_imports(tree)
     for kind, mod in imports:
-        if kind == "import_full" and mod.startswith("offline_companion."):
-            full = mod
-        elif kind == "from" and mod.startswith("offline_companion."):
+        if kind == "import_full" and mod.startswith("offline_companion.") or kind == "from" and mod.startswith("offline_companion."):
             full = mod
         else:
             continue

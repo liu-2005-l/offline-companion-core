@@ -24,6 +24,7 @@ def test_fixture_executable_count_at_least_80() -> None:
         cwd=str(ROOT),
         capture_output=True,
         text=True,
+        check=False,
     )
     assert r.returncode == 0, r.stdout + r.stderr
 
@@ -35,6 +36,7 @@ def test_fixture_executable_count_at_least_50() -> None:
         cwd=str(ROOT),
         capture_output=True,
         text=True,
+        check=False,
     )
     assert r.returncode == 0, r.stdout + r.stderr
 

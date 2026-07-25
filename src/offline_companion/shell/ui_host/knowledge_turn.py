@@ -6,7 +6,10 @@ import sqlite3
 from dataclasses import dataclass
 
 from offline_companion.core.knowledge_rag.config import KnowledgeConfig
-from offline_companion.core.knowledge_rag.format import format_knowledge_reference_block, format_knowledge_snippets
+from offline_companion.core.knowledge_rag.format import (
+    format_knowledge_reference_block,
+    format_knowledge_snippets,
+)
 from offline_companion.core.knowledge_rag.search import KnowledgeSearchHit, search_knowledge
 from offline_companion.core.local_reformatter.rule_reformatter import reformat_cloud_reply
 from offline_companion.core.persona_session.session import PersonaSessionCore

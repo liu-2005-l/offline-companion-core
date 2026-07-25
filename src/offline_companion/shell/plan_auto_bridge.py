@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from offline_companion.core.fallback_controller import FallbackController
 from offline_companion.core.plan_orchestrator import PlanContext, PlanOrchestrator, PlanStep
-from offline_companion.shell.auto_router import AutoRouter, AutoRoutingAdapter, RoutingContext, RoutingDecision, RoutingMode
 from offline_companion.shared.messages import BaseMessage
+from offline_companion.shell.auto_router import (
+    AutoRouter,
+    AutoRoutingAdapter,
+    RoutingContext,
+    RoutingDecision,
+    RoutingMode,
+)
 
 PlanInvokeSkill = Callable[[Any, PlanContext], Any]
 

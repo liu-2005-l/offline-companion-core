@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import secrets
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, ClassVar
 
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
@@ -68,7 +69,7 @@ class PluginSecurityGateway:
         registry: 宿主内置的 mock Plugin 注册表。
     """
 
-    _LOW_RISK_PERMISSIONS = {"memory_read", "memory_toggle"}
+    _LOW_RISK_PERMISSIONS: ClassVar[frozenset[str]] = frozenset({"memory_read", "memory_toggle"})
 
     def __init__(self, runtime: DesktopRuntime, registry: dict[str, dict[str, Any]]) -> None:
         self._runtime = runtime

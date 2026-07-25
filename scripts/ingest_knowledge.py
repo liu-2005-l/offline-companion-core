@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """摘要：将 JSONL 语料导入独立 knowledge.db（运维脚本；语料不进 git 大文件）。"""
 
 from __future__ import annotations

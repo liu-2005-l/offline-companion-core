@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import tempfile
-from pathlib import Path
-
 from dataclasses import replace
+from pathlib import Path
 
 from offline_companion.core.knowledge_rag.config import load_knowledge_config
 from offline_companion.core.knowledge_rag.ingest import ingest_jsonl_file

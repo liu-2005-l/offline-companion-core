@@ -7,6 +7,7 @@ import re
 import sqlite3
 import time
 from dataclasses import dataclass
+
 from offline_companion.runtime.storage_index.engine import recent_messages
 from offline_companion.shared.types import MessageRow
 

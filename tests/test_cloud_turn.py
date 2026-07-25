@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+from offline_companion.core.local_reformatter.rule_reformatter import LOCAL_FALLBACK_PREFIX
+from offline_companion.core.memory_lifecycle.triggers import load_triggers
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.core.persona_session.session import PersonaSessionCore
-from offline_companion.core.memory_lifecycle.triggers import load_triggers
-from offline_companion.core.local_reformatter.rule_reformatter import LOCAL_FALLBACK_PREFIX
 from offline_companion.runtime.inference_backend.mock import EchoBackend
 from offline_companion.runtime.storage_index.engine import connect, new_session
 from offline_companion.shared.errors import ReformatError

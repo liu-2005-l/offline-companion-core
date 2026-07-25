@@ -127,7 +127,7 @@ def _parse_ts(value: object) -> float:
             from datetime import datetime
 
             return datetime.fromisoformat(text.replace("Z", "+00:00")).timestamp()
-        except Exception:
+        except ValueError:
             return time.time()
 
 

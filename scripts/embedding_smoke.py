@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """摘要：记忆向量功能域冒烟入口。"""
 
 from __future__ import annotations

@@ -6,9 +6,9 @@ import os
 import shutil
 import sys
 
-from offline_companion.shared.runtime_paths import configs_dir, data_root, dev_repo_root
-
 from tests.conftest import patch_platform_user_data_home
+
+from offline_companion.shared.runtime_paths import configs_dir, data_root, dev_repo_root
 
 
 def test_dev_repo_root_has_configs():

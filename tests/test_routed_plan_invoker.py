@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from offline_companion.core.plan_orchestrator import PlanStep, TaskContext, StepStatus
-from offline_companion.shell.routed_plan_invoker import CloudRouteInvoker, EchoRouteInvoker, RoutedPlanInvoker
+from offline_companion.core.plan_orchestrator import PlanStep, StepStatus, TaskContext
+from offline_companion.shell.routed_plan_invoker import (
+    CloudRouteInvoker,
+    EchoRouteInvoker,
+    RoutedPlanInvoker,
+)
 
 
 @dataclass

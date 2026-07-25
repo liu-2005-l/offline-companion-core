@@ -1,7 +1,12 @@
 from __future__ import annotations
 
-from offline_companion.shell.auto_router import AutoRouter, RoutingContext, RoutingDecision, RoutingMode
 from offline_companion.shared.types import PrivacyMode
+from offline_companion.shell.auto_router import (
+    AutoRouter,
+    RoutingContext,
+    RoutingDecision,
+    RoutingMode,
+)
 
 
 def test_policy_forces_local_only() -> None:

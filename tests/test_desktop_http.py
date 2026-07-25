@@ -10,11 +10,11 @@ from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.core.safety_boundary.classifier import SafetyTier
 from offline_companion.runtime.inference_backend.mock import EchoBackend
 from offline_companion.runtime.storage_index.engine import connect, new_session, recent_messages
+from offline_companion.shared.types import PrivacyMode
 from offline_companion.shell.ui_host.bootstrap import ECHO_NO_MODEL_LABEL
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
 from offline_companion.shell.ui_host.desktop.http_host import create_desktop_app
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
-from offline_companion.shared.types import PrivacyMode
 
 
 def _runtime(tmp_path) -> DesktopRuntime:

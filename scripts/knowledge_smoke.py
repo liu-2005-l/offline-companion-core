@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """摘要：知识 RAG 功能域验收入口。"""
 
 from __future__ import annotations

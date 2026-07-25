@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from scripts.ci.check_imports import main
-
 import pytest
+from scripts.ci.check_imports import main
 
 pytestmark = pytest.mark.security
 

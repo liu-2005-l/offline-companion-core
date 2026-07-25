@@ -148,7 +148,7 @@ def latest_profile_memory(conn: sqlite3.Connection) -> dict[str, dict[str, str]]
     for r in rows:
         try:
             meta = json.loads(r["meta_json"] or "{}")
-        except Exception:
+        except json.JSONDecodeError:
             continue
         target = str(meta.get("target") or "")
         field = str(meta.get("field") or "")

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """摘要：云端 Stub 黑盒验收入口。
 
 说明：

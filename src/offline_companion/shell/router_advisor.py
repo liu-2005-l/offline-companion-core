@@ -6,9 +6,14 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from offline_companion.shell.auto_router import RoutingContext, RoutingDecision, RoutingMode, RouterAdvisor
-from offline_companion.shell.outbound_manager.connector import post_cloud_completion
 from offline_companion.shared.types import CloudCompletionRequest
+from offline_companion.shell.auto_router import (
+    RouterAdvisor,
+    RoutingContext,
+    RoutingDecision,
+    RoutingMode,
+)
+from offline_companion.shell.outbound_manager.connector import post_cloud_completion
 
 
 @dataclass
@@ -80,7 +85,7 @@ class LLMRouterAdvisor(RouterAdvisor):
                 )
             )
             payload = json.loads(response.text)
-        except Exception:
+        except json.JSONDecodeError:
             return None
 
         mode_raw = str(payload.get("mode", "")).strip().lower()
@@ -92,7 +97,7 @@ class LLMRouterAdvisor(RouterAdvisor):
         reason = str(payload.get("reason") or "llm_selected")
         try:
             confidence = float(payload.get("confidence", 0.6))
-        except Exception:
+        except (TypeError, ValueError):
             confidence = 0.6
         confidence = max(0.0, min(1.0, confidence))
         return RoutingDecision(

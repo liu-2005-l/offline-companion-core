@@ -6,8 +6,8 @@ from offline_companion.shared.runtime_paths import dev_repo_root, models_dir
 from offline_companion.shell.ui_host.model_registry import (
     load_model_config,
     load_registry,
-    resolve_default_model_config,
     resolve_default_gguf_path,
+    resolve_default_model_config,
     resolve_n_gpu_layers,
 )
 

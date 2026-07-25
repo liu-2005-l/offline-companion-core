@@ -24,7 +24,11 @@ from offline_companion.runtime.storage_index.engine import connect, new_session
 from offline_companion.shared.errors import InferenceBackendError
 from offline_companion.shared.types import AppPaths, PrivacyMode
 from offline_companion.shell.policy_engine.rules import default_app_paths
-from offline_companion.shell.routed_plan_invoker import CloudRouteInvoker, EchoRouteInvoker, RoutedPlanInvoker
+from offline_companion.shell.routed_plan_invoker import (
+    CloudRouteInvoker,
+    EchoRouteInvoker,
+    RoutedPlanInvoker,
+)
 from offline_companion.shell.skill_manager.invoker import SkillInvoker
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
 from offline_companion.shell.ui_host.model_registry import (

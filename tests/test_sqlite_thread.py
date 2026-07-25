@@ -16,7 +16,7 @@ def test_connect_allows_other_thread_read(tmp_path) -> None:
         try:
             row = conn.execute("SELECT id FROM sessions WHERE id = ?;", ("s1",)).fetchone()
             assert row is not None
-        except BaseException as e:
+        except (AssertionError, RuntimeError, TypeError, ValueError) as e:
             err.append(e)
 
     t = threading.Thread(target=worker)

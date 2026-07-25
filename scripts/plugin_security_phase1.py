@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """摘要：Plugin 安全隔离第一阶段验证入口。"""
 
 from __future__ import annotations

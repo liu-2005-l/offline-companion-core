@@ -22,7 +22,7 @@ from offline_companion.runtime.storage_index.engine import connect, new_session
 
 def _patch_embedding_config(monkeypatch, cfg: MemoryEmbeddingConfig) -> None:
     """摘要：统一替换各模块内的 load_embedding_config。"""
-    loader = lambda path=None: cfg  # noqa: E731
+    loader = lambda path=None: cfg
     monkeypatch.setattr(
         "offline_companion.core.memory_lifecycle.embedding.load_embedding_config",
         loader,

@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from offline_companion.core.plan_orchestrator import PlanStep, TaskContext
-from offline_companion.shell.outbound_manager.connector import post_cloud_completion
 from offline_companion.shared.types import CloudCompletionRequest
+from offline_companion.shell.outbound_manager.connector import post_cloud_completion
 
 
 class RouteInvoker(Protocol):
@@ -37,7 +37,7 @@ class CloudRouteInvoker:
         )
         try:
             return json.loads(response.text)
-        except Exception:
+        except json.JSONDecodeError:
             return {"result": response.text}
 
 

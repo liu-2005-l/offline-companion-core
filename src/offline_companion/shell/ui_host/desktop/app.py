@@ -7,7 +7,11 @@ import os
 import sys
 import time
 
-from offline_companion.shell.ui_host.bootstrap import bootstrap_ui_session_or_exit, resolve_app_paths
+from offline_companion.shared.types import PrivacyMode
+from offline_companion.shell.ui_host.bootstrap import (
+    bootstrap_ui_session_or_exit,
+    resolve_app_paths,
+)
 from offline_companion.shell.ui_host.desktop.http_host import start_desktop_http
 from offline_companion.shell.ui_host.desktop.instance_ipc import (
     remove_pid_file,
@@ -16,7 +20,6 @@ from offline_companion.shell.ui_host.desktop.instance_ipc import (
     write_pid_file,
 )
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
-from offline_companion.shared.types import PrivacyMode
 
 _WINDOW_TITLE = "Offline Companion"
 _TRAY_TITLE = "Offline Companion"
@@ -95,8 +98,8 @@ def run_desktop(args: argparse.Namespace) -> int:
         """摘要：启动系统托盘；失败时关窗将直接退出（避免无托盘却后台驻留）。"""
         nonlocal tray_icon, tray_ready
         try:
-            from PIL import Image
             import pystray
+            from PIL import Image
         except ImportError as e:
             print(
                 "警告：未安装 pystray/Pillow，托盘不可用；关闭窗口将直接退出应用。\n"

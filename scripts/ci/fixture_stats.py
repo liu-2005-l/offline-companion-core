@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """摘要：统计 regression_dialogues.yaml 中 executable / note 数量。"""
 
 from __future__ import annotations

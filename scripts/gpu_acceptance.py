@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """摘要：4090 / CUDA 服务器 Phase 1+Sprint0 一键验收（零交互）。
 
 用法（冷启动，复制整行）::
@@ -90,6 +89,7 @@ def run_cmd(step: Step, name: str, cmd: list[str], *, cwd: Path, timeout: int = 
             text=True,
             timeout=timeout,
             env={**os.environ, "PYTHONPATH": str(cwd / "src")},
+            check=False,
         )
     except subprocess.TimeoutExpired:
         step.fail(name, f"超时 ({timeout}s)")
@@ -124,7 +124,7 @@ def check_nvidia(step: Step, require_gpu: bool) -> None:
         else:
             step.warn("nvidia-smi", "未找到，已跳过")
         return
-    r = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True)
+    r = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True, check=False)
     if r.returncode != 0:
         step.fail("nvidia-smi", r.stderr or "执行失败")
         return
@@ -134,6 +134,7 @@ def check_nvidia(step: Step, require_gpu: bool) -> None:
         ["nvidia-smi", "--query-gpu=name,memory.total,driver_version", "--format=csv,noheader"],
         capture_output=True,
         text=True,
+        check=False,
     )
     if r2.returncode == 0 and r2.stdout.strip():
         print("       ", r2.stdout.strip().replace("\n", " | "))
@@ -168,7 +169,7 @@ def check_packages(step: Step) -> None:
         except ImportError as e:
             step.fail(f"import {mod}", str(e))
     try:
-        import llama_cpp  # noqa: F401
+        import llama_cpp
 
         step.ok("import llama_cpp", getattr(llama_cpp, "__version__", "unknown"))
     except ImportError:
@@ -281,7 +282,7 @@ def smoke_core_api(
                 n_gpu_layers=n_gpu_layers,
                 run_health_check=True,
             )
-        except Exception as e:
+        except (ImportError, OSError, RuntimeError, ValueError) as e:
             step.fail("C1 加载模型", str(e))
             traceback.print_exc()
             return
@@ -303,7 +304,7 @@ def smoke_core_api(
                     memory_enabled=mem_on,
                     max_tokens=max_tokens,
                 )
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError) as e:
                 step.fail(f"B1 推理: {user_msg[:16]}", str(e))
                 continue
             gen_s = time.perf_counter() - t1

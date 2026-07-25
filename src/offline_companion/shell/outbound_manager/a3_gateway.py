@@ -5,12 +5,13 @@ from __future__ import annotations
 import sqlite3
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from offline_companion.core.plan_orchestrator import ConsentRequest
-from offline_companion.shell.outbound_manager.consent import persist_consent_artifact
 from offline_companion.shared.types import PurposeType
+from offline_companion.shell.outbound_manager.consent import persist_consent_artifact
 
 DecisionProvider = Callable[[dict[str, Any]], bool]
 

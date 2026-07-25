@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from offline_companion.core.idle_think_listener import IdleThinkListener, IdleThinkOrchestratorBridge
+from offline_companion.core.idle_think_listener import (
+    IdleThinkListener,
+    IdleThinkOrchestratorBridge,
+)
 from offline_companion.core.plan_orchestrator import PlanOrchestrator
 from offline_companion.core.state_manager import StateManager
 from offline_companion.shell.skill_manager.invoker import SkillInvoker

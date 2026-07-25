@@ -6,7 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from offline_companion.core.emotion_analyzer import EmotionClassifier, EmotionContext, RuleEmotionClassifier
+from offline_companion.core.emotion_analyzer import (
+    EmotionClassifier,
+    EmotionContext,
+    RuleEmotionClassifier,
+)
 
 
 def test_emotion_context_defaults() -> None:

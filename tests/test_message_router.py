@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from offline_companion.shared.messages import BaseMessage, MessageDirection
-from offline_companion.shell.auto_router import AutoRouter, AutoRoutingAdapter, RoutingContext, RoutingMode
+from offline_companion.shell.auto_router import (
+    AutoRouter,
+    AutoRoutingAdapter,
+    RoutingContext,
+    RoutingMode,
+)
 from offline_companion.shell.message_router import MessageRouter
 
 

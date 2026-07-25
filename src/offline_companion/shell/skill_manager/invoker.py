@@ -252,7 +252,7 @@ class SkillInvoker:
             return ""
         try:
             return proc.stderr.read().decode("utf-8", errors="replace").strip()
-        except Exception:
+        except (AttributeError, OSError, ValueError):
             return ""
 
     def _is_within_directory(self, path: Path, directory: Path) -> bool:
@@ -329,7 +329,7 @@ class SkillInvoker:
                 text = raw.decode("utf-8")
                 try:
                     result = json.loads(text)
-                except Exception:
+                except json.JSONDecodeError:
                     result = {"result": text}
         except Exception as exc:
             self.record_failure(name)

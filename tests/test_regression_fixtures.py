@@ -6,16 +6,16 @@ from pathlib import Path
 
 import yaml
 
+from offline_companion.core.memory_lifecycle.embedding_config import load_embedding_config
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
 from offline_companion.core.memory_lifecycle.recall import format_recall_prompt_block, recall
-from offline_companion.core.safety_boundary.classifier import SafetyTier, classify_user_text
+from offline_companion.core.memory_lifecycle.triggers import load_triggers
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.core.persona_session.session import PersonaSessionCore
+from offline_companion.core.safety_boundary.classifier import SafetyTier, classify_user_text
 from offline_companion.runtime.inference_backend.mock import EchoBackend
 from offline_companion.runtime.storage_index.engine import connect, new_session
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
-from offline_companion.core.memory_lifecycle.embedding_config import load_embedding_config
-from offline_companion.core.memory_lifecycle.triggers import load_triggers
 
 
 def _load_cases() -> list[dict]:

@@ -66,7 +66,7 @@ class BaseMessage:
         """摘要：判断 source 是否来自指定层。"""
         return self.source == layer.value
 
-    def with_meta(self, **extra: Any) -> "BaseMessage":
+    def with_meta(self, **extra: Any) -> BaseMessage:
         """摘要：生成带增量 meta 的新消息。"""
         merged = dict(self.meta)
         merged.update(extra)

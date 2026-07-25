@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
-from .fts_ops import list_memory_rows, latest_profile_memory
+from .fts_ops import latest_profile_memory, list_memory_rows
 
 
 class MemoryReader:

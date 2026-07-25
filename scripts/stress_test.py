@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """摘要：连续短对话压力观测（Sprint 5.2；Echo 后端，无 GGUF 依赖）。
 
 用法::

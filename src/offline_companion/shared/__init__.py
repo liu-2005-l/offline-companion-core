@@ -1,5 +1,6 @@
 """shared：跨层 DTO 与异常定义（禁止依赖 shell/core/runtime）。"""
 
+from .error_codes import ErrorCode, ErrorCodeSpec, error_log_fields
 from .errors import (
     A2PlanExecutionError,
     A2PlanTemplateNotFoundError,
@@ -29,12 +30,11 @@ from .errors import (
     SkillPolicyDenied,
     SkillSourceValidationError,
 )
-from .error_codes import ErrorCode, ErrorCodeSpec, error_log_fields
 from .messages import BaseMessage, MessageDirection, MessageLayer
 from .types import (
-    AppPaths,
     BUNDLE_FORMAT,
     BUNDLE_VERSION,
+    AppPaths,
     CloudCompletionRequest,
     CloudCompletionResponse,
     ExportBundlePayload,
@@ -50,6 +50,8 @@ from .types import (
 )
 
 __all__ = [
+    "BUNDLE_FORMAT",
+    "BUNDLE_VERSION",
     "A2PlanExecutionError",
     "A2PlanTemplateNotFoundError",
     "A2PlanValidationError",
@@ -66,8 +68,6 @@ __all__ = [
     "B3RepliesConfigError",
     "B3RepliesConfigNotFoundError",
     "B3SecurityError",
-    "BUNDLE_FORMAT",
-    "BUNDLE_VERSION",
     "BaseMessage",
     "BundleFormatError",
     "CheckImportsError",
@@ -76,15 +76,15 @@ __all__ = [
     "CloudCompletionResponse",
     "CloudConnectorError",
     "ConsentArtifactError",
-    "ExportBundlePayload",
     "ErrorCode",
     "ErrorCodeSpec",
+    "ExportBundlePayload",
     "InferenceBackendError",
     "MemoryHit",
     "MemoryRecallHit",
-    "ModelRuntimeConfig",
     "MessageDirection",
     "MessageLayer",
+    "ModelRuntimeConfig",
     "OutboundDenied",
     "OutboundPlan",
     "OutboundScope",

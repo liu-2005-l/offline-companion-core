@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """offline-companion 全量验收门禁编排器。
 
 定位：
@@ -115,8 +114,6 @@ def _preflight_check() -> list[str]:
         errors.append(f"源码目录不存在: {SRC}")
     if not (ROOT / "tests").is_dir():
         errors.append(f"测试目录不存在: {ROOT / 'tests'}")
-    if sys.version_info < (3, 10):
-        errors.append(f"Python 版本过低: {sys.version}, 要求 >= 3.10")
     return errors
 
 
@@ -132,6 +129,7 @@ def _run_step(step: StepDef) -> StepResult:
         cwd=str(step.cwd),
         env=_build_env(),
         capture_output=True,
+        check=False,
     )
     elapsed_s = time.perf_counter() - started
 

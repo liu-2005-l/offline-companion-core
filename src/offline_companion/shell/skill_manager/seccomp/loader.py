@@ -221,7 +221,7 @@ def _build_filter_program(syscall_names: tuple[str, ...]) -> _SockFprog:
     filters.append(_stmt(_BPF_RET | _BPF_K, _SECCOMP_RET_ERRNO | errno.EPERM))
     filter_array = (_SockFilter * len(filters))(*filters)
     program = _SockFprog(len=len(filters), filter=filter_array)
-    setattr(program, "_filter_array", filter_array)
+    program._filter_array = filter_array
     return program
 
 

@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from offline_companion.core.memory_lifecycle.triggers import TriggerRegistry
+from offline_companion.shared.types import PrivacyMode
 from offline_companion.shell.ui_host.bootstrap import UISessionBundle
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
-from offline_companion.shared.types import PrivacyMode
 
 
 @dataclass

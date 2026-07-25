@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """摘要：PyInstaller 便携包构建（Windows 优先）。
 
 用法::

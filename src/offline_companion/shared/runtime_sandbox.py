@@ -6,8 +6,8 @@ import builtins
 import importlib
 import socket
 import urllib.request
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 from offline_companion.shared.errors import SkillInvocationError
 

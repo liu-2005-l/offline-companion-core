@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
 import math
 import re
+from dataclasses import dataclass
+from pathlib import Path
 
 from offline_companion.core.emotion_analyzer.context import EmotionContext
 from offline_companion.shared.errors import (
@@ -17,12 +17,12 @@ from offline_companion.shared.runtime_paths import dev_repo_root, models_dir
 
 try:
     import onnxruntime as ort
-except Exception:  # pragma: no cover
+except ImportError:  # pragma: no cover
     ort = None
 
 try:
     from tokenizers import Tokenizer
-except Exception:  # pragma: no cover
+except ImportError:  # pragma: no cover
     Tokenizer = None
 
 _LABELS = ("anger", "anxiety", "neutral", "joy", "sadness", "surprise", "disgust")

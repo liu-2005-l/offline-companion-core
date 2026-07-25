@@ -4,9 +4,9 @@ from pathlib import Path
 
 from offline_companion.core.plan_orchestrator import PlanOrchestrator
 from offline_companion.core.state_manager import StateManager
+from offline_companion.shared.messages import BaseMessage
 from offline_companion.shell.auto_router import AutoRouter, RoutingContext, RoutingMode
 from offline_companion.shell.plan_auto_bridge import PlanAutoBridge
-from offline_companion.shared.messages import BaseMessage
 
 
 def test_plan_auto_bridge_persists_route_decision(tmp_path: Path) -> None:
