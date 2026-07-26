@@ -491,6 +491,8 @@ def _run_seccomp_probe(*, profile: str, operation_code: str) -> dict[str, object
             f"load_result = load_profile({profile!r})",
             'outcome = {"applied": load_result.applied, "profile": load_result.profile}',
             textwrap.dedent(operation_code).strip(),
+            'outcome.setdefault("applied", load_result.applied)',
+            'outcome.setdefault("profile", load_result.profile)',
             "print(json.dumps(outcome, ensure_ascii=False))",
         ]
     )
@@ -506,6 +508,38 @@ def _run_seccomp_probe(*, profile: str, operation_code: str) -> dict[str, object
         text=True,
         encoding="utf-8",
         env=env,
-        check=True,
+        check=False,
     )
-    return json.loads(completed.stdout.strip())
+    stdout = (completed.stdout or "").strip()
+    if completed.returncode != 0:
+        return {
+            "applied": False,
+            "profile": profile,
+            "terminated": True,
+            "returncode": completed.returncode,
+            "stdout": stdout,
+            "stderr": (completed.stderr or "").strip(),
+        }
+    if not stdout:
+        return {
+            "applied": False,
+            "profile": profile,
+            "terminated": True,
+            "returncode": completed.returncode,
+            "stdout": "",
+            "stderr": (completed.stderr or "").strip(),
+        }
+    try:
+        result = json.loads(stdout)
+    except json.JSONDecodeError:
+        return {
+            "applied": False,
+            "profile": profile,
+            "terminated": True,
+            "returncode": completed.returncode,
+            "stdout": stdout,
+            "stderr": (completed.stderr or "").strip(),
+        }
+    result.setdefault("applied", False)
+    result.setdefault("profile", profile)
+    return result
