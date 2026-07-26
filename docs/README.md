@@ -1,8 +1,8 @@
 ﻿# Offline Companion 文档导航
 
 > 本目录收录 `docs/` 下的正式文档；结构与版本变更见 [`CHANGELOG.md`](./CHANGELOG.md)。
-> **中文架构**：[`ARCHITECTURE_v2.4_zh.md`](./ARCHITECTURE_v2.4_zh.md)
-> **English architecture**：[`ARCHITECTURE_v2.4.2_en.md`](./ARCHITECTURE_v2.4.2_en.md)
+> **中文架构**：[`ARCHITECTURE_v2.5_zh.md`](./ARCHITECTURE_v2.5_zh.md)
+> **English architecture**：[`ARCHITECTURE_v2.5_en.md`](./ARCHITECTURE_v2.5_en.md)
 > **历史基线**：[`architecture_v1.0.md`](./architecture_v1.0.md)（只读）
 
 ---
@@ -11,7 +11,7 @@
 
 | 类型 | 中文 | English |
 |------|------|---------|
-| **核心架构文档** | [`ARCHITECTURE_v2.4_zh.md`](./ARCHITECTURE_v2.4_zh.md) | [`ARCHITECTURE_v2.4.2_en.md`](./ARCHITECTURE_v2.4.2_en.md) |
+| **核心架构文档** | [`ARCHITECTURE_v2.5_zh.md`](./ARCHITECTURE_v2.5_zh.md) | [`ARCHITECTURE_v2.5_en.md`](./ARCHITECTURE_v2.5_en.md) |
 | **Skill 开发指南** | [`SKILL_DEV_GUIDE_v1.0_zh.md`](./SKILL_DEV_GUIDE_v1.0_zh.md) | [`SKILL_DEV_GUIDE_v1.0_en.md`](./SKILL_DEV_GUIDE_v1.0_en.md) |
 | **Plugin 开发指南** | [`PLUGIN_DEV_GUIDE_v1.0_zh.md`](./PLUGIN_DEV_GUIDE_v1.0_zh.md) | [`PLUGIN_DEV_GUIDE_v1.0_en.md`](./PLUGIN_DEV_GUIDE_v1.0_en.md) |
 | **用户手册** | [`USER_MANUAL_v1.0_zh.md`](./USER_MANUAL_v1.0_zh.md) | [`USER_MANUAL_v1.0_en.md`](./USER_MANUAL_v1.0_en.md) |

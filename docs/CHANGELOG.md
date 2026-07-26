@@ -4,6 +4,15 @@
 
 ---
 
+## v2.5 · 2026-07-26（Sprint 9A 文档同步）
+
+### 变更
+- 中英文架构文档同步到 `v2.5`，日期更新为 2026-07-26。
+- 同步 Sprint 9A P0-P4 实际交付进度：模型适配 P0、AutoRouter、PlanOrchestrator / TaskContext v2、三路混合检索、A 层语义封装与 CI prompt 解耦约束已闭合。
+- 英文架构文档文件名更新为 `ARCHITECTURE_v2.5_en.md`，并同步消息总线状态、JobScheduler 状态、模型路由与检索实现边界。
+
+---
+
 ## v2.4.2 · 2026-07-26（Sprint 8 文档同步）
 
 ### 变更

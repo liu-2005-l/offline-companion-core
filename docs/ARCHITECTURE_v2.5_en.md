@@ -1,6 +1,6 @@
-﻿# Offline Companion Architecture & Development Notes v2.4.2 (Authoritative)
+﻿# Offline Companion Architecture & Development Notes v2.5 (Authoritative)
 
-> **Version**: v2.4.2 · **Date**: 2026-07-26 (Sprint 8 synchronization revision)
+> **Version**: v2.5 · **Date**: 2026-07-26 (Sprint 9A P0-P4 synchronization revision)
 > **Historical baseline**: [`architecture_v1.0.md`](./architecture_v1.0.md) (read-only; this document wins on conflicts)
 > **Chinese**: [`ARCHITECTURE_v2.4_zh.md`](./ARCHITECTURE_v2.4_zh.md)
 
@@ -54,22 +54,22 @@ BaseMessage schema and the message bus abstraction live in `shared/`; all layers
 
 ## 3. Message bus engineering conventions
 
-| Convention | Description |
-|-----------|-------------|
-| Default timeout | 30s, return `E_MESSAGE_TIMEOUT` on timeout |
-| Retry | At most 1 retry; before retry, check whether `idempotency_key` has already executed |
-| Exception propagation | Through BaseMessage `error` field; serialization uses JSON |
-| Write idempotency | All write messages must carry a unique `idempotency_key`; `MessageRouter` checks execution records before running. Duplicate keys return the existing result and do not execute again |
-| Session-level serialization | All messages in the same session execute strictly in order; no concurrency. Cross-session messages may run in parallel |
-| Dead-letter queue | All failed messages go to a dead-letter queue, persisted in SQLite, with a manual compensation entry (CLI or settings page) |
-| Async only for background tasks | JobScheduler and agent-toolbox background tasks may use async queues. The core conversation path stays synchronous |
-| Dual-queue physical separation | Each session has two queues: a main conversation queue (high priority, strictly serialized) + a background task queue (low priority, parallelizable). Background tasks must never block the conversation response |
-| Background priority | The background task queue cooperates with `ResourceArbitrator`: when resources are tight, low-priority background tasks pause first; high-priority tasks remain |
-| Conflict priority | Main conversation state operations always outrank background tasks; on conflict, background tasks retry 3 times, then go to dead-letter, never blocking the main conversation |
+| Convention | Status | Description |
+|-----------|--------|-------------|
+| Default timeout | ✅ | 30s, return `E_MESSAGE_TIMEOUT` on timeout |
+| Retry | ✅ | At most 1 retry; before retry, check whether `idempotency_key` has already executed |
+| Exception propagation | ✅ | Through BaseMessage `error` field; serialization uses JSON |
+| Write idempotency | ✅ | All write messages must carry a unique `idempotency_key`; `MessageRouter` double-checks execution records inside the lock to avoid TOCTOU |
+| Session-level serialization | ✅ | Dialog messages in the same session execute strictly in order; background messages may run in parallel |
+| Dead-letter queue | ✅ | All failed messages go to SQLite `dead_letter_queue`, with a manual compensation entry |
+| Async only for background tasks | ✅ | The core conversation path stays synchronous; background work is isolated in scheduler-managed execution |
+| Dual-queue physical separation | ✅ | Each session has a main conversation queue + a background task queue; background tasks must never block conversation response |
+| Background priority | 🔶 | `ResourceArbitrator` is deferred to Sprint 9+; only a stub boundary is kept in Sprint 8/9A |
+| Conflict priority | ✅ | Main conversation state operations always outrank background tasks; background conflicts retry 3 times, then go to dead-letter |
 
 **A-layer semantic wrapping**: all concrete Skill/Tool function names, parameter names, and API details are assembled in A layer and injected into the message as capability descriptions. B-layer system prompts must only contain persona descriptions and safety rules, and must never mention concrete tool names or business fields. Adding a new Skill should only require A-layer config changes; B-layer code stays untouched. Semantic conversion must include reverse similarity validation; parse failures should ask the user for missing information rather than guessing.
 
-**CI checks**: CI adds prompt keyword scanning; B-layer prompt templates must not contain Skill names, function names, or parameter fields. Any hit fails the build. Add an integration test: a new Skill must work without modifying any B-layer code.
+**CI checks**: ✅ implemented via `scripts/ci/check_prompt_decoupling.py`, backed by `capability_catalog.py` which derives the keyword catalog from manifests. B-layer prompt templates must not contain Skill names, function names, or parameter fields. Any hit fails the build. Add an integration test: a new Skill must work without modifying any B-layer code.
 
 ## 4. Single-turn companionship path
 
@@ -115,7 +115,7 @@ TaskContext is temporary and bound to a task; during Skill execution it can be r
 - foundation repairs: vector consistency, runtime sandbox import interception, ErrorCode wiring, policy typo fix, circuit-breaker exponential backoff
 - B0 emotion path: main-path insertion, persistence, fallback, and `emotion_mappings.yaml` integration
 - security base: Plugin isolation, supply-chain verification, Linux `seccomp-bpf`
-- message bus and scheduling: schema v7, `MessageRouter`, retry rules, dual-queue semantics, `JobScheduler`, and A-layer semantic wrapping guardrails
+- message bus and scheduling: schema v7, synchronous `MessageRouter`, retry rules, dual-queue semantics, `JobScheduler`, and A-layer semantic wrapping guardrails
 
 **Deferred beyond Sprint 8**:
 - `ResourceArbitrator`
@@ -125,13 +125,22 @@ TaskContext is temporary and bound to a task; during Skill execution it can be r
 
 ## 8. Sprint 9A boundary
 
-**Can start first**:
-- model adaptation P0
-- `tool_registry` / tool skeleton
+> **Status update (2026-07-26)**: Sprint 9A P0-P4 is closed and CI is green.
 
-**Must go through design review first**:
-- `AutoRouter`
-- `PlanOrchestrator`
-- three-way hybrid retrieval
+**Completed**:
+- ✅ model adaptation P0: `ModelDescriptor`, tri-state discovery, configurable chat templates, model-aware output stripping
+- ✅ `AutoRouter`: rule-based `TaskProfiler`, `CostPredictor`, decision engine, consent flow, desktop/Web/CLI alignment
+- ✅ `PlanOrchestrator` + `TaskContext` v2: lifecycle timestamps, structured consent/route fields, thin APIs, snapshot compatibility
+- ✅ three-way hybrid retrieval: RRF (`k=60`), knowledge lexical + semantic + memory fusion, cross-store dedupe, citations
+- ✅ prompt decoupling guardrails: A-layer semantic wrapping, manifest-derived keyword catalog, CI scan, decoupling integration test
+
+**Deferred**:
+- ⏭️ `tool_registry` / Tool migration closeout
+- ⏭️ ZeroMQ / nanomsg transport upgrade
+- ⏭️ `ResourceArbitrator`
+- ⏭️ concurrent plan-step execution
+- ⏭️ fine-grained per-step replay / recovery
+- ⏭️ CubeSandbox snapshot enhancement
+- ⏭️ real embedding-based knowledge semantic retrieval (current knowledge semantic path uses deterministic hash-bow)
 
 **Authority**: Chinese `ARCHITECTURE_v2.4_zh.md` wins on ambiguity.

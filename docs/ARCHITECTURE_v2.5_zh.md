@@ -1,8 +1,8 @@
-﻿# Offline Companion 架构与开发说明 v2.4.2（权威版）
+﻿# Offline Companion 架构与开发说明 v2.5（权威版）
 
-> **版本**：v2.4.2 · **日期**：2026-07-26（Sprint 8 文档同步版）
+> **版本**：v2.5 · **日期**：2026-07-26（Sprint 9A P0-P4 同步版）
 > **历史基线**：[`architecture_v1.0.md`](./architecture_v1.0.md)（只读，冲突以本文为准）
-> **英文**：[`ARCHITECTURE_v2.4.2_en.md`](./ARCHITECTURE_v2.4.2_en.md)
+> **英文**：[`ARCHITECTURE_v2.5_en.md`](./ARCHITECTURE_v2.5_en.md)
 
 > **扩展开发**：[`SKILL_DEV_GUIDE`](./SKILL_DEV_GUIDE_v1.0_zh.md) · [`PLUGIN_DEV_GUIDE`](./PLUGIN_DEV_GUIDE_v1.0_zh.md)
 > **用户**：[`USER_MANUAL`](./USER_MANUAL_v1.0_zh.md)
@@ -39,7 +39,7 @@
 
 **协议统一，实现按需选择**：
 - **核心对话链路**：走同步实现（函数调用模拟），保证低延迟和可调试性
-- **后台任务链路**：走异步实现（ZeroMQ 消息队列），不阻塞主对话
+- **后台任务链路**：Sprint 8 采用同步版 `MessageRouter` 分发；ZeroMQ / nanomsg 消息队列升级后移到 Sprint 9+
 
 BaseMessage Schema 与消息总线抽象接口均放入 `shared/` 横切层，所有层均可依赖。A 层负责实现 MessageRouter 与传输层，B/C 层仅面向 `shared/` 中的接口收发消息，完全不感知底层是同步还是异步。
 
@@ -53,22 +53,22 @@ BaseMessage Schema 与消息总线抽象接口均放入 `shared/` 横切层，�
 
 **消息总线工程约定**：
 
-| 约定 | 说明 |
-|------|------|
-| 默认超时 | 30s，超时后返回 `E_MESSAGE_TIMEOUT` |
-| 失败重试 | 最多 1 次，重试前检查 `idempotency_key` 是否已执行 |
-| 异常透传 | 通过 BaseMessage 的 `error` 字段传递，序列化统一使用 JSON |
-| 写操作幂等 | 所有写操作消息必须携带唯一 `idempotency_key`，MessageRouter 执行前先查执行记录。重复 key 直接返回已有结果，不重新执行 |
-| 会话级串行 | 同一会话的所有消息严格按顺序执行，禁止并发。跨会话消息可并行 |
-| 死信队列 | 所有失败消息进入死信队列，持久化到 SQLite，提供人工补偿入口（CLI 命令或设置页） |
-| 异步仅限后台任务 | JobScheduler 和 agent-toolbox 后台任务允许异步消息队列。核心对话链路保持同步调用 |
-| 双队列物理隔离 | 同一会话拆两条队列：主对话队列（高优先级，严格串行）+ 后台任务队列（低优先级，可并发）。后台任务永远不能阻塞对话响应 |
-| 后台任务优先级 | 后台任务队列与 ResourceArbitrator 联动：资源紧张时先暂停低优先级后台任务，高优先级保留 |
-| 冲突优先级约定 | 主对话队列状态操作优先级永远高于后台任务；冲突时后台任务自动重试 3 次，失败进入死信队列，绝不阻塞主对话 |
+| 约定 | 状态 | 说明 |
+|------|------|------|
+| 默认超时 | ✅ | 30s，超时后返回 `E_MESSAGE_TIMEOUT` |
+| 失败重试 | ✅ | 最多 1 次，重试前检查 `idempotency_key` 是否已执行 |
+| 异常透传 | ✅ | 通过 BaseMessage 的 `error` 字段传递，序列化统一使用 JSON |
+| 写操作幂等 | ✅ | 所有写操作消息必须携带唯一 `idempotency_key`，MessageRouter 执行前先查执行记录；锁内复查防止 TOCTOU |
+| 会话级串行 | ✅ | 同一会话的 dialog 消息严格串行，后台队列保持可并发 |
+| 死信队列 | ✅ | 所有失败消息进入 `dead_letter_queue`，持久化到 SQLite，提供人工补偿入口 |
+| 异步仅限后台任务 | ✅ | 核心对话链路保持同步调用；后台任务走独立调度 |
+| 双队列物理隔离 | ✅ | 同一会话拆主对话队列 + 后台任务队列，后台任务永不阻塞对话响应 |
+| 后台任务优先级 | 🔶 | `ResourceArbitrator` 为 S9+，当前仅保留占位接口 |
+| 冲突优先级约定 | ✅ | 主对话优先；后台任务冲突自动重试 3 次，失败进入死信队列 |
 
 **A 层语义封装**：所有 Skill/Tool 的具体函数名、参数名、API 细节，全部在 A 层完成组装后封装为能力描述，再注入发给 B 层的消息。B 层的系统提示词只包含人格描述和安全规则，绝对不出现具体工具名称或业务字段。新增 Skill 只需改 A 层配置，B 层代码零改动。语义转换做反向相似度校验，解析失败自动向用户补全信息，不盲调。
 
-**CI 校验**：CI 增加 prompt 关键词扫描，B 层所有 prompt 模板文件禁止出现 Skill 名称、函数名、参数字段等实现细节，命中直接打回。新增解耦测试：新增一个 Skill 不改 B 层任何代码能正常调用，作为集成测试必过项。
+**CI 校验**：✅ 已落地 `scripts/ci/check_prompt_decoupling.py`，由 `capability_catalog.py` 从 manifest 自动生成关键词目录；B 层所有 prompt 模板文件禁止出现 Skill 名称、函数名、参数字段等实现细节，命中直接打回。新增解耦测试：新增一个 Skill 不改 B 层任何代码能正常调用，作为集成测试必过项。
 
 ### 单轮陪伴主路径
 
@@ -117,7 +117,7 @@ TaskContext：一个临时的、与任务绑定的数据空间，Skill 执行时
 - **Skill 可联网**：声明 `cloud_inference` / `network_egress` 后走 A3（`LOCAL_ONLY` 硬拒）。
 - **agent-toolbox 超级 Skill**：一个运行在沙箱中的独立 Python 服务，集成浏览器自动化（Playwright）、代码执行、文件系统操作和网络请求能力。Agent 核心（大脑）通过 A2 编排器调用它（身体）执行具体动作，全程受 A3 Consent 保护。
 - **沙箱实例按调用方隔离**：不同 Skill 调用 agent-toolbox 分配独立沙箱实例，调用结束销毁，文件、进程、网络完全隔离，禁止共享运行时环境。
-- **消息队列模式**：agent-toolbox 与核心的通信默认使用 HTTP，但支持升级为基于 ZeroMQ 或 nanomsg 的消息队列模式。消息队列模式下，Skill 只负责发布消息到指定主题，A2 层 `MessageRouter` 作为消息代理负责路由；长时间任务的结果和进度更新通过队列异步推送，不阻塞当前对话流。B/C 层不感知通信模式的切换。
+- **消息队列模式**：agent-toolbox 与核心的通信当前默认使用 HTTP / 同步 `MessageRouter` 协作；ZeroMQ 或 nanomsg 的消息队列升级后移到 Sprint 9+。B/C 层不感知通信模式的切换。
 - **agent-toolbox 支持三种运行模式**：Docker 模式（核心底座，进程级隔离）、CubeSandbox 模式（可选增强，KVM 硬件级隔离）和 Native 进程模式（兜底，仅低风险 Skill）。三种模式的隔离级别和启动速度对比如下：
 
   | 模式 | 定位 | 隔离级别 | 启动速度 | 单实例内存 | 适用场景 |
@@ -345,28 +345,29 @@ models:
 用户输入 → TaskProfiler 生成 TaskProfile
   → CostPredictor 预估各模型成本与延迟
     → 决策引擎判定：
-      ├─ LOCAL_ONLY 模式 / 隐私敏感 → 强制本地模型
+      ├─ LOCAL_ONLY 模式 / 隐私敏感 → 优先本地模型
       ├─ 复杂度 < 阈值 + 本地能力匹配 → 本地模型
       ├─ 复杂度 ≥ 阈值 或 本地能力不足 → 推荐云端模型
       │   → 生成 purpose_type: cloud_routing 的 Consent 申请
-      │   → 用户确认后走 invoker → 云端 Skill
+      │   → 用户确认后由 A2 推理调用入口执行云端推理
       │   → 返回结果 → B4 润色与安全校验（B4 为最后闸门，云端结果不绕过）
-      └─ 云端调用失败 → invoker 自动回退本地模型，提示用户结果可能降级
+      └─ 云端调用失败 → A2 推理调用入口自动回退本地模型，提示用户结果可能降级
 ```
 
 ##### 关键约束
 
-- **隐私优先**：LOCAL_ONLY 模式或任务隐私敏感时，直接跳过云端模型推荐；隐私敏感度判定复用 B3 安全模块的检测规则与关键词库。
+- **隐私优先**：LOCAL_ONLY 模式下绝不穿透到云端；若本地无可用模型，返回 `local_only_no_local_model`。隐私敏感度判定复用 B3 安全模块的检测规则与关键词库。
 - **Consent 审计**：每次云端路由决策生成独立 Consent Artifact，含预估 token 数、预估花费、推荐理由。
-- **回退由 invoker 执行**：AutoRouter 只产出路由决策（含 fallback 模型），不参与实际调用；云端调用超时/失败时，复用 invoker 现有熔断机制。
+- **A2 执行回退**：AutoRouter 只产出路由决策（含 fallback 模型），不参与实际调用；云端调用超时/失败时，由 `ConversationOrchestrator` 执行回退。
 - **能力标签统一**：`capabilities` 字段使用 `shared/` 层统一定义的枚举常量，与 Router LLM 意图分类、Skill 能力声明保持一致。
 - **配置单一数据源**：`model_routing.yaml` 仅存放路由决策元数据，不读取 C1 层模型加载配置。
+- **复杂度阈值**：S9A 当前默认阈值为 `5`，保证本地能力匹配的 code / reasoning 任务优先本地执行。
 
 | 项 | 共识 | 状态 |
 |----|------|------|
-| 规则引擎版路由 | TaskProfiler + CostPredictor + 决策引擎 | 📅 S9A |
-| 云端路由 Consent | 对接 A3 Consent 审计体系 | 📅 S9A |
-| 失败自动回退 | 复用 invoker 熔断机制，失败回退本地模型 | 📅 S9A |
+| 规则引擎版路由 | TaskProfiler + CostPredictor + 决策引擎 | ✅ |
+| 云端路由 Consent | 对接 A3 Consent 审计体系 | ✅ |
+| 失败自动回退 | A2 推理调用入口按 fallback 模型回退 | ✅ |
 | 用户反馈学习 | 基于历史反馈个性化调整复杂度阈值 | 📅 S10+ |
 
 #### 6.2.6 PlanOrchestrator（任务编排 · S9A）
@@ -377,15 +378,15 @@ models:
 
 | 项 | 共识 | 状态 |
 |----|------|------|
-| 模板加载 | 支持从 JSON / YAML 模板加载预设计划 | 📅 S9A |
-| 任务分解 | 将目标拆解为有序步骤序列（Step 1 → Step 2 → Step 3） | 📅 S9A |
-| 依赖管理 | 声明步骤间的数据依赖，支持 DAG 编排 | 📅 S9A |
-| 状态追踪 | 每个步骤状态：pending / running / done / failed | 📅 S9A |
-| 错误恢复 | 步骤失败时的重试策略或降级路径；支持幂等步骤标记 | 📅 S9A |
-| TaskContext | 临时数据空间，Skill 执行时读写，任务完成后可选写入 B2 记忆 | 📅 S9A |
-| Consent 暂停恢复 | 高危步骤触发 Consent 时暂停执行，用户确认后恢复 | 📅 S9A |
-| 生命周期控制 | 支持任务暂停/取消/恢复 | 📅 S9A |
-| CubeSandbox 快照增强 | 执行步骤前做快照，失败可回滚（仅 CubeSandbox 模式可用） | 📅 S9A |
+| 模板加载 | 支持从 JSON / YAML 模板加载预设计划 | ✅ |
+| 任务分解 | 将目标拆解为有序步骤序列（Step 1 → Step 2 → Step 3） | ✅ |
+| 依赖管理 | 声明步骤间的数据依赖，支持 DAG 编排 | ✅ |
+| 状态追踪 | 每个步骤状态：pending / running / done / failed；补充 step 级时间戳 | ✅ |
+| 错误恢复 | 步骤失败时的重试策略或降级路径；支持幂等步骤标记 | ✅ |
+| TaskContext | v2 生命周期字段 + 结构化 consent/route + 薄 API | ✅ |
+| Consent 暂停恢复 | 读取侧已迁移到结构化字段 | ✅ |
+| 生命周期控制 | 支持任务暂停/取消/恢复，并写入时间戳 | ✅ |
+| CubeSandbox 快照增强 | 执行步骤前做快照，失败可回滚（仅 CubeSandbox 模式可用） | 🔶 S9B+ |
 
 ##### 关键约束
 
@@ -421,17 +422,17 @@ A2 层单一状态数据源，基于 SQLite + 内存缓存实现，只存状态�
 
 | 项 | 共识 | 状态 |
 |----|------|------|
-| 定时任务 | Cron-like 表达式，支持周期性任务 | 📅 S8 |
-| 延迟任务 | 支持指定时间后触发执行 | 📅 S8 |
-| 事件监听任务 | 支持条件触发类任务 | 📅 S8 |
-| 长时间运行任务 | 支持大文件、长耗时任务后台执行 | 📅 S8 |
-| Skill 集成 | Skill 通过标准 API 注册后台任务 | 📅 S8 |
-| 持久化 | 任务状态持久化到 SQLite，Agent 重启后可恢复 | 📅 S8 |
-| UI 不阻塞 | 所有后台任务异步执行，通过事件通知 UI 进度与结果 | 📅 S8 |
-| Skill 存活检查 | 触发任务前校验目标 Skill 运行状态，异常则标记失败 | 📅 S8 |
-| 任务心跳 | 运行中任务定期更新心跳，超时自动标记失败 | 📅 S8 |
-| 调度算法 | 首批采用队列式（FIFO） | 📅 S8 |
-| 暂停恢复 | ResourceArbitrator 解除资源紧张后，按暂停顺序恢复任务 | 📅 S8 |
+| 定时任务 | Cron-like 表达式，支持周期性任务 | ✅ |
+| 延迟任务 | 支持指定时间后触发执行 | ✅ |
+| 事件监听任务 | 支持条件触发类任务 | 🔶 字段保留，调度返回 `E_JOB_EVENT_NOT_IMPLEMENTED` |
+| 长时间运行任务 | 支持大文件、长耗时任务后台执行 | ✅ |
+| Skill 集成 | Skill 通过标准 API 注册后台任务 | ✅ |
+| 持久化 | 任务状态持久化到 SQLite，Agent 重启后可恢复 | ✅ |
+| UI 不阻塞 | 后台任务通过 `queue_type="background"` 异步执行，不阻塞对话入口 | ✅ |
+| Skill 存活检查 | 触发任务前校验目标 Skill 运行状态，异常则标记失败 | ✅ |
+| 任务心跳 | 调度循环统一更新心跳，sweeper 超时自动标记失败 | ✅ |
+| 调度算法 | 首批采用队列式（FIFO） | ✅ |
+| 暂停恢复 | ResourceArbitrator 解除资源紧张后，按暂停顺序恢复任务 | 🔶 占位接口，S9+ |
 
 #### 6.2.9 统一错误代码规范（S8）
 
@@ -634,7 +635,7 @@ A1 检测用户 N 分钟无交互
 | 压缩摘要 | `fidelity`、`round_range`、`compression_batch` 字段 | 🔲 待做 |
 | 压缩原则 | 基于原始对话；不二次压缩；按轮次区间 | 🔲 待做 |
 | 召回优先级 | 用户事实 > Agent 人设 > 会话历史 | ✅ |
-| 混合检索 | 向量语义 + BM25 + FTS5 三路召回融合排序，附带引用标记 | 📅 S9A |
+| 混合检索 | 向量语义 + BM25 + FTS5 三路召回融合排序，附带引用标记 | ✅ 已落地：RRF（k=60）+ 跨库 content-hash 去重 + Citation 结构化输出 |
 | 冷热分离 | 热数据常驻快速索引，冷数据归档磁盘，可配置阈值 | 📅 S9+ |
 | 基础骨架 | `#remember` 闸门 + FTS / 衰减 / 可编辑召回 | 🔶 部分完成 |
 
@@ -826,7 +827,7 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 - **Skill 依赖安全**：依赖哈希校验 + SBOM 自动生成
 - **Native 模式系统调用级拦截**：Linux seccomp-bpf 优先，macOS/Windows 后续
 - **内置 Skill 文件哈希校验**：启动前完整性校验
-- **消息总线工程约定拆解**：ZeroMQ、双队列、幂等、死信队列、会话级串行
+- **消息总线工程约定拆解**：✅ 同步版 MessageRouter、双队列、幂等、死信队列、会话级串行
 
 **第二批（体验与生态，后置）**：
 - Plugin 动态加载器（`plugin_loader` + 前端 PluginLoader）
@@ -841,9 +842,25 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 
 ### Sprint 9A（核心骨架）
 
-**AutoRouter**（TaskProfiler 规则引擎版 + CostPredictor + 决策引擎 + 云端路由 Consent；初期对接前置规则过滤器，S9B 对接 Router LLM）；Tool（`tool_registry` + 分级）；**PlanOrchestrator + TaskContext**；**PlanNotebook**；**消息队列升级**（agent-toolbox ZeroMQ/nanomsg 通信模式 + A2 MessageRouter）；**ResourceArbitrator**；**A 层语义封装 + CI prompt 关键词扫描**（Skill 能力描述生成、反向相似度校验、B 层 prompt 解耦、B 层模板关键词扫描、Skill 新增解耦集成测试）；**模型适配 P0：模型自动发现 + 对话模板配置化**（启动时扫描 `models/` 目录，读取 GGUF metadata：架构、上下文窗口、`tokenizer.chat_template`、BOS/EOS、特殊 token；能完整识别则自动注册为可用模型，缺少关键字段则标记为「需手动配置」并提示补 `configs/models/<model>.yaml`；不兼容架构标记为「不兼容」，避免加载失败才暴露；B1 `assemble_reply` 不再硬编码 Qwen/ChatML 格式；配置包含 `chat_template`、`stop_tokens`、`supports_system_role`、`n_ctx`、`add_bos_token`、`eos_token`、默认推理参数，并为 MoE 预留 `moe` 字段）；**模型适配 P0：特殊输出格式剥离**（B4 增加模型感知的输出清理器，根据模型配置剥离 `<think>...</think>`、Qwen3 Thinking、DeepSeek-R1 等思考链标签，避免推理过程直接展示给用户）；**记忆三路混合检索**（向量语义 + BM25 + FTS5 融合排序、引用标记、召回去重）；**Tool 迁移收口**：S9 收尾前完成所有 external Tool → 微型 Skill 迁移，届时移除 external 入口。
+> **状态更新（2026-07-26）**：Sprint 9A（核心骨架）P0-P4 全线闭合，CI 全绿。
 
-> 9A 目标：先跑通复杂任务编排骨架，确保 PlanOrchestrator 能正确分解、执行和恢复任务。同步完成 Tool 后门封堵。
+**已完成**：
+- ✅ **AutoRouter**：TaskProfiler 规则版 + CostPredictor + 决策引擎 + 三入口封箱（desktop / Web / CLI）
+- ✅ **PlanOrchestrator + TaskContext**：v2 生命周期字段、结构化 consent / route、薄 API、snapshot v1→v2 兼容
+- ✅ **模型适配 P0**：ModelDescriptor 三态发现、`configs/models/<model>.yaml` 正式 schema、B1 去硬编码、B4 标签剥离
+- ✅ **记忆三路混合检索**：RRF（k=60）+ knowledge 语义召回 + 跨库去重 + Citation
+- ✅ **A 层语义封装 + CI prompt 关键词扫描**：manifest 自动关键词目录 + 解耦集成测试
+
+**Defer**：
+- ⏭️ **Tool / `tool_registry`**：后置，未启动
+- ⏭️ **并发 step 执行**：S9B+
+- ⏭️ **细粒度 per-step 恢复**
+- ⏭️ **CubeSandbox 快照增强**
+- ⏭️ **ZeroMQ / nanomsg 消息队列升级**
+- ⏭️ **ResourceArbitrator**：S9+
+- ⏭️ **knowledge embedding 升级**：当前知识语义检索使用确定性 hash-bow 近似
+
+> 9A 目标已达成：复杂任务编排骨架、模型路由、模型适配与三路检索已跑通，Tool 收口后置。
 
 **Sprint 9 补充**：
 - **StateManager + 事件驱动 + 中间件 + 单职责字段**
@@ -891,7 +908,7 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 | Skill 校验 | `pip install -e ".[skill]"` |
 | 硬件检测 | 下载器/安装器内置；检测 GPU 显存、系统内存、可用磁盘 |
 | 向量扩展 | sqlite-vec |
-| 消息总线 | ZeroMQ / nanomsg（后台任务链路）+ 同步函数调用（主对话链路） |
+| 消息总线 | S8：同步 MessageRouter（dispatch + 幂等 + DLQ + 双队列）；S9+：ZeroMQ / nanomsg 升级 |
 | 依赖隔离 | venv（每个 Skill 独立 `.venv/`） |
 | 系统调用拦截 | Linux seccomp-bpf / macOS sandbox-exec / Windows Job Object |
 | SBOM | `extensions/installed/<skill-name>/sbom.json` |
@@ -905,14 +922,13 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 | **CubeSandbox 启动速度** | <60ms（实验值） |
 | **CubeSandbox 并发上限** | 20 个实例（实验值；Docker 模式 3 个，Native 模式 1 个） |
 | **模型路由配置** | `configs/model_routing.yaml`（成本、延迟、能力标签、阈值） |
-| **模型适配配置** | `configs/models/<model>.yaml`（`chat_template`、`stop_tokens`、`supports_system_role`、`n_ctx`、`add_bos_token`、`eos_token`、默认推理参数、`capability_profile`、`strip_output_tags`、`moe` 预留字段） |
-| **能力标签枚举** | `shared/` 层统一定义（`chat`、`code_generation`、`complex_reasoning`、`tool_use`、`simple_qa`） |
-
+| **能力标签枚举** | ✅ `shared/types.py` 中 `CapabilityTag` 已落地（`chat`、`simple_qa`、`complex_reasoning`、`code_generation`、`tool_use`），由 `model_routing.yaml`、模型 YAML 与 `capability_catalog` 共同引用 |
+| **模型适配配置** | ✅ `configs/models/<model>.yaml` 已落地正式 schema；`describe_model()` / `ModelDescriptor` 实现 ready / needs_config / incompatible 三态发现 |
 **模型适配 MVP 落地顺序**：
 1. 抽 `ModelConfig` 数据结构 + 启动时从 GGUF metadata 自动读取并注册模型；主流架构自动识别，缺关键字段提示手动补 YAML。
 2. B1 装配器改用 chat template / role map / stop tokens 渲染，不再硬编码 Qwen/ChatML 格式。
 3. 内置 3 组模型配置与 smoke：Qwen2.5-1.5B、Llama 3 8B、Mistral 7B；补 DeepSeek-R1 / Qwen3 Thinking 的 `<think>` 标签剥离样例。
-4. 模型选择 UI 先做冷切换（重启加载），热切换不进入 MVP。
+4. 模型选择 UI 先做冷切换（重启加载），热切换不进入 MVP。🔶 P0 未覆盖，defer 到 9B+
 
 **不引入**：torch、langchain、chromadb、faiss、Electron、npm 构建链（Plugin 亦零构建）。
 
@@ -1037,3 +1053,4 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 ### 4. 内容完整性保留
 
 - 所有原架构共识、安全约束、功能规划、排期计划全部保留，未做任何实质删减。
+
