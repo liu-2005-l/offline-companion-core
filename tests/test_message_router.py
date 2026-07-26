@@ -222,7 +222,14 @@ def test_message_router_timeout_returns_timeout_result(tmp_path: Path) -> None:
     conn = connect(tmp_path / "router.db")
     new_session(conn, "s-1", "default", title=None)
     router = MessageRouter(conn)
-    router.register("task", lambda message: time.sleep(0.05))
+    attempts = 0
+
+    def _timeout_once(message: BaseMessage) -> object:
+        nonlocal attempts
+        attempts += 1
+        raise TimeoutError("synthetic timeout")
+
+    router._execute_with_timeout = _timeout_once  # type: ignore[method-assign]
 
     started = time.perf_counter()
     result = router.dispatch(
@@ -238,6 +245,7 @@ def test_message_router_timeout_returns_timeout_result(tmp_path: Path) -> None:
     elapsed = time.perf_counter() - started
 
     assert result.status == "timeout"
+    assert attempts == 2
     assert elapsed < 0.5
     row = conn.execute(
         "SELECT status FROM message_execution_records WHERE idempotency_key = ?;",
@@ -313,13 +321,12 @@ def test_message_router_retries_timeout_once_then_sends_dlq(tmp_path: Path) -> N
     router = MessageRouter(conn)
     calls = 0
 
-    def _handler(message: BaseMessage) -> object:
+    def _timeout_twice(message: BaseMessage) -> object:
         nonlocal calls
         calls += 1
-        time.sleep(0.03)
-        return None
+        raise TimeoutError("synthetic retry timeout")
 
-    router.register("task", _handler)
+    router._execute_with_timeout = _timeout_twice  # type: ignore[method-assign]
     result = router.dispatch(
         BaseMessage(
             message_id="m-53",
