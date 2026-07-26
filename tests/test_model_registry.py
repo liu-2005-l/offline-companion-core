@@ -86,11 +86,38 @@ def test_resolve_default_model_config_from_registry() -> None:
     assert cfg.model_id == "qwen2.5-1.5b-instruct-q4_k_m"
 
 
-def test_describe_model_reports_ready_status() -> None:
-    """? YAML ?????????? ready?"""
-    descriptor = describe_model("qwen2.5-1.5b-instruct-q4_k_m")
+def test_describe_model_reports_ready_status(tmp_path, monkeypatch) -> None:
+    """在临时模型目录与配置目录齐备时返回 ready。"""
+    model_id = "qwen2.5-1.5b-instruct-q4_k_m"
+    models = tmp_path / "models"
+    configs = tmp_path / "configs" / "models"
+    models.mkdir()
+    configs.mkdir(parents=True)
+    gguf = models / f"{model_id}.gguf"
+    gguf.write_bytes(b"fake")
+    (configs / f"{model_id}.yaml").write_text(
+        """
+display_name: Qwen2.5 1.5B Instruct Q4_K_M
+backend: llama_cpp
+n_ctx: 4096
+supports_system_role: true
+chat_template: |
+  {% for message in messages %}
+  {{ message['role'] }}: {{ message['content'] }}
+  {% endfor %}
+capability_profile: simple_qa
+strip_output_tags:
+  - think
+stop_tokens:
+  - <|im_end|>
+""".strip(),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OFFLINE_COMPANION_MODELS_DIR", str(models))
+    monkeypatch.setenv("OFFLINE_COMPANION_CONFIGS_DIR", str(tmp_path / "configs"))
+    descriptor = describe_model(model_id)
     assert descriptor.status == "ready"
-    assert descriptor.gguf_path is not None
+    assert descriptor.gguf_path == str(gguf.resolve())
     assert descriptor.display_name.startswith("Qwen2.5 1.5B")
 
 
