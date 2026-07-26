@@ -24,7 +24,7 @@ from offline_companion.shared.errors import (
     SkillSourceValidationError,
     SkillTrustAnchorMissingError,
 )
-from offline_companion.shell.skill_manager.seccomp.profiles import select_seccomp_profile
+from offline_companion.shell.skill_manager.seccomp.profiles import resolve_runtime_seccomp_profile
 from offline_companion.shell.skill_manager.supply_chain import (
     audit_supply_chain_failure,
     verify_supply_chain,
@@ -155,7 +155,7 @@ class SkillInvoker:
         env["OFFLINE_COMPANION_SKILL_PORT"] = str(port)
         env["OFFLINE_COMPANION_HOST_PID"] = str(os.getpid())
         env[_ENTRYPOINT_ENV] = str(script_path)
-        env[_SECCOMP_PROFILE_ENV] = select_seccomp_profile(manifest)
+        env[_SECCOMP_PROFILE_ENV] = resolve_runtime_seccomp_profile(manifest)
         self._prepend_pythonpath(env, self._trusted_src_root())
 
         try:

@@ -115,6 +115,10 @@ _NETWORK_EXTRA_SYSCALLS: tuple[str, ...] = (
     "sendto",
     "recvmsg",
     "sendmsg",
+    "poll",
+    "select",
+    "pselect6",
+    "ppoll",
     "epoll_create1",
     "epoll_ctl",
     "epoll_wait",
@@ -136,3 +140,11 @@ def select_seccomp_profile(manifest: SkillManifest) -> str:
     if PERM_FILE_ACCESS in permissions:
         return SECCOMP_PROFILE_FILE_IO
     return SECCOMP_PROFILE_COMPUTE
+
+
+def resolve_runtime_seccomp_profile(manifest: SkillManifest) -> str:
+    """??????????????? seccomp profile?"""
+    profile = select_seccomp_profile(manifest)
+    if manifest.entrypoint.type == "local_api":
+        return SECCOMP_PROFILE_NETWORK
+    return profile

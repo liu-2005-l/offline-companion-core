@@ -46,6 +46,15 @@ def classify_user_text(text: str, *, replies_path: Path | None = None) -> Safety
 
 def _classify_with_bundle(text: str, bundle: SafetyRepliesBundle) -> SafetyResult:
     t = text.lower()
+    danger_fragments = (
+        "\u70b8\u5f39",
+        "\u70b8\u836f",
+        "\u7206\u70b8\u88c5\u7f6e",
+        "\u5236\u4f5c\u70b8\u5f39",
+        "\u505a\u70b8\u836f",
+        "bomb",
+        "explosive",
+    )
     for m in bundle.self_markers:
         if m.lower() in t or m in text:
             return SafetyResult(
@@ -60,4 +69,10 @@ def _classify_with_bundle(text: str, bundle: SafetyRepliesBundle) -> SafetyResul
                 user_visible_reply=bundle.other_reply,
                 block_model=True,
             )
+    if any(fragment in t or fragment in text for fragment in danger_fragments):
+        return SafetyResult(
+            tier=SafetyTier.CRISIS_OTHER,
+            user_visible_reply=bundle.other_reply,
+            block_model=True,
+        )
     return SafetyResult(tier=SafetyTier.OK, user_visible_reply=None, block_model=False)

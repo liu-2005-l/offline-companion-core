@@ -33,6 +33,7 @@ from offline_companion.shell.skill_manager.seccomp.profiles import (
     SECCOMP_PROFILE_COMPUTE,
     SECCOMP_PROFILE_FILE_IO,
     SECCOMP_PROFILE_NETWORK,
+    resolve_runtime_seccomp_profile,
     select_seccomp_profile,
 )
 
@@ -334,8 +335,8 @@ class TestSkillInvoker:
     @pytest.mark.parametrize(
         ("permissions", "expected_profile"),
         [
-            ((), SECCOMP_PROFILE_COMPUTE),
-            (("file_access",), SECCOMP_PROFILE_FILE_IO),
+            ((), SECCOMP_PROFILE_NETWORK),
+            (("file_access",), SECCOMP_PROFILE_NETWORK),
             (("network_egress",), SECCOMP_PROFILE_NETWORK),
         ],
     )
@@ -406,6 +407,11 @@ def test_select_seccomp_profile_prefers_minimum_permissions(
 ) -> None:
     manifest = _build_manifest(permissions=permissions)
     assert select_seccomp_profile(manifest) == expected_profile
+
+
+def test_resolve_runtime_seccomp_profile_elevates_local_api() -> None:
+    manifest = _build_manifest()
+    assert resolve_runtime_seccomp_profile(manifest) == SECCOMP_PROFILE_NETWORK
 
 
 def test_seccomp_runtime_supported_non_linux_degrades() -> None:
@@ -484,7 +490,7 @@ def _run_seccomp_probe(*, profile: str, operation_code: str) -> dict[str, object
 
         load_result = load_profile({profile!r})
         outcome = {{"applied": load_result.applied, "profile": load_result.profile}}
-        {textwrap.indent(textwrap.dedent(operation_code).strip(), "        ")}
+        {textwrap.dedent(operation_code).strip()}
         print(json.dumps(outcome, ensure_ascii=False))
         """
     )

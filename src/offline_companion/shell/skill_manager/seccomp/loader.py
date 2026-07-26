@@ -48,6 +48,7 @@ _SYSCALL_NUMBERS_X86_64: dict[str, int] = {
     "readv": 19,
     "writev": 20,
     "access": 21,
+    "select": 23,
     "dup": 32,
     "dup2": 33,
     "nanosleep": 35,
@@ -110,6 +111,8 @@ _SYSCALL_NUMBERS_X86_64: dict[str, int] = {
     "fchownat": 260,
     "symlinkat": 266,
     "linkat": 265,
+    "pselect6": 270,
+    "ppoll": 271,
     "set_robust_list": 273,
     "accept4": 288,
     "epoll_create1": 291,
@@ -118,6 +121,7 @@ _SYSCALL_NUMBERS_X86_64: dict[str, int] = {
     "statx": 332,
     "rseq": 334,
     "ftruncate": 77,
+    "poll": 7,
 }
 
 

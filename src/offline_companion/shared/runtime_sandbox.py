@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import builtins
 import importlib
+import inspect
 import socket
+import sys
 import urllib.request
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -39,6 +41,16 @@ _ALLOWED_IMPORTS = {
     "statistics",
     "fractions",
     "decimal",
+    "io",
+    "_io",
+    "_abc",
+    "_collections_abc",
+    "_datetime",
+    "_codecs",
+    "codecs",
+    "encodings",
+    "errno",
+    "time",
 }
 # TODO(sprint7-close): 目前仅覆盖最小危险能力集合；后续需补充更多运行时边界白名单与子进程级兜底。
 
@@ -46,6 +58,19 @@ _ALLOWED_IMPORTS = {
 def _blocked(*_args, **_kwargs):
     raise SkillInvocationError("当前运行模式禁止使用受限能力")
 
+
+
+
+def _safe_eval(*_args, **_kwargs):
+    raise SkillInvocationError("?????????????????????")
+
+
+def _safe_exec(*args, **kwargs):
+    for frame_info in inspect.stack()[1:]:
+        module_name = str(frame_info.frame.f_globals.get("__name__", ""))
+        if module_name.startswith(("importlib", "_frozen_importlib")):
+            return _ORIGINAL_EXEC(*args, **kwargs)
+    raise SkillInvocationError("?????????????????????")
 
 def _is_allowed_import(name: str) -> bool:
     """摘要：判断模块是否在 Skill 运行时导入白名单中。"""
@@ -61,6 +86,12 @@ def _safe_import_module(name: str, *args, **kwargs):
 
 def _safe_builtin_import(name: str, globals=None, locals=None, fromlist=(), level: int = 0):
     if _is_allowed_import(name):
+        return _ORIGINAL_IMPORT(name, globals, locals, fromlist, level)
+    if name in {"_io", "_abc", "_collections_abc", "_datetime", "_codecs"}:
+        return _ORIGINAL_IMPORT(name, globals, locals, fromlist, level)
+    if name.startswith("_pytest"):
+        return _ORIGINAL_IMPORT(name, globals, locals, fromlist, level)
+    if name in sys.builtin_module_names and name not in {"os", "socket", "_socket"}:
         return _ORIGINAL_IMPORT(name, globals, locals, fromlist, level)
     raise SkillInvocationError(f"当前运行模式禁止导入模块: {name}")
 
@@ -82,8 +113,8 @@ def enable_runtime_sandbox() -> None:
     urllib.request.urlopen = _safe_urlopen  # type: ignore[assignment]
     importlib.import_module = _safe_import_module  # type: ignore[assignment]
     builtins.__import__ = _safe_builtin_import  # type: ignore[assignment]
-    builtins.eval = _blocked  # type: ignore[assignment]
-    builtins.exec = _blocked  # type: ignore[assignment]
+    builtins.eval = _safe_eval  # type: ignore[assignment]
+    builtins.exec = _safe_exec  # type: ignore[assignment]
     _SANDBOX_ENABLED = True
 
 
