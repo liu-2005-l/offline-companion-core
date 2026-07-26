@@ -17,6 +17,9 @@ DecisionProvider = Callable[[dict[str, Any]], bool]
 
 
 def _purpose_for_request(consent_request: ConsentRequest) -> str:
+    explicit = str(consent_request.metadata.get("purpose_type") or "").strip()
+    if explicit:
+        return explicit
     skill = (consent_request.skill_id or "").lower()
     if "network" in skill or "egress" in skill:
         return PurposeType.SKILL_NETWORK_EGRESS.value

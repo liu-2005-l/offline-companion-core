@@ -9,7 +9,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from time import sleep
+from time import sleep, time
 from typing import Any, Protocol
 from uuid import uuid4
 
@@ -84,6 +84,7 @@ class TaskContext:
     """任务唯一真值源，可全量快照持久化。"""
 
     plan_id: str
+    snapshot_version: int = 2
     status: PlanStatus = PlanStatus.PENDING
     steps: dict[str, PlanStep] = field(default_factory=dict)
     step_status: dict[str, StepStatus] = field(default_factory=dict)
@@ -97,6 +98,13 @@ class TaskContext:
     error: str | None = None
     paused_reason: str | None = None
     paused_step_id: str | None = None
+    started_at: float | None = None
+    updated_at: float | None = None
+    completed_at: float | None = None
+    step_started_at: dict[str, float] = field(default_factory=dict)
+    step_completed_at: dict[str, float] = field(default_factory=dict)
+    step_consent_requests: dict[str, dict[str, Any]] = field(default_factory=dict)
+    step_route_decisions: dict[str, dict[str, Any]] = field(default_factory=dict)
     _dependency_satisfied_set: set[str] = field(default_factory=set, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -147,6 +155,7 @@ class TaskContext:
 
     def to_snapshot(self) -> dict[str, Any]:
         return {
+            "snapshot_version": self.snapshot_version,
             "plan_id": self.plan_id,
             "status": self.status.value,
             "steps": {sid: _step_to_dict(step) for sid, step in self.steps.items()},
@@ -161,11 +170,19 @@ class TaskContext:
             "error": self.error,
             "paused_reason": self.paused_reason,
             "paused_step_id": self.paused_step_id,
+            "started_at": self.started_at,
+            "updated_at": self.updated_at,
+            "completed_at": self.completed_at,
+            "step_started_at": dict(self.step_started_at),
+            "step_completed_at": dict(self.step_completed_at),
+            "step_consent_requests": dict(self.step_consent_requests),
+            "step_route_decisions": dict(self.step_route_decisions),
             "progress": self.progress,
         }
 
     @classmethod
     def from_snapshot(cls, payload: Mapping[str, Any]) -> TaskContext:
+        snapshot_version = int(payload.get("snapshot_version", 1))
         steps = {
             str(sid): _step_from_dict(dict(raw_step))
             for sid, raw_step in dict(payload.get("steps", {})).items()
@@ -177,6 +194,7 @@ class TaskContext:
         processed_steps = list(payload.get("processed_steps", payload.get("completed_steps", [])))
         return cls(
             plan_id=str(payload["plan_id"]),
+            snapshot_version=max(2, snapshot_version),
             status=PlanStatus(str(payload.get("status", PlanStatus.PENDING.value))),
             steps=steps,
             step_status=step_status,
@@ -190,7 +208,101 @@ class TaskContext:
             error=payload.get("error"),
             paused_reason=payload.get("paused_reason"),
             paused_step_id=payload.get("paused_step_id"),
+            started_at=_optional_float(payload.get("started_at")),
+            updated_at=_optional_float(payload.get("updated_at")),
+            completed_at=_optional_float(payload.get("completed_at")),
+            step_started_at=_float_dict(payload.get("step_started_at")),
+            step_completed_at=_float_dict(payload.get("step_completed_at")),
+            step_consent_requests=_dict_of_dict(payload.get("step_consent_requests")),
+            step_route_decisions=_dict_of_dict(payload.get("step_route_decisions")),
         )
+
+    def touch(self) -> None:
+        """摘要：刷新上下文更新时间。"""
+        self.updated_at = time()
+
+    def mark_started(self) -> None:
+        """摘要：在计划首次进入运行态时写入开始时间。"""
+        now = time()
+        if self.started_at is None:
+            self.started_at = now
+        self.updated_at = now
+
+    def mark_terminal(self) -> None:
+        """摘要：在计划进入终态时写入完成时间并刷新更新时间。"""
+        now = time()
+        if self.completed_at is None:
+            self.completed_at = now
+        self.updated_at = now
+
+    def mark_step_started(self, step_id: str) -> None:
+        """摘要：记录单个步骤首次进入运行态的时间。"""
+        self.step_started_at.setdefault(step_id, time())
+        self.updated_at = time()
+
+    def mark_step_completed(self, step_id: str) -> None:
+        """摘要：记录单个步骤进入终态的时间。"""
+        self.step_completed_at.setdefault(step_id, time())
+        self.updated_at = time()
+
+    def get_step_result(self, step_id: str) -> Any | None:
+        """摘要：按 step_id 读取步骤结果。"""
+        step = self.steps.get(step_id)
+        if step is None:
+            return None
+        return self.step_results.get(step.result_key)
+
+    def set_step_result(self, step_id: str, result: Any) -> None:
+        """摘要：按 step_id 写入步骤结果。"""
+        step = self.steps.get(step_id)
+        if step is None:
+            raise KeyError(f"unknown step_id: {step_id}")
+        self.step_results[step.result_key] = result
+        self.context_vars[step.result_key] = result
+        self.touch()
+
+    def get_context_var(self, key: str, default: Any = None) -> Any:
+        """摘要：读取上下文字典中的一个键。"""
+        return self.context_vars.get(key, default)
+
+    def set_context_var(self, key: str, value: Any) -> None:
+        """摘要：写入上下文字典中的一个键。"""
+        self.context_vars[key] = value
+        self.touch()
+
+    def get_step_consent_request(self, step_id: str) -> dict[str, Any] | None:
+        """摘要：按步骤读取结构化 consent 请求。"""
+        payload = self.step_consent_requests.get(step_id)
+        if payload is not None:
+            return dict(payload)
+        legacy = self.context_vars.get("consent_request")
+        if isinstance(legacy, Mapping):
+            return dict(legacy)
+        return None
+
+    def set_step_consent_request(self, step_id: str, payload: dict[str, Any]) -> None:
+        """摘要：按步骤写入结构化 consent 请求，并同步兼容层。"""
+        data = dict(payload)
+        self.step_consent_requests[step_id] = data
+        self.context_vars["consent_request"] = data
+        self.touch()
+
+    def get_step_route_decision(self, step_id: str) -> dict[str, Any] | None:
+        """摘要：按步骤读取结构化 route decision。"""
+        payload = self.step_route_decisions.get(step_id)
+        if payload is not None:
+            return dict(payload)
+        legacy = self.context_vars.get("route_decision")
+        if isinstance(legacy, Mapping):
+            return dict(legacy)
+        return None
+
+    def set_step_route_decision(self, step_id: str, payload: dict[str, Any]) -> None:
+        """摘要：按步骤写入结构化 route decision，并同步兼容层。"""
+        data = dict(payload)
+        self.step_route_decisions[step_id] = data
+        self.context_vars["route_decision"] = data
+        self.touch()
 
 
 class PlanTemplateNotFoundError(A2PlanTemplateNotFoundError):
@@ -420,6 +532,7 @@ class PlanEngine:
             return context
         context._rebuild_dependency_satisfied_set()
         context.status = PlanStatus.RUNNING
+        context.mark_started()
         context.paused_reason = None
         context.paused_step_id = None
         sleeper = sleep_fn or (lambda seconds: None)
@@ -429,6 +542,7 @@ class PlanEngine:
             if not ready_steps:
                 if self._all_steps_final(context):
                     context.status = PlanStatus.DONE
+                    context.mark_terminal()
                 elif self._all_dependencies_failed(context):
                     failed_deps = self._collect_first_failed_deps(context)
                     context.status = PlanStatus.FAILED
@@ -436,10 +550,13 @@ class PlanEngine:
                     for step_id in context.steps:
                         if context.step_status.get(step_id) not in FINAL_STEP_STATUSES:
                             context.step_status[step_id] = StepStatus.CANCELLED
+                            context.mark_step_completed(step_id)
                             context.mark_processed(step_id)
+                    context.mark_terminal()
                 else:
                     context.status = PlanStatus.PAUSED
                     context.paused_reason = "waiting_dependencies"
+                    context.touch()
                 break
 
             step = ready_steps[0]
@@ -448,10 +565,12 @@ class PlanEngine:
                 context.paused_reason = "waiting_consent"
                 context.paused_step_id = step.step_id
                 context.step_status[step.step_id] = StepStatus.BLOCKED
+                context.touch()
                 break
 
             if not self._check_condition(step, context.context_vars):
                 context.step_status[step.step_id] = StepStatus.SKIPPED
+                context.mark_step_completed(step.step_id)
                 self._mark_completed(context, step.step_id)
                 continue
 
@@ -459,24 +578,26 @@ class PlanEngine:
             if error is not None:
                 if step.degrade_value is not None:
                     context.step_status[step.step_id] = StepStatus.DEGRADED
-                    context.step_results[step.result_key] = step.degrade_value
-                    context.context_vars[step.result_key] = step.degrade_value
+                    context.set_step_result(step.step_id, step.degrade_value)
                     context.step_errors[step.step_id] = str(error)
+                    context.mark_step_completed(step.step_id)
                     self._mark_completed(context, step.step_id)
                     continue
                 context.step_status[step.step_id] = StepStatus.FAILED
                 context.step_errors[step.step_id] = str(error)
+                context.mark_step_completed(step.step_id)
                 context.mark_processed(step.step_id)
                 if step.fail_fast:
                     context.status = PlanStatus.FAILED
                     context.error = str(error)
                     context.paused_step_id = step.step_id
+                    context.mark_terminal()
                     break
                 continue
 
             context.step_status[step.step_id] = StepStatus.DONE
-            context.step_results[step.result_key] = result
-            context.context_vars[step.result_key] = result
+            context.set_step_result(step.step_id, result)
+            context.mark_step_completed(step.step_id)
             self._mark_completed(context, step.step_id)
 
         return context
@@ -494,6 +615,7 @@ class PlanEngine:
             attempts += 1
             context.step_attempts[step.step_id] = attempts
             context.step_status[step.step_id] = StepStatus.RUNNING
+            context.mark_step_started(step.step_id)
             try:
                 return step_executor(step, context.context_vars), None
             except Exception as exc:
@@ -605,6 +727,7 @@ class PlanOrchestrator:
             steps=step_map,
             step_status={step.step_id: StepStatus.PENDING for step in steps},
         )
+        context.touch()
         self._store.save(plan_id, context)
         self._event_publisher.publish("task.plan_started", context)
         return self._run(context)
@@ -614,17 +737,26 @@ class PlanOrchestrator:
         if context is None or context.is_terminal():
             raise A2PlanValidationError(f"plan {plan_id!r} cannot be resumed")
         if context.status is PlanStatus.PAUSED and context.paused_reason == "waiting_consent":
-            if consent_granted is True and context.paused_step_id is not None:
-                context.step_status[context.paused_step_id] = StepStatus.READY
+            paused_step_id = context.paused_step_id
+            if paused_step_id is not None:
+                consent_payload = context.get_step_consent_request(paused_step_id)
+                if consent_payload is not None:
+                    context.set_step_consent_request(paused_step_id, consent_payload)
+            if consent_granted is True and paused_step_id is not None:
+                context.step_status[paused_step_id] = StepStatus.READY
                 context.paused_reason = None
                 context.paused_step_id = None
-            elif consent_granted is False and context.paused_step_id is not None:
-                context.step_status[context.paused_step_id] = StepStatus.CANCELLED
-                context.mark_processed(context.paused_step_id)
+                context.touch()
+            elif consent_granted is False and paused_step_id is not None:
+                context.step_status[paused_step_id] = StepStatus.CANCELLED
+                context.mark_step_completed(paused_step_id)
+                context.mark_processed(paused_step_id)
                 context.status = PlanStatus.CANCELLED
+                context.mark_terminal()
                 self._store.save(plan_id, context)
-                self._event_publisher.publish("task.plan_cancelled", context, current_step=context.paused_step_id)
+                self._event_publisher.publish("task.plan_cancelled", context, current_step=paused_step_id)
                 return context
+        context.touch()
         self._store.save(plan_id, context)
         self._event_publisher.publish("task.plan_resumed", context)
         return self._run(context)
@@ -637,7 +769,9 @@ class PlanOrchestrator:
         for step_id, status in list(context.step_status.items()):
             if status not in FINAL_STEP_STATUSES:
                 context.step_status[step_id] = StepStatus.CANCELLED
+                context.mark_step_completed(step_id)
                 context.mark_processed(step_id)
+        context.mark_terminal()
         self._store.save(plan_id, context)
         self._event_publisher.publish("task.plan_cancelled", context)
 
@@ -673,6 +807,8 @@ class PlanOrchestrator:
     def _run(self, context: TaskContext) -> TaskContext:
         if not context.steps:
             context.status = PlanStatus.DONE
+            context.mark_started()
+            context.mark_terminal()
             self._store.save(context.plan_id, context)
             return context
 
@@ -680,6 +816,7 @@ class PlanOrchestrator:
         if fallback_chain and "route_mode" not in context.context_vars:
             context.context_vars["route_mode"] = fallback_chain[0]
             context.context_vars["fallback_index"] = 0
+            context.touch()
 
         def executor(step: PlanStep, context_vars: dict[str, Any]) -> Any:
             if self._routed_invoker is not None:
@@ -701,23 +838,41 @@ class PlanOrchestrator:
             if self._fallback_controller.advance(context, reason=context.error or "step_failed", step_id=failed_step, error=context.error):
                 context.status = PlanStatus.RUNNING
                 context.error = None
+                context.completed_at = None
+                context.touch()
                 self._store.save(context.plan_id, context)
                 return self._run(context)
         step_events = self._collect_step_events(context)
         plan_events = self._collect_plan_events(context)
         if context.status is PlanStatus.PAUSED and context.paused_reason == "waiting_consent" and context.paused_step_id:
             context.context_vars.setdefault("requires_consent", True)
+            context.touch()
         if context.status is PlanStatus.PAUSED and context.paused_reason == "waiting_consent":
             step_id = context.paused_step_id
             if step_id is not None:
-                consent_request = self._build_consent_request(context, context.steps[step_id])
-                context.context_vars["consent_request"] = dataclasses.asdict(consent_request)
+                consent_payload = context.get_step_consent_request(step_id)
+                if consent_payload is None:
+                    consent_request = self._build_consent_request(context, context.steps[step_id])
+                    consent_payload = dataclasses.asdict(consent_request)
+                    context.set_step_consent_request(step_id, consent_payload)
+                else:
+                    context.set_step_consent_request(step_id, consent_payload)
+                route_decision = context.get_step_route_decision(step_id)
+                if route_decision is None:
+                    legacy_route_decision = context.get_context_var("route_decision")
+                    if isinstance(legacy_route_decision, dict):
+                        route_decision = dict(legacy_route_decision)
+                if route_decision is not None:
+                    context.set_step_route_decision(step_id, route_decision)
+                context.touch()
                 self._store.save(context.plan_id, context)
                 self._event_publisher.publish("task.consent_request", context, current_step=step_id)
+                consent_request = ConsentRequest(**consent_payload)
                 if self._consent_adapter is not None:
                     context.context_vars["consent_requested"] = self._consent_adapter.request(consent_request)
                 elif self._consent_callback is not None:
                     context.context_vars["consent_requested"] = self._consent_callback(context.plan_id, context.steps[step_id])
+                context.touch()
         # 状态是唯一真值源：先落盘，再发通知；避免下游收到事件后快照仍是旧值。
         self._store.save(context.plan_id, context)
         for event_name, step_id in step_events:
@@ -811,3 +966,36 @@ def _step_from_dict(payload: dict[str, Any]) -> PlanStep:
         payload["condition_key"] = payload.pop("condition_expr")
     payload.pop("timeout_s", None)
     return PlanStep(**payload)
+
+
+def _optional_float(value: Any) -> float | None:
+    """摘要：将快照中的可选数值字段转为 float。"""
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _float_dict(value: Any) -> dict[str, float]:
+    """摘要：将快照中的时间戳字典转为 `dict[str, float]`。"""
+    if not isinstance(value, Mapping):
+        return {}
+    out: dict[str, float] = {}
+    for key, item in value.items():
+        parsed = _optional_float(item)
+        if parsed is not None:
+            out[str(key)] = parsed
+    return out
+
+
+def _dict_of_dict(value: Any) -> dict[str, dict[str, Any]]:
+    """摘要：将快照中的嵌套字典安全转为结构化映射。"""
+    if not isinstance(value, Mapping):
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for key, item in value.items():
+        if isinstance(item, Mapping):
+            out[str(key)] = dict(item)
+    return out

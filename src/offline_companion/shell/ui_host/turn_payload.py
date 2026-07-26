@@ -33,6 +33,15 @@ def turn_result_to_payload(result: TurnResult) -> dict[str, Any]:
         "memory_saved": list(result.memory_saved),
         "memory_recall_count": len(result.memory_recalls),
         "safety_tier": result.safety_tier,
+        "requires_consent": result.requires_consent,
+        "consent_request_id": result.consent_request_id,
+        "route_mode": result.route_mode,
+        "selected_model": result.selected_model,
+        "fallback_model": result.fallback_model,
+        "routing_reason": result.routing_reason,
+        "estimated_input_tokens": result.estimated_input_tokens,
+        "estimated_output_tokens": result.estimated_output_tokens,
+        "estimated_cost": result.estimated_cost,
     }
 
 
@@ -57,7 +66,7 @@ def process_chat_message(runtime: ChatRuntime, message: str) -> dict[str, Any]:
 
     triggers = getattr(runtime, "triggers", None)
     memory_snippet = maybe_summarize_to_memory(text, triggers) if triggers is not None else []
-    result = runtime.orchestrator.run_turn(text, memory_on=True)
+    result = runtime.orchestrator.run_turn(text, memory_on=bool(getattr(runtime, "memory_on", True)))
     payload = turn_result_to_payload(result)
     if memory_snippet:
         payload.setdefault("memory_saved", [])

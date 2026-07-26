@@ -8,6 +8,11 @@ import time
 from pathlib import Path
 from typing import Any
 
+from offline_companion.core.memory_lifecycle.embedding import embed_text, vector_to_blob
+
+_KNOWLEDGE_EMBEDDING_DIMENSIONS = 128
+_KNOWLEDGE_EMBEDDING_MODEL = "deterministic_hash_bow_v1"
+
 
 def ingest_jsonl_file(conn: sqlite3.Connection, path: Path) -> int:
     """摘要：从 JSONL 导入文档块（每行一个 JSON 对象）。
@@ -60,8 +65,24 @@ def ingest_chunk(
     )
     doc_id = int(cur.lastrowid or 0)
     cur2 = conn.execute(
-        "INSERT INTO knowledge_chunks(doc_id, body, meta_json) VALUES(?,?,?);",
-        (doc_id, body.strip(), "{}"),
+        """
+        INSERT INTO knowledge_chunks(
+            doc_id,
+            body,
+            meta_json,
+            embedding_blob,
+            embedding_model,
+            embedding_dim
+        ) VALUES(?,?,?,?,?,?);
+        """,
+        (
+            doc_id,
+            body.strip(),
+            "{}",
+            vector_to_blob(embed_text(body.strip(), dimensions=_KNOWLEDGE_EMBEDDING_DIMENSIONS)),
+            _KNOWLEDGE_EMBEDDING_MODEL,
+            _KNOWLEDGE_EMBEDDING_DIMENSIONS,
+        ),
     )
     rid = cur2.lastrowid
     assert rid is not None

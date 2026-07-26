@@ -1,0 +1,8 @@
+complexity_threshold: 5
+max_cloud_cost_per_turn: 0.01
+default_output_tokens:
+  chat: 192
+  simple_qa: 256
+  complex_reasoning: 512
+  code_generation: 640
+  tool_use: 384

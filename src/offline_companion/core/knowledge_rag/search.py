@@ -5,7 +5,16 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass
 
+from offline_companion.core.memory_lifecycle.embedding import (
+    blob_to_vector,
+    cosine_similarity,
+    embed_text,
+)
+
 from .audit import log_search
+
+_KNOWLEDGE_EMBEDDING_DIMENSIONS = 128
+_KNOWLEDGE_MIN_COSINE = 0.12
 
 
 @dataclass(frozen=True)
@@ -103,4 +112,55 @@ def search_knowledge(
         for r in rows
     ]
     log_search(conn, query=query, hit_ids=[h.chunk_id for h in hits], session_id=session_id)
+    return hits
+
+
+def search_knowledge_semantic(
+    conn: sqlite3.Connection,
+    query: str,
+    *,
+    limit: int = 5,
+    session_id: str | None = None,
+    scan_limit: int = 200,
+) -> list[KnowledgeSearchHit]:
+    """摘要：对知识库执行确定性向量检索并写审计日志。"""
+    text = query.strip()
+    if not text:
+        return []
+    query_vec = embed_text(text, dimensions=_KNOWLEDGE_EMBEDDING_DIMENSIONS)
+    rows = conn.execute(
+        """
+        SELECT c.id AS chunk_id, c.doc_id, c.body, c.embedding_blob, d.title, d.source_uri
+        FROM knowledge_chunks AS c
+        JOIN knowledge_documents AS d ON d.id = c.doc_id
+        WHERE c.embedding_blob IS NOT NULL
+        ORDER BY c.id DESC
+        LIMIT ?;
+        """,
+        (scan_limit,),
+    ).fetchall()
+    scored: list[tuple[float, KnowledgeSearchHit]] = []
+    for row in rows:
+        vector = blob_to_vector(row["embedding_blob"])
+        if not vector:
+            continue
+        sim = cosine_similarity(query_vec, vector)
+        if sim < _KNOWLEDGE_MIN_COSINE:
+            continue
+        scored.append(
+            (
+                sim,
+                KnowledgeSearchHit(
+                    chunk_id=int(row["chunk_id"]),
+                    doc_id=int(row["doc_id"]),
+                    title=str(row["title"]),
+                    source_uri=str(row["source_uri"]),
+                    body=str(row["body"]),
+                    score=sim,
+                ),
+            )
+        )
+    scored.sort(key=lambda item: item[0], reverse=True)
+    hits = [hit for _score, hit in scored[:limit]]
+    log_search(conn, query=f"{query} [semantic]", hit_ids=[h.chunk_id for h in hits], session_id=session_id)
     return hits

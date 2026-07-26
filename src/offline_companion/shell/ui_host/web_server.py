@@ -6,7 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
-from offline_companion.shell.ui_host.turn_payload import process_chat_message
+from offline_companion.shell.ui_host.turn_payload import (
+    process_chat_message,
+    turn_result_to_payload,
+)
 
 _TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 _ALLOWED_HOST = "127.0.0.1"
@@ -65,6 +68,32 @@ def create_app(runtime: WebRuntime):
         data = request.get_json(silent=True) or {}
         payload = process_chat_message(runtime, str(data.get("message", "")))
         return jsonify(payload)
+
+    @app.get("/api/consent")
+    def consent_status():
+        gateway = getattr(runtime.orchestrator, "consent_gateway", None)
+        if gateway is None:
+            return jsonify(
+                {
+                    "title": "出站同意",
+                    "body": "当前没有待处理的同意请求。",
+                    "purpose_type": "skill_cloud_inference",
+                }
+            )
+        return jsonify(gateway.to_modal_payload())
+
+    @app.post("/api/consent")
+    def consent_decision():
+        data = request.get_json(silent=True) or {}
+        request_id = str(data.get("request_id", "")).strip()
+        allowed = bool(data.get("allowed", False))
+        if not request_id:
+            return jsonify({"error": "missing request_id"}), 400
+        try:
+            result = runtime.orchestrator.resume_pending_turn(request_id, allowed=allowed)
+        except KeyError as exc:
+            return jsonify({"error": str(exc)}), 404
+        return jsonify(turn_result_to_payload(result))
 
     return app
 

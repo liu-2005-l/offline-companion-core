@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -52,6 +52,17 @@ class OutboundScope(str, Enum):
     GLOBAL = "global"
 
 
+class CapabilityTag(str, Enum):
+    """???????????????????????????? Tool/Skill ???????"""
+
+    CHAT = "chat"
+    SIMPLE_QA = "simple_qa"
+    COMPLEX_REASONING = "complex_reasoning"
+    CODE_GENERATION = "code_generation"
+    TOOL_USE = "tool_use"
+
+
+
 @dataclass(frozen=True)
 class AppPaths:
     """摘要：应用本地数据目录解析结果。"""
@@ -95,12 +106,108 @@ class MemoryRecallHit:
 
 @dataclass(frozen=True)
 class ModelRuntimeConfig:
-    """摘要：模型运行时配置（由 A1 解析，传给 C1 使用）。"""
+    """???????????? A1 ????? C1 ???"""
 
     model_id: str
+    display_name: str = ""
+    backend: str = "llama_cpp"
+    architecture: str | None = None
+    n_ctx: int | None = None
+    supports_system_role: bool = True
+    add_bos_token: bool = False
+    eos_token: str | None = None
     chat_template: str = ""
     stop_tokens: tuple[str, ...] = ()
     strip_output_tags: tuple[str, ...] = ()
+    capability_profile: CapabilityTag = CapabilityTag.CHAT
+    default_params: dict[str, Any] = field(default_factory=dict)
+    moe: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class ModelDescriptor:
+    """???????????????????????"""
+
+    model_id: str
+    display_name: str
+    gguf_path: str | None
+    source: str
+    status: str
+    backend: str
+    architecture: str | None = None
+    n_ctx: int | None = None
+    supports_system_role: bool = True
+    add_bos_token: bool = False
+    eos_token: str | None = None
+    chat_template: str = ""
+    stop_tokens: tuple[str, ...] = ()
+    strip_output_tags: tuple[str, ...] = ()
+    capability_profile: CapabilityTag = CapabilityTag.CHAT
+    default_params: dict[str, Any] = field(default_factory=dict)
+    moe: dict[str, Any] | None = None
+    incompatible_reason: str | None = None
+    missing_fields: tuple[str, ...] = ()
+
+
+
+
+@dataclass(frozen=True)
+class TaskProfile:
+    """???????????????"""
+
+    task_type: CapabilityTag
+    complexity_score: int
+    required_capabilities: tuple[CapabilityTag, ...]
+    context_length: int
+    privacy_sensitive: bool
+    requires_network: bool = False
+
+
+@dataclass(frozen=True)
+class ModelRoutingDecision:
+    """????????????? A2 ???????"""
+
+    selected_model: str
+    fallback_model: str | None
+    requires_consent: bool
+    reason: str
+    estimated_input_tokens: int
+    estimated_output_tokens: int
+    estimated_cost: float
+
+
+@dataclass(frozen=True)
+class RetrievalHit:
+    """摘要：统一检索命中项，供多路融合与展示层复用。"""
+
+    source_type: str
+    source_id: str
+    title: str | None
+    snippet: str
+    score: float
+    rank: int
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class Citation:
+    """摘要：结构化引用条目，供 UI 与渲染层展示。"""
+
+    index: int
+    source_type: str
+    source_id: str
+    title: str | None
+    snippet: str
+    score: float
+
+
+@dataclass(frozen=True)
+class HybridSearchResult:
+    """摘要：多路检索融合后的统一结果。"""
+
+    hits: tuple[RetrievalHit, ...]
+    citations: tuple[Citation, ...]
+    display_text: str
 
 
 @dataclass(frozen=True)
@@ -118,6 +225,15 @@ class TurnResult:
     memory_explanation: dict[str, Any] | None = None
     cloud_used: bool = False
     cloud_degraded: bool = False
+    requires_consent: bool = False
+    consent_request_id: str | None = None
+    route_mode: str | None = None
+    selected_model: str | None = None
+    fallback_model: str | None = None
+    routing_reason: str | None = None
+    estimated_input_tokens: int | None = None
+    estimated_output_tokens: int | None = None
+    estimated_cost: float | None = None
 
 
 @dataclass(frozen=True)

@@ -234,15 +234,13 @@ class LlamaCppBackend:
         if self._llama is None:
             raise InferenceBackendError("模型未加载，无法 generate")
 
-        # 合并为单条 system：Qwen 等模板的 chat 格式对多条 system 支持不稳定
-        full_system = system_prompt.rstrip()
-        if memory_block.strip():
-            full_system = f"{full_system}\n\n{memory_block.strip()}"
-        messages: list[dict[str, str]] = [{"role": "system", "content": full_system}]
-        for m in history:
-            if m.role in ("user", "assistant"):
-                messages.append({"role": m.role, "content": m.content})
-        messages.append({"role": "user", "content": user_message})
+        messages = self._build_messages(
+            system_prompt=system_prompt,
+            history=history,
+            user_message=user_message,
+            memory_block=memory_block,
+        )
+
 
         try:
             kwargs = {"messages": messages, "max_tokens": max_tokens}
@@ -259,23 +257,54 @@ class LlamaCppBackend:
         content = msg.get("content")
         if not content:
             raise InferenceBackendError(f"推理响应无内容: {out!r}")
-        return self._strip_output_tags(str(content).strip())
+        return strip_model_output(str(content).strip(), self.model_config)
 
-    def _strip_output_tags(self, text: str) -> str:
-        """摘要：按模型配置剥离不应展示给用户的特殊输出标签。"""
-        cleaned = text
-        for tag in self.model_config.strip_output_tags:
-            tag_name = tag.strip().strip("<>/")
-            if not tag_name:
-                continue
-            cleaned = re.sub(
-                rf"<{re.escape(tag_name)}\b[^>]*>.*?</{re.escape(tag_name)}>",
-                "",
-                cleaned,
-                flags=re.IGNORECASE | re.DOTALL,
-            )
-        return cleaned.strip()
 
+    def _build_messages(
+        self,
+        *,
+        system_prompt: str,
+        history: list[MessageRow],
+        user_message: str,
+        memory_block: str,
+    ) -> list[dict[str, str]]:
+        """???? B1 ????????? C1 ????????"""
+        full_system = system_prompt.rstrip()
+        if memory_block.strip():
+            full_system = f"{full_system}\n\n{memory_block.strip()}"
+        messages: list[dict[str, str]] = []
+        if full_system.strip():
+            if self.model_config.supports_system_role:
+                messages.append({"role": "system", "content": full_system})
+            else:
+                messages.append({"role": "user", "content": full_system})
+        for message in history:
+            if message.role in ("user", "assistant"):
+                messages.append({"role": message.role, "content": message.content})
+        messages.append({"role": "user", "content": user_message})
+        return messages
+
+
+def strip_model_output(text: str, model_config: ModelRuntimeConfig) -> str:
+    """?????????????????????????"""
+    cleaned = text
+    for tag in model_config.strip_output_tags:
+        tag_name = tag.strip().strip("<>/")
+        if not tag_name:
+            continue
+        cleaned = re.sub(
+            rf"<{re.escape(tag_name)}\b[^>]*>.*?</{re.escape(tag_name)}>",
+            "",
+            cleaned,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        cleaned = re.sub(
+            rf"^\s*{re.escape(tag_name)}\s*:\s*",
+            "",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+    return cleaned.strip()
 
 def create_llama_backend(
     model_path: str | Path,

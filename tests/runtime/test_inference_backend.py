@@ -9,13 +9,15 @@ from offline_companion.runtime.inference_backend import (
     LlamaCppBackend,
     resolve_gguf_path,
 )
+from offline_companion.runtime.inference_backend.backend import strip_model_output
 from offline_companion.shared.errors import InferenceBackendError
-from offline_companion.shared.types import ModelRuntimeConfig
+from offline_companion.shared.types import MessageRow, ModelRuntimeConfig
 
 
 def test_resolve_gguf_missing_file(tmp_path: Path) -> None:
-    with pytest.raises(InferenceBackendError, match="不存在"):
+    with pytest.raises(InferenceBackendError) as exc_info:
         resolve_gguf_path(tmp_path / "nope.gguf")
+    assert "nope.gguf" in str(exc_info.value)
 
 
 def test_resolve_gguf_wrong_suffix(tmp_path: Path) -> None:
@@ -28,18 +30,17 @@ def test_resolve_gguf_wrong_suffix(tmp_path: Path) -> None:
 def test_check_model_missing_file() -> None:
     report = LlamaCppBackend.check_model("/nonexistent/path/model.gguf", load_model=False)
     assert not report.ok
-    assert "不存在" in report.message or "模型" in report.message
+    assert "model.gguf" in report.message
 
 
 def test_check_model_load_model_false_on_valid_path(tmp_path: Path) -> None:
     gguf = tmp_path / "tiny.gguf"
-    gguf.write_bytes(b"FAKE")  # 仅用于路径后缀检查
+    gguf.write_bytes(b"FAKE")
     report = LlamaCppBackend.check_model(gguf, load_model=False)
-    # 无 llama-cpp 时会在 import 阶段失败；有则路径+import 通过
     if report.ok:
-        assert "通过" in report.message or "就绪" in report.message
+        assert "llama" in report.message.lower() or "??" in report.message or "??" in report.message
     else:
-        assert "llama" in report.message.lower() or "安装" in report.message
+        assert "llama" in report.message.lower() or "??" in report.message
 
 
 def test_echo_backend_health_check() -> None:
@@ -49,10 +50,7 @@ def test_echo_backend_health_check() -> None:
 
 
 def test_llama_generate_merges_memory_into_single_system_message(tmp_path: Path) -> None:
-    """记忆块应并入同一条 system，避免多条 system 被 chat 模板丢弃。"""
-    from offline_companion.runtime.inference_backend.backend import LlamaCppBackend
-    from offline_companion.shared.types import MessageRow
-
+    """????????? system????? system ? chat ?????"""
     gguf = tmp_path / "tiny.gguf"
     gguf.write_bytes(b"FAKE")
     backend = LlamaCppBackend(gguf, skip_load=True)
@@ -81,10 +79,37 @@ def test_llama_generate_merges_memory_into_single_system_message(tmp_path: Path)
     assert all(m["role"] != "system" or i == 0 for i, m in enumerate(msgs))
 
 
-def test_llama_backend_applies_stop_tokens_and_strips_tags(tmp_path: Path) -> None:
-    """C1 应使用模型配置中的 stop_tokens，并剥离特殊输出标签。"""
-    from offline_companion.runtime.inference_backend.backend import LlamaCppBackend
+def test_llama_generate_downgrades_system_role_when_model_disables_it(tmp_path: Path) -> None:
+    """??? system role ??????????????? user ???"""
+    gguf = tmp_path / "tiny.gguf"
+    gguf.write_bytes(b"FAKE")
+    backend = LlamaCppBackend(
+        gguf,
+        skip_load=True,
+        model_config=ModelRuntimeConfig(model_id="test", supports_system_role=False),
+    )
+    captured: dict[str, object] = {}
 
+    class _FakeLlama:
+        def create_chat_completion(self, *, messages, max_tokens, stop=None):
+            captured["messages"] = messages
+            return {"choices": [{"message": {"content": "ok"}}]}
+
+    backend._llama = _FakeLlama()
+    backend.generate(
+        system_prompt="sys",
+        history=[],
+        user_message="q",
+        memory_block="",
+        max_tokens=8,
+    )
+    msgs = captured["messages"]
+    assert msgs[0]["role"] == "user"
+    assert msgs[0]["content"] == "sys"
+
+
+def test_llama_backend_applies_stop_tokens_and_strips_tags(tmp_path: Path) -> None:
+    """C1 ????????? stop_tokens???????????"""
     gguf = tmp_path / "tiny.gguf"
     gguf.write_bytes(b"FAKE")
     backend = LlamaCppBackend(
@@ -114,6 +139,15 @@ def test_llama_backend_applies_stop_tokens_and_strips_tags(tmp_path: Path) -> No
 
     assert result == "visible"
     assert captured["stop"] == ["<stop>"]
+
+
+def test_strip_model_output_supports_prefix_style_labels() -> None:
+    """????????????????"""
+    result = strip_model_output(
+        "think: keep only final answer",
+        ModelRuntimeConfig(model_id="test", strip_output_tags=("think",)),
+    )
+    assert result == "keep only final answer"
 
 
 def test_create_llama_backend_raises_on_bad_path() -> None:

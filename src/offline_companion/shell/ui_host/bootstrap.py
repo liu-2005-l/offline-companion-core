@@ -23,6 +23,9 @@ from offline_companion.runtime.inference_backend import (
 from offline_companion.runtime.storage_index.engine import connect, new_session
 from offline_companion.shared.errors import InferenceBackendError
 from offline_companion.shared.types import AppPaths, PrivacyMode
+from offline_companion.shell.model_router import ModelRouter
+from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway
+from offline_companion.shell.outbound_manager.connector import post_cloud_completion
 from offline_companion.shell.policy_engine.rules import default_app_paths
 from offline_companion.shell.routed_plan_invoker import (
     CloudRouteInvoker,
@@ -110,6 +113,10 @@ def bootstrap_ui_session(
         conn=conn,
         session_id=session_id,
         triggers=triggers,
+        privacy_mode=privacy,
+        model_router=ModelRouter(),
+        consent_gateway=UIHostConsentGateway(db_conn=conn),
+        cloud_post=post_cloud_completion,
     )
 
     plan_orchestrator = PlanOrchestrator(conn, paths.personas_dir)

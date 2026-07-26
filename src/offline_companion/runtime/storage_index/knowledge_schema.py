@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import sqlite3
 
-KNOWLEDGE_SCHEMA_VERSION = 1
+from offline_companion.shared.deterministic_embedding import embed_text, vector_to_blob
+
+_KNOWLEDGE_EMBEDDING_DIMENSIONS = 128
+_KNOWLEDGE_EMBEDDING_MODEL = "deterministic_hash_bow_v1"
+KNOWLEDGE_SCHEMA_VERSION = 2
 
 
 def migrate_knowledge_db(conn: sqlite3.Connection) -> None:
@@ -21,11 +25,15 @@ def migrate_knowledge_db(conn: sqlite3.Connection) -> None:
     ver = int(row["value"]) if row else 0
     if ver < 1:
         _init_v1(conn)
-        conn.execute(
-            "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
-            "ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
-            (str(KNOWLEDGE_SCHEMA_VERSION),),
-        )
+        ver = 1
+    if ver < 2:
+        _migrate_v2(conn)
+        ver = 2
+    conn.execute(
+        "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
+        (str(ver),),
+    )
 
 
 def _init_v1(conn: sqlite3.Connection) -> None:
@@ -72,3 +80,36 @@ def _init_v1(conn: sqlite3.Connection) -> None:
         );
         """
     )
+
+
+def _migrate_v2(conn: sqlite3.Connection) -> None:
+    """摘要：为知识块补充向量存储字段并回填历史数据。"""
+    cols = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(knowledge_chunks);").fetchall()
+    }
+    if "embedding_blob" not in cols:
+        conn.execute("ALTER TABLE knowledge_chunks ADD COLUMN embedding_blob BLOB;")
+    if "embedding_model" not in cols:
+        conn.execute("ALTER TABLE knowledge_chunks ADD COLUMN embedding_model TEXT;")
+    if "embedding_dim" not in cols:
+        conn.execute("ALTER TABLE knowledge_chunks ADD COLUMN embedding_dim INTEGER;")
+
+    rows = conn.execute(
+        "SELECT id, body FROM knowledge_chunks WHERE embedding_blob IS NULL OR embedding_dim IS NULL;"
+    ).fetchall()
+    for row in rows:
+        vec = embed_text(str(row["body"]), dimensions=_KNOWLEDGE_EMBEDDING_DIMENSIONS)
+        conn.execute(
+            """
+            UPDATE knowledge_chunks
+            SET embedding_blob = ?, embedding_model = ?, embedding_dim = ?
+            WHERE id = ?;
+            """,
+            (
+                vector_to_blob(vec),
+                _KNOWLEDGE_EMBEDDING_MODEL,
+                _KNOWLEDGE_EMBEDDING_DIMENSIONS,
+                int(row["id"]),
+            ),
+        )

@@ -21,7 +21,10 @@ from offline_companion.shell.ui_host.plugin_loader import (
     PluginSecurityGateway,
     build_mock_plugin_registry,
 )
-from offline_companion.shell.ui_host.turn_payload import process_chat_message
+from offline_companion.shell.ui_host.turn_payload import (
+    process_chat_message,
+    turn_result_to_payload,
+)
 
 _ALLOWED_HOST = "127.0.0.1"
 
@@ -48,14 +51,7 @@ class DesktopHttpServer:
 
 
 def create_desktop_app(runtime: DesktopRuntime):
-    """摘要：创建桌面壳 Flask 应用。
-
-    参数：
-        runtime: 当前桌面运行时。
-
-    返回：
-        已注册静态页面与 JSON API 的 Flask 应用。
-    """
+    """摘要：创建桌面壳 Flask 应用。"""
     try:
         from flask import Flask, jsonify, request, send_from_directory
     except ImportError as exc:
@@ -89,12 +85,10 @@ def create_desktop_app(runtime: DesktopRuntime):
 
     @app.get("/api/plugins")
     def plugins():
-        """摘要：返回 mock Plugin 清单。"""
         return jsonify({"items": plugin_gateway.list_plugins()})
 
     @app.post("/api/plugins/session")
     def create_plugin_session():
-        """摘要：为 Plugin UI 创建独立的 iframe 会话。"""
         data = request.get_json(silent=True) or {}
         try:
             payload = plugin_gateway.create_session(str(data.get("plugin_id", "")))
@@ -104,13 +98,11 @@ def create_desktop_app(runtime: DesktopRuntime):
 
     @app.post("/api/plugins/session/<session_id>/destroy")
     def destroy_plugin_session(session_id: str):
-        """摘要：销毁 Plugin 会话并撤销会话内权限。"""
         plugin_gateway.destroy_session(session_id)
         return jsonify({"ok": True})
 
     @app.get("/api/plugins/frame/<plugin_id>")
     def plugin_frame(plugin_id: str):
-        """摘要：返回渲染在 sandbox iframe 内的 mock Plugin 页面。"""
         try:
             html = plugin_gateway.frame_html(plugin_id)
             return html, 200, {"Content-Type": "text/html; charset=utf-8"}
@@ -119,7 +111,6 @@ def create_desktop_app(runtime: DesktopRuntime):
 
     @app.post("/api/plugins/message")
     def plugin_message():
-        """摘要：处理 Plugin 通过 postMessage 发起的 Bridge 请求。"""
         data = request.get_json(silent=True) or {}
         try:
             payload = plugin_gateway.handle_bridge_message(data)
@@ -141,7 +132,6 @@ def create_desktop_app(runtime: DesktopRuntime):
 
     @app.get("/api/memories")
     def memories():
-        """摘要：返回分页记忆列表。"""
         try:
             page = max(1, int(request.args.get("page", "1")))
         except ValueError:
@@ -176,19 +166,16 @@ def create_desktop_app(runtime: DesktopRuntime):
 
     @app.post("/api/memories/<int:memory_id>/invalidate")
     def invalidate_memory(memory_id: int):
-        """摘要：将记忆标记为 invalid。"""
         ok = invalidate_memory_chunk(runtime.orchestrator.conn, memory_id)
         return jsonify({"ok": ok})
 
     @app.post("/api/memories/<int:memory_id>/restore")
     def restore_memory(memory_id: int):
-        """摘要：将记忆恢复为 active。"""
         ok = restore_memory_chunk(runtime.orchestrator.conn, memory_id)
         return jsonify({"ok": ok})
 
     @app.post("/api/memories/<int:memory_id>/delete")
     def delete_memory(memory_id: int):
-        """摘要：物理删除记忆。"""
         ok = MemoryLifecycleManager.delete_memory_chunk(runtime.orchestrator.conn, memory_id)
         return jsonify({"ok": ok})
 
@@ -212,21 +199,49 @@ def create_desktop_app(runtime: DesktopRuntime):
                 500,
             )
 
+    @app.get("/api/consent")
+    def consent_status():
+        gateway = getattr(runtime.orchestrator, "consent_gateway", None)
+        if gateway is None:
+            return jsonify(
+                {
+                    "title": "出站同意",
+                    "body": "当前没有待处理的同意请求。",
+                    "purpose_type": "skill_cloud_inference",
+                }
+            )
+        return jsonify(gateway.to_modal_payload())
+
+    @app.post("/api/consent")
+    def consent_decision():
+        data = request.get_json(silent=True) or {}
+        request_id = str(data.get("request_id", "")).strip()
+        allowed = bool(data.get("allowed", False))
+        if not request_id:
+            return jsonify({"error": "missing request_id"}), 400
+        try:
+            result = runtime.orchestrator.resume_pending_turn(request_id, allowed=allowed)
+            return jsonify(_json_safe(turn_result_to_payload(result)))
+        except KeyError as exc:
+            return jsonify({"error": str(exc)}), 404
+
     @app.post("/api/clear")
     def clear_chat():
-        """摘要：清空当前会话消息，保留会话本身。"""
         deleted = clear_session_messages(runtime.orchestrator.conn, runtime.session_id)
         return jsonify({"ok": True, "deleted": deleted})
 
     @app.get("/api/consent-placeholder")
     def consent_placeholder():
-        return jsonify(
-            {
-                "title": "出站同意（占位）",
-                "body": "Sprint 7.2 将在此展示 Consent Artifact 详情并收集用户决策。",
-                "purpose_type": "skill_cloud_inference",
-            }
-        )
+        gateway = getattr(runtime.orchestrator, "consent_gateway", None)
+        if gateway is None:
+            return jsonify(
+                {
+                    "title": "出站同意",
+                    "body": "当前没有待处理的同意请求。",
+                    "purpose_type": "skill_cloud_inference",
+                }
+            )
+        return jsonify(gateway.to_modal_payload())
 
     return app
 
@@ -245,14 +260,7 @@ def _json_safe(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def start_desktop_http(runtime: DesktopRuntime) -> DesktopHttpServer:
-    """摘要：在后台线程启动 127.0.0.1 HTTP 服务。
-
-    参数：
-        runtime: 当前桌面运行时。
-
-    返回：
-        含端口与线程信息的服务句柄。
-    """
+    """摘要：在后台线程启动 127.0.0.1 HTTP 服务。"""
     port = _pick_port()
     app = create_desktop_app(runtime)
     thread = threading.Thread(

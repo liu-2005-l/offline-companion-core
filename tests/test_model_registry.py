@@ -1,9 +1,12 @@
-"""models/registry.yaml 默认模型解析。"""
+"""models/registry.yaml ???????"""
 
 from __future__ import annotations
 
 from offline_companion.shared.runtime_paths import dev_repo_root, models_dir
+from offline_companion.shared.types import CapabilityTag
 from offline_companion.shell.ui_host.model_registry import (
+    describe_model,
+    discover_models,
     load_model_config,
     load_registry,
     resolve_default_gguf_path,
@@ -67,15 +70,45 @@ def test_repo_registry_template() -> None:
 
 
 def test_model_config_loads_chat_template_and_stop_tokens() -> None:
-    """模型配置应加载 chat_template、stop_tokens 与输出剥离标签。"""
+    """??????? Jinja2 chat_template?stop_tokens ????????"""
     cfg = load_model_config("qwen2.5-1.5b-instruct-q4_k_m")
     assert "<|im_start|>" in cfg.chat_template
     assert "<|im_end|>" in cfg.stop_tokens
     assert "think" in cfg.strip_output_tags
+    assert cfg.capability_profile is CapabilityTag.SIMPLE_QA
+    assert cfg.n_ctx == 4096
 
 
 def test_resolve_default_model_config_from_registry() -> None:
-    """默认模型配置应跟随 registry active 项。"""
+    """????????? registry active ??"""
     cfg = resolve_default_model_config()
     assert cfg is not None
     assert cfg.model_id == "qwen2.5-1.5b-instruct-q4_k_m"
+
+
+def test_describe_model_reports_ready_status() -> None:
+    """? YAML ?????????? ready?"""
+    descriptor = describe_model("qwen2.5-1.5b-instruct-q4_k_m")
+    assert descriptor.status == "ready"
+    assert descriptor.gguf_path is not None
+    assert descriptor.display_name.startswith("Qwen2.5 1.5B")
+
+
+def test_describe_model_without_yaml_needs_config(tmp_path, monkeypatch) -> None:
+    """??? GGUF ??? YAML ?????? needs_config?"""
+    models = tmp_path / "models"
+    models.mkdir()
+    gguf = models / "demo-q4.gguf"
+    gguf.write_bytes(b"x")
+    monkeypatch.setenv("OFFLINE_COMPANION_MODELS_DIR", str(models))
+    descriptor = describe_model("demo-q4")
+    assert descriptor.status == "needs_config"
+    assert "chat_template" in descriptor.missing_fields
+    assert descriptor.gguf_path == str(gguf.resolve())
+
+
+def test_discover_models_includes_yaml_only_entries() -> None:
+    """discover_models ?????? YAML ??????"""
+    model_ids = {item.model_id for item in discover_models()}
+    assert "qwen2.5-1.5b-instruct-q4_k_m" in model_ids
+    assert "qwen2.5-7b-instruct-q4_k_m" in model_ids

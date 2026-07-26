@@ -1,18 +1,70 @@
-"""auto_router：A2 自动路由策略引擎。"""
+"""???A2 ????????????? S9A ????? AutoRouter?"""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Protocol
 
+import yaml
+
 from offline_companion.shared.messages import BaseMessage
-from offline_companion.shared.types import PrivacyMode, RoutingMode
+from offline_companion.shared.runtime_paths import configs_dir, dev_repo_root
+from offline_companion.shared.types import CapabilityTag, PrivacyMode, RoutingMode
+
+
+@dataclass(frozen=True)
+class RoutingModelSpec:
+    """??????????????????"""
+
+    name: str
+    type: str
+    cost_per_1k_tokens: float
+    latency_per_token_ms: float
+    max_tokens: int
+    capabilities: tuple[CapabilityTag, ...]
+    requires_consent: bool = False
+
+
+def model_routing_config_path() -> Path:
+    """????????????????"""
+    primary = configs_dir() / "model_routing.yaml"
+    if primary.is_file():
+        return primary
+    return dev_repo_root() / "configs" / "model_routing.yaml"
+
+
+def load_model_routing_specs(config_path: Path | None = None) -> list[RoutingModelSpec]:
+    """??????????????????????????"""
+    path = config_path or model_routing_config_path()
+    if not path.is_file():
+        return []
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    models = raw.get("models") if isinstance(raw, dict) else None
+    if not isinstance(models, list):
+        return []
+    specs: list[RoutingModelSpec] = []
+    for item in models:
+        if not isinstance(item, dict):
+            continue
+        specs.append(
+            RoutingModelSpec(
+                name=str(item.get("name") or "").strip(),
+                type=str(item.get("type") or "").strip(),
+                cost_per_1k_tokens=float(item.get("cost_per_1k_tokens") or 0.0),
+                latency_per_token_ms=float(item.get("latency_per_token_ms") or 0.0),
+                max_tokens=int(item.get("max_tokens") or 0),
+                capabilities=_load_capability_tags(item.get("capabilities")),
+                requires_consent=bool(item.get("requires_consent", False)),
+            )
+        )
+    return [spec for spec in specs if spec.name]
 
 
 @dataclass(frozen=True)
 class RoutingContext:
-    """摘要：自动路由输入上下文。"""
+    """?????????????"""
 
     query: str
     privacy_mode: str = "hybrid"
@@ -24,7 +76,7 @@ class RoutingContext:
 
 @dataclass(frozen=True)
 class RoutingDecision:
-    """摘要：自动路由决策结果。"""
+    """????????????"""
 
     mode: RoutingMode
     reason: str
@@ -36,21 +88,21 @@ class RoutingDecision:
 
 
 class RoutingPolicy(Protocol):
-    """摘要：路由硬约束策略。"""
+    """???????????"""
 
     def decide(self, context: RoutingContext) -> RoutingDecision | None:
-        """返回拦截/强制决策；None 表示放行给 AutoRouter。"""
+        """????/?????None ????? AutoRouter?"""
 
 
 class RouterAdvisor(Protocol):
-    """摘要：可选的路由 LLM/语义建议层。"""
+    """???????? LLM/??????"""
 
     def advise(self, context: RoutingContext, candidates: tuple[RoutingMode, ...]) -> RoutingDecision | None:
-        """在候选路径上给出建议；None 表示不介入。"""
+        """???????????None ??????"""
 
 
 class DefaultRoutingPolicy:
-    """摘要：最小硬约束策略。"""
+    """???????????"""
 
     def decide(self, context: RoutingContext) -> RoutingDecision | None:
         if context.privacy_mode == PrivacyMode.LOCAL_ONLY.value:
@@ -79,7 +131,7 @@ class DefaultRoutingPolicy:
 
 
 class AutoRouter:
-    """摘要：规则优先的自动路由策略引擎。"""
+    """?????????????????"""
 
     def __init__(
         self,
@@ -135,7 +187,7 @@ class AutoRouter:
         )
 
     def fallback_chain(self, context: RoutingContext) -> list[RoutingMode]:
-        """摘要：生成 Local → Cloud → Echo 的降级链。"""
+        """????? Local ? Cloud ? Echo ?????"""
         if context.privacy_mode == PrivacyMode.LOCAL_ONLY.value:
             return [RoutingMode.LOCAL]
         chain = [RoutingMode.LOCAL]
@@ -158,10 +210,23 @@ class AutoRouter:
 
 @dataclass
 class AutoRoutingAdapter:
-    """摘要：把 BaseMessage 映射为 AutoRouter 的输入上下文。"""
+    """???? BaseMessage ??? AutoRouter ???????"""
 
     router: AutoRouter
     context_factory: Callable[[BaseMessage], RoutingContext]
 
     def route(self, message: BaseMessage) -> RoutingDecision:
         return self.router.decide(self.context_factory(message))
+
+
+def _load_capability_tags(raw: object) -> tuple[CapabilityTag, ...]:
+    """??????????????????????"""
+    if not isinstance(raw, list):
+        return ()
+    tags: list[CapabilityTag] = []
+    for item in raw:
+        text = str(item).strip()
+        if not text:
+            continue
+        tags.append(CapabilityTag(text))
+    return tuple(tags)

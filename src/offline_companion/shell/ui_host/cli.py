@@ -42,7 +42,15 @@ from offline_companion.runtime.storage_index.knowledge_store import (
     default_knowledge_db_path,
 )
 from offline_companion.shared.errors import InferenceBackendError
-from offline_companion.shared.types import AppPaths, OutboundPlan, OutboundScope, PrivacyMode
+from offline_companion.shared.types import (
+    AppPaths,
+    OutboundPlan,
+    OutboundScope,
+    PrivacyMode,
+    TurnResult,
+)
+from offline_companion.shell.model_router import ModelRouter
+from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway
 from offline_companion.shell.outbound_manager.connector import post_cloud_completion
 from offline_companion.shell.outbound_manager.consent import persist_consent_artifact
 from offline_companion.shell.policy_engine.engine import ensure_outbound_allowed
@@ -96,6 +104,31 @@ def _render_turn_result(result) -> None:
         print("(本轮经云端增强，已润色)")
     if result.reply is not None:
         print("Bot>", result.reply)
+
+
+def _resolve_cli_consent(orchestrator: ConversationOrchestrator, turn: TurnResult) -> TurnResult:
+    """摘要：CLI 下对单轮云端路由做同步 y/n 同意交互。"""
+    current = turn
+    while current.requires_consent and current.consent_request_id:
+        gateway = getattr(orchestrator, "consent_gateway", None)
+        payload = gateway.to_modal_payload(current.consent_request_id) if gateway is not None else {}
+        title = str(payload.get("title") or "出站同意")
+        body = str(payload.get("body") or "当前操作需要你的同意。")
+        estimated_cost = current.estimated_cost
+        if estimated_cost is not None:
+            body = f"{body}\n预估成本: {estimated_cost:.4f}"
+        print(f"[Consent] {title}")
+        print(body)
+        while True:
+            answer = input("允许本轮云端路由吗？[y/n]: ").strip().lower()
+            if answer in {"y", "yes"}:
+                current = orchestrator.resume_pending_turn(current.consent_request_id, allowed=True)
+                break
+            if answer in {"n", "no"}:
+                current = orchestrator.resume_pending_turn(current.consent_request_id, allowed=False)
+                break
+            print("请输入 y 或 n。")
+    return current
 
 
 def cmd_chat(args: argparse.Namespace) -> int:
@@ -158,6 +191,10 @@ def cmd_chat(args: argparse.Namespace) -> int:
         triggers=triggers,
         history_limit=args.history,
         max_tokens=args.max_tokens,
+        privacy_mode=privacy,
+        model_router=ModelRouter(),
+        consent_gateway=UIHostConsentGateway(db_conn=conn),
+        cloud_post=post_cloud_completion,
     )
 
     knowledge_cfg = load_knowledge_config()
@@ -264,6 +301,7 @@ def cmd_chat(args: argparse.Namespace) -> int:
             continue
 
         turn = orchestrator.run_turn(user, memory_on=memory_on)
+        turn = _resolve_cli_consent(orchestrator, turn)
         memory_on = turn.memory_on
         _render_turn_result(turn)
 

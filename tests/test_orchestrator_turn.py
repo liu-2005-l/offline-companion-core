@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 from offline_companion.core.emotion_analyzer import EmotionClassifier
@@ -14,8 +15,26 @@ from offline_companion.core.safety_boundary.classifier import SafetyTier
 from offline_companion.runtime.inference_backend.mock import EchoBackend
 from offline_companion.runtime.storage_index.engine import connect, new_session
 from offline_companion.shared.errors import CloudConnectorError
-from offline_companion.shared.types import CloudCompletionRequest, CloudCompletionResponse
+from offline_companion.shared.types import (
+    CloudCompletionRequest,
+    CloudCompletionResponse,
+    ModelRoutingDecision,
+    PrivacyMode,
+)
+from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
+
+
+@dataclass
+class _StubRouter:
+    decision: ModelRoutingDecision
+    selected_type: str
+
+    def route(self, _query: str, *, privacy_mode: PrivacyMode) -> ModelRoutingDecision:
+        return self.decision
+
+    def model_type(self, _model_name: str) -> str | None:
+        return self.selected_type
 
 
 def _orch(tmp_path, db_name: str = "o.db") -> tuple[ConversationOrchestrator, object]:
@@ -29,6 +48,22 @@ def _orch(tmp_path, db_name: str = "o.db") -> tuple[ConversationOrchestrator, ob
         session_id="s1",
         triggers=load_triggers(),
     )
+    return orchestrator, conn
+
+
+def _routed_orch(
+    tmp_path,
+    *,
+    decision: ModelRoutingDecision,
+    selected_type: str,
+    cloud_post=None,
+    gateway: UIHostConsentGateway | None = None,
+) -> tuple[ConversationOrchestrator, object]:
+    orchestrator, conn = _orch(tmp_path, "routed.db")
+    orchestrator.privacy_mode = PrivacyMode.ALWAYS_ASK
+    orchestrator.model_router = _StubRouter(decision=decision, selected_type=selected_type)  # type: ignore[assignment]
+    orchestrator.cloud_post = cloud_post
+    orchestrator.consent_gateway = gateway
     return orchestrator, conn
 
 
@@ -116,3 +151,113 @@ def test_orchestrator_local_reply_runs_through_b4(tmp_path) -> None:
     ).fetchone()
     assert row is not None
     assert "reformatted" in row["meta_json"]
+
+
+def test_orchestrator_routed_local_turn_uses_local_backend(tmp_path) -> None:
+    decision = ModelRoutingDecision(
+        selected_model="qwen2.5-1.5b-instruct-q4_k_m",
+        fallback_model=None,
+        requires_consent=False,
+        reason="local_candidate_satisfies_threshold",
+        estimated_input_tokens=64,
+        estimated_output_tokens=192,
+        estimated_cost=0.0,
+    )
+    orchestrator, conn = _routed_orch(tmp_path, decision=decision, selected_type="local", cloud_post=lambda _req: None)
+
+    result = orchestrator.run_turn("请帮我总结一下今天的安排", memory_on=False)
+
+    assert result.reply
+    assert result.route_mode == "local"
+    assert result.selected_model == "qwen2.5-1.5b-instruct-q4_k_m"
+    row = conn.execute("SELECT meta_json FROM messages WHERE role = 'assistant' ORDER BY id DESC LIMIT 1;").fetchone()
+    assert row is not None
+    assert "selected_model" in row["meta_json"]
+
+
+def test_orchestrator_routed_cloud_turn_waits_for_consent_then_resumes(tmp_path) -> None:
+    decision = ModelRoutingDecision(
+        selected_model="deepseek-v4",
+        fallback_model="qwen2.5-1.5b-instruct-q4_k_m",
+        requires_consent=True,
+        reason="cloud_candidate_selected",
+        estimated_input_tokens=128,
+        estimated_output_tokens=256,
+        estimated_cost=0.02,
+    )
+
+    def cloud_ok(_req: CloudCompletionRequest) -> CloudCompletionResponse:
+        return CloudCompletionResponse(text="云端回答", raw={"provider": "stub"})
+
+    gateway = UIHostConsentGateway()
+    orchestrator, conn = _routed_orch(
+        tmp_path,
+        decision=decision,
+        selected_type="cloud",
+        cloud_post=cloud_ok,
+        gateway=gateway,
+    )
+
+    pending = orchestrator.run_turn("请联网搜索后给我答案", memory_on=False)
+    assert pending.requires_consent is True
+    assert pending.consent_request_id
+    assert conn.execute("SELECT COUNT(*) AS c FROM messages;").fetchone()["c"] == 0
+
+    resumed = orchestrator.resume_pending_turn(pending.consent_request_id, allowed=True)
+    assert resumed.reply
+    assert "云端回答" in resumed.reply
+    assert resumed.cloud_used is True
+    assert resumed.cloud_degraded is False
+    assert gateway.get_pending(pending.consent_request_id).decided is True
+
+
+def test_orchestrator_routed_cloud_turn_denied_does_not_execute(tmp_path) -> None:
+    decision = ModelRoutingDecision(
+        selected_model="deepseek-v4",
+        fallback_model="qwen2.5-1.5b-instruct-q4_k_m",
+        requires_consent=True,
+        reason="cloud_candidate_selected",
+        estimated_input_tokens=128,
+        estimated_output_tokens=256,
+        estimated_cost=0.02,
+    )
+    gateway = UIHostConsentGateway()
+    orchestrator, conn = _routed_orch(
+        tmp_path,
+        decision=decision,
+        selected_type="cloud",
+        cloud_post=lambda _req: CloudCompletionResponse(text="不会执行", raw={}),
+        gateway=gateway,
+    )
+
+    pending = orchestrator.run_turn("请联网搜索后给我答案", memory_on=False)
+    denied = orchestrator.resume_pending_turn(pending.consent_request_id, allowed=False)
+
+    assert denied.reply == "已取消本轮云端请求。"
+    assert conn.execute("SELECT COUNT(*) AS c FROM messages;").fetchone()["c"] == 0
+
+
+def test_orchestrator_cloud_failure_uses_router_fallback_model(tmp_path) -> None:
+    decision = ModelRoutingDecision(
+        selected_model="deepseek-v4",
+        fallback_model="qwen2.5-1.5b-instruct-q4_k_m",
+        requires_consent=False,
+        reason="cloud_candidate_selected",
+        estimated_input_tokens=128,
+        estimated_output_tokens=256,
+        estimated_cost=0.02,
+    )
+
+    def fail(_req: CloudCompletionRequest) -> CloudCompletionResponse:
+        raise CloudConnectorError("cloud down")
+
+    orchestrator, conn = _routed_orch(tmp_path, decision=decision, selected_type="cloud", cloud_post=fail)
+
+    result = orchestrator.run_turn("给我一个需要联网的答案", memory_on=False)
+
+    assert result.cloud_used is True
+    assert result.cloud_degraded is True
+    assert result.fallback_model == "qwen2.5-1.5b-instruct-q4_k_m"
+    row = conn.execute("SELECT meta_json FROM messages WHERE role = 'assistant' ORDER BY id DESC LIMIT 1;").fetchone()
+    assert row is not None
+    assert "executed_fallback_model" in row["meta_json"]

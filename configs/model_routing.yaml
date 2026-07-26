@@ -1,0 +1,31 @@
+models:
+  - name: qwen2.5-1.5b-instruct-q4_k_m
+    type: local
+    cost_per_1k_tokens: 0.0
+    latency_per_token_ms: 15.0
+    max_tokens: 4096
+    capabilities:
+      - chat
+      - simple_qa
+    requires_consent: false
+  - name: qwen2.5-7b-instruct-q4_k_m
+    type: local
+    cost_per_1k_tokens: 0.0
+    latency_per_token_ms: 22.0
+    max_tokens: 8192
+    capabilities:
+      - chat
+      - complex_reasoning
+      - code_generation
+    requires_consent: false
+  - name: deepseek-v4
+    type: cloud
+    cost_per_1k_tokens: 0.002
+    latency_per_token_ms: 5.0
+    max_tokens: 16384
+    capabilities:
+      - chat
+      - complex_reasoning
+      - code_generation
+      - tool_use
+    requires_consent: true

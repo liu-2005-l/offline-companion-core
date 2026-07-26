@@ -1,4 +1,4 @@
-"""bridge：pywebview JS ↔ Python API（进程内编排，不经 HTTP）。"""
+"""摘要：pywebview 进程内桥接，负责对话与同意恢复。"""
 
 from __future__ import annotations
 
@@ -7,15 +7,17 @@ from typing import Any
 
 from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
-from offline_companion.shell.ui_host.turn_payload import process_chat_message
+from offline_companion.shell.ui_host.turn_payload import (
+    process_chat_message,
+    turn_result_to_payload,
+)
 
 
 class DesktopBridge:
-    """摘要：暴露给前端 ``pywebview.api`` 的 Python 方法集。"""
+    """摘要：暴露给 `pywebview.api` 的 Python 方法集合。"""
 
     def __init__(self, runtime: DesktopRuntime) -> None:
         self._runtime = runtime
-        # pywebview 在 WebView 线程回调；与主线程共用 SQLite 连接须串行化
         self._turn_lock = threading.Lock()
 
     def run_turn(self, message: str) -> dict[str, Any]:
@@ -24,7 +26,7 @@ class DesktopBridge:
             return process_chat_message(self._runtime, message)
 
     def get_status(self) -> dict[str, Any]:
-        """摘要：底栏与侧栏所需的会话状态。"""
+        """摘要：返回底栏与侧栏需要的会话状态。"""
         status = {
             "memory_on": self._runtime.memory_on,
             "session_id": self._runtime.session_id,
@@ -44,14 +46,18 @@ class DesktopBridge:
         return {"memory_on": self._runtime.memory_on}
 
     def consent_placeholder(self) -> dict[str, Any]:
-        """摘要：Consent 模态槽位（A3 gateway 实际 payload）。"""
+        """摘要：返回当前待处理的同意弹窗数据。"""
         gateway = getattr(self._runtime.orchestrator, "consent_gateway", None)
         if isinstance(gateway, UIHostConsentGateway):
-            payload = gateway.to_modal_payload()
-        else:
-            payload = {
-                "title": "出站同意（占位）",
-                "body": "Sprint 7.2 将在此展示 Consent Artifact 详情并收集用户决定。",
-                "purpose_type": "skill_cloud_inference",
-            }
-        return payload
+            return gateway.to_modal_payload()
+        return {
+            "title": "出站同意（占位）",
+            "body": "当前没有可用的同意网关。",
+            "purpose_type": "skill_cloud_inference",
+        }
+
+    def consent_decision(self, request_id: str, allowed: bool) -> dict[str, Any]:
+        """摘要：提交单轮同意决策，并在允许时恢复执行。"""
+        with self._turn_lock:
+            result = self._runtime.orchestrator.resume_pending_turn(request_id, allowed=allowed)
+            return turn_result_to_payload(result)

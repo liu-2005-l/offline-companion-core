@@ -1,5 +1,16 @@
-id: qwen2.5-1.5b-instruct-q4_k_m
-family: qwen2.5
+model_id: qwen2.5-1.5b-instruct-q4_k_m
+display_name: Qwen2.5 1.5B Instruct Q4_K_M
+backend: llama_cpp
+architecture: qwen2
+n_ctx: 4096
+supports_system_role: true
+add_bos_token: false
+eos_token: <|endoftext|>
+capability_profile: simple_qa
+default_params:
+  temperature: 0.7
+  top_p: 0.8
+moe: null
 chat_template: |-
   {% for message in messages %}
   {% if message['role'] == 'system' %}<|im_start|>system

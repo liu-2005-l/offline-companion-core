@@ -347,6 +347,9 @@ class JobScheduler:
         cron_expr = row["cron_expr"]
         if not cron_expr:
             return False
+        delay_until = row["delay_until"]
+        if delay_until is not None:
+            return float(delay_until) <= now_ts
         parser = CronExpression(str(cron_expr))
         created_at = self._parse_iso_or_now(row["created_at"])
         last_heartbeat = row["last_heartbeat"]
@@ -359,7 +362,7 @@ class JobScheduler:
         cursor = self._conn.execute(
             """
             UPDATE job_tasks
-            SET status = 'running', started_at = ?, completed_at = NULL, last_heartbeat = ?
+            SET status = 'running', started_at = ?, completed_at = NULL, last_heartbeat = ?, delay_until = NULL
             WHERE task_id = ? AND status = 'pending';
             """,
             (now, now, task_id),
@@ -430,13 +433,20 @@ class JobScheduler:
 
     def _reschedule_cron(self, task_id: str) -> None:
         now = self._iso_now()
+        row = self._conn.execute(
+            "SELECT cron_expr FROM job_tasks WHERE task_id = ?;",
+            (task_id,),
+        ).fetchone()
+        next_run: float | None = None
+        if row is not None and row["cron_expr"]:
+            next_run = CronExpression(str(row["cron_expr"])).next_after(time.time())
         self._conn.execute(
             """
             UPDATE job_tasks
-            SET status = 'pending', started_at = NULL, completed_at = ?, last_heartbeat = ?
+            SET status = 'pending', started_at = NULL, completed_at = ?, last_heartbeat = ?, delay_until = ?
             WHERE task_id = ?;
             """,
-            (now, now, task_id),
+            (now, now, next_run, task_id),
         )
 
     def _refresh_running_heartbeats(self) -> None:

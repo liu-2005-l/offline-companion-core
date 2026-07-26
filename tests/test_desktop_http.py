@@ -10,11 +10,28 @@ from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.core.safety_boundary.classifier import SafetyTier
 from offline_companion.runtime.inference_backend.mock import EchoBackend
 from offline_companion.runtime.storage_index.engine import connect, new_session, recent_messages
-from offline_companion.shared.types import PrivacyMode
+from offline_companion.shared.types import (
+    CloudCompletionResponse,
+    ModelRoutingDecision,
+    PrivacyMode,
+)
+from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway
 from offline_companion.shell.ui_host.bootstrap import ECHO_NO_MODEL_LABEL
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
 from offline_companion.shell.ui_host.desktop.http_host import create_desktop_app
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
+
+
+class _HttpRouter:
+    def __init__(self, decision: ModelRoutingDecision, selected_type: str) -> None:
+        self._decision = decision
+        self._selected_type = selected_type
+
+    def route(self, _query: str, *, privacy_mode: PrivacyMode) -> ModelRoutingDecision:
+        return self._decision
+
+    def model_type(self, _name: str) -> str | None:
+        return self._selected_type
 
 
 def _runtime(tmp_path) -> DesktopRuntime:
@@ -63,3 +80,39 @@ def test_desktop_http_chat_and_clear(tmp_path) -> None:
     data3 = r3.get_json()
     assert data3["blocked"]
     assert data3["safety_tier"] == SafetyTier.CRISIS_SELF.value
+
+
+def test_desktop_http_consent_roundtrip(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    rt.orchestrator.consent_gateway = UIHostConsentGateway()
+    rt.orchestrator.privacy_mode = PrivacyMode.ALWAYS_ASK
+    rt.orchestrator.model_router = _HttpRouter(
+        ModelRoutingDecision(
+            selected_model="deepseek-v4",
+            fallback_model="qwen2.5-1.5b-instruct-q4_k_m",
+            requires_consent=True,
+            reason="cloud_candidate_selected",
+            estimated_input_tokens=100,
+            estimated_output_tokens=200,
+            estimated_cost=0.02,
+        ),
+        selected_type="cloud",
+    )
+    rt.orchestrator.cloud_post = lambda _req: CloudCompletionResponse(text="云端已批准", raw={})
+
+    app = create_desktop_app(rt)
+    client = app.test_client()
+
+    pending = client.post("/api/chat", json={"message": "请联网查询一下"}).get_json()
+    assert pending["requires_consent"] is True
+    request_id = pending["consent_request_id"]
+
+    modal = client.get("/api/consent").get_json()
+    assert modal["request_id"] == request_id
+    assert modal["status"] == "pending"
+
+    resumed = client.post("/api/consent", json={"request_id": request_id, "allowed": True})
+    assert resumed.status_code == 200
+    payload = resumed.get_json()
+    assert "云端已批准" in payload["reply"]
+    assert payload["route_mode"] == "cloud"
