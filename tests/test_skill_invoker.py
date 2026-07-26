@@ -483,16 +483,16 @@ else:
 
 def _run_seccomp_probe(*, profile: str, operation_code: str) -> dict[str, object]:
     """摘要：在独立 Python 子进程中装载 seccomp 并执行探针代码。"""
-    script = textwrap.dedent(
-        f"""
-        import json
-        from offline_companion.shell.skill_manager.seccomp.loader import load_profile
-
-        load_result = load_profile({profile!r})
-        outcome = {{"applied": load_result.applied, "profile": load_result.profile}}
-        {textwrap.dedent(operation_code).strip()}
-        print(json.dumps(outcome, ensure_ascii=False))
-        """
+    script = "\n".join(
+        [
+            "import json",
+            "from offline_companion.shell.skill_manager.seccomp.loader import load_profile",
+            "",
+            f"load_result = load_profile({profile!r})",
+            'outcome = {"applied": load_result.applied, "profile": load_result.profile}',
+            textwrap.dedent(operation_code).strip(),
+            "print(json.dumps(outcome, ensure_ascii=False))",
+        ]
     )
     env = dict(os.environ)
     env.pop("OFFLINE_COMPANION_DISABLE_SECCOMP", None)
