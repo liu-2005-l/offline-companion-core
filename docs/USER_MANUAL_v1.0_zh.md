@@ -133,7 +133,7 @@ Offline Companion 是一款 **默认完全在本地运行** 的桌面陪伴助�
 | 关窗再开 | 托盘 + 单实例 |
 | 危机测试句 | 固定安全话术 |
 
-技术向命令与脚本见开发文档 [`ARCHITECTURE_v2.0_zh.md`](./ARCHITECTURE_v2.0_zh.md) 与仓库根 README（开发者用）。
+技术向命令与脚本见开发文档 [`ARCHITECTURE_v2.4_zh.md`](./ARCHITECTURE_v2.4_zh.md) 与仓库根 README（开发者用）。
 
 ---
 

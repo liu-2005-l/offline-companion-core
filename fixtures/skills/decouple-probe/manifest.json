@@ -1,0 +1,17 @@
+{
+  "type": "skill",
+  "name": "decouple-probe",
+  "version": "0.1.0",
+  "description": "???? B ? prompt ? Skill ??????? Skill",
+  "market_id": "decouple-probe@0.1.0",
+  "trust": "user_installed",
+  "entrypoint": {
+    "type": "local_api",
+    "host": "127.0.0.1",
+    "port": 9201,
+    "path": "/v1/decouple_probe"
+  },
+  "permissions": ["read_session_context"],
+  "required_api_keys": ["decouple_probe_token"],
+  "output_mode": "block"
+}

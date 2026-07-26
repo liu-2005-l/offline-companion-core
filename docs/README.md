@@ -1,37 +1,38 @@
-# Offline Companion · 文档导航
+﻿# Offline Companion 文档导航
 
-> 仓库文档 **以本目录下列文件为准**；变更见 [`CHANGELOG.md`](./CHANGELOG.md)。  
-> **权威架构（中文）**：[`ARCHITECTURE_v2.0_zh.md`](./ARCHITECTURE_v2.0_zh.md)  
+> 本目录收录 `docs/` 下的正式文档；结构与版本变更见 [`CHANGELOG.md`](./CHANGELOG.md)。
+> **中文架构**：[`ARCHITECTURE_v2.4_zh.md`](./ARCHITECTURE_v2.4_zh.md)
+> **English architecture**：[`ARCHITECTURE_v2.4.2_en.md`](./ARCHITECTURE_v2.4.2_en.md)
 > **历史基线**：[`architecture_v1.0.md`](./architecture_v1.0.md)（只读）
 
 ---
 
 ## 语言 / Language
 
-| 文档 | 中文 | English |
+| 类型 | 中文 | English |
 |------|------|---------|
-| **开发思路与架构** | [`ARCHITECTURE_v2.0_zh.md`](./ARCHITECTURE_v2.0_zh.md) | [`ARCHITECTURE_v2.0_en.md`](./ARCHITECTURE_v2.0_en.md) |
+| **核心架构文档** | [`ARCHITECTURE_v2.4_zh.md`](./ARCHITECTURE_v2.4_zh.md) | [`ARCHITECTURE_v2.4.2_en.md`](./ARCHITECTURE_v2.4.2_en.md) |
 | **Skill 开发指南** | [`SKILL_DEV_GUIDE_v1.0_zh.md`](./SKILL_DEV_GUIDE_v1.0_zh.md) | [`SKILL_DEV_GUIDE_v1.0_en.md`](./SKILL_DEV_GUIDE_v1.0_en.md) |
 | **Plugin 开发指南** | [`PLUGIN_DEV_GUIDE_v1.0_zh.md`](./PLUGIN_DEV_GUIDE_v1.0_zh.md) | [`PLUGIN_DEV_GUIDE_v1.0_en.md`](./PLUGIN_DEV_GUIDE_v1.0_en.md) |
-| **使用手册** | [`USER_MANUAL_v1.0_zh.md`](./USER_MANUAL_v1.0_zh.md) | [`USER_MANUAL_v1.0_en.md`](./USER_MANUAL_v1.0_en.md) |
+| **用户手册** | [`USER_MANUAL_v1.0_zh.md`](./USER_MANUAL_v1.0_zh.md) | [`USER_MANUAL_v1.0_en.md`](./USER_MANUAL_v1.0_en.md) |
 
 ---
 
-## 读哪一份？
+## 使用建议
 
-| 你想… | 打开 |
-|--------|------|
-| 分层、Skill/Plugin/Tool、模组、Sprint | **ARCHITECTURE** |
-| 开发独立 Skill 仓（localhost API） | **SKILL_DEV_GUIDE** |
-| 开发桌面 UI 扩展（`plugin.json` + WebView） | **PLUGIN_DEV_GUIDE** |
-| 安装、聊天、记忆、模组（用户向） | **USER_MANUAL** |
+| 需求 | 入口 |
+|------|------|
+| 了解整体原则、分层、Sprint 边界、技术路线 | **ARCHITECTURE** |
+| 开发本地 Skill、localhost API、manifest | **SKILL_DEV_GUIDE** |
+| 开发桌面 UI 插件、`plugin.json`、WebView 能力 | **PLUGIN_DEV_GUIDE** |
+| 安装、配置、模型放置、验收与日常使用 | **USER_MANUAL** |
 
 ---
 
-## 临时文件（开发用 · 将删除）
+## 临时文档
 
 | 文件 | 用途 |
 |------|------|
-| [`_TEMP_NEXT_STEPS_2026-06-12.md`](./_TEMP_NEXT_STEPS_2026-06-12.md) | 纪要 vs 代码冲突清单与推荐执行顺序 |
+| [`_TEMP_NEXT_STEPS_2026-06-12.md`](./_TEMP_NEXT_STEPS_2026-06-12.md) | 临时代办与阶段性缺口记录，后续应收敛进正式文档 |
 
-代码仓库入口：[`../README.md`](../README.md)
+仓库入口：[`../README.md`](../README.md)

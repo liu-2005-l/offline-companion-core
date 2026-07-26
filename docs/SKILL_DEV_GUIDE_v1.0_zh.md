@@ -2,7 +2,7 @@
 
 > **版本**：v1.0 · **日期**：2026-06-12  
 > **英文**：[`SKILL_DEV_GUIDE_v1.0_en.md`](./SKILL_DEV_GUIDE_v1.0_en.md)  
-> **架构**：[`ARCHITECTURE_v2.0_zh.md`](./ARCHITECTURE_v2.0_zh.md) · **Schema**：[`schemas/skill-manifest-v1.json`](../schemas/skill-manifest-v1.json)
+> **架构**：[`ARCHITECTURE_v2.4_zh.md`](./ARCHITECTURE_v2.4_zh.md) · **Schema**：[`schemas/skill-manifest-v1.json`](../schemas/skill-manifest-v1.json)
 
 Skill 扩展 **Agent 能力**（能做什么），以 **独立进程 + localhost API** 运行。**不修改 UI**。
 

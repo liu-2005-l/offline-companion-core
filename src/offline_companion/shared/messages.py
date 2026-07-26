@@ -1,4 +1,4 @@
-"""messages：跨层消息 DTO 与消息命名空间约束。"""
+"""??????? DTO ??????????"""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Any
 
 
 class MessageLayer(str, Enum):
-    """摘要：消息来源/归属层级。"""
+    """????????????"""
 
     SHELL = "shell"
     CORE = "core"
@@ -19,7 +19,7 @@ class MessageLayer(str, Enum):
 
 
 class MessageDirection(str, Enum):
-    """摘要：消息流向。"""
+    """????????"""
 
     INBOUND = "inbound"
     OUTBOUND = "outbound"
@@ -28,46 +28,60 @@ class MessageDirection(str, Enum):
 
 @dataclass(frozen=True)
 class BaseMessage:
-    """摘要：跨层统一消息结构。"""
+    """????????????"""
 
     message_id: str
     topic: str
     source: str
     target: str | None = None
+    session_id: str = ""
+    idempotency_key: str | None = None
+    timeout_sec: float = 30.0
+    queue_type: str = "dialog"
     direction: MessageDirection = MessageDirection.INTERNAL
     created_at: float = field(default_factory=time)
     payload: dict[str, Any] = field(default_factory=dict)
     meta: dict[str, Any] = field(default_factory=dict)
+    error: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
-        """摘要：确保消息关键字段始终可用于路由与审计。"""
+        """??????????????????????"""
         if not (self.message_id or "").strip():
-            raise ValueError("message_id 不能为空")
+            raise ValueError("message_id ????")
         topic = (self.topic or "").strip()
         if not topic:
-            raise ValueError("topic 不能为空")
+            raise ValueError("topic ????")
         source = (self.source or "").strip()
         if not source:
-            raise ValueError("source 不能为空")
+            raise ValueError("source ????")
         object.__setattr__(self, "message_id", self.message_id.strip())
         object.__setattr__(self, "topic", topic)
         object.__setattr__(self, "source", source)
         if self.target is not None:
             target = self.target.strip()
             object.__setattr__(self, "target", target or None)
+        object.__setattr__(self, "session_id", (self.session_id or "").strip())
+        if self.idempotency_key is not None:
+            key = self.idempotency_key.strip()
+            object.__setattr__(self, "idempotency_key", key or None)
+        normalized_queue = (self.queue_type or "dialog").strip() or "dialog"
+        if normalized_queue not in {"dialog", "background"}:
+            raise ValueError("queue_type ??? dialog ? background")
+        object.__setattr__(self, "queue_type", normalized_queue)
+        object.__setattr__(self, "timeout_sec", max(0.0, float(self.timeout_sec)))
 
     def namespace(self) -> str:
-        """摘要：返回 topic 的命名空间前缀。"""
+        """????? topic ????????"""
         if "." not in self.topic:
             return self.topic
         return self.topic.split(".", 1)[0].strip()
 
     def is_from_layer(self, layer: MessageLayer) -> bool:
-        """摘要：判断 source 是否来自指定层。"""
+        """????? source ????????"""
         return self.source == layer.value
 
     def with_meta(self, **extra: Any) -> BaseMessage:
-        """摘要：生成带增量 meta 的新消息。"""
+        """???????? meta ?????"""
         merged = dict(self.meta)
         merged.update(extra)
         return BaseMessage(
@@ -75,8 +89,13 @@ class BaseMessage:
             topic=self.topic,
             source=self.source,
             target=self.target,
+            session_id=self.session_id,
+            idempotency_key=self.idempotency_key,
+            timeout_sec=self.timeout_sec,
+            queue_type=self.queue_type,
             direction=self.direction,
             created_at=self.created_at,
             payload=dict(self.payload),
             meta=merged,
+            error=None if self.error is None else dict(self.error),
         )

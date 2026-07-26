@@ -2,7 +2,7 @@
 
 > **版本**：v1.0 · **日期**：2026-06-12  
 > **英文**：[`PLUGIN_DEV_GUIDE_v1.0_en.md`](./PLUGIN_DEV_GUIDE_v1.0_en.md)  
-> **架构**：[`ARCHITECTURE_v2.0_zh.md`](./ARCHITECTURE_v2.0_zh.md) · **商城**：ARCHITECTURE §四
+> **架构**：[`ARCHITECTURE_v2.4_zh.md`](./ARCHITECTURE_v2.4_zh.md) · **商城**：ARCHITECTURE §四
 
 Plugin 是运行在 **桌面壳 WebView** 中的 **前端代码片段**，通过 **声明式配置** 与 Agent 本体交互。**不增加 Agent 能力**。
 

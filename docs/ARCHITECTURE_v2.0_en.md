@@ -1,8 +1,8 @@
-# Offline Companion · Architecture v2.0 (English)
+﻿# Offline Companion · Architecture v2.0 (English)
 
 > **Version**: v2.0 · **Date**: 2026-06-12  
 > **Historical baseline**: [`architecture_v1.0.md`](./architecture_v1.0.md) (read-only; this doc wins on conflict)  
-> **中文**: [`ARCHITECTURE_v2.0_zh.md`](./ARCHITECTURE_v2.0_zh.md)  
+> **中文**: [`ARCHITECTURE_v2.4_zh.md`](./ARCHITECTURE_v2.4_zh.md)  
 > **Temp code gaps**: [`_TEMP_NEXT_STEPS_2026-06-12.md`](./_TEMP_NEXT_STEPS_2026-06-12.md)
 
 ---
@@ -444,4 +444,4 @@ Ops: [`USER_MANUAL_v1.0_en.md`](./USER_MANUAL_v1.0_en.md).
 
 ---
 
-**Authority**: Chinese `ARCHITECTURE_v2.0_zh.md` on ambiguity.
+**Authority**: Chinese `ARCHITECTURE_v2.4_zh.md` on ambiguity.

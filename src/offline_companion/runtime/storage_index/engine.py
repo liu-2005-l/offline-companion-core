@@ -10,7 +10,7 @@ from typing import Any
 
 from offline_companion.shared.types import MessageRow
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -55,6 +55,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if version < 6:
         _init_v6(conn)
         version = 6
+    if version < 7:
+        _init_v7(conn)
+        version = 7
     conn.execute(
         "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
@@ -191,6 +194,75 @@ def _init_v6(conn: sqlite3.Connection) -> None:
     cols = {row[1] for row in conn.execute("PRAGMA table_info(messages);").fetchall()}
     if "emotion" not in cols:
         conn.execute("ALTER TABLE messages ADD COLUMN emotion TEXT;")
+
+
+def _init_v7(conn: sqlite3.Connection) -> None:
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS job_tasks (
+            task_id TEXT PRIMARY KEY,
+            skill_name TEXT NOT NULL,
+            task_type TEXT NOT NULL,
+            cron_expr TEXT,
+            delay_until REAL,
+            event_condition TEXT,
+            payload TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            priority TEXT NOT NULL DEFAULT 'normal',
+            session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+            queue_type TEXT NOT NULL DEFAULT 'background',
+            created_at TEXT NOT NULL,
+            started_at TEXT,
+            completed_at TEXT,
+            last_heartbeat TEXT,
+            heartbeat_timeout_sec INTEGER NOT NULL DEFAULT 300,
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            max_retries INTEGER NOT NULL DEFAULT 3,
+            idempotency_key TEXT,
+            error TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_job_tasks_status ON job_tasks(status);
+        CREATE INDEX IF NOT EXISTS idx_job_tasks_session ON job_tasks(session_id);
+        CREATE INDEX IF NOT EXISTS idx_job_tasks_delay_until
+            ON job_tasks(delay_until) WHERE delay_until IS NOT NULL;
+
+        CREATE TABLE IF NOT EXISTS message_execution_records (
+            idempotency_key TEXT PRIMARY KEY,
+            message_id TEXT NOT NULL,
+            session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+            handler_namespace TEXT NOT NULL,
+            status TEXT NOT NULL,
+            result TEXT,
+            error TEXT,
+            created_at TEXT NOT NULL,
+            completed_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_message_execution_session
+            ON message_execution_records(session_id, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS dead_letter_queue (
+            dlq_id TEXT PRIMARY KEY,
+            original_message_id TEXT NOT NULL,
+            session_id TEXT NOT NULL,
+            queue_type TEXT NOT NULL,
+            handler_namespace TEXT NOT NULL,
+            original_payload TEXT NOT NULL,
+            error TEXT NOT NULL,
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            resolved INTEGER NOT NULL DEFAULT 0,
+            resolved_at TEXT,
+            resolved_by TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_dlq_session_created
+            ON dead_letter_queue(session_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_dlq_resolved
+            ON dead_letter_queue(resolved, created_at DESC);
+        """
+    )
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(job_tasks);").fetchall()}
+    if "error" not in cols:
+        conn.execute("ALTER TABLE job_tasks ADD COLUMN error TEXT;")
 
 
 def new_session(conn: sqlite3.Connection, session_id: str, persona_id: str, title: str | None) -> None:

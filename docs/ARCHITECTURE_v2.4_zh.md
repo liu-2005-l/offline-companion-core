@@ -1,8 +1,8 @@
-﻿# Offline Companion · 开发思路与架构 v2.4（中文 · 权威）
+﻿# Offline Companion 架构与开发说明 v2.4.2（权威版）
 
-> **版本**：v2.4 · **日期**：2026-07-15（安全闭环修订）
+> **版本**：v2.4.2 · **日期**：2026-07-26（Sprint 8 文档同步版）
 > **历史基线**：[`architecture_v1.0.md`](./architecture_v1.0.md)（只读，冲突以本文为准）
-> **英文**：[`ARCHITECTURE_v2.3_en.md`](./ARCHITECTURE_v2.3_en.md)（英文版同步中）
+> **英文**：[`ARCHITECTURE_v2.4.2_en.md`](./ARCHITECTURE_v2.4.2_en.md)
 
 > **扩展开发**：[`SKILL_DEV_GUIDE`](./SKILL_DEV_GUIDE_v1.0_zh.md) · [`PLUGIN_DEV_GUIDE`](./PLUGIN_DEV_GUIDE_v1.0_zh.md)
 > **用户**：[`USER_MANUAL`](./USER_MANUAL_v1.0_zh.md)
@@ -140,9 +140,7 @@ TaskContext：一个临时的、与任务绑定的数据空间，Skill 执行时
 - **Native 模式文件系统沙箱**：Native 模式下默认限制 Skill 文件访问范围为 `extensions/installed/<skill-name>/` 目录。如需访问外部路径（如 `exports/`），须在 manifest 中声明 `file_access` 权限并列出具体路径，经 A2 策略检查 + A3 Consent 确认后才放行。高风险 Skill（如 agent-toolbox）在 Native 模式下默认禁用文件操作、网络等高危能力，需用户手动授予。实现方式：A2 层在调用 Skill 前校验请求路径前缀，拦截超出 `extensions/installed/<skill-name>/` 的访问；Native 模式下通过 Python `os.path` 模块做路径规范化后再比对，防止 `../` 穿越。
 - **内置 Skill 文件哈希校验**：所有内置 Skill 启动前做文件哈希校验，和官方预置的哈希值比对，不一致直接拒绝运行。Native 模式下强制开启此校验，Docker 模式下可选。不解决校验问题，仅靠「官方内置」的标签防不住本地文件篡改。
 - **Native 模式系统调用级拦截**：Native 模式下补充系统调用级拦截，分平台实现：
-  - **Linux**：使用 seccomp-bpf 限制系统调用白名单。Sprint 8 的实际边界是：默认阻断网络（`socket*`）、进程扩张（`clone/fork/vfork`）、执行（`execve/execveat`）、提权/调试（`ptrace`）、挂载（`mount/umount2`）以及内核攻击面（`bpf` / `perf_event_open` / `kexec_load`）。由于 Python 运行时依赖 `open/openat` 完成脚本加载与动态 `import`，**compute profile 当前允许文件读写**。
-  - **Linux / file_io profile**：在 compute 基础上额外开放文件管理类 syscall（如 `mkdir/mkdirat`、`rename/renameat`、`unlink/unlinkat`、`chmod/fchmod/fchmodat`、`chown/fchown/fchownat`、`ftruncate/truncate`、`linkat`、`symlinkat`），形成真正有意义的文件能力增量。
-  - **路径级文件访问控制**：不由 Sprint 8 的 seccomp 解决，后续通过 **Landlock**（Sprint 9+）补充路径级拦截。
+  - **Linux**：使用 seccomp-bpf 限制系统调用白名单，只开放 Skill 声明权限对应的系统调用（如纯计算 Skill 只开放 read/write/exit 等基础调用，禁止 socket/clone/mount 等）。
   - **macOS**：使用 sandbox-exec 配置沙箱，限制文件系统访问、网络访问和进程创建。
   - **Windows**：使用 Job Object + 受限令牌，限制进程创建、文件系统访问和网络访问。
   系统调用级拦截在 Skill 进程启动时由 A2 层配置，Skill 进程内无法绕过。实现优先级：Linux seccomp-bpf 优先（Sprint 8），macOS 和 Windows 后续补充（Sprint 9+）。
@@ -672,12 +670,12 @@ A1 检测用户 N 分钟无交互
 
 | 项 | 共识 | 状态 |
 |----|------|------|
-| iframe 沙箱隔离 | 每个 Plugin 运行在独立 iframe，禁止访问主页面 DOM，仅通过 postMessage 与 Bridge 通信；首期已落 mock 宿主与会话校验骨架 | 🔶 部分完成 |
+| iframe 沙箱隔离 | 每个 Plugin 运行在独立 iframe，禁止访问主页面 DOM，仅通过 postMessage 与 Bridge 通信 | 📅 S8 |
 | Bridge 签名校验 | 每个 Plugin 分配独立令牌，校验权限范围；参数做严格类型 + 值域校验 | 📅 S8 |
 | 上架安全扫描 | 检测危险 API、XSS payload、越权调用尝试，不通过禁止上架 | 📅 S8 |
-| iframe sandbox 最小化 | 默认仅 `allow-scripts`，按需开启其他属性；当前 mock 宿主已按该最小集挂载 | 🔶 部分完成 |
+| iframe sandbox 最小化 | 默认仅 `allow-scripts`，按需开启其他属性 | 📅 S8 |
 | 存储完全隔离 | 每个 Plugin 的 localStorage、cookie、IndexedDB 完全独立 | 📅 S8 |
-| Skill 调用白名单 | Plugin 可调用的 Skill 必须在 plugin.json 声明，未声明直接拦截；高危调用走 A3 Consent。当前宿主已对未授权 capability 与错误 schema 做硬拒绝 | 🔶 部分完成 |
+| Skill 调用白名单 | Plugin 可调用的 Skill 必须在 plugin.json 声明，未声明直接拦截；高危调用走 A3 Consent | 📅 S8 |
 
 ---
 
@@ -815,6 +813,8 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 **后移项（Sprint 8 起）**：skill-market 独立仓 MVP API、novel-writer 独立 Skill、`/skill` CLI、评测扩展、agent-toolbox MVP、错误码校验逻辑落地 + 基础熔断。
 
 ### Sprint 8
+
+> **状态更新（2026-07-26）**：Sprint 8 主线已闭合，已完成地基修复、B0 情绪链路、Plugin / 供应链 / Linux seccomp 安全底座，以及 schema v7、MessageRouter、JobScheduler、A 层语义封装与 CI 解耦约束。
 
 **第一批（安全与稳定性，优先）**：
 - **Plugin 安全隔离**（Shadow DOM + Bridge 白名单 + 权限校验）

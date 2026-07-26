@@ -1,6 +1,11 @@
 """skill_manager：A2 Skill 外骨骼（registry / policy / invoker；安装与调用见 Sprint 7.3+）。"""
 
 from offline_companion.shared.types import PurposeType
+from offline_companion.shell.skill_manager.capability_catalog import (
+    CapabilityKeyword,
+    build_capability_keywords,
+    keywords_from_manifest,
+)
 from offline_companion.shell.skill_manager.invoker import SkillInvoker, SkillProcess
 from offline_companion.shell.skill_manager.manifest import SkillEntrypoint, SkillManifest
 from offline_companion.shell.skill_manager.policy import (
@@ -52,6 +57,7 @@ __all__ = [
     "SECCOMP_PROFILE_COMPUTE",
     "SECCOMP_PROFILE_FILE_IO",
     "SECCOMP_PROFILE_NETWORK",
+    "CapabilityKeyword",
     "PurposeType",
     "SeccompLoadResult",
     "SkillEntrypoint",
@@ -60,12 +66,14 @@ __all__ = [
     "SkillPolicyResult",
     "SkillProcess",
     "audit_supply_chain_failure",
+    "build_capability_keywords",
     "bundled_hash_manifest_path",
     "check_read_context",
     "compare_versions",
     "evaluate_skill_policy",
     "host_trust_anchor_path",
     "installed_extensions_dir",
+    "keywords_from_manifest",
     "load_installed_manifests",
     "load_manifest_file",
     "load_profile",

@@ -11,7 +11,7 @@
 | 文档 | 说明 |
 |------|------|
 | [`docs/README.md`](docs/README.md) | **导航**：中英语言入口 |
-| [`docs/ARCHITECTURE_v2.0_zh.md`](docs/ARCHITECTURE_v2.0_zh.md) | 原则、分层、共识、Sprint、技术栈 |
+| [`docs/ARCHITECTURE_v2.4_zh.md`](docs/ARCHITECTURE_v2.4_zh.md) | 原则、分层、共识、Sprint、技术栈 |
 | [`docs/SKILL_DEV_GUIDE_v1.0_zh.md`](docs/SKILL_DEV_GUIDE_v1.0_zh.md) | Skill manifest / policy / Sprint 7 |
 | [`docs/PLUGIN_DEV_GUIDE_v1.0_zh.md`](docs/PLUGIN_DEV_GUIDE_v1.0_zh.md) | 桌面 WebView Plugin（动态 UI） |
 | [`docs/architecture_v1.0.md`](docs/architecture_v1.0.md) | 历史架构基线（只读） |
@@ -49,7 +49,7 @@ python -m offline_companion chat --persona configs\personas\default.yaml --priva
 python -m offline_companion web --port 8765    # 开发宿主，非产品 UI
 ```
 
-REPL：`#remember …` → 开启记忆 → 续聊。`/search-knowledge` 为内置知识能力，见 [`docs/ARCHITECTURE_v2.0_zh.md`](docs/ARCHITECTURE_v2.0_zh.md) §五。
+REPL：`#remember …` → 开启记忆 → 续聊。`/search-knowledge` 为内置知识能力，见 [`docs/ARCHITECTURE_v2.4_zh.md`](docs/ARCHITECTURE_v2.4_zh.md) §五。
 
 ---
 

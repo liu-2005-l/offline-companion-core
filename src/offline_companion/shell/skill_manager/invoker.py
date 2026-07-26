@@ -342,6 +342,11 @@ class SkillInvoker:
         """摘要：返回已启动 Skill 的进程信息。"""
         return self._processes.get(name)
 
+    def is_alive(self, name: str) -> bool:
+        """??????? Skill ?????????"""
+        skill_process = self.get_process(name)
+        return skill_process is not None and skill_process.process.poll() is None
+
     def verify_authorization(self, name: str, auth_header: str | None) -> bool:
         """摘要：校验 ``Authorization`` 请求头是否与 Skill API Key 匹配。"""
         skill_process = self._processes.get(name)

@@ -1,8 +1,8 @@
-# Offline Companion · Architecture & Development Notes v2.3 (English · Authoritative)
+﻿# Offline Companion Architecture & Development Notes v2.4.2 (Authoritative)
 
-> **Version**: v2.3 · **Date**: 2026-06-30 (security closure revision)
+> **Version**: v2.4.2 · **Date**: 2026-07-26 (Sprint 8 synchronization revision)
 > **Historical baseline**: [`architecture_v1.0.md`](./architecture_v1.0.md) (read-only; this document wins on conflicts)
-> **Chinese**: [`ARCHITECTURE_v2.3_zh.md`](./ARCHITECTURE_v2.3_zh.md)
+> **Chinese**: [`ARCHITECTURE_v2.4_zh.md`](./ARCHITECTURE_v2.4_zh.md)
 
 > **Extension development**: [`SKILL_DEV_GUIDE`](./SKILL_DEV_GUIDE_v1.0_en.md) · [`PLUGIN_DEV_GUIDE`](./PLUGIN_DEV_GUIDE_v1.0_en.md)
 > **User manual**: [`USER_MANUAL`](./USER_MANUAL_v1.0_en.md)
@@ -35,7 +35,7 @@
 
 **Protocol is unified, implementation is chosen as needed**:
 - **Main conversation path**: synchronous implementation (function-call simulation) for low latency and debuggability
-- **Background task path**: asynchronous implementation (ZeroMQ queue), never blocking the main conversation
+- **Background task path**: synchronous `MessageRouter` dispatch in Sprint 8; transport upgrade to ZeroMQ / message queue is deferred to Sprint 9+
 
 BaseMessage schema and the message bus abstraction live in `shared/`; all layers may depend on them. A layer owns `MessageRouter` and the transport layer, while B/C only speak to the interfaces in `shared/` and remain unaware of whether the transport is synchronous or asynchronous.
 
@@ -46,6 +46,11 @@ BaseMessage schema and the message bus abstraction live in `shared/`; all layers
 - `SkillInvoker` basic circuit breaker (failure count + circuit-open blocking)
 - `check_imports` AST layering gate + direct execution entrypoint fix
 - cross-platform path / encoding / test fixture compatibility fixes
+- Plugin security isolation phase 1 (`iframe sandbox` + `postMessage` + capability whitelist + session token)
+- Supply-chain security (hash verification + trust anchor + CycloneDX-minimum SBOM + audit logging)
+- Linux `seccomp-bpf` trusted bootstrap and CI gate
+- `JobScheduler` core (`cron` / `delay` / `long_running` / persistence recovery / skill alive check / heartbeat timeout)
+- Prompt decoupling guardrails (CI keyword scan + manifest-derived keyword catalog + decoupling integration test)
 
 ## 3. Message bus engineering conventions
 
@@ -102,3 +107,31 @@ TaskContext is temporary and bound to a task; during Skill execution it can be r
 | **Tool** | Lightweight function set | What the agent **can call** | In-process Python | builtin / certified / external | **A2 three-state** |
 
 ...
+
+
+## 7. Sprint 8 closure status
+
+**Closed in Sprint 8**:
+- foundation repairs: vector consistency, runtime sandbox import interception, ErrorCode wiring, policy typo fix, circuit-breaker exponential backoff
+- B0 emotion path: main-path insertion, persistence, fallback, and `emotion_mappings.yaml` integration
+- security base: Plugin isolation, supply-chain verification, Linux `seccomp-bpf`
+- message bus and scheduling: schema v7, `MessageRouter`, retry rules, dual-queue semantics, `JobScheduler`, and A-layer semantic wrapping guardrails
+
+**Deferred beyond Sprint 8**:
+- `ResourceArbitrator`
+- real ZeroMQ / nanomsg transport upgrade
+- deeper A-layer semantic refactor beyond CI enforcement
+- macOS / Windows equivalents for `seccomp-bpf`
+
+## 8. Sprint 9A boundary
+
+**Can start first**:
+- model adaptation P0
+- `tool_registry` / tool skeleton
+
+**Must go through design review first**:
+- `AutoRouter`
+- `PlanOrchestrator`
+- three-way hybrid retrieval
+
+**Authority**: Chinese `ARCHITECTURE_v2.4_zh.md` wins on ambiguity.
