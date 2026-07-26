@@ -56,7 +56,13 @@ def test_register_delay_task_and_trigger_dispatch(tmp_path: Path) -> None:
             delay_until=time.time() + 0.05,
             payload={'value': 42},
         )
-        _wait_until(lambda: len(events) == 1)
+        _wait_until(
+            lambda: len(events) == 1
+            and conn.execute(
+                'SELECT status FROM job_tasks WHERE task_id = ?;',
+                (task.task_id,),
+            ).fetchone()['status'] == 'completed'
+        )
         row = conn.execute('SELECT status FROM job_tasks WHERE task_id = ?;', (task.task_id,)).fetchone()
         assert row['status'] == 'completed'
         assert events[0]['payload']['value'] == 42
