@@ -1,0 +1,21 @@
+tools:
+  - tool_id: "web_search"
+    display_name: "Web Search"
+    description: "Search the web for real-time information"
+    scope: "network_egress"
+    permission: "ask"
+    endpoint: "http://localhost:8080/tool/web_search"
+    params_schema:
+      type: object
+      properties:
+        query:
+          type: string
+      required:
+        - query
+    return_schema:
+      type: object
+      properties:
+        results:
+          type: array
+    version: "0.1.0"
+    enabled: false

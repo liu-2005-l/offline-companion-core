@@ -7,13 +7,15 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from offline_companion.core.emotion_analyzer.context import EmotionContext
+import yaml
+
+from offline_companion.core.emotion_analyzer.context import EmotionContext, VADVector
 from offline_companion.shared.errors import (
     B0EmotionConfidenceLow,
     B0EmotionModelLoadError,
     B0EmotionTokenizerError,
 )
-from offline_companion.shared.runtime_paths import dev_repo_root, models_dir
+from offline_companion.shared.runtime_paths import configs_dir, dev_repo_root, models_dir
 
 try:
     import onnxruntime as ort
@@ -26,15 +28,6 @@ except ImportError:  # pragma: no cover
     Tokenizer = None
 
 _LABELS = ("anger", "anxiety", "neutral", "joy", "sadness", "surprise", "disgust")
-_VAD = {
-    "anger": (-0.8, 0.9, -0.2),
-    "anxiety": (-0.6, 0.8, -0.5),
-    "neutral": (0.0, 0.0, 0.0),
-    "joy": (0.8, 0.7, 0.6),
-    "sadness": (-0.7, 0.3, -0.6),
-    "surprise": (0.3, 0.8, 0.2),
-    "disgust": (-0.5, 0.4, -0.3),
-}
 _STRATEGIES = {
     "anger": "calm_reassurance",
     "anxiety": "deep_empathy",
@@ -52,6 +45,52 @@ _RULES: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"(惊讶|震惊|居然|竟然|不会吧|天哪|难以置信)"), "surprise"),
     (re.compile(r"(恶心|讨厌|反感|厌恶|嫌弃|看不惯)"), "disgust"),
 ]
+_DEFAULT_VAD = VADVector(0.5, 0.5, 0.5)
+_VAD_MAPPINGS: dict[str, VADVector] | None = None
+
+
+def _load_vad_mappings() -> dict[str, VADVector]:
+    """摘要：从 ``configs/vad_mappings.yaml`` 加载情绪到 VAD 的映射表。"""
+    global _VAD_MAPPINGS
+    if _VAD_MAPPINGS is not None:
+        return _VAD_MAPPINGS
+    raw: dict[str, object] = {}
+    candidates = [
+        configs_dir() / "vad_mappings.yaml",
+        dev_repo_root() / "configs" / "vad_mappings.yaml",
+    ]
+    for path in candidates:
+        if not path.is_file():
+            continue
+        loaded = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        raw = loaded if isinstance(loaded, dict) else {}
+        break
+    if not raw:
+        _VAD_MAPPINGS = {"neutral": _DEFAULT_VAD}
+        return _VAD_MAPPINGS
+    mappings = raw.get("mappings", {})
+    result: dict[str, VADVector] = {}
+    if isinstance(mappings, dict):
+        for label, values in mappings.items():
+            if not isinstance(values, (list, tuple)) or len(values) != 3:
+                continue
+            try:
+                result[str(label)] = VADVector(
+                    valence=float(values[0]),
+                    arousal=float(values[1]),
+                    dominance=float(values[2]),
+                )
+            except (TypeError, ValueError):
+                continue
+    result.setdefault("neutral", _DEFAULT_VAD)
+    _VAD_MAPPINGS = result
+    return _VAD_MAPPINGS
+
+
+def vad_for_emotion(label: str) -> VADVector:
+    """摘要：按情绪标签返回 VAD；未知标签回退到 neutral。"""
+    mappings = _load_vad_mappings()
+    return mappings.get(label, mappings["neutral"])
 
 
 @dataclass
@@ -70,13 +109,10 @@ class RuleEmotionClassifier:
                 best_hits = hits
                 best_label = label
         confidence = min(0.95, 0.4 + 0.15 * best_hits) if best_hits else 0.0
-        valence, arousal, dominance = _VAD[best_label]
         return EmotionContext(
             emotion=best_label,
             confidence=confidence,
-            valence=valence,
-            arousal=arousal,
-            dominance=dominance,
+            vad=vad_for_emotion(best_label),
             suggested_strategy=_STRATEGIES[best_label],
             raw={"mode": "rule", "matched_hits": best_hits},
         )
@@ -118,9 +154,7 @@ class EmotionClassifier:
             return EmotionContext(
                 emotion=fallback.emotion,
                 confidence=fallback.confidence,
-                valence=fallback.valence,
-                arousal=fallback.arousal,
-                dominance=fallback.dominance,
+                vad=fallback.vad,
                 suggested_strategy=fallback.suggested_strategy,
                 raw={**fallback.raw, "fallback": True},
             )
@@ -151,13 +185,10 @@ class EmotionClassifier:
         probs = self._softmax(flat[: len(_LABELS)])
         best_idx = max(range(len(probs)), key=probs.__getitem__)
         label = _LABELS[best_idx]
-        valence, arousal, dominance = _VAD[label]
         return EmotionContext(
             emotion=label,
             confidence=probs[best_idx],
-            valence=valence,
-            arousal=arousal,
-            dominance=dominance,
+            vad=vad_for_emotion(label),
             suggested_strategy=_STRATEGIES[label],
             raw={"mode": "onnx", "probabilities": dict(zip(_LABELS, probs))},
         )

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 # --- 导出包常量（与历史 bundle 兼容） ---
 BUNDLE_FORMAT = "offline-companion-bundle"
@@ -24,6 +24,7 @@ class PurposeType(str, Enum):
     NATIVE_RISK_PROMPT = "native_risk_prompt"
     PLUGIN_HIGH_RISK_SKILL = "plugin_high_risk_skill"
     TOOL_EXTERNAL_ENABLE = "tool_external_enable"
+    TOOL_USE = "tool_use"
     AGENT_TOOLBOX_HIGH_RISK = "agent_toolbox_high_risk"
 
 
@@ -60,6 +61,29 @@ class CapabilityTag(str, Enum):
     COMPLEX_REASONING = "complex_reasoning"
     CODE_GENERATION = "code_generation"
     TOOL_USE = "tool_use"
+
+
+@dataclass(frozen=True)
+class OceanVector:
+    """摘要：人格 OCEAN 五维向量，取值范围统一为 0.0-1.0。"""
+
+    openness: float
+    conscientiousness: float
+    extraversion: float
+    agreeableness: float
+    neuroticism: float
+
+    def __post_init__(self) -> None:
+        for field_name in (
+            "openness",
+            "conscientiousness",
+            "extraversion",
+            "agreeableness",
+            "neuroticism",
+        ):
+            value = float(getattr(self, field_name))
+            if not 0.0 <= value <= 1.0:
+                raise ValueError(f"{field_name} must be between 0.0 and 1.0")
 
 
 
@@ -237,6 +261,40 @@ class TurnResult:
 
 
 @dataclass(frozen=True)
+class ToolManifest:
+    """摘要：Tool 清单元数据，描述 builtin 或 external Tool。"""
+
+    tool_id: str
+    display_name: str
+    description: str
+    tool_type: Literal["builtin", "external"]
+    permission: Literal["allow", "ask", "deny"]
+    scope: str
+    params_schema: dict[str, object]
+    return_schema: dict[str, object]
+    handler_module: str | None
+    handler_function: str | None
+    external_config: str | None
+    version: str
+    audit_only: bool = True
+    enabled: bool = True
+    endpoint: str | None = None
+
+
+@dataclass(frozen=True)
+class ToolResult:
+    """摘要：Tool 执行结果，支持暂停等待 Consent 后恢复。"""
+
+    tool_id: str
+    status: Literal["completed", "requires_consent", "denied", "consent_rejected", "error"]
+    result: dict[str, object] | None
+    error: dict[str, str] | None
+    consent_request_id: str | None
+    audit_record: dict[str, object]
+    duration_ms: float
+
+
+@dataclass(frozen=True)
 class CloudCompletionRequest:
     """摘要：A3 出站推理请求（最小上传）。"""
 
@@ -270,6 +328,7 @@ class Persona:
     default_companion_display_name: str
     companion_display_name: str | None
     raw: dict[str, Any]
+    ocean: OceanVector | None = None
 
 
 @dataclass(frozen=True)

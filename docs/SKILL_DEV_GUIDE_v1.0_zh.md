@@ -193,3 +193,100 @@ novel-writer/                     # 仓库根 = 安装目录名
 ## 十一、维护
 
 契约变更 → 本文 + schema + CHANGELOG。架构原则见 ARCHITECTURE，不在此重复。
+
+---
+
+## 十二、Tool 开发指南（P5）
+
+> Tool 用于承载主进程内的轻量函数能力，与 Skill 的独立进程模型不同。当前实现路径为 `shell/tool_registry/` + `core/tools/`。
+
+### 12.1 ToolManifest 字段
+
+Tool 清单使用 `shared/types.py` 中的 `ToolManifest`：
+
+- `tool_id`：全局唯一标识，如 `datetime_now`
+- `display_name`：用户可见名称
+- `description`：能力说明，供 A 层或后续 Router LLM 展示
+- `tool_type`：`builtin` 或 `external`
+- `permission`：`allow` / `ask` / `deny`
+- `scope`：能力域，如 `datetime`、`file_read`、`network_egress`
+- `params_schema`：参数 JSON Schema 片段
+- `return_schema`：返回值 JSON Schema 片段
+- `handler_module` / `handler_function`：builtin Tool 的实现定位
+- `external_config`：external Tool 对应 `configs/tools_external.yaml` 中的 key
+- `version`：语义版本号
+- `audit_only`：始终为 `True`；Tool 结果不进入记忆库
+- `enabled`：仅 external Tool 使用，默认 `false`
+- `endpoint`：仅 external Tool 使用，对应 localhost API 地址
+
+### 12.2 builtin Tool handler 规范
+
+builtin Tool handler 放在 `core/tools/`，编写约束如下：
+
+- 必须是可直接调用的 Python 函数
+- 返回值必须是 `dict[str, object]`
+- 优先保持纯函数；若依赖文件系统或时间等外部环境，需将副作用限制在最小范围内
+- 禁止写入记忆库；Tool 结果只通过 `ToolResult.result` 返回
+- 禁止隐式网络出站；如确需联网，应改为 external Tool 或微型 Skill
+
+当前最小示例：
+
+- `datetime_now`：`allow`，返回当前 UTC 时间
+- `file_read`：`ask`，读取受限白名单根目录中的 UTF-8 文本文件
+
+### 12.3 permission 三态语义
+
+- `allow`：直接执行
+- `ask`：触发 Consent，返回 `requires_consent + consent_request_id`，由调用层暂停并在用户确认后恢复
+- `deny`：直接拒绝执行
+
+`ToolInvoker` 不做同步阻塞等待。当前与 `ConversationOrchestrator` 保持一致，均采用“暂停 + 恢复”模型。
+
+### 12.4 external Tool 配置格式
+
+external Tool 从 `configs/tools_external.yaml` 加载，格式示例：
+
+```yaml
+tools:
+  - tool_id: "web_search"
+    display_name: "Web Search"
+    description: "Search the web for real-time information"
+    scope: "network_egress"
+    permission: "ask"
+    endpoint: "http://localhost:8080/tool/web_search"
+    params_schema:
+      type: object
+      properties:
+        query:
+          type: string
+    return_schema:
+      type: object
+      properties:
+        results:
+          type: array
+    version: "0.1.0"
+    enabled: false
+```
+
+约束：
+
+- external Tool 默认 `enabled: false`
+- external Tool 的 `permission` 只能是 `ask` 或 `deny`
+- 若配置为 `permission: allow`，`ToolRegistry.load_external()` 必须在解析阶段直接拒绝
+- external Tool 当前只作为过渡入口，后续收口为微型 Skill
+
+### 12.5 file_read 安全约束
+
+`file_read` 是当前唯一带文件访问语义的 builtin Tool，必须满足：
+
+- 先做 `Path(path).expanduser().resolve(strict=True)` 规范化路径
+- 仅允许读取白名单根目录中的文件：`dev_repo_root()` 与 `data_root()`
+- 只允许读文件，不提供写入、删除、移动接口
+- 超出白名单根目录时直接拒绝
+
+### 12.6 审计与记忆边界
+
+- Tool 执行结果不写入 B2 记忆库
+- `ToolResult.audit_record` 由 `ToolInvoker` 生成并返回
+- P5 不新增通用 Tool 审计表；是否持久化、持久化到哪里，由调用层决定
+- `gateway=None` 且命中 `ask` 时，必须 fail-safe 为 `denied`，禁止返回不可恢复的 pending 结果

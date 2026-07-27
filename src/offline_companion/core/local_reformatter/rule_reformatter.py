@@ -71,7 +71,7 @@ def _apply_emotion_polish(text: str, emotion_context: EmotionContext | None) -> 
         result = "".join(chars)
 
     suffix = str(entry.get("append_suffix") or "").strip()
-    if suffix and emotion_context.valence < 0 and not result.rstrip().endswith(suffix):
+    if suffix and emotion_context.valence < 0.5 and not result.rstrip().endswith(suffix):
         result = result.rstrip() + "\n\n" + suffix
     return result
 

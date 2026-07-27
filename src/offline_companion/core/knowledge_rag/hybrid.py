@@ -22,6 +22,7 @@ def hybrid_retrieve(
     knowledge_limit: int = 5,
     memory_limit: int = 5,
     final_limit: int = 8,
+    emotion: str | None = None,
 ) -> HybridSearchResult:
     """摘要：融合知识路与记忆路结果，输出去重后的引用结果。
 
@@ -32,13 +33,14 @@ def hybrid_retrieve(
         knowledge_limit: 知识路召回上限。
         memory_limit: 记忆路召回上限。
         final_limit: 融合后输出上限。
+        emotion: 当前用户情绪标签，仅作用于记忆路内部排序。
 
     返回值:
         包含统一命中、引用列表与展示文本的 `HybridSearchResult`。
     """
     knowledge_hits = search_knowledge(knowledge_conn, query, limit=knowledge_limit)
     semantic_hits = search_knowledge_semantic(knowledge_conn, query, limit=knowledge_limit)
-    memory_hits = recall(companion_conn, query, limit=memory_limit)
+    memory_hits = recall(companion_conn, query, limit=memory_limit, emotion=emotion)
 
     retrieval_lists = (
         _adapt_knowledge_hits(knowledge_hits, retriever="knowledge_lexical"),

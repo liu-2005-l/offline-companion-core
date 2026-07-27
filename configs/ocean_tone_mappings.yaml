@@ -1,0 +1,26 @@
+dimensions:
+  openness:
+    high: [0.7, 1.0]
+    descriptors: ["好奇", "有创造力", "乐于接受新观点"]
+    low: [0.0, 0.3]
+    low_descriptors: ["务实", "注重传统"]
+  conscientiousness:
+    high: [0.7, 1.0]
+    descriptors: ["有条理", "注重细节", "可靠"]
+    low: [0.0, 0.3]
+    low_descriptors: ["随性", "灵活"]
+  extraversion:
+    high: [0.7, 1.0]
+    descriptors: ["活跃", "主动", "外向"]
+    low: [0.0, 0.3]
+    low_descriptors: ["内敛", "沉稳", "善于倾听"]
+  agreeableness:
+    high: [0.7, 1.0]
+    descriptors: ["温和", "支持性", "合作"]
+    low: [0.0, 0.3]
+    low_descriptors: ["直接", "分析性", "独立"]
+  neuroticism:
+    high: [0.7, 1.0]
+    descriptors: ["谨慎", "敏感", "有共情力"]
+    low: [0.0, 0.3]
+    low_descriptors: ["稳定", "自信", "压力下冷静"]

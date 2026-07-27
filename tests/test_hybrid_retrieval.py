@@ -107,3 +107,39 @@ def test_hybrid_retrieve_includes_semantic_knowledge_path(tmp_path) -> None:
 
     assert result.hits
     assert any(hit.metadata.get("retriever") == "knowledge_semantic" for hit in result.hits)
+
+def test_hybrid_retrieve_emotion_changes_memory_ranking(tmp_path) -> None:
+    knowledge_conn = connect_knowledge(tmp_path / "knowledge-emotion.db")
+    companion_conn = connect(tmp_path / "companion-emotion.db")
+    new_session(companion_conn, "s1", "default", title=None)
+    sample = Path(__file__).resolve().parents[1] / "fixtures" / "knowledge_sample" / "sample.jsonl"
+    ingest_jsonl_file(knowledge_conn, sample)
+    MemoryLifecycleManager.add_memory_chunk(
+        companion_conn,
+        "当我感到悲伤和压力很大时，散步十分钟会让我平静下来",
+        session_id="s1",
+        source="test",
+        meta={"emotion": "sadness"},
+    )
+    MemoryLifecycleManager.add_memory_chunk(
+        companion_conn,
+        "当我开心时，和朋友分享压力会让我更放松",
+        session_id="s1",
+        source="test",
+        meta={"emotion": "joy"},
+    )
+
+    result = hybrid_retrieve(
+        query="压力很大怎么办",
+        knowledge_conn=knowledge_conn,
+        companion_conn=companion_conn,
+        knowledge_limit=5,
+        memory_limit=5,
+        final_limit=5,
+        emotion="sadness",
+    )
+
+    memory_hits = [hit for hit in result.hits if hit.source_type == "memory"]
+    assert memory_hits
+    assert "散步十分钟" in memory_hits[0].snippet
+    assert memory_hits[0].metadata["matched_on"]["emotion_boost"] == 1.2

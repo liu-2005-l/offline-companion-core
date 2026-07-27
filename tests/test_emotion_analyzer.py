@@ -10,6 +10,8 @@ from offline_companion.core.emotion_analyzer import (
     EmotionClassifier,
     EmotionContext,
     RuleEmotionClassifier,
+    VADVector,
+    vad_for_emotion,
 )
 
 
@@ -18,6 +20,7 @@ def test_emotion_context_defaults() -> None:
     assert context.emotion == "neutral"
     assert context.confidence == 0.0
     assert context.suggested_strategy == "neutral_follow"
+    assert context.vad == VADVector(0.5, 0.5, 0.5)
     assert context.raw == {}
 
 
@@ -25,6 +28,19 @@ def test_emotion_context_is_frozen() -> None:
     context = EmotionContext(emotion="joy", confidence=0.9)
     with pytest.raises(AttributeError):
         context.emotion = "anger"  # type: ignore[misc]
+
+
+def test_vad_vector_rejects_out_of_range() -> None:
+    with pytest.raises(ValueError):
+        VADVector(1.2, 0.5, 0.5)
+
+
+def test_vad_mapping_returns_expected_values() -> None:
+    assert vad_for_emotion("joy") == VADVector(0.85, 0.60, 0.65)
+
+
+def test_vad_mapping_unknown_emotion_falls_back_to_neutral() -> None:
+    assert vad_for_emotion("anxiety") == VADVector(0.5, 0.5, 0.5)
 
 
 @pytest.mark.parametrize(

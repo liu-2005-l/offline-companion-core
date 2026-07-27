@@ -50,6 +50,8 @@ from .types import (
     PrivacyMode,
     PurposeType,
     TaskProfile,
+    ToolManifest,
+    ToolResult,
     TurnResult,
 )
 
@@ -104,6 +106,8 @@ __all__ = [
     "SkillPolicyDenied",
     "SkillSourceValidationError",
     "TaskProfile",
+    "ToolManifest",
+    "ToolResult",
     "TurnResult",
     "error_log_fields",
 ]

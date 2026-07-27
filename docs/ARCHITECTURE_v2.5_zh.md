@@ -1,6 +1,6 @@
 ﻿# Offline Companion 架构与开发说明 v2.5（权威版）
 
-> **版本**：v2.5 · **日期**：2026-07-26（Sprint 9A P0-P4 同步版）
+> **版本**：v2.5.1 · **日期**：2026-07-27（Sprint 9A P0-P5 闭合版）
 > **历史基线**：[`architecture_v1.0.md`](./architecture_v1.0.md)（只读，冲突以本文为准）
 > **英文**：[`ARCHITECTURE_v2.5_en.md`](./ARCHITECTURE_v2.5_en.md)
 
@@ -113,7 +113,7 @@ TaskContext：一个临时的、与任务绑定的数据空间，Skill 执行时
 
 - **Skill 不碰 UI**：只经 localhost API 返回数据；**禁止** `ui_contributions`。
 - **Plugin 不改能力**：不能增加 Agent 能力，只改变已有功能的交互；经 `window.bridge.call_skill` 调 Skill。
-- **Tool 不独立存在**：非独立进程；**无运行时注册入口**；`builtin` 官方 Tool 可运行在主进程，需严格代码审计；第三方轻量能力统一迁移为微型 Skill（独立进程 + localhost API），`external` 仅 `configs/tools_external.yaml`（需显式启用，默认关闭）；结果**不进记忆库**。当前版本兜底措施：external Tool 在 `configs/tools_external.yaml` 中默认 `enabled: false`，需用户显式启用并确认风险提示后才生效。S9 收尾前完成所有 external Tool → 微型 Skill 迁移，届时移除 external 入口。
+- **Tool 不独立存在**：非独立进程；**无运行时注册入口**；`builtin` 官方 Tool 可运行在主进程，需严格代码审计；第三方轻量能力统一迁移为微型 Skill（独立进程 + localhost API），`external` 仅 `configs/tools_external.yaml`（需显式启用，默认关闭）；结果**不进记忆库**。✅ P5 已落地：`ToolManifest` + `ToolRegistry`（builtin 注册 / external YAML 加载）+ `ToolInvoker`（consent 暂停+恢复，非阻塞）+ builtin 最小集（`datetime_now` allow / `file_read` ask）。`external permission=allow` 在 YAML 解析阶段直接 raise；consent 走 `requires_consent + consent_request_id` 暂停语义，`gateway=None` 时 fail-safe denied；`audit_record` 不扩审计表，由调用层决定持久化。当前版本兜底措施：external Tool 在 `configs/tools_external.yaml` 中默认 `enabled: false`，需用户显式启用并确认风险提示后才生效。S9 收尾前完成所有 external Tool → 微型 Skill 迁移，届时移除 external 入口。
 - **Skill 可联网**：声明 `cloud_inference` / `network_egress` 后走 A3（`LOCAL_ONLY` 硬拒）。
 - **agent-toolbox 超级 Skill**：一个运行在沙箱中的独立 Python 服务，集成浏览器自动化（Playwright）、代码执行、文件系统操作和网络请求能力。Agent 核心（大脑）通过 A2 编排器调用它（身体）执行具体动作，全程受 A3 Consent 保护。
 - **沙箱实例按调用方隔离**：不同 Skill 调用 agent-toolbox 分配独立沙箱实例，调用结束销毁，文件、进程、网络完全隔离，禁止共享运行时环境。
@@ -162,7 +162,7 @@ TaskContext：一个临时的、与任务绑定的数据空间，Skill 执行时
 |--------|----------|--------|----------------|
 | `skill` | `manifest.json` | A2 `skill_manager` | `shell/skill_manager/` |
 | `plugin` | **`plugin.json`** | A1 `plugin_loader` | `shell/ui_host/plugin_loader`（S8） |
-| `tool` | `manifest.json` | A2 `tool_registry` | `shell/` + `companion-core/tools/`（S9+） |
+| `tool` | `manifest.json` | A2 `tool_registry` | `shell/tool_registry/` + `core/tools/`（✅ S9A P5） |
 
 Plugin 形态：WebView 内 JS/CSS 片段 + `ui_contributions`；详见 [`PLUGIN_DEV_GUIDE`](./PLUGIN_DEV_GUIDE_v1.0_zh.md)。
 
@@ -306,7 +306,7 @@ A2 层全局策略校验入口，所有请求必须经过 Policy 校验后方可
 | LOCAL_ONLY 硬拦截 | 硬拒 `network_egress` / `cloud_inference` 类能力 | ✅ Skill policy |
 | 动态沙箱 | 临时约束注入 prompt；不进记忆；支持本轮 / 今天 / 自定义时长 | 📅 S8+ |
 | 会话间隔 | 读取 B2 `last_active_at`，装配前注入上下文 | 📅 S8+ |
-| Tool 三态管理 | ALLOW / ASK / DENY 三级权限控制 | 📅 S9+ |
+| Tool 三态管理 | ALLOW / ASK / DENY 三级权限控制 | ✅ |
 
 #### 6.2.5 AutoRouter（智能模型路由 · S9A）
 
@@ -593,6 +593,7 @@ A1 检测用户 N 分钟无交互
 | `native_risk_prompt` | Native 模式风险提示 | `skill_id`、`risk_level`、`reason` | 单次会话 | 否 |
 | `plugin_high_risk_skill` | Plugin 调用高危 Skill | `plugin_id`、`skill_id`、`risk_level`、`reason` | 单次会话 | 否 |
 | `tool_external_enable` | 显式启用 external Tool | `tool_name`、`scope`、`reason` | 单次会话 | 否 |
+| `tool_use` | builtin / external Tool 执行前触发 ask | `tool_id`、`scope`、`permission`、`params_summary`、`reason` | 单次会话 | 否 |
 | `agent_toolbox_high_risk` | agent-toolbox 高危接口调用 | `caller_skill_id`、`operation`、`reason` | 单次会话 | 否 |
 
 **说明**：所有 Consent 条目均记录 `created_at`、`trace_id`、`actor`，统一一次性审计，不做跨会话复用。
@@ -706,7 +707,7 @@ A1 检测用户 N 分钟无交互
 
 **可借鉴（远期）**
 - A2 **Middleware 洋葱链**：沙箱 → 隐私 → Skill 路由（非当前 Sprint）。
-- **PermissionEngine 三态**：Consent 扩展 ALLOW / ASK / DENY。
+- **PermissionEngine 三态**：Consent 扩展 ALLOW / ASK / DENY。✅ P5 已落地（`ToolRegistry.resolve_permission` + `ToolInvoker` consent 流程）。
 - **Plan Mode**：PlanNotebook 可参考 AgentScope `PlanModeManager` 接口。
 
 **本仓库护城河（不可放弃）**
@@ -753,7 +754,7 @@ A1 检测用户 N 分钟无交互
 | ResourceArbitrator 阈值无硬件基准 | 补充硬件基准测试 | 中 | S8 |
 | 异步向量写入可能丢数据 | 同步更新 FTS + 检索时查询未索引队列 | 中 | S9+ |
 | WAL 持久化与崩溃恢复 | WAL 写入后立即 fsync 落盘，启动时自动重放未完成的 WAL 记录 | 中 | S9+ |
-| Tool 是架构级后门 | 第三方 Tool 改为微型 Skill | **高** | S9 |
+| Tool 是架构级后门 | ✅ P5 已以 `ToolRegistry` + `ToolInvoker` 收口；第三方 Tool 改为微型 Skill | **高** | S9 |
 | Skill 能力无法复用 | agent-toolbox 平台化 | 中 | S9 |
 | Plugin 扩展点不足 | S8 同步实现 sidebar_panel / message_bubble / settings_section | 中 | S8 |
 | 章节编号与状态标记混乱 | 全局枚举 + 重排编号 | 低 | 本次合并 |
@@ -842,7 +843,7 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 
 ### Sprint 9A（核心骨架）
 
-> **状态更新（2026-07-26）**：Sprint 9A（核心骨架）P0-P4 全线闭合，CI 全绿。
+> **状态更新（2026-07-27）**：Sprint 9A（核心骨架）P0-P5 全线闭合，CI 全绿。
 
 **已完成**：
 - ✅ **AutoRouter**：TaskProfiler 规则版 + CostPredictor + 决策引擎 + 三入口封箱（desktop / Web / CLI）
@@ -850,9 +851,9 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 - ✅ **模型适配 P0**：ModelDescriptor 三态发现、`configs/models/<model>.yaml` 正式 schema、B1 去硬编码、B4 标签剥离
 - ✅ **记忆三路混合检索**：RRF（k=60）+ knowledge 语义召回 + 跨库去重 + Citation
 - ✅ **A 层语义封装 + CI prompt 关键词扫描**：manifest 自动关键词目录 + 解耦集成测试
+- ✅ **Tool / `tool_registry`**：`ToolManifest` + `ToolRegistry`（builtin 注册 / external YAML 加载 / `resolve_permission` 三态）+ `ToolInvoker`（consent 暂停+恢复非阻塞）+ `PurposeType.TOOL_USE` + builtin 最小集（`datetime_now` + `file_read` 路径规范化 + 白名单根）+ external 默认 disabled + `audit_record` 调用层持久化
 
 **Defer**：
-- ⏭️ **Tool / `tool_registry`**：后置，未启动
 - ⏭️ **并发 step 执行**：S9B+
 - ⏭️ **细粒度 per-step 恢复**
 - ⏭️ **CubeSandbox 快照增强**
@@ -860,7 +861,7 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 - ⏭️ **ResourceArbitrator**：S9+
 - ⏭️ **knowledge embedding 升级**：当前知识语义检索使用确定性 hash-bow 近似
 
-> 9A 目标已达成：复杂任务编排骨架、模型路由、模型适配与三路检索已跑通，Tool 收口后置。
+> 9A 目标已达成：复杂任务编排骨架、模型路由、模型适配、三路检索与 Tool/tool_registry 已跑通。Sprint 9A P0-P5 全部闭合。
 
 **Sprint 9 补充**：
 - **StateManager + 事件驱动 + 中间件 + 单职责字段**
@@ -924,6 +925,8 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 | **模型路由配置** | `configs/model_routing.yaml`（成本、延迟、能力标签、阈值） |
 | **能力标签枚举** | ✅ `shared/types.py` 中 `CapabilityTag` 已落地（`chat`、`simple_qa`、`complex_reasoning`、`code_generation`、`tool_use`），由 `model_routing.yaml`、模型 YAML 与 `capability_catalog` 共同引用 |
 | **模型适配配置** | ✅ `configs/models/<model>.yaml` 已落地正式 schema；`describe_model()` / `ModelDescriptor` 实现 ready / needs_config / incompatible 三态发现 |
+| **Tool 配置** | ✅ `configs/tools_external.yaml` 已落地；external 默认 `enabled: false`，且 `permission=allow` 在解析阶段直接拒绝 |
+| **Tool builtin 最小集** | ✅ `core/tools/` 已落地 `datetime_now`（allow）与 `file_read`（ask，路径规范化 + 白名单根 + 只读） |
 **模型适配 MVP 落地顺序**：
 1. 抽 `ModelConfig` 数据结构 + 启动时从 GGUF metadata 自动读取并注册模型；主流架构自动识别，缺关键字段提示手动补 YAML。
 2. B1 装配器改用 chat template / role map / stop tokens 渲染，不再硬编码 Qwen/ChatML 格式。

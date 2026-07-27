@@ -12,11 +12,25 @@ from offline_companion.core.emotion_analyzer.context import EmotionContext
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
 from offline_companion.core.memory_lifecycle.recall import format_recall_prompt_block, recall
 from offline_companion.core.persona_session.persona_loader import resolved_companion_display_name
-from offline_companion.shared.runtime_paths import configs_dir
-from offline_companion.shared.types import MemoryRecallHit, MessageRow, Persona
+from offline_companion.shared.runtime_paths import configs_dir, dev_repo_root
+from offline_companion.shared.types import MemoryRecallHit, MessageRow, OceanVector, Persona
 
-# ── 情绪策略配置加载（惰性） ─────────────────────────────────────
 _EMOTION_STRATEGIES: dict[str, dict[str, str]] | None = None
+_OCEAN_TONE_MAPPINGS: dict[str, dict[str, object]] | None = None
+
+
+def _load_yaml_dict(file_name: str) -> dict[str, object]:
+    """摘要：按运行时配置优先级加载 YAML 字典。"""
+    candidates = [
+        configs_dir() / file_name,
+        dev_repo_root() / "configs" / file_name,
+    ]
+    for path in candidates:
+        if not path.is_file():
+            continue
+        raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        return raw if isinstance(raw, dict) else {}
+    return {}
 
 
 def _load_emotion_strategies() -> dict[str, dict[str, str]]:
@@ -24,35 +38,81 @@ def _load_emotion_strategies() -> dict[str, dict[str, str]]:
     global _EMOTION_STRATEGIES
     if _EMOTION_STRATEGIES is not None:
         return _EMOTION_STRATEGIES
-    path = configs_dir() / "emotion_mappings.yaml"
-    if not path.is_file():
-        _EMOTION_STRATEGIES = {}
-        return _EMOTION_STRATEGIES
-    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    raw = _load_yaml_dict("emotion_mappings.yaml")
     strategies = raw.get("emotion_strategies", {})
     _EMOTION_STRATEGIES = {k: v for k, v in strategies.items() if isinstance(v, dict)}
     return _EMOTION_STRATEGIES
 
 
+def _load_ocean_tone_mappings() -> dict[str, dict[str, object]]:
+    """摘要：从 ``configs/ocean_tone_mappings.yaml`` 加载 OCEAN 语气映射。"""
+    global _OCEAN_TONE_MAPPINGS
+    if _OCEAN_TONE_MAPPINGS is not None:
+        return _OCEAN_TONE_MAPPINGS
+    raw = _load_yaml_dict("ocean_tone_mappings.yaml")
+    dimensions = raw.get("dimensions", {})
+    _OCEAN_TONE_MAPPINGS = {k: v for k, v in dimensions.items() if isinstance(v, dict)}
+    return _OCEAN_TONE_MAPPINGS
+
+
 def _build_emotion_instruction(emotion_context: EmotionContext | None) -> str:
-    """摘要：根据情绪上下文生成系统指令片段。
-
-    参数：
-        emotion_context: B0 输出的情绪上下文；为 None 时返回空字符串。
-
-    返回值：
-        情绪策略系统指令文本（含换行），无匹配时返回空字符串。
-    """
+    """摘要：根据情绪上下文生成系统指令片段。"""
     if emotion_context is None or emotion_context.emotion == "neutral":
         return ""
     strategies = _load_emotion_strategies()
     entry = strategies.get(emotion_context.emotion)
     if entry is None:
         return ""
-    instruction = entry.get("system_instruction", "")
+    instruction = str(entry.get("system_instruction") or "").strip()
     if not instruction:
         return ""
     return f"\n【情绪策略】{instruction}\n"
+
+
+def _build_tone_instruction(ocean: OceanVector | None) -> str:
+    """摘要：根据 OCEAN 向量生成语气风格指令，只描述显著维度。"""
+    if ocean is None:
+        return ""
+    mappings = _load_ocean_tone_mappings()
+    descriptors: list[str] = []
+    values = {
+        "openness": ocean.openness,
+        "conscientiousness": ocean.conscientiousness,
+        "extraversion": ocean.extraversion,
+        "agreeableness": ocean.agreeableness,
+        "neuroticism": ocean.neuroticism,
+    }
+    for dim_name, value in values.items():
+        entry = mappings.get(dim_name)
+        if entry is None:
+            continue
+        band = _resolve_ocean_band(entry, value)
+        if band == "high":
+            descriptors.extend(_descriptor_list(entry.get("descriptors")))
+        elif band == "low":
+            descriptors.extend(_descriptor_list(entry.get("low_descriptors")))
+    if not descriptors:
+        return ""
+    unique_descriptors = list(dict.fromkeys(descriptors))
+    return f"\n【语气风格】语气风格：{', '.join(unique_descriptors)}。\n"
+
+
+def _resolve_ocean_band(entry: dict[str, object], value: float) -> str | None:
+    """摘要：按阈值判断当前维度属于高段、低段或中间段。"""
+    high = entry.get("high")
+    low = entry.get("low")
+    if isinstance(high, (list, tuple)) and len(high) == 2 and float(high[0]) <= value <= float(high[1]):
+        return "high"
+    if isinstance(low, (list, tuple)) and len(low) == 2 and float(low[0]) <= value <= float(low[1]):
+        return "low"
+    return None
+
+
+def _descriptor_list(value: object) -> list[str]:
+    """摘要：将配置中的描述列表标准化为字符串列表。"""
+    if not isinstance(value, list):
+        return []
+    return [str(item).strip() for item in value if str(item).strip()]
 
 
 @runtime_checkable
@@ -80,7 +140,7 @@ class AssembleReplyResult:
 
 
 class PersonaSessionCore:
-    """摘要：围绕单一人设完成上下文装配与本地推理调用。"""
+    """摘要：围绕单一人设完成人上下文装配与本地推理调用。"""
 
     def __init__(self, persona: Persona) -> None:
         self.persona = persona
@@ -89,7 +149,6 @@ class PersonaSessionCore:
     def system_prompt_locked(self) -> str:
         """摘要：返回受角色锁约束的系统提示文本（含当前陪伴自称）。"""
         display = resolved_companion_display_name(self.persona)
-        # 自称由宿主注册或 default；避免在 YAML 中写死固定昵称
         prefix = (
             f"【当前自称】{display}\n"
             "你必须始终使用上述自称；不要把它变形成语法变化后的名字。\n"
@@ -109,35 +168,22 @@ class PersonaSessionCore:
         reference_block: str = "",
         emotion_context: EmotionContext | None = None,
     ) -> AssembleReplyResult:
-        """摘要：装配 prompt、注入记忆召回与情绪策略并调用推理后端。
-
-        参数：
-            backend: C1 推理后端（或 Echo）。
-            conn: 会话数据库连接。
-            user_message: 当前用户消息（已落库或即将落库）。
-            history: 不含当前条的近期历史。
-            memory_enabled: 是否启用记忆召回注入；为 False 时不召回、不注入。
-            max_tokens: 生成 token 上限。
-            reference_block: 外部参考块（如知识检索）；非空时优先于记忆块。
-            emotion_context: B0 输出的情绪上下文；为 None 时不注入情绪策略。
-
-        返回值：
-            助手回复文本及本轮召回明细。
-        """
+        """摘要：装配 prompt、注入记忆召回与情绪/语气策略并调用推理后端。"""
         recalls: list[MemoryRecallHit] = []
         memory_block = ""
         if reference_block.strip():
             memory_block = reference_block.strip()
         elif memory_enabled:
-            recalls = recall(conn, user_message, limit=8)
+            emotion_label = emotion_context.emotion if emotion_context is not None else None
+            recalls = recall(conn, user_message, limit=8, emotion=emotion_label)
             memory_block = format_recall_prompt_block(recalls)
 
         profile_block = self._profile_memory_block(conn) if memory_enabled else ""
         combined_memory_block = "\n\n".join(part for part in (profile_block, memory_block) if part.strip())
 
-        # 情绪策略注入
+        tone_instruction = _build_tone_instruction(self.persona.ocean)
         emotion_instruction = _build_emotion_instruction(emotion_context)
-        system_prompt = self.system_prompt_locked + emotion_instruction
+        system_prompt = self.system_prompt_locked + tone_instruction + emotion_instruction
 
         reply = backend.generate(
             system_prompt=system_prompt,

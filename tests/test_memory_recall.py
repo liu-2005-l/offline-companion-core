@@ -9,7 +9,7 @@ from offline_companion.core.persona_session.persona_loader import load_persona_f
 from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.runtime.inference_backend.mock import EchoBackend
 from offline_companion.runtime.storage_index.engine import connect, new_session
-from offline_companion.shared.types import Persona
+from offline_companion.shared.types import OceanVector, Persona
 
 
 def test_recall_matched_on_non_empty(tmp_path) -> None:
@@ -176,3 +176,91 @@ def test_assemble_reply_injects_memory_when_enabled(tmp_path) -> None:
     assert "香菜" in result.memory_block or any("香菜" in h.body for h in result.memory_recalls)
     assert "重要提醒" in result.memory_block
     assert "[memory]" in result.reply or "菜" in result.reply
+
+
+def test_assemble_reply_injects_ocean_tone_instruction(tmp_path) -> None:
+    persona = Persona(
+        persona_id="ocean",
+        name="ocean",
+        system_prompt="你是一个温和真诚的陪伴助手。",
+        role_lock=True,
+        memory_default_on=False,
+        default_companion_display_name="助手一号",
+        companion_display_name=None,
+        raw={},
+        ocean=OceanVector(
+            openness=0.7,
+            conscientiousness=0.6,
+            extraversion=0.5,
+            agreeableness=0.8,
+            neuroticism=0.4,
+        ),
+    )
+    core = PersonaSessionCore(persona)
+    conn = connect(tmp_path / "ocean.db")
+    new_session(conn, "s1", "ocean", title=None)
+
+    class CaptureBackend:
+        def __init__(self) -> None:
+            self.system_prompt = ""
+
+        def generate(self, *, system_prompt, history, user_message, memory_block, max_tokens=256):  # type: ignore[no-untyped-def]
+            self.system_prompt = system_prompt
+            return "ok"
+
+    backend = CaptureBackend()
+    result = core.assemble_reply(
+        backend,
+        conn,
+        user_message="你好",
+        history=[],
+        memory_enabled=False,
+    )
+
+    assert result.reply == "ok"
+    assert "【语气风格】" in backend.system_prompt
+    assert "好奇" in backend.system_prompt
+    assert "温和" in backend.system_prompt
+
+def test_recall_boosts_same_emotion_memory(tmp_path) -> None:
+    conn = connect(tmp_path / "emotion.db")
+    new_session(conn, "s1", "default", title=None)
+    MemoryLifecycleManager.add_memory_chunk(
+        conn,
+        "我在压力很大时，散步十分钟会舒服一些",
+        session_id="s1",
+        source="test",
+        meta={"emotion": "sadness"},
+    )
+    MemoryLifecycleManager.add_memory_chunk(
+        conn,
+        "我在压力很大时，听轻快音乐会舒服一些",
+        session_id="s1",
+        source="test",
+        meta={"emotion": "joy"},
+    )
+
+    hits = recall(conn, "压力很大怎么办", limit=5, emotion="sadness")
+
+    assert len(hits) >= 2
+    assert "散步十分钟" in hits[0].body
+    assert hits[0].matched_on["emotion_boost"] == 1.2
+    assert hits[1].matched_on["emotion_boost"] == 1.0
+    assert hits[0].combined_score > hits[1].combined_score
+
+
+def test_recall_without_emotion_keeps_backward_compatible_behavior(tmp_path) -> None:
+    conn = connect(tmp_path / "emotion-none.db")
+    new_session(conn, "s1", "default", title=None)
+    MemoryLifecycleManager.add_memory_chunk(
+        conn,
+        "我在压力大时喜欢写日记",
+        session_id="s1",
+        source="test",
+        meta={"emotion": "sadness"},
+    )
+
+    hits = recall(conn, "压力大时怎么办", limit=5, emotion=None)
+
+    assert hits
+    assert hits[0].matched_on["emotion_boost"] == 1.0
