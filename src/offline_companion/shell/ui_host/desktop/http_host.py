@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 import socket
 import threading
+import traceback
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import offline_companion.shell.ui_host.desktop as _desktop_pkg
+from offline_companion import __version__
 from offline_companion.core.memory_lifecycle.fts_ops import (
     count_memory_rows,
     invalidate_memory_chunk,
@@ -60,20 +64,63 @@ def create_desktop_app(runtime: DesktopRuntime):
     static = _static_dir()
     app = Flask(__name__, static_folder=str(static), static_url_path="")
     plugin_gateway = PluginSecurityGateway(runtime, build_mock_plugin_registry())
+    logging.getLogger("PIL").setLevel(logging.WARNING)
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
     @app.get("/")
     def index():
         return send_from_directory(static, "index.html")
 
+    @app.get("/favicon.ico")
+    def favicon():
+        return send_from_directory(static, "favicon.ico")
+
+    @app.errorhandler(404)
+    def not_found(_error):
+        return jsonify({"error": "not_found"}), 404
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        request_id = uuid.uuid4().hex
+        log_dir = runtime.paths.root / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = log_dir / f"http_500_{request_id}.log"
+        log_path.write_text(
+            "".join(
+                [
+                    f"request_id={request_id}\n",
+                    f"path={request.path}\n",
+                    f"method={request.method}\n\n",
+                    "".join(traceback.format_exception(error)),
+                ]
+            ),
+            encoding="utf-8",
+        )
+        return jsonify({"error": "internal_error", "request_id": request_id}), 500
+
     @app.get("/api/status")
     def status():
         return jsonify(
             {
+                "app_version": __version__,
                 "memory_on": runtime.memory_on,
                 "session_id": runtime.session_id,
                 "persona_name": runtime.persona_name,
                 "privacy_mode": runtime.privacy_mode.value,
                 "model_label": runtime.model_label,
+            }
+        )
+
+    @app.get("/api/about")
+    def about():
+        return jsonify(
+            {
+                "app_name": "Offline Companion",
+                "app_version": __version__,
+                "model_label": runtime.model_label,
+                "architecture": "PyInstaller + llama-server sidecar",
+                "license": "BSD-2-Clause",
+                "repository": "offline-companion-core",
             }
         )
 
@@ -263,14 +310,16 @@ def start_desktop_http(runtime: DesktopRuntime) -> DesktopHttpServer:
     """摘要：在后台线程启动 127.0.0.1 HTTP 服务。"""
     port = _pick_port()
     app = create_desktop_app(runtime)
+    try:
+        from waitress import serve
+    except ImportError as exc:
+        raise ImportError("桌面 HTTP 需要 waitress，请安装 `pip install -e \".[desktop]\"`") from exc
+
+    def _serve() -> None:
+        serve(app, host=_ALLOWED_HOST, port=port, threads=4)
+
     thread = threading.Thread(
-        target=lambda: app.run(
-            host=_ALLOWED_HOST,
-            port=port,
-            debug=False,
-            threaded=True,
-            use_reloader=False,
-        ),
+        target=_serve,
         daemon=True,
         name="desktop-http",
     )

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+import os
 import sqlite3
+import unicodedata
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
@@ -17,6 +20,10 @@ from offline_companion.shared.types import MemoryRecallHit, MessageRow, OceanVec
 
 _EMOTION_STRATEGIES: dict[str, dict[str, str]] | None = None
 _OCEAN_TONE_MAPPINGS: dict[str, dict[str, object]] | None = None
+_ASSISTANT_NAME_QUESTION_KEYWORDS = ("你叫什么", "你的名字", "你叫啥", "你是谁")
+_DISPLAY_NAME_MAX_CHARS = 32
+
+logger = logging.getLogger(__name__)
 
 
 def _load_yaml_dict(file_name: str) -> dict[str, object]:
@@ -115,6 +122,22 @@ def _descriptor_list(value: object) -> list[str]:
     return [str(item).strip() for item in value if str(item).strip()]
 
 
+def _sanitize_display_name(value: object) -> str:
+    """摘要：将画像记忆中的自称规范化为安全的单行短文本，避免注入系统提示。"""
+    text = " ".join(str(value or "").split()).strip()
+    if not text:
+        return ""
+    safe_chars: list[str] = []
+    for char in text:
+        if char in {" ", "-", "_", "·", "・"}:
+            safe_chars.append(char)
+            continue
+        category = unicodedata.category(char)
+        if category[0] in {"L", "N"}:
+            safe_chars.append(char)
+    return "".join(safe_chars).strip()[:_DISPLAY_NAME_MAX_CHARS]
+
+
 @runtime_checkable
 class InferenceBackend(Protocol):
     """摘要：B1 所依赖的 C1 推理后端最小协议。"""
@@ -148,13 +171,26 @@ class PersonaSessionCore:
     @property
     def system_prompt_locked(self) -> str:
         """摘要：返回受角色锁约束的系统提示文本（含当前陪伴自称）。"""
-        display = resolved_companion_display_name(self.persona)
+        return self._system_prompt_locked()
+
+    def _system_prompt_locked(self, conn: sqlite3.Connection | None = None) -> str:
+        """摘要：返回角色锁系统提示；若存在助手画像记忆，优先使用记忆中的当前自称。"""
+        display = self._resolved_companion_display_name(conn)
         prefix = (
             f"【当前自称】{display}\n"
             "你必须始终使用上述自称；不要把它变形成语法变化后的名字。\n"
             "若输出中出现名字变体，优先修正为标准自称。\n\n"
         )
         return prefix + self.persona.system_prompt
+
+    def _resolved_companion_display_name(self, conn: sqlite3.Connection | None = None) -> str:
+        """摘要：解析当前助手自称；长期画像记忆优先于 persona 默认配置。"""
+        if conn is not None:
+            profile = MemoryLifecycleManager.latest_profile_memory(conn)
+            display_name = _sanitize_display_name(profile.get("assistant", {}).get("display_name"))
+            if display_name:
+                return display_name
+        return _sanitize_display_name(resolved_companion_display_name(self.persona))
 
     def assemble_reply(
         self,
@@ -183,7 +219,17 @@ class PersonaSessionCore:
 
         tone_instruction = _build_tone_instruction(self.persona.ocean)
         emotion_instruction = _build_emotion_instruction(emotion_context)
-        system_prompt = self.system_prompt_locked + tone_instruction + emotion_instruction
+        system_prompt = self._system_prompt_locked(conn) + tone_instruction + emotion_instruction
+        if os.getenv("OFFLINE_COMPANION_PROMPT_PROBE") == "1":
+            logger.debug("[PROMPT_PROBE] system_prompt=%r", system_prompt[:200])
+
+        identity_reply = self._identity_question_reply(conn, user_message, memory_enabled=memory_enabled)
+        if identity_reply is not None:
+            return AssembleReplyResult(
+                reply=identity_reply,
+                memory_recalls=recalls,
+                memory_block=combined_memory_block,
+            )
 
         reply = backend.generate(
             system_prompt=system_prompt,
@@ -204,7 +250,9 @@ class PersonaSessionCore:
         assistant = profile.get("assistant", {})
         user = profile.get("user", {})
         if assistant.get("display_name"):
-            lines.append(f"- 助手当前自画像：名字 = {assistant['display_name']}")
+            display_name = _sanitize_display_name(assistant["display_name"])
+            if display_name:
+                lines.append(f"- 助手当前自画像：名字 = {display_name}")
         if user.get("display_name"):
             lines.append(f"- 用户当前画像：名字 = {user['display_name']}")
         if user.get("preference"):
@@ -212,3 +260,15 @@ class PersonaSessionCore:
         if not lines:
             return ""
         return "【长期画像记忆】\n" + "\n".join(lines)
+
+    def _identity_question_reply(self, conn: sqlite3.Connection, user_message: str, *, memory_enabled: bool) -> str | None:
+        """摘要：对助手自称查询做确定性回答，避免小模型忽略画像身份锁。"""
+        if not memory_enabled:
+            return None
+        text = user_message.strip()
+        if not any(keyword in text for keyword in _ASSISTANT_NAME_QUESTION_KEYWORDS):
+            return None
+        display_name = self._resolved_companion_display_name(conn)
+        if not display_name:
+            return None
+        return f"我叫{display_name}。"

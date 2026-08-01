@@ -91,6 +91,12 @@ def _safe_builtin_import(name: str, globals=None, locals=None, fromlist=(), leve
         return _ORIGINAL_IMPORT(name, globals, locals, fromlist, level)
     if name.startswith("_pytest"):
         return _ORIGINAL_IMPORT(name, globals, locals, fromlist, level)
+    # PyInstaller frozen模式下放行bootstrap相关模块
+    if getattr(sys, "frozen", False):
+        if name in {"PyInstaller", "pkgutil", "importlib", "pkg_resources"}:
+            return _ORIGINAL_IMPORT(name, globals, locals, fromlist, level)
+        if name.startswith("_frozen_importlib"):
+            return _ORIGINAL_IMPORT(name, globals, locals, fromlist, level)
     if name in sys.builtin_module_names and name not in {"os", "socket", "_socket"}:
         return _ORIGINAL_IMPORT(name, globals, locals, fromlist, level)
     raise SkillInvocationError(f"当前运行模式禁止导入模块: {name}")

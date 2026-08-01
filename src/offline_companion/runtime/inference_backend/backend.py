@@ -69,16 +69,32 @@ def resolve_gguf_path(model_path: str | Path) -> Path:
 
 
 def _import_llama():
-    """摘要：延迟导入 llama_cpp，缺失时抛出带安装说明的 InferenceBackendError。"""
+    """摘要：延迟导入 `llama_cpp`，并给出更准确的依赖错误提示。"""
+    # DLL路径由PyInstaller运行时钩子处理，这里不做额外处理
+    # 避免与llama-cpp-python内部的DLL加载机制冲突
+
+    try:
+        import numpy  # noqa: F401
+    except ImportError as e:  # pragma: no cover - 依赖环境问题
+        raise InferenceBackendError(
+            f"numpy 加载失败（可能是 MKL / DLL 问题）: {e}\n"
+            "建议使用 venv 隔离环境: python -m venv .venv && pip install -e ."
+        ) from e
+
     try:
         from llama_cpp import Llama  # type: ignore
-    except ImportError as e:  # pragma: no cover - 无可选依赖环境
+    except ImportError as e:  # pragma: no cover - 可选依赖缺失或其子依赖损坏
+        missing_name = str(getattr(e, "name", "") or "")
+        if "llama" in missing_name.lower():
+            raise InferenceBackendError(
+                "未安装 llama-cpp-python。请执行: pip install '.[inference]'\n"
+                "Windows + NVIDIA 请选用与驱动匹配的 CUDA wheel。"
+            ) from e
         raise InferenceBackendError(
-            "未安装 llama-cpp-python。请执行: pip install '.[inference]'\n"
-            "Windows + NVIDIA 请选用与驱动匹配的 CUDA wheel。"
+            f"llama-cpp-python 已安装但依赖加载失败: {e}\n"
+            "常见原因: numpy / MKL / DLL 冲突，建议用 venv 隔离环境。"
         ) from e
     return Llama
-
 
 class LlamaCppBackend:
     """摘要：基于 llama-cpp-python 的 GGUF 本地推理后端（C1）。"""
@@ -164,13 +180,20 @@ class LlamaCppBackend:
             )
 
         try:
+            print(f"[DEBUG] Loading model from: {path}", file=sys.stderr)
+            print(f"[DEBUG] Model file exists: {path.exists()}", file=sys.stderr)
+            print(f"[DEBUG] Model file size: {path.stat().st_size if path.exists() else 'N/A'}", file=sys.stderr)
             llama = Llama(
                 model_path=str(path),
                 n_ctx=n_ctx,
                 n_gpu_layers=n_gpu_layers,
-                verbose=False,
+                verbose=True,  # Enable verbose to see llama_cpp debug output
             )
+            print("[DEBUG] Model loaded successfully", file=sys.stderr)
         except Exception as e:  # pragma: no cover - 依赖具体 wheel/驱动
+            print(f"[DEBUG] Exception during model loading: {type(e).__name__}: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
             return InferenceHealthReport(
                 ok=False,
                 model_path=str(path),
@@ -268,7 +291,7 @@ class LlamaCppBackend:
         user_message: str,
         memory_block: str,
     ) -> list[dict[str, str]]:
-        """???? B1 ????????? C1 ????????"""
+        """摘要：将 B1 装配出的消息列表转换为 C1 所需的消息格式。"""
         full_system = system_prompt.rstrip()
         if memory_block.strip():
             full_system = f"{full_system}\n\n{memory_block.strip()}"
@@ -286,7 +309,7 @@ class LlamaCppBackend:
 
 
 def strip_model_output(text: str, model_config: ModelRuntimeConfig) -> str:
-    """?????????????????????????"""
+    """摘要：按模型配置剥离输出中的包装标签与思考标记。"""
     cleaned = text
     for tag in model_config.strip_output_tags:
         tag_name = tag.strip().strip("<>/")
@@ -314,7 +337,7 @@ def create_llama_backend(
     verbose: bool = False,
     run_health_check: bool = True,
     model_config: ModelRuntimeConfig | None = None,
-) -> LlamaCppBackend:
+) -> InferenceBackend:
     """摘要：工厂方法：可选先轻量 health_check 再构造已加载的 ``LlamaCppBackend``。
 
     参数：
@@ -330,6 +353,24 @@ def create_llama_backend(
     异常：
         InferenceBackendError：健康检查未通过。
     """
+    if getattr(sys, "frozen", False):
+        from offline_companion.runtime.inference_backend.llama_server_backend import (
+            LlamaServerBackend,
+        )
+
+        backend = LlamaServerBackend(
+            model_path,
+            n_ctx=n_ctx,
+            n_gpu_layers=n_gpu_layers,
+            verbose=verbose,
+            model_config=model_config,
+        )
+        if run_health_check:
+            report = backend.health_check()
+            if not report.ok:
+                raise InferenceBackendError(report.message)
+        return backend
+
     if run_health_check:
         report = LlamaCppBackend.check_model(
             model_path,

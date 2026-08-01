@@ -603,9 +603,9 @@ def main(argv: list[str] | None = None) -> None:
         print(__version__)
         raise SystemExit(0)
     if args.cmd == "check-model":
-        from offline_companion.runtime.inference_backend import LlamaCppBackend
+        from offline_companion.runtime.inference_backend import check_model
 
-        report = LlamaCppBackend.check_model(
+        report = check_model(
             args.model,
             n_ctx=args.n_ctx,
             n_gpu_layers=args.n_gpu_layers,

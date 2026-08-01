@@ -11,6 +11,7 @@ from offline_companion.core.safety_boundary.classifier import SafetyTier
 from offline_companion.runtime.inference_backend.mock import EchoBackend
 from offline_companion.runtime.storage_index.engine import connect, new_session, recent_messages
 from offline_companion.shared.types import (
+    AppPaths,
     CloudCompletionResponse,
     ModelRoutingDecision,
     PrivacyMode,
@@ -55,7 +56,32 @@ def _runtime(tmp_path) -> DesktopRuntime:
         privacy_mode=PrivacyMode.LOCAL_ONLY,
         model_label=ECHO_NO_MODEL_LABEL,
         triggers=load_triggers(),
+        paths=AppPaths(
+            root=tmp_path,
+            db_path=tmp_path / "http.db",
+            personas_dir=tmp_path / "personas",
+            exports_dir=tmp_path / "exports",
+        ),
     )
+
+
+def test_desktop_http_release_metadata(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    client = create_desktop_app(rt).test_client()
+
+    favicon = client.get("/favicon.ico")
+    assert favicon.status_code == 200
+    assert favicon.content_type in {"image/vnd.microsoft.icon", "image/x-icon"}
+
+    about = client.get("/api/about")
+    assert about.status_code == 200
+    payload = about.get_json()
+    assert payload["app_version"] == "1.0.0"
+    assert payload["model_label"] == ECHO_NO_MODEL_LABEL
+
+    missing = client.get("/missing")
+    assert missing.status_code == 404
+    assert missing.get_json() == {"error": "not_found"}
 
 
 def test_desktop_http_chat_and_clear(tmp_path) -> None:

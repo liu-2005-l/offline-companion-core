@@ -48,6 +48,6 @@ class MemoryReader:
         if profile.get("user", {}).get("preference"):
             user_lines.append(f"偏好：{profile['user']['preference']}")
         return {
-            "assistant_profile": "\n".join(assistant_lines),
+            "agent_profile": "\n".join(assistant_lines),
             "user_profile": "\n".join(user_lines),
         }

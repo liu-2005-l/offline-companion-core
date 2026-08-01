@@ -11,6 +11,7 @@ from offline_companion.core.safety_boundary.classifier import SafetyTier
 from offline_companion.runtime.inference_backend.mock import EchoBackend
 from offline_companion.runtime.storage_index.engine import connect, new_session
 from offline_companion.shared.types import (
+    AppPaths,
     CloudCompletionResponse,
     ModelRoutingDecision,
     PrivacyMode,
@@ -55,6 +56,12 @@ def _bridge(tmp_path) -> DesktopBridge:
         privacy_mode=PrivacyMode.LOCAL_ONLY,
         model_label=ECHO_NO_MODEL_LABEL,
         triggers=load_triggers(),
+        paths=AppPaths(
+            root=tmp_path,
+            db_path=tmp_path / "desktop.db",
+            personas_dir=tmp_path / "personas",
+            exports_dir=tmp_path / "exports",
+        ),
     )
     return DesktopBridge(runtime)
 

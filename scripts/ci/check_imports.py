@@ -24,6 +24,7 @@ ALLOW_NET_PREFIXES = (
     "offline_companion/shell/skill_manager/",
 )
 ALLOW_NET_FILES = {
+    Path("offline_companion/runtime/inference_backend/llama_server_backend.py"),
     Path("offline_companion/shared/runtime_sandbox.py"),
 }
 # TODO(sprint7-close): 目前仅做 AST 级最小检查；后续需补充更细粒度的层级白名单与测试覆盖。

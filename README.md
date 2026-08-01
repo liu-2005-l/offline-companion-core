@@ -1,64 +1,69 @@
-# offline-companion-core
+# Offline Companion
 
-面向 **隐私优先** 的本地陪伴型 Agent **核心库**（Windows 首平台）。
+Offline Companion 是一款隐私优先、本地默认的离线陪伴助手核心。它在 Windows 桌面上运行，默认使用本机 GGUF 模型、SQLite 记忆库和本地 WebView UI，不会静默联网。
 
-**文档入口** → [`docs/README.md`](docs/README.md)
+## 功能概览
 
----
+- 本地对话：默认模型为 `Qwen2.5-1.5B-Instruct-Q4_K_M.gguf`，冻结版通过独立 `llama-server.exe` sidecar 推理。
+- 可控记忆：支持身份偏好、用户偏好和长期记忆写入、召回、失效、恢复与删除。
+- 隐私策略：默认 `LOCAL_ONLY`，出站能力必须经过策略门闸和 Consent 流程。
+- 桌面体验：PyInstaller 打包、Inno Setup 安装器、托盘驻留、单实例唤醒、可选内置模型。
+- 扩展边界：Skill / Plugin / Tool 与主对话路径隔离，第三方能力不进入核心信任边界。
+
+## 安装方式
+
+推荐使用发布安装器：
+
+```powershell
+installer\output\OfflineCompanion-Setup-1.0.0.exe
+```
+
+安装路径为：
+
+```text
+%LOCALAPPDATA%\Programs\Offline Companion\
+```
+
+用户数据保存在：
+
+```text
+%LOCALAPPDATA%\Offline Companion\
+```
+
+卸载程序只移除安装目录，不删除记忆库、会话 DB 和用户模型数据。
+
+## 开发启动
+
+```powershell
+pip install -e ".[dev,desktop,skill,inference]"
+python -m offline_companion desktop --memory 1 --force
+```
+
+常用验证：
+
+```powershell
+python -m pytest -q
+python -m ruff check src tests scripts
+python scripts/ci/check_imports.py
+```
+
+## 构建发布
+
+```powershell
+python -m PyInstaller scripts/build_portable.spec --clean --noconfirm
+python scripts/build_installer.py
+```
+
+模型文件不会强制绑定到用户数据目录。完整安装会把默认 GGUF 放入 `{app}\models\`；精简安装则由用户后续放入 `%LOCALAPPDATA%\Offline Companion\models\`。
 
 ## 文档
 
-| 文档 | 说明 |
-|------|------|
-| [`docs/README.md`](docs/README.md) | **导航**：中英语言入口 |
-| [`docs/ARCHITECTURE_v2.4_zh.md`](docs/ARCHITECTURE_v2.4_zh.md) | 原则、分层、共识、Sprint、技术栈 |
-| [`docs/SKILL_DEV_GUIDE_v1.0_zh.md`](docs/SKILL_DEV_GUIDE_v1.0_zh.md) | Skill manifest / policy / Sprint 7 |
-| [`docs/PLUGIN_DEV_GUIDE_v1.0_zh.md`](docs/PLUGIN_DEV_GUIDE_v1.0_zh.md) | 桌面 WebView Plugin（动态 UI） |
-| [`docs/architecture_v1.0.md`](docs/architecture_v1.0.md) | 历史架构基线（只读） |
-| [`docs/USER_MANUAL_v1.0_zh.md`](docs/USER_MANUAL_v1.0_zh.md) | 安装、desktop、记忆、验收 |
-| [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | 文档版本变更 |
+- [架构文档](docs/ARCHITECTURE_v2.5_zh.md)
+- [用户手册](docs/USER_MANUAL_v1.0_zh.md)
+- [Skill 开发指南](docs/SKILL_DEV_GUIDE_v1.0_zh.md)
+- [Plugin 开发指南](docs/PLUGIN_DEV_GUIDE_v1.0_zh.md)
+- [变更记录](docs/CHANGELOG.md)
 
-英文版文件名见 [`docs/README.md`](docs/README.md)。
+## 许可证
 
----
-
-## 隐私模型（简述）
-
-- **默认本地**；禁止静默上云；出站须 Consent。
-- 危机话术可完全本地完成（B3 YAML）。
-
----
-
-## 快速开始
-
-```powershell
-pip install -e ".[dev,cloud,desktop,skill]"
-python -m pytest tests/ -q
-python scripts/full_acceptance.py --skip-gpu
-python -m offline_companion desktop --force
-```
-
-将 Qwen `.gguf` 放入 `models/`（见 `models/registry.yaml`）。CUDA 与 GPU 验收见 [`docs/USER_MANUAL_v1.0_zh.md`](docs/USER_MANUAL_v1.0_zh.md) §七。
-
----
-
-## CLI 示例
-
-```powershell
-python -m offline_companion chat --persona configs\personas\default.yaml --privacy local_only
-python -m offline_companion web --port 8765    # 开发宿主，非产品 UI
-```
-
-REPL：`#remember …` → 开启记忆 → 续聊。`/search-knowledge` 为内置知识能力，见 [`docs/ARCHITECTURE_v2.4_zh.md`](docs/ARCHITECTURE_v2.4_zh.md) §五。
-
----
-
-## 仓库结构（概要）
-
-- `src/offline_companion/shell/` — A 层（UI、策略、出站、skill_manager）
-- `src/offline_companion/core/` — B 层（人格、记忆、安全、润色）
-- `src/offline_companion/runtime/` — C 层（推理、存储）
-- `configs/` — 人设、话术、触发器
-- `models/registry.yaml` — 本地 GGUF 登记（权重不入 git）
-
-许可证：BSD-2-Clause
+BSD-2-Clause。详见 [LICENSE](LICENSE)。

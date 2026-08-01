@@ -1,12 +1,23 @@
-﻿# Offline Companion 架构与开发说明 v2.5（权威版）
+﻿# Offline Companion 架构与开发说明 v2.6（权威版）
 
-> **版本**：v2.5.1 · **日期**：2026-07-27（Sprint 9A P0-P5 闭合版）
+> **版本**：v2.6 · **日期**：2026-08-01（v1.0 发布闭合版）
 > **历史基线**：[`architecture_v1.0.md`](./architecture_v1.0.md)（只读，冲突以本文为准）
 > **英文**：[`ARCHITECTURE_v2.5_en.md`](./ARCHITECTURE_v2.5_en.md)
 
 > **扩展开发**：[`SKILL_DEV_GUIDE`](./SKILL_DEV_GUIDE_v1.0_zh.md) · [`PLUGIN_DEV_GUIDE`](./PLUGIN_DEV_GUIDE_v1.0_zh.md)
 > **用户**：[`USER_MANUAL`](./USER_MANUAL_v1.0_zh.md)
 > **代码未对齐项**：[`_TEMP_NEXT_STEPS_2026-06-12.md`](./_TEMP_NEXT_STEPS_2026-06-12.md)（临时）
+
+---
+
+## v1.0 发布基线
+
+- **桌面宿主**：A1 桌面 UI 使用本地 `127.0.0.1` HTTP API；发布版 HTTP 服务由 Waitress 承载，不使用 Werkzeug development server。
+- **推理后端**：开发模式可继续使用 `llama-cpp-python`；冻结发布包默认使用独立 `llama-server.exe` sidecar，通过 localhost HTTP 调用，避免 PyInstaller 进程内原生 DLL 崩溃影响主进程。
+- **安装器边界**：Inno Setup 只安装主仓库本体、`_internal/` 依赖、`llama_server/` sidecar 和可选默认 GGUF 模型；Skill 仓库与下载器仓库独立演进，不随 v1.0 安装器分发。
+- **路径策略**：程序安装在 `%LOCALAPPDATA%\Programs\Offline Companion\`；用户数据保存在 `%LOCALAPPDATA%\Offline Companion\`，卸载和覆盖升级不删除记忆库与会话 DB。
+- **发布体验**：桌面壳提供 favicon、About 信息、托盘退出清理、崩溃日志、HTTP JSON 错误响应和 sidecar 异常退出一次重启。
+- **默认模型决策**：v1.0 默认保持 `Qwen2.5-1.5B-Instruct-Q4_K_M.gguf`，7B 模型与模型适配增强后移。
 
 ---
 
@@ -1056,4 +1067,5 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 ### 4. 内容完整性保留
 
 - 所有原架构共识、安全约束、功能规划、排期计划全部保留，未做任何实质删减。
+
 

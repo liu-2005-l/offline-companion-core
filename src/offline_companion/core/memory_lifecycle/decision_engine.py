@@ -77,10 +77,10 @@ class MemoryDecisionEngine:
         return None
 
     def _is_ambiguous(self, candidate: SemanticMemoryCandidate, text: str) -> bool:
-        return candidate.memory_type == "assistant_profile" and self._looks_like_style_description(text)
+        return candidate.memory_type == "agent_profile" and self._looks_like_style_description(text)
 
     def _build_clarify_prompt(self, candidate: SemanticMemoryCandidate) -> str:
-        if candidate.memory_type == "assistant_profile":
+        if candidate.memory_type == "agent_profile":
             return "好的，我理解您希望我更新助手自画像。您是想修改名字、语气，还是整体风格？"
         return "好的，我想确认一下：这条内容需要作为长期记忆保存吗？"
 

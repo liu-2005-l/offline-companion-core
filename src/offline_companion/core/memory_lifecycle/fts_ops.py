@@ -49,11 +49,31 @@ def add_memory_chunk(
     memory_type = str(meta.get("memory_type") or "fact")
     status = str(meta.get("status") or "active")
     metadata = json.dumps(meta.get("metadata") or meta or {}, ensure_ascii=False)
-    cur = conn.execute(
-        "INSERT INTO memory_chunks(session_id, content, body, memory_type, status, source, created_at, modified_at, metadata, meta_json) "
-        "VALUES(?,?,?,?,?,?,?,?,?,?);",
-        (session_id, content, body, memory_type, status, source, now, now, metadata, json.dumps(meta, ensure_ascii=False)),
-    )
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(memory_chunks);").fetchall()}
+    if "updated_at" in cols:
+        cur = conn.execute(
+            "INSERT INTO memory_chunks(session_id, content, body, memory_type, status, source, created_at, updated_at, modified_at, metadata, meta_json) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?);",
+            (
+                session_id,
+                content,
+                body,
+                memory_type,
+                status,
+                source,
+                now,
+                now,
+                now,
+                metadata,
+                json.dumps(meta, ensure_ascii=False),
+            ),
+        )
+    else:
+        cur = conn.execute(
+            "INSERT INTO memory_chunks(session_id, content, body, memory_type, status, source, created_at, modified_at, metadata, meta_json) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?);",
+            (session_id, content, body, memory_type, status, source, now, now, metadata, json.dumps(meta, ensure_ascii=False)),
+        )
     rid = cur.lastrowid
     assert rid is not None
     chunk_id = int(rid)
@@ -170,10 +190,17 @@ def update_memory_chunk(conn: sqlite3.Connection, chunk_id: int, new_body: str) 
     if not new_body:
         return False
     now = time.time()
-    cur = conn.execute(
-        "UPDATE memory_chunks SET body = ?, modified_at = ? WHERE id = ?;",
-        (new_body, now, chunk_id),
-    )
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(memory_chunks);").fetchall()}
+    if "updated_at" in cols:
+        cur = conn.execute(
+            "UPDATE memory_chunks SET body = ?, updated_at = ?, modified_at = ? WHERE id = ?;",
+            (new_body, now, now, chunk_id),
+        )
+    else:
+        cur = conn.execute(
+            "UPDATE memory_chunks SET body = ?, modified_at = ? WHERE id = ?;",
+            (new_body, now, chunk_id),
+        )
     if cur.rowcount > 0:
         maybe_write_embedding(conn, chunk_id, new_body)
     return cur.rowcount > 0
@@ -182,20 +209,34 @@ def update_memory_chunk(conn: sqlite3.Connection, chunk_id: int, new_body: str) 
 def invalidate_memory_chunk(conn: sqlite3.Connection, chunk_id: int) -> bool:
     """摘要：将记忆标记为 invalid（不删除）。"""
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    cur = conn.execute(
-        "UPDATE memory_chunks SET status = 'invalid', modified_at = ? WHERE id = ?;",
-        (now, chunk_id),
-    )
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(memory_chunks);").fetchall()}
+    if "updated_at" in cols:
+        cur = conn.execute(
+            "UPDATE memory_chunks SET status = 'invalid', updated_at = ?, modified_at = ? WHERE id = ?;",
+            (now, now, chunk_id),
+        )
+    else:
+        cur = conn.execute(
+            "UPDATE memory_chunks SET status = 'invalid', modified_at = ? WHERE id = ?;",
+            (now, chunk_id),
+        )
     return cur.rowcount > 0
 
 
 def restore_memory_chunk(conn: sqlite3.Connection, chunk_id: int) -> bool:
     """摘要：将记忆恢复为 active。"""
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    cur = conn.execute(
-        "UPDATE memory_chunks SET status = 'active', modified_at = ? WHERE id = ?;",
-        (now, chunk_id),
-    )
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(memory_chunks);").fetchall()}
+    if "updated_at" in cols:
+        cur = conn.execute(
+            "UPDATE memory_chunks SET status = 'active', updated_at = ?, modified_at = ? WHERE id = ?;",
+            (now, now, chunk_id),
+        )
+    else:
+        cur = conn.execute(
+            "UPDATE memory_chunks SET status = 'active', modified_at = ? WHERE id = ?;",
+            (now, chunk_id),
+        )
     return cur.rowcount > 0
 
 

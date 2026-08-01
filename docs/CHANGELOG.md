@@ -4,6 +4,22 @@
 
 ---
 
+## v1.0.0 · 2026-08-01（首个桌面发布候选）
+
+### 发行基线
+- 默认模型保持 `Qwen2.5-1.5B-Instruct-Q4_K_M.gguf`，不在 v1.0 升级 7B。
+- Windows 桌面链路闭合：PyInstaller 便携包 + `llama-server.exe` sidecar + Inno Setup per-user 安装器。
+- 桌面 HTTP 从 Flask dev server 切换为 Waitress WSGI，生产启动不再出现 development server warning。
+- 发布体验补齐 favicon、PIL 日志抑制、About 信息、崩溃日志和 HTTP JSON 错误响应。
+- 安装器只安装主仓库本体；Skill 仓库与下载器仓库保持独立，不随 v1.0 安装器分发。
+
+### 验收
+- 基线：338 passed, 3 skipped；新增发布面测试后基线允许前进，不允许回退。
+- P6 干净 Windows VM 与 P7 Inno Setup 安装器已闭合。
+- 卸载仅清理安装目录，保留 `%LOCALAPPDATA%\Offline Companion\` 用户数据。
+
+---
+
 ## v2.5 · 2026-07-26（Sprint 9A 文档同步）
 
 ### 变更

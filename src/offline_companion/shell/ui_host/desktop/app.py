@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
 import os
 import sys
 import time
 
+from offline_companion import __version__
 from offline_companion.shared.types import PrivacyMode
 from offline_companion.shell.ui_host.bootstrap import (
     bootstrap_ui_session_or_exit,
@@ -24,6 +26,23 @@ from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
 _WINDOW_TITLE = "Offline Companion"
 _TRAY_TITLE = "Offline Companion"
 _ALLOWED_HOST = "127.0.0.1"
+
+
+def _shutdown_runtime(bundle) -> None:
+    """摘要：在强制结束桌面进程前显式释放后端与数据库资源。"""
+    backend = getattr(bundle.orchestrator, "backend", None)
+    stop = getattr(backend, "stop", None)
+    if callable(stop):
+        try:
+            stop()
+        except Exception as exc:
+            print(f"警告：停止推理后端失败: {exc}", file=sys.stderr)
+    close = getattr(bundle.conn, "close", None)
+    if callable(close):
+        try:
+            close()
+        except Exception as exc:
+            print(f"警告：关闭数据库连接失败: {exc}", file=sys.stderr)
 
 
 def _require_desktop_deps() -> None:
@@ -81,6 +100,7 @@ def run_desktop(args: argparse.Namespace) -> int:
     def on_request_quit() -> None:
         """摘要：托盘退出须真正结束进程，避免残留占用 18766 与旧 UI。"""
         remove_pid_file(data_root)
+        _shutdown_runtime(bundle)
         if tray_icon is not None:
             try:
                 tray_icon.stop()
@@ -117,8 +137,29 @@ def run_desktop(args: argparse.Namespace) -> int:
         def _quit(_icon, _item) -> None:
             on_request_quit()
 
+        def _about(_icon, _item) -> None:
+            try:
+                ctypes.windll.user32.MessageBoxW(
+                    None,
+                    "\n".join(
+                        [
+                            "Offline Companion",
+                            f"版本：{__version__}",
+                            f"模型：{runtime.model_label}",
+                            "架构：PyInstaller + llama-server sidecar",
+                            "许可证：BSD-2-Clause",
+                            "仓库：offline-companion-core",
+                        ]
+                    ),
+                    "关于 Offline Companion",
+                    0x40,
+                )
+            except (AttributeError, OSError) as exc:
+                print(f"无法显示关于窗口: {exc}", file=sys.stderr)
+
         menu = pystray.Menu(
             pystray.MenuItem("显示主窗口", _show, default=True),
+            pystray.MenuItem("关于 Offline Companion", _about),
             pystray.MenuItem("退出", _quit),
         )
         tray_icon = pystray.Icon(_TRAY_TITLE, image, _WINDOW_TITLE, menu)

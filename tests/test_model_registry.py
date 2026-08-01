@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from offline_companion.shared import runtime_paths
 from offline_companion.shared.runtime_paths import dev_repo_root, models_dir
 from offline_companion.shared.types import CapabilityTag
 from offline_companion.shell.ui_host.model_registry import (
@@ -67,6 +68,28 @@ def test_repo_registry_template() -> None:
     assert models_dir() == dev_repo_root() / "models"
     data = load_registry()
     assert data.get("active") == "qwen2.5-1.5b-instruct-q4_k_m"
+
+
+def test_frozen_models_dir_prefers_installed_model(tmp_path, monkeypatch) -> None:
+    install_dir = tmp_path / "Offline Companion"
+    installed_models = install_dir / "models"
+    installed_models.mkdir(parents=True)
+    (installed_models / "bundled.gguf").write_bytes(b"GGUF")
+    monkeypatch.setattr(runtime_paths, "_is_frozen", lambda: True)
+    monkeypatch.setattr(runtime_paths.sys, "executable", str(install_dir / "OfflineCompanion.exe"))
+
+    assert models_dir() == installed_models
+
+
+def test_frozen_models_dir_falls_back_to_data_root(tmp_path, monkeypatch) -> None:
+    install_dir = tmp_path / "Offline Companion"
+    install_dir.mkdir()
+    data = tmp_path / "data"
+    monkeypatch.setattr(runtime_paths, "_is_frozen", lambda: True)
+    monkeypatch.setattr(runtime_paths.sys, "executable", str(install_dir / "OfflineCompanion.exe"))
+    monkeypatch.setenv("OFFLINE_COMPANION_DATA_DIR", str(data))
+
+    assert models_dir() == data / "models"
 
 
 def test_model_config_loads_chat_template_and_stop_tokens() -> None:

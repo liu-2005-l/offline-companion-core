@@ -20,7 +20,7 @@ MEMORY_TYPES = {
     "preference",
     "context_summary",
     "goal",
-    "assistant_profile",
+    "agent_profile",
     "user_profile",
     "task_context",
 }
