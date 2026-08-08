@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+import offline_companion
 import offline_companion.shell.ui_host.desktop.http_host as desktop_http
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
 from offline_companion.core.persona_session.persona_loader import load_persona_file
@@ -120,7 +121,7 @@ def test_desktop_http_release_metadata(tmp_path) -> None:
     about = client.get("/api/about")
     assert about.status_code == 200
     payload = about.get_json()
-    assert payload["app_version"] == "1.0.0"
+    assert payload["app_version"] == offline_companion.__version__
     assert payload["model_label"] == ECHO_NO_MODEL_LABEL
 
     missing = client.get("/missing")
@@ -398,8 +399,22 @@ def test_desktop_http_persona_activation_survives_app_recreate(tmp_path) -> None
     assert next(item for item in personas if item["id"] == target["id"])["active"] is True
 
 
-def test_desktop_http_models_list_activate_and_auto(tmp_path) -> None:
+def test_desktop_http_models_list_activate_and_auto(tmp_path, monkeypatch) -> None:
     rt = _runtime(tmp_path)
+    model_path = tmp_path / "models" / "demo-model.gguf"
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    model_path.write_bytes(b"gguf")
+    local_model = ModelDescriptor(
+        model_id="demo-model",
+        display_name="Demo Model",
+        gguf_path=str(model_path),
+        source="test",
+        status="ready",
+        backend="llama_cpp",
+        n_ctx=512,
+    )
+    monkeypatch.setattr(desktop_http, "discover_models", lambda *, data_root_override=None: [local_model])
+    monkeypatch.setattr(desktop_http, "_load_local_model_backend", lambda runtime, model: EchoBackend("demo-model"))
     client = create_desktop_app(rt).test_client()
 
     listed = client.get("/api/models")
