@@ -13,6 +13,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -223,6 +224,60 @@ class LlamaServerBackend:
         if not content:
             raise InferenceBackendError(f"推理响应无内容: {response!r}")
         return strip_model_output(str(content).strip(), self.model_config)
+
+    def generate_stream(
+        self,
+        *,
+        system_prompt: str,
+        history: list[MessageRow],
+        user_message: str,
+        memory_block: str,
+        max_tokens: int = 256,
+    ) -> Iterator[str]:
+        """摘要：通过 llama-server OpenAI 兼容 SSE 接口逐 token 返回文本。"""
+        self.start()
+        messages = self._build_messages(
+            system_prompt=system_prompt,
+            history=history,
+            user_message=user_message,
+            memory_block=memory_block,
+        )
+        payload: dict[str, Any] = {
+            "model": "local",
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        if self.model_config.stop_tokens:
+            payload["stop"] = list(self.model_config.stop_tokens)
+        request = urllib.request.Request(
+            f"{self._base_url}/v1/chat/completions",
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self.request_timeout) as response:
+                for raw_line in response:
+                    line = raw_line.decode("utf-8", errors="replace").strip()
+                    if not line or not line.startswith("data:"):
+                        continue
+                    data = line[5:].strip()
+                    if data == "[DONE]":
+                        break
+                    chunk = json.loads(data)
+                    choices = chunk.get("choices") or []
+                    if not choices:
+                        continue
+                    delta = choices[0].get("delta") or {}
+                    content = delta.get("content")
+                    if content:
+                        yield str(content)
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            raise InferenceBackendError(f"llama-server stream HTTP {exc.code}: {body}") from exc
+        except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
+            raise InferenceBackendError(f"llama-server stream 璇锋眰澶辫触: {exc}") from exc
 
     def _log_sidecar_event(self, message: str) -> None:
         """摘要：记录 llama-server 子进程生命周期异常。"""

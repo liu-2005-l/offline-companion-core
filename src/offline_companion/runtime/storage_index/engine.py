@@ -10,7 +10,7 @@ from typing import Any
 
 from offline_companion.shared.types import MessageRow
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 10
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -18,6 +18,7 @@ def connect(db_path: Path) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path), isolation_level=None, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.text_factory = str
     conn.execute("PRAGMA foreign_keys = ON;")
     conn.execute("PRAGMA busy_timeout = 5000;")
     conn.execute("PRAGMA journal_mode = WAL;")
@@ -58,6 +59,15 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if version < 7:
         _init_v7(conn)
         version = 7
+    if version < 8:
+        _init_v8(conn)
+        version = 8
+    if version < 9:
+        _init_v9(conn)
+        version = 9
+    if version < 10:
+        _init_v10(conn)
+        version = 10
     conn.execute(
         "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
@@ -263,6 +273,70 @@ def _init_v7(conn: sqlite3.Connection) -> None:
     cols = {row[1] for row in conn.execute("PRAGMA table_info(job_tasks);").fetchall()}
     if "error" not in cols:
         conn.execute("ALTER TABLE job_tasks ADD COLUMN error TEXT;")
+
+
+def _init_v8(conn: sqlite3.Connection) -> None:
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS extension_status (
+            extension_id TEXT PRIMARY KEY,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            updated_at REAL NOT NULL
+        );
+        """
+    )
+
+
+def _init_v9(conn: sqlite3.Connection) -> None:
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS personas (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            avatar TEXT NOT NULL DEFAULT '',
+            desc TEXT NOT NULL DEFAULT '',
+            ocean_json TEXT NOT NULL DEFAULT '[]',
+            traits_json TEXT NOT NULL DEFAULT '[]',
+            anchor TEXT NOT NULL DEFAULT '',
+            system_prompt TEXT NOT NULL,
+            raw_json TEXT NOT NULL DEFAULT '{}',
+            active INTEGER NOT NULL DEFAULT 0,
+            created_at REAL NOT NULL,
+            updated_at REAL NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_personas_single_active
+            ON personas(active) WHERE active = 1;
+        """
+    )
+
+
+def _init_v10(conn: sqlite3.Connection) -> None:
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS plans (
+            plan_id TEXT PRIMARY KEY,
+            goal TEXT NOT NULL,
+            status TEXT NOT NULL,
+            created_at REAL NOT NULL,
+            updated_at REAL NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS plan_steps (
+            plan_id TEXT NOT NULL REFERENCES plans(plan_id) ON DELETE CASCADE,
+            step_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            deps_json TEXT NOT NULL DEFAULT '[]',
+            risk TEXT NOT NULL DEFAULT 'low',
+            status TEXT NOT NULL DEFAULT 'pending',
+            requires_auth INTEGER NOT NULL DEFAULT 0,
+            result TEXT,
+            error TEXT,
+            consent_request_id TEXT,
+            updated_at REAL NOT NULL,
+            PRIMARY KEY(plan_id, step_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_plan_steps_plan ON plan_steps(plan_id, step_id);
+        """
+    )
 
 
 def new_session(conn: sqlite3.Connection, session_id: str, persona_id: str, title: str | None) -> None:

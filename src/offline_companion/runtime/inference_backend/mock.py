@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 from offline_companion.runtime.inference_backend.backend import InferenceHealthReport
@@ -34,3 +35,21 @@ class EchoBackend:
     ) -> str:
         mem = f"\n\n[memory]\n{memory_block}" if memory_block.strip() else ""
         return f"[{self.label}] {user_message}{mem}"
+
+    def generate_stream(
+        self,
+        *,
+        system_prompt: str,
+        history: list[MessageRow],
+        user_message: str,
+        memory_block: str,
+        max_tokens: int = 256,
+    ) -> Iterator[str]:
+        """摘要：以单个 chunk 返回 Echo 文本，供流式链路测试。"""
+        yield self.generate(
+            system_prompt=system_prompt,
+            history=history,
+            user_message=user_message,
+            memory_block=memory_block,
+            max_tokens=max_tokens,
+        )

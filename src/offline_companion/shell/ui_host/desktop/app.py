@@ -6,6 +6,7 @@ import argparse
 import ctypes
 import os
 import sys
+import threading
 import time
 
 from offline_companion import __version__
@@ -22,10 +23,83 @@ from offline_companion.shell.ui_host.desktop.instance_ipc import (
     write_pid_file,
 )
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
+from offline_companion.storage.settings_store import load_settings
 
 _WINDOW_TITLE = "Offline Companion"
 _TRAY_TITLE = "Offline Companion"
 _ALLOWED_HOST = "127.0.0.1"
+_DEFAULT_WINDOW_BOUNDS = {"width": 960, "height": 640}
+
+
+class WindowAPI:
+    """摘要：暴露给 pywebview 前端的窗口控制桥接对象。
+
+    参数：
+        window_holder: 延迟持有 pywebview Window 的字典，避免 create_window 前循环引用。
+        close_callback: 关闭窗口时复用主进程的托盘/退出决策。
+    """
+
+    def __init__(self, window_holder: dict[str, object | None], close_callback) -> None:
+        self._window_holder = window_holder
+        self._close_callback = close_callback
+        self._maximized = False
+
+    def minimize(self) -> dict[str, bool]:
+        """摘要：最小化当前桌面窗口。"""
+        window = self._window()
+        if window is not None:
+            window.minimize()
+        return {"ok": window is not None}
+
+    def toggle_maximize(self) -> dict[str, bool]:
+        """摘要：在最大化与还原之间切换窗口。"""
+        window = self._window()
+        if window is None:
+            return {"ok": False, "maximized": self._maximized}
+        if self._maximized:
+            window.restore()
+            self._maximized = False
+        else:
+            window.maximize()
+            self._maximized = True
+        return {"ok": True, "maximized": self._maximized}
+
+    def close(self) -> dict[str, bool]:
+        """摘要：请求关闭桌面窗口，按用户设置选择缩到托盘或退出。"""
+        return self._close_callback()
+
+    def set_bounds(self, x: int, y: int, width: int, height: int) -> dict[str, bool | int]:
+        """摘要：移动并调整窗口大小，供自定义拖拽与缩放手柄调用。"""
+        window = self._window()
+        if window is None:
+            return {"ok": False}
+        safe_width = max(720, int(width))
+        safe_height = max(480, int(height))
+        window.move(int(x), int(y))
+        window.resize(safe_width, safe_height)
+        self._maximized = False
+        return {"ok": True, "x": int(x), "y": int(y), "width": safe_width, "height": safe_height}
+
+    def get_bounds(self) -> dict[str, bool | int]:
+        """摘要：返回 pywebview 已知的窗口边界；缺失字段时返回默认安全值。"""
+        window = self._window()
+        if window is None:
+            return {"ok": False, "x": 0, "y": 0, "width": 960, "height": 640, "maximized": self._maximized}
+        return {
+            "ok": True,
+            "x": int(getattr(window, "x", 0) or 0),
+            "y": int(getattr(window, "y", 0) or 0),
+            "width": int(getattr(window, "width", 960) or 960),
+            "height": int(getattr(window, "height", 640) or 640),
+            "maximized": self._maximized,
+        }
+
+    def is_maximized(self) -> dict[str, bool]:
+        """摘要：返回 bridge 维护的最大化状态。"""
+        return {"ok": True, "maximized": self._maximized}
+
+    def _window(self):
+        return self._window_holder.get("window")
 
 
 def _shutdown_runtime(bundle) -> None:
@@ -51,6 +125,27 @@ def _require_desktop_deps() -> None:
         import webview  # noqa: F401
     except ImportError as e:
         raise ImportError("桌面壳需要 pywebview：pip install -e '.[desktop]'") from e
+
+
+def _initial_window_bounds(data_root) -> dict[str, int]:
+    """摘要：读取并校验持久化窗口位置，缺失时返回默认尺寸。
+
+    参数：
+        data_root: 应用数据根目录。
+    返回值：
+        可传给 pywebview.create_window 的窗口边界参数。
+    """
+    raw = load_settings(data_root).get("window_bounds")
+    if not isinstance(raw, dict):
+        return dict(_DEFAULT_WINDOW_BOUNDS)
+    width = max(720, int(raw.get("width") or _DEFAULT_WINDOW_BOUNDS["width"]))
+    height = max(480, int(raw.get("height") or _DEFAULT_WINDOW_BOUNDS["height"]))
+    bounds = {"width": width, "height": height}
+    if raw.get("x") is not None:
+        bounds["x"] = int(raw["x"])
+    if raw.get("y") is not None:
+        bounds["y"] = int(raw["y"])
+    return bounds
 
 
 def run_desktop(args: argparse.Namespace) -> int:
@@ -88,6 +183,7 @@ def run_desktop(args: argparse.Namespace) -> int:
     tray_icon = None
     tray_ready = False
     hide_to_tray_hint_shown = False
+    is_quitting = False
     data_root = bundle.paths.root
 
     def show_main_window() -> None:
@@ -97,8 +193,12 @@ def run_desktop(args: argparse.Namespace) -> int:
 
     start_activation_listener(show_main_window)
 
-    def on_request_quit() -> None:
-        """摘要：托盘退出须真正结束进程，避免残留占用 18766 与旧 UI。"""
+    def begin_quit() -> bool:
+        """摘要：只执行一次退出清理；返回本次是否首次进入退出流程。"""
+        nonlocal is_quitting
+        if is_quitting:
+            return False
+        is_quitting = True
         remove_pid_file(data_root)
         _shutdown_runtime(bundle)
         if tray_icon is not None:
@@ -106,13 +206,24 @@ def run_desktop(args: argparse.Namespace) -> int:
                 tray_icon.stop()
             except Exception:
                 pass
-        for win in list(webview.windows):
+        return True
+
+    def on_request_quit() -> None:
+        """摘要：托盘退出须真正结束进程，避免残留占用 18766 与旧 UI。"""
+        begin_quit()
+        win = window_holder["window"]
+        if win is None:
+            os._exit(0)
+            return
+
+        def _destroy_window() -> None:
             try:
                 win.destroy()
             except Exception:
-                pass
-        # pystray 回调不在 webview 主线程；destroy 可能无法让 start() 返回
-        os._exit(0)
+                os._exit(0)
+
+        # 不在 pystray/JS bridge 回调栈里同步 destroy，避免 WinForms closing 重入。
+        threading.Timer(0.05, _destroy_window).start()
 
     def start_tray() -> bool:
         """摘要：启动系统托盘；失败时关窗将直接退出（避免无托盘却后台驻留）。"""
@@ -172,13 +283,29 @@ def run_desktop(args: argparse.Namespace) -> int:
         )
         return True
 
-    def on_closing() -> bool:
+    def should_close_to_tray() -> bool:
+        """摘要：读取用户关闭行为设置，默认保持历史行为：缩到托盘。"""
+        return bool(load_settings(data_root).get("close_to_tray", True))
+
+    def request_window_close() -> dict[str, bool | str]:
+        """摘要：按设置关闭窗口；托盘可用且允许时隐藏，否则退出进程。"""
         nonlocal hide_to_tray_hint_shown
-        if not tray_ready:
+        close_to_tray = should_close_to_tray()
+        if not tray_ready or not close_to_tray:
             # 无托盘时禁止「假后台」：直接退出
-            print("托盘不可用，正在退出…", file=sys.stderr)
-            on_request_quit()
-            return False
+            reason = "托盘不可用" if not tray_ready else "已关闭缩到托盘"
+            print(f"{reason}，正在退出…", file=sys.stderr)
+            begin_quit()
+            win = window_holder["window"]
+            if win is not None:
+                def _destroy_window() -> None:
+                    try:
+                        win.destroy()
+                    except Exception:
+                        os._exit(0)
+
+                threading.Timer(0.05, _destroy_window).start()
+            return {"ok": True, "action": "quit"}
 
         win = window_holder["window"]
         if win is not None:
@@ -192,14 +319,29 @@ def run_desktop(args: argparse.Namespace) -> int:
                 )
             except Exception:
                 pass
+        return {"ok": True, "action": "tray"}
+
+    def on_closing() -> bool:
+        if is_quitting:
+            return True
+        close_to_tray = should_close_to_tray()
+        if not tray_ready or not close_to_tray:
+            reason = "托盘不可用" if not tray_ready else "已关闭缩到托盘"
+            print(f"{reason}，正在退出…", file=sys.stderr)
+            begin_quit()
+            return True
+        request_window_close()
         return False
 
+    window_bounds = _initial_window_bounds(paths.root)
     window = webview.create_window(
         _WINDOW_TITLE,
         url=load_url,
-        width=960,
-        height=640,
+        js_api=WindowAPI(window_holder, request_window_close),
+        **window_bounds,
         min_size=(720, 480),
+        frameless=True,
+        easy_drag=False,
     )
     window_holder["window"] = window
     window.events.closing += on_closing

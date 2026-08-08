@@ -22,6 +22,7 @@ class DesktopRuntime:
     model_label: str
     triggers: TriggerRegistry
     paths: AppPaths
+    socket_guard_enabled: bool = False
 
     @classmethod
     def from_bundle(cls, bundle: UISessionBundle) -> DesktopRuntime:

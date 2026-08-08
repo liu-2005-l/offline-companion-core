@@ -6,8 +6,9 @@ import logging
 import os
 import sqlite3
 import unicodedata
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 import yaml
 
@@ -152,6 +153,16 @@ class InferenceBackend(Protocol):
         max_tokens: int = 256,
     ) -> str: ...
 
+    def generate_stream(
+        self,
+        *,
+        system_prompt: str,
+        history: list[MessageRow],
+        user_message: str,
+        memory_block: str,
+        max_tokens: int = 256,
+    ) -> Iterator[str]: ...
+
 
 @dataclass(frozen=True)
 class AssembleReplyResult:
@@ -205,25 +216,13 @@ class PersonaSessionCore:
         emotion_context: EmotionContext | None = None,
     ) -> AssembleReplyResult:
         """摘要：装配 prompt、注入记忆召回与情绪/语气策略并调用推理后端。"""
-        recalls: list[MemoryRecallHit] = []
-        memory_block = ""
-        if reference_block.strip():
-            memory_block = reference_block.strip()
-        elif memory_enabled:
-            emotion_label = emotion_context.emotion if emotion_context is not None else None
-            recalls = recall(conn, user_message, limit=8, emotion=emotion_label)
-            memory_block = format_recall_prompt_block(recalls)
-
-        profile_block = self._profile_memory_block(conn) if memory_enabled else ""
-        combined_memory_block = "\n\n".join(part for part in (profile_block, memory_block) if part.strip())
-
-        tone_instruction = _build_tone_instruction(self.persona.ocean)
-        emotion_instruction = _build_emotion_instruction(emotion_context)
-        system_prompt = self._system_prompt_locked(conn) + tone_instruction + emotion_instruction
-        if os.getenv("OFFLINE_COMPANION_PROMPT_PROBE") == "1":
-            logger.debug("[PROMPT_PROBE] system_prompt=%r", system_prompt[:200])
-
-        identity_reply = self._identity_question_reply(conn, user_message, memory_enabled=memory_enabled)
+        recalls, combined_memory_block, system_prompt, identity_reply = self._assemble_context(
+            conn,
+            user_message=user_message,
+            memory_enabled=memory_enabled,
+            reference_block=reference_block,
+            emotion_context=emotion_context,
+        )
         if identity_reply is not None:
             return AssembleReplyResult(
                 reply=identity_reply,
@@ -243,6 +242,71 @@ class PersonaSessionCore:
             memory_recalls=recalls,
             memory_block=combined_memory_block,
         )
+
+    def assemble_reply_stream(
+        self,
+        backend: InferenceBackend,
+        conn: sqlite3.Connection,
+        *,
+        user_message: str,
+        history: list[MessageRow],
+        memory_enabled: bool,
+        max_tokens: int = 256,
+        reference_block: str = "",
+        emotion_context: EmotionContext | None = None,
+    ) -> Iterator[dict[str, Any]]:
+        """????? prompt ??????????????"""
+        recalls, combined_memory_block, system_prompt, identity_reply = self._assemble_context(
+            conn,
+            user_message=user_message,
+            memory_enabled=memory_enabled,
+            reference_block=reference_block,
+            emotion_context=emotion_context,
+        )
+        yield {"recall": len(recalls)}
+        if identity_reply is not None:
+            yield {"token": identity_reply}
+            yield {"done": True, "reply": identity_reply, "memory_recalls": recalls}
+            return
+        chunks: list[str] = []
+        for token in backend.generate_stream(
+            system_prompt=system_prompt,
+            history=history,
+            user_message=user_message,
+            memory_block=combined_memory_block,
+            max_tokens=max_tokens,
+        ):
+            chunks.append(token)
+            yield {"token": token}
+        yield {"done": True, "reply": "".join(chunks), "memory_recalls": recalls}
+
+    def _assemble_context(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        user_message: str,
+        memory_enabled: bool,
+        reference_block: str = "",
+        emotion_context: EmotionContext | None = None,
+    ) -> tuple[list[MemoryRecallHit], str, str, str | None]:
+        """??????????profile ? system prompt????????????"""
+        recalls: list[MemoryRecallHit] = []
+        memory_block = ""
+        if reference_block.strip():
+            memory_block = reference_block.strip()
+        elif memory_enabled:
+            emotion_label = emotion_context.emotion if emotion_context is not None else None
+            recalls = recall(conn, user_message, limit=8, emotion=emotion_label)
+            memory_block = format_recall_prompt_block(recalls)
+        profile_block = self._profile_memory_block(conn) if memory_enabled else ""
+        combined_memory_block = "\n\n".join(part for part in (profile_block, memory_block) if part.strip())
+        tone_instruction = _build_tone_instruction(self.persona.ocean)
+        emotion_instruction = _build_emotion_instruction(emotion_context)
+        system_prompt = self._system_prompt_locked(conn) + tone_instruction + emotion_instruction
+        if os.getenv("OFFLINE_COMPANION_PROMPT_PROBE") == "1":
+            logger.debug("[PROMPT_PROBE] system_prompt=%r", system_prompt[:200])
+        identity_reply = self._identity_question_reply(conn, user_message, memory_enabled=memory_enabled)
+        return recalls, combined_memory_block, system_prompt, identity_reply
 
     def _profile_memory_block(self, conn: sqlite3.Connection) -> str:
         profile = MemoryLifecycleManager.latest_profile_memory(conn)

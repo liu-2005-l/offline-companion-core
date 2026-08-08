@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -336,6 +336,65 @@ class ConversationOrchestrator:
             memory_explanation=explanation,
         )
 
+    def _execute_local_prepared_stream(
+        self,
+        prepared: _PreparedTurn,
+        *,
+        decision: ModelRoutingDecision | None = None,
+        route_mode: str = "local",
+    ) -> Iterator[dict[str, Any]]:
+        """摘要：执行本地单轮流式回复；断连时不落 assistant partial。"""
+        emotion = self._emotion_payload(prepared.chat_text)
+        routing = self._routing_meta(decision, route_mode) if decision is not None else None
+        self._append_user_message(prepared.chat_text, emotion=emotion, channel=route_mode, routing=routing)
+        history = recent_messages(self.conn, self.session_id, limit=self.history_limit)
+        history_for_model = history[:-1] if history and history[-1].role == "user" else history
+        raw_parts: list[str] = []
+        recalls: list[Any] = []
+        for event in self.session_core.assemble_reply_stream(
+            self.backend,
+            self.conn,
+            user_message=prepared.chat_text,
+            history=history_for_model,
+            memory_enabled=prepared.memory_on,
+            max_tokens=self.max_tokens,
+            emotion_context=emotion.context,
+        ):
+            if event.get("token") is not None:
+                raw_parts.append(str(event["token"]))
+            if event.get("done"):
+                recalls = list(event.get("memory_recalls") or [])
+                continue
+            yield event
+        final_reply = reformat_local_reply("".join(raw_parts), emotion_context=emotion.context)
+        self._append_assistant_message(
+            final_reply,
+            emotion=emotion,
+            channel=route_mode,
+            routing=routing,
+            extra_meta={"reformatted": True},
+        )
+        explanation = get_memory_explanation(recalls) if prepared.memory_on and recalls else None
+        if decision is None:
+            result = TurnResult(
+                reply=final_reply,
+                memory_on=prepared.memory_on,
+                memory_saved=prepared.memory_saved,
+                memory_skipped_trigger=prepared.memory_skipped,
+                memory_recalls=tuple(recalls),
+                memory_explanation=explanation,
+            )
+        else:
+            result = self._turn_result_with_route(
+                reply=final_reply,
+                prepared=prepared,
+                decision=decision,
+                route_mode=route_mode,
+                memory_recalls=tuple(recalls),
+                memory_explanation=explanation,
+            )
+        yield {"done": True, "turn_result": result}
+
     def _execute_cloud_once(
         self,
         prepared: _PreparedTurn,
@@ -597,6 +656,60 @@ class ConversationOrchestrator:
             purpose="Cloud routing for current turn",
             cloud_post=self.cloud_post,
             decision=decision,
+        )
+
+    def run_turn_stream(self, user_text: str, *, memory_on: bool) -> Iterator[dict[str, Any]]:
+        """摘要：流式执行单轮对话；当前仅本地模型逐 token，云端/同意路径退化为单个 done。"""
+        safety_result = self._safety_result(user_text, memory_on=memory_on)
+        if safety_result is not None:
+            yield {"done": True, "turn_result": safety_result}
+            return
+        prepared, early_result = self._prepare_turn(user_text, memory_on=memory_on)
+        if early_result is not None:
+            yield {"done": True, "turn_result": early_result}
+            return
+        assert prepared is not None
+        if self.model_router is None or self.cloud_post is None:
+            yield from self._execute_local_prepared_stream(prepared)
+            return
+        decision = self.model_router.route(prepared.chat_text, privacy_mode=self.privacy_mode)
+        if not decision.selected_model:
+            yield {
+                "done": True,
+                "turn_result": self._turn_result_with_route(
+                    reply="当前没有满足约束的可用模型。",
+                    prepared=prepared,
+                    decision=decision,
+                    route_mode="none",
+                ),
+            }
+            return
+        if decision.requires_consent:
+            yield {
+                "done": True,
+                "turn_result": self._submit_routing_consent(
+                    prepared,
+                    decision,
+                    purpose="Cloud routing for current turn",
+                ),
+            }
+            return
+        route_mode = self._route_mode_for_model(decision.selected_model)
+        if route_mode == "cloud":
+            yield {
+                "done": True,
+                "turn_result": self._execute_cloud_with_fallback(
+                    prepared,
+                    purpose="Cloud routing for current turn",
+                    cloud_post=self.cloud_post,
+                    decision=decision,
+                ),
+            }
+            return
+        yield from self._execute_local_prepared_stream(
+            prepared,
+            decision=decision,
+            route_mode=route_mode or "local",
         )
 
     def resume_pending_turn(self, request_id: str, *, allowed: bool) -> TurnResult:

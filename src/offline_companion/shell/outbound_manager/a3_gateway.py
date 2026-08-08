@@ -116,6 +116,7 @@ class UIHostConsentGateway:
         decision = "allow" if allowed else "deny"
         artifact = dict(pending.artifact)
         artifact["user_decision"] = decision
+        artifact["allowed"] = allowed
         artifact["timestamp"] = time.time()
         pending.artifact = artifact
         pending.decided = True

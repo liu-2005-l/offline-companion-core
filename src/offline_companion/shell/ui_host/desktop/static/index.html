@@ -1,113 +1,739 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Offline Companion</title>
-  <link rel="icon" href="/favicon.ico">
-  <link rel="stylesheet" href="/shell.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Offline Companion · 新 UI 原型</title>
+<link rel="stylesheet" href="/shell.css">
 </head>
 <body>
-  <div id="app">
-    <div id="titlebar">Offline Companion · 本地陪伴</div>
-    <div id="body">
-      <nav id="activity-bar" aria-label="侧栏导航">
-        <button type="button" class="nav-btn active" data-panel="chat" title="会话">💬</button>
-        <button type="button" class="nav-btn" data-panel="persona" title="人格">🧑</button>
-        <button type="button" class="nav-btn" data-panel="skill" title="Plugin">🧩</button>
-        <button type="button" class="nav-btn" data-panel="memory" title="记忆">🧠</button>
-        <button type="button" class="nav-btn" data-panel="settings" title="设置">⚙️</button>
-      </nav>
-      <aside id="sidebar-panel">
-        <div class="placeholder-box">点击左侧图标切换主工作区。</div>
-      </aside>
-      <main id="main">
-        <section id="view-chat" class="workspace-view active">
-          <div id="chat-toolbar">
-            <button type="button" id="clear-chat" title="清空当前会话对话记录">清空对话</button>
-          </div>
-          <div id="route-panel" class="route-panel">
-            <div class="route-chip" id="route-mode">route · -</div>
-            <div class="route-chip" id="route-reason">reason · -</div>
-            <div class="route-chip" id="route-consent">consent · -</div>
-            <div class="route-chip" id="route-fallback">fallback · -</div>
-          </div>
-          <div id="chat" aria-live="polite"></div>
-          <form id="composer">
-            <input id="input" autocomplete="off" placeholder="说点什么吧……（可用 #remember 保存记忆）">
-            <button type="submit" id="send">发送</button>
-          </form>
-        </section>
-        <section id="view-persona" class="workspace-view">
-          <div class="workspace-header">
-            <h2>人格</h2>
-            <p>当前人格：<strong id="persona-label">-</strong></p>
-          </div>
-          <div class="workspace-card">
-            <p class="placeholder-box">这里先展示只读人格信息，后续再补充编辑与切换能力。</p>
-          </div>
-        </section>
-        <section id="view-skill" class="workspace-view">
-          <div class="workspace-header">
-            <h2>Plugin 沙箱</h2>
-            <p>当前阶段先用 mock Plugin 验证 `iframe + postMessage` 安全边界。</p>
-          </div>
-          <div class="workspace-card plugin-workspace">
-            <div class="plugin-list-panel">
-              <div id="plugin-list" class="plugin-list"></div>
-            </div>
-            <div class="plugin-frame-panel">
-              <div class="plugin-frame-header">
-                <span id="plugin-frame-title">未加载 Plugin</span>
-                <span id="plugin-frame-status" class="plugin-frame-status">待命</span>
-              </div>
-              <iframe
-                id="plugin-frame"
-                title="Plugin 沙箱"
-                sandbox="allow-scripts"
-                referrerpolicy="no-referrer"
-              ></iframe>
-            </div>
-          </div>
-        </section>
-        <section id="view-memory" class="workspace-view">
-          <div class="workspace-header">
-            <h2>记忆库</h2>
-            <p>记忆默认开启；无效记忆会单独标记，可恢复为有效。</p>
-          </div>
-          <div id="memory-list" class="memory-list"></div>
-        </section>
-        <section id="view-settings" class="workspace-view">
-          <div class="workspace-header">
-            <h2>设置</h2>
-          </div>
-          <div class="workspace-card">
-            <p class="placeholder-box">完整设置页后续补齐。</p>
-            <p><button type="button" id="consent-demo">Consent 占位演示</button></p>
-          </div>
-        </section>
-      </main>
-    </div>
-    <footer id="statusbar">
-      <span class="status-item" id="status-privacy">隐私 · -</span>
-      <span class="status-item" id="memory-on-label">记忆 · 常开</span>
-      <input type="checkbox" id="memory-on" checked hidden>
-      <span class="status-item" id="status-model">模型 · -</span>
-      <span class="status-item" id="status-session">会话 · -</span>
-    </footer>
+ 
+<!-- 主题切换器（仅原型预览用） -->
+<!-- App -->
+<div class="app" data-theme="light" id="appRoot">
+ 
+  <!-- 标题栏（双击最大化/还原） -->
+  <div class="title-bar" ondblclick="windowToggleMaximize()"></div>
+ 
+  <!-- 窗口控制按钮（浏览器式） -->
+  <div class="window-controls" id="windowControls">
+    <button class="window-btn" onclick="windowMinimize()" title="收起">
+      <svg viewBox="0 0 12 12" width="12" height="12"><rect x="2" y="5.5" width="8" height="1" fill="currentColor"/></svg>
+    </button>
+    <button class="window-btn" onclick="windowToggleMaximize()" title="缩放" id="maximizeBtn">
+      <svg viewBox="0 0 12 12" width="12" height="12"><rect x="2.5" y="2.5" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1"/></svg>
+    </button>
+    <button class="window-btn close" onclick="windowClose()" title="退出">
+      <svg viewBox="0 0 12 12" width="12" height="12"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+    </button>
   </div>
-
-  <div id="consent-modal" role="dialog" aria-modal="true" aria-labelledby="consent-title">
-    <div class="modal-card">
-      <h4 id="consent-title">出站同意</h4>
-      <p id="consent-body"></p>
-      <div class="modal-actions">
-        <button type="button" id="consent-close">关闭</button>
-        <button type="button" class="primary" disabled>同意（占位）</button>
+ 
+  <!-- 拖拽缩放手柄 -->
+  <div class="resize-handle resize-n" data-dir="n"></div>
+  <div class="resize-handle resize-s" data-dir="s"></div>
+  <div class="resize-handle resize-e" data-dir="e"></div>
+  <div class="resize-handle resize-w" data-dir="w"></div>
+  <div class="resize-handle resize-ne" data-dir="ne"></div>
+  <div class="resize-handle resize-nw" data-dir="nw"></div>
+  <div class="resize-handle resize-se" data-dir="se"></div>
+  <div class="resize-handle resize-sw" data-dir="sw"></div>
+ 
+  <!-- 侧边栏 -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">OC</div>
+    <div class="sidebar-nav">
+      <button class="nav-btn active" onclick="switchView('chat')" title="会话">
+        <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      </button>
+      <button class="nav-btn" onclick="switchView('persona')" title="人格">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+      </button>
+      <button class="nav-btn" onclick="switchView('skill')" title="技能">
+        <svg viewBox="0 0 24 24"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+      </button>
+      <button class="nav-btn" onclick="switchView('plugin')" title="插件">
+        <svg viewBox="0 0 24 24"><path d="M9 2v6M15 2v6M6 8h12a1 1 0 0 1 1 1v3a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1zM10 16v4a2 2 0 0 0 2 2 2 2 0 0 0 2-2v-4"/></svg>
+      </button>
+      <button class="nav-btn" onclick="switchView('memory')" title="记忆">
+        <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3 3 3 0 0 0-3 3 3 3 0 0 0 0 6 3 3 0 0 0 3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0 3-3 3 3 0 0 0 0-6 3 3 0 0 0-3-3 3 3 0 0 0-3-3z"/><path d="M12 8v8M9 12h6"/></svg>
+      </button>
+      <button class="nav-btn" onclick="switchView('settings')" title="设置">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-footer">
+      <button class="nav-btn avatar-btn" onclick="toggleLoginCard(event)" title="账户">
+        <div class="sidebar-avatar" id="sidebarAvatar">客</div>
+      </button>
+      <div class="login-card" id="loginCard">
+        <div class="login-card-arrow"></div>
+        <div class="login-card-header">
+          <div class="login-card-avatar" id="loginCardAvatar">客</div>
+          <div>
+            <div class="login-card-name" id="loginCardName">访客模式</div>
+            <div class="login-card-status" id="loginCardStatus">未登录</div>
+          </div>
+        </div>
+        <div class="login-card-body">
+          <div class="login-card-hint">
+            <strong>无需登录即可使用</strong>几乎所有功能在本地完整可用。
+          </div>
+          <div class="login-card-feature">
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            对话、人格、技能、记忆（本地）
+          </div>
+          <div class="login-card-feature">
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            本地模型推理 & 离线运行
+          </div>
+          <div class="login-card-feature locked" id="cloudSyncFeature">
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            记忆云端同步（需登录）
+          </div>
+        </div>
+        <div class="login-card-footer">
+          <button class="cloud-test-btn" id="loginBtn" onclick="toggleLogin()">登录</button>
+          <button class="cloud-save-btn" id="cloudSyncBtn" style="display:none" onclick="showToast('云端同步：将本地记忆加密上传到你的账户')">同步记忆</button>
+        </div>
+        <div class="login-card-link" onclick="closeLoginCard(); switchView('settings')">设置 →</div>
+      </div>
+    </div>
+  </nav>
+ 
+  <!-- 主内容 -->
+  <main class="main">
+ 
+    <!-- ═══ 聊天视图 ═══ -->
+    <section class="view active" data-view="chat">
+      <header class="view-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="view-title">会话</span>
+          <span class="view-subtitle">小诺 · 本地陪伴</span>
+        </div>
+      </header>
+      <div class="chat-body">
+        <div class="chat-messages" id="chatMessages">
+        <div class="msg msg-bot" id="typingMsg" style="display:none;">
+          <div class="msg-avatar">诺</div>
+          <div class="msg-bubble">
+            <div class="typing"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="memory-trigger" id="memoryTrigger">
+        <div class="memory-trigger-icon">
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
+        <div class="memory-trigger-label">对话记忆</div>
+        <div class="memory-trigger-badge" id="memoryCount">0</div>
+      </div>
+      <div class="memory-panel" id="memoryPanel"></div>
+      </div>
+      <div class="chat-input">
+        <div class="chat-input-box">
+          <textarea id="chatInput" placeholder="输入消息，Enter 发送，Shift+Enter 换行" rows="1" oninput="autoResize(this); updateSendBtn()"></textarea>
+          <div class="chat-input-bar">
+            <button class="plan-toggle-btn" id="planToggleBtn" onclick="togglePlanMode()" title="任务拆解模式">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              <span>任务拆解</span>
+            </button>
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="发送">
+              <svg viewBox="0 0 24 24" width="16" height="16"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="chat-no-model" id="chatNoModel" style="display:none">无可用模型 · 点击右下角「模型」启用一个</div>
+    </section>
+ 
+    <!-- ═══ 人格视图 ═══ -->
+    <section class="view" data-view="persona">
+      <header class="view-header">
+        <span class="view-title">人格</span>
+        <button class="view-action-btn" onclick="openPersonaCreator()">
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          新建
+        </button>
+      </header>
+      <div class="persona-view">
+        <div class="persona-selector" id="personaSelector"></div>
+ 
+        <div class="persona-detail-card" id="personaDetailCard">
+          <div class="empty-state product-empty-state">
+            <div class="empty-icon"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></div>
+            <div class="empty-title">暂无人格</div>
+            <div class="empty-desc">确保后端已预置默认人格</div>
+          </div>
+        </div>
+      </div>
+    </section>
+ 
+    <!-- ═══ 技能视图 ═══ -->
+    <section class="view" data-view="skill">
+      <header class="view-header">
+        <span class="view-title">技能</span>
+        <span class="view-subtitle">额外能力 · 给 Agent 增加新技能</span>
+      </header>
+      <div class="skill-view">
+        <div class="ext-toolbar">
+          <button class="ext-toolbar-btn primary" onclick="showToast('打开技能商城...')">
+            <svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5M5 9v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M9 13h6"/></svg>
+            浏览商城
+          </button>
+          <button class="ext-toolbar-btn" onclick="showToast('选择本地技能文件/目录...')">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/><path d="M3 3h18v18H3z" style="opacity:0.3"/></svg>
+            导入本地
+          </button>
+          <button class="ext-toolbar-btn" onclick="showToast('提交工单到技能商城...')">
+            <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
+            提交审核
+          </button>
+        </div>
+ 
+        <div class="skill-section-header">
+          <h3>已安装技能</h3>
+          <span class="skill-section-desc">为 Agent 扩展任务级能力 · 可按需启用</span>
+        </div>
+        <div class="skill-grid" id="skillGrid">
+          <div class="empty-state product-empty-state">
+            <div class="empty-icon"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg></div>
+            <div class="empty-title">暂无已安装技能</div>
+            <div class="empty-desc">从商城浏览或导入本地技能来扩展能力</div>
+          </div>
+        </div>
+      </div>
+    </section>
+ 
+    <!-- ═══ 插件视图 ═══ -->
+    <section class="view" data-view="plugin">
+      <header class="view-header">
+        <span class="view-title">插件</span>
+        <span class="view-subtitle">应用增强 · 扩展本体能力</span>
+      </header>
+      <div class="skill-view">
+        <div class="ext-toolbar">
+          <button class="ext-toolbar-btn primary" onclick="showToast('打开插件商城...')">
+            <svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5M5 9v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M9 13h6"/></svg>
+            浏览商城
+          </button>
+          <button class="ext-toolbar-btn" onclick="showToast('选择本地插件文件/目录...')">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/><path d="M3 3h18v18H3z" style="opacity:0.3"/></svg>
+            导入本地
+          </button>
+          <button class="ext-toolbar-btn" onclick="showToast('提交工单到插件商城...')">
+            <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
+            提交审核
+          </button>
+        </div>
+ 
+        <div class="skill-section-header">
+          <h3>已安装插件</h3>
+          <span class="skill-section-desc">增强应用本体功能 · 可通过 PluginCSS 热加载修改 Shell UI</span>
+        </div>
+        <div class="skill-grid" id="pluginGrid">
+          <div class="empty-state product-empty-state">
+            <div class="empty-icon"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6"/><path d="M15 2v6"/><path d="M6 8h12v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/><path d="M12 16v6"/></svg></div>
+            <div class="empty-title">暂无已安装插件</div>
+            <div class="empty-desc">从商城浏览或导入本地插件来扩展能力</div>
+          </div>
+        </div>
+ 
+        <!-- Shell 主题定制面板 -->
+        <div class="shell-custom-panel" id="shellCustomPanel">
+          <div class="shell-custom-header">
+            <span class="shell-custom-title">Shell 主题定制</span>
+            <span class="shell-custom-badge">PluginCSS 热加载</span>
+          </div>
+ 
+          <div class="shell-custom-section">
+            <div class="shell-custom-label">主色调</div>
+            <div class="shell-swatches">
+              <div class="shell-swatch" style="background:#0ea5e9" onclick="applyShellAccent('#0ea5e9','#0284c7','#e0f2fe','海洋蓝')" title="海洋蓝"></div>
+              <div class="shell-swatch" style="background:#22c55e" onclick="applyShellAccent('#22c55e','#16a34a','#dcfce7','森林绿')" title="森林绿"></div>
+              <div class="shell-swatch" style="background:#f97316" onclick="applyShellAccent('#f97316','#ea580c','#ffedd5','日落橙')" title="日落橙"></div>
+              <div class="shell-swatch" style="background:#a78bfa" onclick="applyShellAccent('#a78bfa','#8b5cf6','#f5f3ff','薰衣草')" title="薰衣草"></div>
+              <div class="shell-swatch" style="background:#f43f5e" onclick="applyShellAccent('#f43f5e','#e11d48','#ffe4e6','玫瑰红')" title="玫瑰红"></div>
+            </div>
+          </div>
+ 
+          <div class="shell-custom-section">
+            <div class="shell-custom-label">圆角大小</div>
+            <div class="shell-radius-row">
+              <input type="range" class="shell-radius-slider" id="shellRadiusSlider" min="0" max="20" value="10" oninput="applyShellRadius(this.value); document.getElementById('shellRadiusValue').textContent = this.value">
+              <span class="shell-radius-value" id="shellRadiusValue">10</span>
+            </div>
+          </div>
+ 
+          <div class="shell-custom-section">
+            <div class="shell-custom-label">侧栏宽度</div>
+            <div class="shell-width-btns">
+              <button class="shell-width-btn" onclick="applyShellSidebarWidth(48); document.querySelectorAll('.shell-width-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active')">窄 48px</button>
+              <button class="shell-width-btn active" onclick="applyShellSidebarWidth(56); document.querySelectorAll('.shell-width-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active')">标准 56px</button>
+              <button class="shell-width-btn" onclick="applyShellSidebarWidth(72); document.querySelectorAll('.shell-width-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active')">宽 72px</button>
+            </div>
+          </div>
+ 
+          <div class="shell-custom-actions">
+            <button class="cloud-test-btn" onclick="reloadShellCSS()">热重载 https://sfile.chatglm.cn/workspace/file/4e/4ecc63967f.css</button>
+            <button class="cloud-save-btn" onclick="resetShellCustom()">恢复默认</button>
+          </div>
+ 
+          <div class="shell-hotreload-note">
+            此插件通过 <code>PluginCSS.inject()</code> 向 <code>&lt;head&gt;</code> 注入 <code>&lt;style data-plugin-css&gt;</code> 标签，
+            覆盖 https://sfile.chatglm.cn/workspace/file/4e/4ecc63967f.css 变量。无需刷新页面，修改即时生效。插件卸载时调用 <code>PluginCSS.remove()</code> 自动清理。
+          </div>
+        </div>
+      </div>
+    </section>
+ 
+    <!-- ═══ 记忆视图 ═══ -->
+    <section class="view" data-view="memory">
+      <header class="view-header">
+        <span class="view-title">记忆</span>
+        <span class="view-subtitle">12 条</span>
+      </header>
+      <div class="memory-view">
+        <div class="memory-toolbar">
+          <div class="search-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input class="search-input" id="memorySearch" placeholder="搜索记忆内容、标签..." oninput="onMemorySearch(this.value)">
+            <button class="search-clear" id="searchClear" onclick="clearMemorySearch()" style="display:none;">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="filter-dropdown" id="filterDropdown">
+            <button class="filter-dropdown-btn" onclick="toggleFilterDropdown()">
+              <span id="filterDropdownLabel">全部</span>
+              <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="filter-dropdown-menu" id="filterDropdownMenu">
+              <div class="filter-dropdown-item active" onclick="filterMemoryType(this, '全部')">全部</div>
+              <div class="filter-dropdown-item" onclick="filterMemoryType(this, '偏好')">偏好</div>
+              <div class="filter-dropdown-item" onclick="filterMemoryType(this, '事件')">事件</div>
+              <div class="filter-dropdown-item" onclick="filterMemoryType(this, '知识')">知识</div>
+              <div class="filter-dropdown-item" onclick="filterMemoryType(this, '画像')">画像</div>
+            </div>
+          </div>
+          <div class="date-range-wrap">
+            <div class="date-picker" id="dateFromPicker">
+              <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span class="date-text" id="dateFromText">—</span>
+              <input type="date" class="date-input-native" id="dateFrom" onchange="onDateChange()">
+            </div>
+            <span class="date-sep">—</span>
+            <div class="date-picker" id="dateToPicker">
+              <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span class="date-text" id="dateToText">—</span>
+              <input type="date" class="date-input-native" id="dateTo" onchange="onDateChange()">
+            </div>
+            <button class="date-clear" id="dateClear" onclick="clearDateRange()" title="清除时间筛选" style="display:none;">
+              <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="memory-list" id="memoryCardList">
+          <div class="empty-state product-empty-state" id="memoryEmptyState">
+            <div class="empty-icon"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+            <div class="empty-title">暂无记忆</div>
+            <div class="empty-desc">在对话中提到的信息会自动记录到这里</div>
+          </div>
+        </div>
+      </div>
+    </section>
+ 
+    <!-- 记忆详情浮层 -->
+    <div id="extDetailOverlay" class="overlay" onclick="if(event.target===this)closeExtDetail()">
+      <div class="ext-detail-panel" id="extDetailPanel"></div>
+    </div>
+ 
+    <div id="memoryDetailOverlay" class="overlay" onclick="if(event.target===this)closeMemoryDetail()">
+      <div class="memory-detail-panel">
+        <div class="memory-detail-header">
+          <span class="memory-detail-title">记忆详情</span>
+          <button class="model-panel-close" onclick="closeMemoryDetail()">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="memory-detail-body">
+          <div class="memory-detail-field">
+            <span class="memory-detail-label">类型</span>
+            <span class="memory-type preference" id="detailType">偏好</span>
+          </div>
+          <div class="memory-detail-field">
+            <span class="memory-detail-label">内容</span>
+            <div class="memory-detail-content" id="detailContent"></div>
+          </div>
+          <div class="memory-detail-field">
+            <span class="memory-detail-label">标签</span>
+            <div class="memory-tags" id="detailTags"></div>
+          </div>
+          <div class="memory-detail-field">
+            <span class="memory-detail-label">来源</span>
+            <span class="memory-detail-value" id="detailSource">—</span>
+          </div>
+          <div class="memory-detail-field">
+            <span class="memory-detail-label">创建时间</span>
+            <span class="memory-detail-value" id="detailCreated">—</span>
+          </div>
+          <div class="memory-detail-field">
+            <span class="memory-detail-label">修改时间</span>
+            <span class="memory-detail-value" id="detailModified">—</span>
+          </div>
+          <div class="memory-detail-field">
+            <span class="memory-detail-label">状态</span>
+            <span class="memory-detail-status active" id="detailStatus">活跃</span>
+          </div>
+          <div class="memory-detail-field">
+            <span class="memory-detail-label">ID</span>
+            <span class="memory-detail-value" id="detailId" style="font-family:monospace;font-size:11px">—</span>
+          </div>
+        </div>
+        <div class="memory-detail-actions">
+          <button class="cloud-test-btn" id="memEditBtn" onclick="toggleMemoryEdit()">编辑</button>
+          <button class="cloud-test-btn" id="memStatusBtn" onclick="toggleMemoryStatus()">标记失效</button>
+          <button class="cloud-save-btn" style="background:var(--danger)" onclick="deleteMemory()">删除</button>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- ═══ 设置视图 ═══ -->
+    <section class="view" data-view="settings">
+      <header class="view-header">
+        <span class="view-title">设置</span>
+      </header>
+      <div class="settings-view">
+        <div class="settings-section">
+          <h3>通用</h3>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">主题</div>
+              <div class="setting-desc">切换浅色 / 深色 / 暖粉主题</div>
+            </div>
+            <select class="select-control" onchange="setTheme(this.value)">
+              <option value="light">浅色</option>
+              <option value="dark">深色</option>
+              <option value="pink">暖粉</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">记忆功能</div>
+              <div class="setting-desc">记录对话内容到本地数据库</div>
+            </div>
+            <div class="toggle-switch on" id="memoryToggle" onclick="toggleMemory(this)"></div>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">关窗缩到托盘</div>
+              <div class="setting-desc">点 ✕ 不退出，缩到后台运行</div>
+            </div>
+            <div class="toggle-switch on" id="closeToTrayToggle" onclick="toggleCloseToTray(this)"></div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>隐私</h3>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">隐私模式</div>
+              <div class="setting-desc" id="privacyDesc">LOCAL_ONLY：纯本地运行，不联网，所有数据不出本机</div>
+            </div>
+            <select class="select-control" onchange="updatePrivacyDesc(this.value)">
+              <option value="LOCAL_ONLY">LOCAL_ONLY</option>
+              <option value="LAN">LAN</option>
+              <option value="CLOUD">CLOUD</option>
+            </select>
+          </div>
+          <div class="setting-row" style="display:none;">
+            <div>
+              <div class="setting-label">出站需同意</div>
+              <div class="setting-desc">任何联网操作前弹窗确认</div>
+            </div>
+            <div class="toggle-switch on" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>模型</h3>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">当前模型</div>
+              <div class="setting-desc">尚未加载模型</div>
+            </div>
+            <select class="select-control">
+              <option>尚未加载模型</option>
+              <option>自定义模型...</option>
+            </select>
+          </div>
+          <div class="setting-row" style="display:none;">
+            <div>
+              <div class="setting-label">GPU 加速</div>
+              <div class="setting-desc">使用 GPU 推理（如可用）</div>
+            </div>
+            <div class="toggle-switch" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>关于</h3>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">参与改进计划</div>
+              <div class="setting-desc">帮助改进回复质量 · 需登录云端模式 · 默认关闭</div>
+            </div>
+            <div class="toggle-switch" id="improveToggle" onclick="toggleImprovePlan(this)"></div>
+          </div>
+          <div class="setting-row" id="improveStatusRow" style="display:none;">
+            <div>
+              <div class="setting-label">当前状态</div>
+              <div class="setting-desc" id="improveStatus">—</div>
+            </div>
+          </div>
+          <div class="about-info">
+            <strong>Offline Companion</strong> v1.1.0<br>
+            本地优先 AI 陪伴 Agent<br>
+            模型：按实际启用状态加载<br>
+            架构：A/B/C 三层 · B/C 层禁网<br>
+            <br>
+            <span style="color:var(--text-tertiary);">© 2026 · 个人项目 · 无遥测</span>
+          </div>
+        </div>
+      </div>
+    </section>
+ 
+  </main>
+ 
+  <!-- 状态栏 -->
+  <footer class="statusbar">
+    <span class="status-item"><span class="status-dot"></span> 本地</span>
+    <span class="status-item">记忆 · 常开</span>
+    <span class="status-item status-clickable" id="modelSwitcher" onclick="toggleModelCard(event)">模型 · 未加载</span>
+    <span class="status-spacer"></span>
+    <span class="status-item status-clickable" id="sessionInfo" onclick="toggleSessionPanel()">会话 · 新建</span>
+  </footer>
+ 
+  <!-- 一级模型卡片（贴合状态栏，PyCharm 式） -->
+  <div id="modelCard" class="model-card">
+    <div class="model-card-section">
+      <div class="model-card-list" id="modelCardList">
+      </div>
+      <div class="model-card-empty" id="modelCardEmpty" style="display:none">无已启用模型</div>
+    </div>
+    <div class="model-card-divider"></div>
+    <div class="model-card-auto-row">
+      <span class="model-card-item-name">Auto</span>
+      <div class="model-item-toggle" id="autoToggle" onclick="toggleAuto(this)"></div>
+    </div>
+    <div class="model-card-divider"></div>
+    <div class="model-card-manage" onclick="openModelManager()">管理模型</div>
+  </div>
+ 
+</div>
+ 
+<!-- 二级模型管理浮层 -->
+<div id="modelOverlay" class="overlay" onclick="if(event.target===this)toggleModelPanel()">
+  <div class="model-panel">
+    <div class="model-panel-header">
+      <span class="model-panel-title">模型管理</span>
+      <button class="model-panel-close" onclick="toggleModelPanel()">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+ 
+    <div class="model-section">
+      <div class="model-section-title">本地模型</div>
+      <div class="model-list" id="localModelList">
+        <div class="empty-state product-empty-state">
+          <div class="empty-icon"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></svg></div>
+          <div class="empty-title">暂无可用模型</div>
+          <div class="empty-desc">请先添加本地模型或连接云端模型</div>
+        </div>
+      </div>
+      </div>
+      <div class="model-path-config">
+        <label>模型路径</label>
+        <input class="model-path-input" value="C:\Users\15720\AppData\Local\OfflineCompanion\models" id="modelPath">
+        <button class="model-path-btn" onclick="showToast('打开文件夹选择器')">浏览</button>
+      </div>
+      <button class="model-add-btn" onclick="showToast('实际接入后将打开文件选择器，选择 .gguf 文件')">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        添加本地模型文件
+      </button>
+    </div>
+ 
+    <div class="model-divider"></div>
+ 
+    <div class="model-section">
+      <div class="model-section-title">
+        云端模型
+        <span class="model-section-badge" title="云端连接需 A2 许可 + A3 Consent 授权">需授权</span>
+      </div>
+      <div class="model-list" id="cloudModelList">
+        <div class="model-empty" id="cloudEmpty">尚未添加云端模型，在下方配置 API</div>
+      </div>
+    </div>
+ 
+    <div class="model-divider"></div>
+ 
+    <div class="model-section">
+      <div class="model-section-title" id="cloudFormTitle">添加云端 API</div>
+      <div class="cloud-config">
+        <div class="cloud-field">
+          <label class="cloud-label">API 端点</label>
+          <input class="cloud-input" placeholder="https://api.openai.com/v1" id="cloudEndpoint">
+        </div>
+        <div class="cloud-field">
+          <label class="cloud-label">API Key</label>
+          <input class="cloud-input" type="password" placeholder="sk-..." id="cloudKey">
+        </div>
+        <div class="cloud-field">
+          <label class="cloud-label">模型名称</label>
+          <input class="cloud-input" placeholder="模型名称" id="cloudModel">
+        </div>
+        <div class="cloud-actions">
+          <button class="cloud-test-btn" onclick="showToast('将发起测试请求（需 A3 Consent 确认）')">测试连接</button>
+          <button class="cloud-save-btn" id="cloudSaveBtn" onclick="cloudConnect()">保存并启用</button>
+        </div>
+        <div class="cloud-notice">
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/></svg>
+          云端连接受 Consent 审计链路保护，首次使用将弹出授权确认。API Key 仅存本地，不上传。
+        </div>
       </div>
     </div>
   </div>
-
-  <script src="/shell.js"></script>
+</div>
+ 
+<!-- 会话管理浮层 -->
+<div id="sessionOverlay" class="overlay" onclick="if(event.target===this)toggleSessionPanel()">
+  <div class="model-panel" style="width:520px">
+    <div class="model-panel-header">
+      <span class="model-panel-title">会话管理</span>
+      <button class="model-panel-close" onclick="toggleSessionPanel()">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+ 
+    <div class="model-section">
+      <button class="session-new-btn" onclick="newSession()">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        新建会话
+      </button>
+    </div>
+ 
+    <div class="model-divider"></div>
+ 
+    <div class="model-section">
+      <div class="model-section-title">历史会话</div>
+      <div class="session-list" id="sessionList">
+        <div class="empty-state product-empty-state"><div class="empty-title">暂无会话</div><div class="empty-desc">新建会话后会显示在这里</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+ 
+<!-- 确认弹窗 -->
+<div id="confirmOverlay" class="overlay" onclick="if(event.target===this)closeConfirm(true)">
+  <div class="confirm-panel">
+    <div class="confirm-body">
+      <div class="confirm-title" id="confirmTitle">确认操作</div>
+      <div class="confirm-msg" id="confirmMsg">确定要执行此操作吗？</div>
+    </div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeConfirm(true)">取消</button>
+      <button class="confirm-ok" id="confirmOkBtn">确认</button>
+    </div>
+  </div>
+</div>
+ 
+<!-- 消息右键菜单 -->
+<div id="msgContextMenu" class="ctx-menu" style="display:none;">
+  <div class="ctx-item" onclick="ctxReply()">
+    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+    <span>回复</span>
+  </div>
+  <div class="ctx-item" onclick="ctxCopy()">
+    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    <span>复制</span>
+  </div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item" onclick="ctxRegenerate()">
+    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    <span>重新生成</span>
+  </div>
+  <div class="ctx-item" onclick="ctxSaveMemory()">
+    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+    <span>存入记忆</span>
+  </div>
+  <div class="ctx-item" onclick="ctxFlagError()">
+    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+    <span>标记有误</span>
+  </div>
+</div>
+ 
+<!-- 表情回应浮层 -->
+<div id="emojiBar" class="emoji-bar" style="display:none;">
+  <button class="emoji-btn" onclick="addReaction(this, '👍')" title赞同>👍</button>
+  <button class="emoji-btn" onclick="addReaction(this, '❤️')" title喜欢>❤️</button>
+  <button class="emoji-btn" onclick="addReaction(this, '😄')" title有趣>😄</button>
+  <button class="emoji-btn" onclick="addReaction(this, '🤔')" title存疑>🤔</button>
+  <button class="emoji-btn" onclick="addReaction(this, '🙅')" title不对>🙅</button>
+</div>
+ 
+<!-- Toast -->
+<div id="toast" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.95);background:#1f2937;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;opacity:0;transition:all 0.2s;pointer-events:none;z-index:1000;font-family:'Noto Sans SC',sans-serif;box-shadow:0 8px 28px rgba(0,0,0,0.2);white-space:nowrap;"></div>
+ 
+<!-- 新建人格浮层 -->
+<div id="personaCreatorOverlay" class="overlay" onclick="if(event.target===this)closePersonaCreator()">
+  <div class="persona-creator-panel">
+    <div class="pc-header">
+      <div>
+        <div class="pc-title">新建人格</div>
+        <div class="pc-subtitle">拖拽五维图调整 OCEAN 向量，生成提示词后保存</div>
+      </div>
+      <button class="model-panel-close" onclick="closePersonaCreator()">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="pc-body">
+      <div class="pc-left">
+        <div class="radar-wrap">
+          <svg class="radar-svg" id="radarSvg" viewBox="0 0 280 280"></svg>
+          <div class="radar-inputs" id="radarInputs"></div>
+          <div class="radar-hint">拖拽顶点或直接输入数值 · 双击顶点重置</div>
+        </div>
+      </div>
+      <div class="pc-right">
+        <div class="pc-field">
+          <div class="pc-field-label">人格名称</div>
+          <input type="text" class="pc-input" id="pcName" placeholder="给这个人格起个名字" maxlength="6">
+        </div>
+        <div class="pc-field">
+          <div class="pc-field-label">性格标签（基于 OCEAN 自动推导）</div>
+          <div class="pc-traits-preview" id="pcTraits">
+            <span class="pc-traits-empty">调整五维后自动生成</span>
+          </div>
+        </div>
+        <div class="pc-field">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div class="pc-field-label" style="margin-bottom:0;">人格描述</div>
+            <button class="pc-gen-btn" onclick="generatePersonaPrompt()">
+              <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/><circle cx="12" cy="12" r="4"/></svg>
+              生成提示词
+            </button>
+          </div>
+          <textarea class="pc-textarea" id="pcDesc" placeholder="点击「生成提示词」基于 OCEAN 向量自动推导，也可手动编辑" rows="3"></textarea>
+        </div>
+        <div class="pc-field">
+          <div class="pc-field-label">人设锚语（系统提示词）</div>
+          <div class="pc-anchor-preview" id="pcAnchor">— 点击「生成提示词」后这里会展示完整的系统提示词 —</div>
+        </div>
+      </div>
+    </div>
+    <div class="pc-actions">
+      <button class="cloud-test-btn" onclick="closePersonaCreator()">取消</button>
+      <button class="cloud-save-btn" onclick="savePersona()">保存人格</button>
+    </div>
+  </div>
+</div>
+ 
+<script src="/shell.js"></script>
+<script src="/shell_api.js"></script>
 </body>
 </html>

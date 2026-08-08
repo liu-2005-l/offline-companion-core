@@ -63,19 +63,27 @@ def _create_v6_db(path: Path) -> None:
     conn.close()
 
 
-def test_engine_migrates_v6_to_v7(tmp_path: Path) -> None:
+def test_engine_migrates_v6_to_current_schema(tmp_path: Path) -> None:
     db_path = tmp_path / "companion.db"
     _create_v6_db(db_path)
 
     conn = connect(db_path)
     version = conn.execute("SELECT value FROM meta WHERE key = 'schema_version';").fetchone()[0]
-    assert int(version) == 7
+    assert int(version) == 10
 
     table_names = {
         row[0]
         for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table';").fetchall()
     }
-    assert {"job_tasks", "message_execution_records", "dead_letter_queue"} <= table_names
+    assert {
+        "job_tasks",
+        "message_execution_records",
+        "dead_letter_queue",
+        "extension_status",
+        "personas",
+        "plans",
+        "plan_steps",
+    } <= table_names
     job_task_columns = {
         row[1]
         for row in conn.execute("PRAGMA table_info(job_tasks);").fetchall()
