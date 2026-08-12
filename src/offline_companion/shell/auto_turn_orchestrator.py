@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
+from offline_companion.core.plan_enums import PlanErrorCode, PlanEventName
 from offline_companion.core.plan_orchestrator import (
     PlanContext,
     PlanOrchestrator,
@@ -99,29 +100,29 @@ class AutoTurnOrchestrator:
         """摘要：逐步骤执行 Auto turn，并生成可直接编码为 SSE 的事件。"""
         if resume:
             if not plan_id:
-                yield {"type": "error", "error": "resume requires plan_id"}
+                yield {"type": PlanEventName.ERROR.value, "error": "resume requires plan_id"}
                 return
             context = self.plan_orchestrator.load_context(plan_id)
             if context is None:
-                yield {"type": "error", "error": f"plan {plan_id} not found"}
+                yield {"type": PlanEventName.ERROR.value, "error": f"plan {plan_id} not found"}
                 return
-            if context.paused_reason == "waiting_consent":
+            if context.paused_reason == PlanErrorCode.WAITING_CONSENT.value:
                 if not consent_request_id:
-                    yield {"type": "error", "error": "resume requires consent_request_id"}
+                    yield {"type": PlanEventName.ERROR.value, "error": "resume requires consent_request_id"}
                     return
                 try:
                     context = self.plan_orchestrator.apply_consent_decision(context, consent_request_id)
                 except A2PlanValidationError as exc:
-                    yield {"type": "error", "error": str(exc), "plan_id": context.plan_id}
+                    yield {"type": PlanEventName.ERROR.value, "error": str(exc), "plan_id": context.plan_id}
                     return
                 if context.status is PlanStatus.CANCELLED:
-                    yield {"type": "plan_cancelled", "plan_id": context.plan_id, "done": True}
+                    yield {"type": PlanEventName.PLAN_CANCELLED.value, "plan_id": context.plan_id, "done": True}
                     return
         else:
             resolved_plan_id = plan_id or f"auto_{uuid4().hex}"
             steps = self.plan_orchestrator.decide(user_input)
             if not steps:
-                yield {"type": "error", "error": "Auto 模式无法拆解空输入"}
+                yield {"type": PlanEventName.ERROR.value, "error": "Auto 模式无法拆解空输入"}
                 return
             context = self.plan_orchestrator.create_context(resolved_plan_id)
             context.context_vars["session_id"] = message.session_id or resolved_plan_id
@@ -133,7 +134,7 @@ class AutoTurnOrchestrator:
             context = self.auto_bridge.prepare(message, plan_id=resolved_plan_id, context=context)
 
         yield {
-            "type": "plan_start",
+            "type": PlanEventName.PLAN_START.value,
             "plan_id": context.plan_id,
             "resume": resume,
             "steps": [self._step_event_payload(context, step) for step in context.steps.values()],
@@ -143,23 +144,23 @@ class AutoTurnOrchestrator:
             ready_steps = context.get_ready_steps()
             if not ready_steps:
                 context = self.plan_orchestrator.execute_next(context, invoke_skill=self.invoke_skill)
-                if context.paused_reason == "hard_gate_blocked":
+                if context.paused_reason == PlanErrorCode.HARD_GATE_BLOCKED.value:
                     yield self._blocked_event(context)
                     return
-                if context.paused_reason == "waiting_consent":
+                if context.paused_reason == PlanErrorCode.WAITING_CONSENT.value:
                     yield self._consent_event(context)
                     return
                 if not context.is_terminal():
                     break
                 continue
             next_step = ready_steps[0]
-            yield {"type": "step_start", **self._step_event_payload(context, next_step)}
+            yield {"type": PlanEventName.STEP_START.value, **self._step_event_payload(context, next_step)}
             previous_processed = set(context.processed_steps)
             context = self.plan_orchestrator.execute_next(context, invoke_skill=self.invoke_skill)
-            if context.paused_reason == "hard_gate_blocked":
+            if context.paused_reason == PlanErrorCode.HARD_GATE_BLOCKED.value:
                 yield self._blocked_event(context)
                 return
-            if context.paused_reason == "waiting_consent":
+            if context.paused_reason == PlanErrorCode.WAITING_CONSENT.value:
                 yield self._consent_event(context)
                 return
             newly_processed = [
@@ -172,7 +173,7 @@ class AutoTurnOrchestrator:
                 if status is StepStatus.DONE:
                     completed_step = context.steps[step_id]
                     yield {
-                        "type": "step_complete",
+                        "type": PlanEventName.STEP_COMPLETE.value,
                         "step_id": step_id,
                         "title": completed_step.title,
                         "stage": completed_step.stage,
@@ -183,7 +184,7 @@ class AutoTurnOrchestrator:
                 elif status is StepStatus.DEGRADED:
                     completed_step = context.steps[step_id]
                     yield {
-                        "type": "step_complete",
+                        "type": PlanEventName.STEP_COMPLETE.value,
                         "step_id": step_id,
                         "title": completed_step.title,
                         "stage": completed_step.stage,
@@ -193,11 +194,11 @@ class AutoTurnOrchestrator:
                         "result": context.get_step_result(step_id),
                     }
                 elif status is StepStatus.SKIPPED:
-                    yield {"type": "step_skipped", "step_id": step_id}
+                    yield {"type": PlanEventName.STEP_SKIPPED.value, "step_id": step_id}
                 elif status is StepStatus.FAILED:
                     failed_step = context.steps[step_id]
                     yield {
-                        "type": "step_failed",
+                        "type": PlanEventName.STEP_FAILED.value,
                         "step_id": step_id,
                         "title": failed_step.title,
                         "stage": failed_step.stage,
@@ -206,19 +207,19 @@ class AutoTurnOrchestrator:
                     }
 
         if context.status is PlanStatus.DONE:
-            yield {"type": "plan_complete", **auto_turn_to_payload(context), "done": True}
+            yield {"type": PlanEventName.PLAN_COMPLETE.value, **auto_turn_to_payload(context), "done": True}
         elif context.status is PlanStatus.FAILED:
             yield {
-                "type": "plan_failed",
+                "type": PlanEventName.PLAN_FAILED.value,
                 "error": context.error,
                 "plan_id": context.plan_id,
                 "done": True,
             }
         elif context.status is PlanStatus.CANCELLED:
-            yield {"type": "plan_cancelled", "plan_id": context.plan_id, "done": True}
+            yield {"type": PlanEventName.PLAN_CANCELLED.value, "plan_id": context.plan_id, "done": True}
         else:
             yield {
-                "type": "error",
+                "type": PlanEventName.ERROR.value,
                 "error": context.paused_reason or "plan stopped before terminal state",
                 "plan_id": context.plan_id,
                 "done": True,
@@ -261,7 +262,7 @@ class AutoTurnOrchestrator:
             else f"阶段「{stage}」未通过硬门禁。"
         )
         return {
-            "type": "plan_blocked",
+            "type": PlanEventName.PLAN_BLOCKED.value,
             "plan_id": context.plan_id,
             "blocked_step_id": context.paused_step_id,
             "missing_stages": missing,
@@ -275,7 +276,7 @@ class AutoTurnOrchestrator:
         step_id = context.paused_step_id
         consent_payload = context.get_step_consent_request(step_id or "") or {}
         return {
-            "type": "consent_required",
+            "type": PlanEventName.CONSENT_REQUIRED.value,
             "step_id": step_id,
             "consent_request_id": consent_payload.get("request_id"),
             "plan_id": context.plan_id,
@@ -302,7 +303,7 @@ def auto_turn_to_payload(context: PlanContext) -> dict[str, Any]:
         "routing_reason": context.state.get("auto_route_reason"),
         "plan_id": context.plan_id,
         "plan_status": context.status.value,
-        "requires_consent": context.paused_reason == "waiting_consent",
+        "requires_consent": context.paused_reason == PlanErrorCode.WAITING_CONSENT.value,
         "steps": [
             {
                 "step_id": step_id,

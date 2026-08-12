@@ -8,7 +8,17 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from offline_companion.core.plan_enums import PlanStage
+
 logger = logging.getLogger(__name__)
+
+_CODING_AGENT_STAGE_VALUES = (
+    PlanStage.BRAINSTORMING.value,
+    PlanStage.PLANNING.value,
+    PlanStage.TDD.value,
+    PlanStage.REVIEW.value,
+    PlanStage.FINALIZE.value,
+)
 
 DECOMPOSE_SYSTEM_PROMPT = """\
 你是一个任务拆解专家。将用户请求拆解为具体的、可验证的执行步骤。
@@ -29,7 +39,7 @@ DECOMPOSE_SYSTEM_PROMPT = """\
   "expected_output": "产出物是什么",
   "verification": "怎么验证（命令或检查方式）",
   "completion_criteria": "什么算完成",
-  "stage": "brainstorming|planning|tdd|review|finalize",
+  "stage": "__STAGE_VALUES__",
   "estimated_minutes": 5,
   "files": ["src/utils.py"],
   "subagent_type": ""
@@ -40,7 +50,7 @@ stage 字段：如果任务匹配 coding-agent 技能，按五阶段序列分配
 subagent_type 可选，只允许 "" / "implementer" / "reviewer"。
 
 只返回 JSON 数组，不要其他文字。
-"""
+""".replace("__STAGE_VALUES__", "|".join(_CODING_AGENT_STAGE_VALUES))
 
 _META_PATTERNS = (
     "执行核心步骤",

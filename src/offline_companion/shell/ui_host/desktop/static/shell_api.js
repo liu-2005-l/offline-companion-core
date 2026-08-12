@@ -1,8 +1,23 @@
-﻿// 概要：后端第 1 批接线层，覆盖原型中的 mock 会话、聊天与记忆函数。
+// 概要：后端第 1 批接线层，覆盖原型中的 mock 会话、聊天与记忆函数。
 var _currentSessionId = null;
 var _windowDragState = null;
 var _windowResizeState = null;
 var _windowBoundsThrottle = null;
+// 与 Python 侧 offline_companion.core.plan_enums.PlanEventName 保持同步。
+const PLAN_EVENTS = {
+  ERROR: 'error',
+  PLAN_START: 'plan_start',
+  PLAN_COMPLETE: 'plan_complete',
+  PLAN_FAILED: 'plan_failed',
+  PLAN_CANCELLED: 'plan_cancelled',
+  PLAN_BLOCKED: 'plan_blocked',
+  STEP_START: 'step_start',
+  STEP_COMPLETE: 'step_complete',
+  STEP_FAILED: 'step_failed',
+  STEP_ERROR: 'step_error',
+  STEP_SKIPPED: 'step_skipped',
+  CONSENT_REQUIRED: 'consent_required'
+};
 
 async function apiJson(url, options) {
   const resp = await fetch(url, options || {});
@@ -757,11 +772,11 @@ async function sendMessage() {
       }
       if (event.done) finalData = event;
     });
-    if (finalData && finalData.type === 'plan_complete') {
+    if (finalData && finalData.type === PLAN_EVENTS.PLAN_COMPLETE) {
       _finalizeAutoPlan(finalData);
-    } else if (finalData && finalData.type === 'plan_failed') {
+    } else if (finalData && finalData.type === PLAN_EVENTS.PLAN_FAILED) {
       _failAutoPlan(finalData);
-    } else if (finalData && finalData.type === 'plan_cancelled') {
+    } else if (finalData && finalData.type === PLAN_EVENTS.PLAN_CANCELLED) {
       _cancelAutoPlan(finalData);
     } else if (finalData && finalData.blocked && bubble) {
       const msg = bubble.closest('.msg');
@@ -1246,25 +1261,25 @@ async function _resumeAutoPlan(planId, consentRequestId) {
     }
     if (event.error) throw new Error(event.error);
   });
-  if (finalData && finalData.type === 'plan_complete') _finalizeAutoPlan(finalData);
-  else if (finalData && finalData.type === 'plan_failed') _failAutoPlan(finalData);
-  else if (finalData && finalData.type === 'plan_cancelled') _cancelAutoPlan(finalData);
+  if (finalData && finalData.type === PLAN_EVENTS.PLAN_COMPLETE) _finalizeAutoPlan(finalData);
+  else if (finalData && finalData.type === PLAN_EVENTS.PLAN_FAILED) _failAutoPlan(finalData);
+  else if (finalData && finalData.type === PLAN_EVENTS.PLAN_CANCELLED) _cancelAutoPlan(finalData);
 }
 
 function _handleAutoPlanEvent(event, msgIdx) {
   if (!event || !event.type) return false;
-  if (event.type === 'plan_start') _renderAutoPlanCard(event, msgIdx);
-  else if (event.type === 'step_start') _updateAutoStep(event, 'running');
-  else if (event.type === 'step_complete') _updateAutoStep(event, 'done', event.result);
-  else if (event.type === 'step_error' || event.type === 'step_failed') _updateAutoStep(event, 'failed', event.message || event.error);
-  else if (event.type === 'step_skipped') _updateAutoStep(event, 'skipped');
-  else if (event.type === 'consent_required') _showAutoConsent(event);
-  else if (event.type === 'plan_blocked') _showAutoPlanBlocked(event);
-  else if (!['plan_complete', 'plan_failed', 'plan_cancelled', 'error'].includes(event.type)) return false;
-  if (['plan_complete', 'plan_failed', 'plan_cancelled'].includes(event.type) && !_autoPlanState && msgIdx != null) {
+  if (event.type === PLAN_EVENTS.PLAN_START) _renderAutoPlanCard(event, msgIdx);
+  else if (event.type === PLAN_EVENTS.STEP_START) _updateAutoStep(event, 'running');
+  else if (event.type === PLAN_EVENTS.STEP_COMPLETE) _updateAutoStep(event, 'done', event.result);
+  else if (event.type === PLAN_EVENTS.STEP_ERROR || event.type === PLAN_EVENTS.STEP_FAILED) _updateAutoStep(event, 'failed', event.message || event.error);
+  else if (event.type === PLAN_EVENTS.STEP_SKIPPED) _updateAutoStep(event, 'skipped');
+  else if (event.type === PLAN_EVENTS.CONSENT_REQUIRED) _showAutoConsent(event);
+  else if (event.type === PLAN_EVENTS.PLAN_BLOCKED) _showAutoPlanBlocked(event);
+  else if (![PLAN_EVENTS.PLAN_COMPLETE, PLAN_EVENTS.PLAN_FAILED, PLAN_EVENTS.PLAN_CANCELLED, PLAN_EVENTS.ERROR].includes(event.type)) return false;
+  if ([PLAN_EVENTS.PLAN_COMPLETE, PLAN_EVENTS.PLAN_FAILED, PLAN_EVENTS.PLAN_CANCELLED].includes(event.type) && !_autoPlanState && msgIdx != null) {
     _renderAutoPlanCard({ plan_id: event.plan_id || ('auto-result-' + msgIdx), steps: [] }, msgIdx);
   }
-  if (event.type === 'error') throw new Error(event.error || 'Auto 执行错误');
+  if (event.type === PLAN_EVENTS.ERROR) throw new Error(event.error || 'Auto 执行错误');
   return true;
 }
 

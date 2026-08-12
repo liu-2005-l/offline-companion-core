@@ -30,6 +30,7 @@ from offline_companion.core.persona_session.persona_loader import (
     resolved_companion_display_name,
 )
 from offline_companion.core.persona_session.session import PersonaSessionCore
+from offline_companion.core.plan_enums import PlanErrorCode, PlanEventName
 from offline_companion.core.plan_orchestrator import (
     ConsentRequest,
     PlanOrchestrator,
@@ -1003,14 +1004,14 @@ def create_desktop_app(runtime: DesktopRuntime):
         context = plan_orchestrator.execute_next(context, invoke_skill=_legacy_plan_step_invoker)
         plan = _sync_legacy_plan_from_context(plan, context)
         plan = update_plan(runtime.orchestrator.conn, plan)
-        if context.paused_reason == "hard_gate_blocked":
+        if context.paused_reason == PlanErrorCode.HARD_GATE_BLOCKED.value:
             step = _find_plan_step(plan, int(context.paused_step_id.removeprefix("step_"))) if context.paused_step_id else step
             return _json_response(
                 jsonify,
                 {
                     "ok": False,
-                    "error": "hard_gate_blocked",
-                    "status": "hard_gate_blocked",
+                    "error": PlanErrorCode.HARD_GATE_BLOCKED.value,
+                    "status": PlanErrorCode.HARD_GATE_BLOCKED.value,
                     "missing_stages": context.context_vars.get("hard_gate", {}).get("missing_stages", []),
                     "message": _hard_gate_message(context),
                     "plan": plan,
@@ -1079,12 +1080,12 @@ def create_desktop_app(runtime: DesktopRuntime):
                 user_message_id = None
                 try:
                     if not resume and not message:
-                        yield _sse_event({"type": "error", "error": "（请输入内容）", "done": True})
+                        yield _sse_event({"type": PlanEventName.ERROR.value, "error": "（请输入内容）", "done": True})
                         return
                     if not resume:
                         safety_result = runtime.orchestrator.check_safety(message, memory_on=runtime.memory_on)
                         if safety_result is not None:
-                            yield _sse_event({"type": "plan_complete", **turn_result_to_payload(safety_result), "done": True})
+                            yield _sse_event({"type": PlanEventName.PLAN_COMPLETE.value, **turn_result_to_payload(safety_result), "done": True})
                             return
                     if runtime.auto_turn_orchestrator is None:
                         raise RuntimeError("auto_turn_orchestrator_unavailable")
@@ -1105,7 +1106,7 @@ def create_desktop_app(runtime: DesktopRuntime):
                     ):
                         if user_message_id is not None:
                             event.setdefault("user_message_id", user_message_id)
-                        if event.get("type") == "plan_complete" and event.get("reply"):
+                        if event.get("type") == PlanEventName.PLAN_COMPLETE.value and event.get("reply"):
                             event["message_id"] = append_message(
                                 runtime.orchestrator.conn,
                                 runtime.session_id,
@@ -1115,7 +1116,7 @@ def create_desktop_app(runtime: DesktopRuntime):
                             )
                         yield _sse_event(event)
                 except Exception as exc:
-                    yield _sse_event({"type": "error", "error": str(exc), "done": True})
+                    yield _sse_event({"type": PlanEventName.ERROR.value, "error": str(exc), "done": True})
                 finally:
                     model_lock.release()
 
@@ -1410,7 +1411,7 @@ def _sync_legacy_plan_from_context(plan: dict[str, Any], context: TaskContext) -
             step["result"] = result.get("result") if isinstance(result, dict) and "result" in result else str(result)
         if step_id in context.step_errors:
             step["error"] = context.step_errors[step_id]
-    if context.paused_reason == "hard_gate_blocked":
+    if context.paused_reason == PlanErrorCode.HARD_GATE_BLOCKED.value:
         plan["status"] = "paused"
     elif context.status is CorePlanStatus.DONE:
         plan["status"] = "done"
@@ -1884,4 +1885,6 @@ def start_desktop_http(runtime: DesktopRuntime) -> DesktopHttpServer:
     )
     thread.start()
     return DesktopHttpServer(port=port, thread=thread)
+
+
 
