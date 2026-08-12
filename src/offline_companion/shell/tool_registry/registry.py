@@ -25,6 +25,7 @@ class ToolRegistry:
     def __init__(self, external_config_path: Path | None = None) -> None:
         self._tools: dict[str, ToolManifest] = {}
         self._builtin_handlers: dict[str, BuiltinToolHandler] = {}
+        self._session_context_tools: set[str] = set()
         self._external_config_path = external_config_path
 
     @property
@@ -34,7 +35,13 @@ class ToolRegistry:
             return self._external_config_path
         return configs_dir() / "tools_external.yaml"
 
-    def register_builtin(self, manifest: ToolManifest, handler: BuiltinToolHandler) -> None:
+    def register_builtin(
+        self,
+        manifest: ToolManifest,
+        handler: BuiltinToolHandler,
+        *,
+        inject_session_id: bool = False,
+    ) -> None:
         """摘要：注册 builtin Tool。"""
         if manifest.tool_type != "builtin":
             raise ValueError("builtin registration requires tool_type='builtin'")
@@ -42,6 +49,8 @@ class ToolRegistry:
             raise ValueError("builtin tool with permission='deny' should not be registered")
         self._tools[manifest.tool_id] = manifest
         self._builtin_handlers[manifest.tool_id] = handler
+        if inject_session_id:
+            self._session_context_tools.add(manifest.tool_id)
 
     def load_external(self, config_path: Path | None = None) -> list[ToolManifest]:
         """摘要：从 YAML 加载 external Tool 清单。"""
@@ -135,6 +144,10 @@ class ToolRegistry:
         if handler is None:
             raise KeyError(f"unknown builtin handler: {tool_id}")
         return handler
+
+    def injects_session_id(self, tool_id: str) -> bool:
+        """摘要：判断 builtin Tool 是否由宿主注入可信 session_id。"""
+        return tool_id in self._session_context_tools
 
     def resolve_permission(self, tool_id: str, *, privacy_mode: PrivacyMode) -> str:
         """摘要：解析 Tool 当前执行权限。"""

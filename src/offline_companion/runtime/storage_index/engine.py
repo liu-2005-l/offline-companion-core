@@ -317,6 +317,8 @@ def _init_v10(conn: sqlite3.Connection) -> None:
             plan_id TEXT PRIMARY KEY,
             goal TEXT NOT NULL,
             status TEXT NOT NULL,
+            skill_name TEXT,
+            skill_stages_json TEXT NOT NULL DEFAULT '[]',
             created_at REAL NOT NULL,
             updated_at REAL NOT NULL
         );
@@ -324,6 +326,13 @@ def _init_v10(conn: sqlite3.Connection) -> None:
             plan_id TEXT NOT NULL REFERENCES plans(plan_id) ON DELETE CASCADE,
             step_id INTEGER NOT NULL,
             title TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            expected_output TEXT NOT NULL DEFAULT '',
+            verification TEXT NOT NULL DEFAULT '',
+            completion_criteria TEXT NOT NULL DEFAULT '',
+            stage TEXT,
+            estimated_minutes INTEGER NOT NULL DEFAULT 0,
+            files_json TEXT NOT NULL DEFAULT '[]',
             deps_json TEXT NOT NULL DEFAULT '[]',
             risk TEXT NOT NULL DEFAULT 'low',
             status TEXT NOT NULL DEFAULT 'pending',

@@ -280,6 +280,38 @@ body {
   background: var(--accent); border-radius: 0 3px 3px 0;
 }
 .sidebar-footer { margin-top: auto; position: relative; }
+.idle-status-panel {
+  margin: auto 6px 10px;
+  padding: 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-surface) 82%, transparent);
+  box-shadow: var(--shadow-sm);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.idle-status-panel[hidden] { display: none; }
+.idle-header { font-weight: 700; color: var(--text); margin-bottom: 5px; }
+.idle-state { color: var(--accent); margin-bottom: 5px; }
+.idle-goal {
+  margin-bottom: 5px;
+  color: var(--text);
+  line-height: 1.35;
+  word-break: break-word;
+}
+.idle-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 5px;
+  border-top: 1px solid var(--border-light);
+}
+.idle-progress small {
+  color: var(--text-tertiary);
+  line-height: 1.35;
+  word-break: break-word;
+}
+.idle-time { margin-top: 5px; color: var(--text-tertiary); }
 .sidebar-avatar {
   width: 32px; height: 32px; border-radius: 50%;
   background: linear-gradient(135deg, var(--border), var(--text-tertiary));
@@ -1723,3 +1755,36 @@ body {
   border: 1px solid var(--success);
 }
 .confirm-ok.success:hover { background: var(--success); color: #fff; }
+
+/* Auto 模式计划卡片 */
+.auto-plan-card { display: flex; flex-direction: column; gap: 8px; min-width: 280px; }
+.auto-plan-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 6px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-tertiary); }
+.auto-plan-title { font-weight: 500; color: var(--text-secondary); }
+.auto-plan-progress { font-variant-numeric: tabular-nums; }
+.auto-plan-steps { display: flex; flex-direction: column; gap: 4px; }
+.auto-step { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--radius-sm, 6px); font-size: 13px; transition: background 0.2s; }
+.auto-step.running { background: var(--accent-soft, #e0f2fe); }
+.auto-step.done { opacity: 0.7; }
+.auto-step.failed { color: var(--danger, #dc2626); }
+.auto-step.skipped { opacity: 0.4; text-decoration: line-through; }
+.auto-step-icon { display: flex; width: 16px; height: 16px; align-items: center; justify-content: center; flex-shrink: 0; }
+.auto-step-icon svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
+.auto-step.running .auto-step-icon { color: var(--accent, #0ea5e9); }
+.auto-step.done .auto-step-icon { color: var(--success, #16a34a); }
+.auto-step-spinner { width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: auto-step-spin 0.8s linear infinite; }
+@keyframes auto-step-spin { to { transform: rotate(360deg); } }
+.auto-step-desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auto-step-route { padding: 1px 6px; border-radius: 4px; background: var(--bg-tertiary, #f1f5f9); color: var(--text-tertiary); font-size: 10px; flex-shrink: 0; }
+.auto-step-status { min-width: 40px; color: var(--text-tertiary); font-size: 11px; text-align: right; flex-shrink: 0; }
+.auto-plan-reply { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.auto-plan-consent { margin-top: 8px; }
+.auto-consent-card { padding: 10px 12px; border: 1px solid var(--warning, #f59e0b); border-radius: var(--radius-sm, 6px); background: var(--warning-soft, #fffbeb); }
+.auto-consent-title { margin-bottom: 4px; color: var(--warning, #f59e0b); font-size: 13px; font-weight: 500; }
+.auto-consent-desc { margin-bottom: 8px; color: var(--text-secondary); font-size: 12px; }
+.auto-consent-actions { display: flex; gap: 8px; }
+.auto-consent-reject { background: var(--danger); }
+.auto-consent-pending { padding: 4px 0; color: var(--text-tertiary); font-size: 12px; }
+.auto-consent-error { padding: 4px 0; color: var(--danger, #dc2626); font-size: 12px; }
+.auto-plan-done .auto-plan-header { border-bottom-color: var(--success, #16a34a); }
+.auto-plan-failed .auto-plan-header { border-bottom-color: var(--danger, #dc2626); }
+.auto-plan-cancelled .auto-plan-header { border-bottom-color: var(--text-tertiary); }

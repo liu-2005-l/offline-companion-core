@@ -46,13 +46,19 @@ def post_cloud_completion(
             raw={"stub": True, "purpose": request.purpose},
         )
 
-    resolved_url = (url or os.environ.get("OFFLINE_COMPANION_CLOUD_URL") or "").strip()
+    resolved_url = (url or request.url or os.environ.get("OFFLINE_COMPANION_CLOUD_URL") or "").strip()
     if not resolved_url:
         raise CloudConnectorError("未配置 OFFLINE_COMPANION_CLOUD_URL")
 
-    resolved_key = api_key if api_key is not None else os.environ.get("OFFLINE_COMPANION_CLOUD_API_KEY")
+    resolved_key = (
+        api_key
+        if api_key is not None
+        else request.api_key
+        if request.api_key is not None
+        else os.environ.get("OFFLINE_COMPANION_CLOUD_API_KEY")
+    )
     resolved_model = (
-        model or os.environ.get("OFFLINE_COMPANION_CLOUD_MODEL") or "gpt-3.5-turbo"
+        model or request.model or os.environ.get("OFFLINE_COMPANION_CLOUD_MODEL") or "gpt-3.5-turbo"
     ).strip()
 
     try:

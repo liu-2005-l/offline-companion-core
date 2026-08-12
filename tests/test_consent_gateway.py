@@ -47,6 +47,20 @@ def test_build_artifact_uses_accepted_schema() -> None:
     assert artifact["data_category"] == "plan_step"
 
 
+def test_top_level_purpose_type_overrides_metadata() -> None:
+    request = ConsentRequest(
+        plan_id="p3",
+        step_id="s3",
+        skill_id="skill_cloud_x",
+        operation="execute_step",
+        purpose_type="skill_file_access",
+        metadata={"purpose_type": "skill_cloud_inference"},
+    )
+    artifact = build_consent_artifact(request, user_decision="pending", request_id="rid-2")
+
+    assert artifact["purpose"] == "skill_file_access"
+
+
 def test_desktop_bridge_returns_gateway_payload(tmp_path: Path) -> None:
     gateway = UIHostConsentGateway()
     request = ConsentRequest(plan_id="p4", step_id="s4", skill_id="skill_cloud_x", operation="execute_step")

@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 NAME = "offline_companion"
 ENTRY_CLI = ROOT / "src" / "offline_companion" / "__main__.py"
 ENTRY_DESKTOP = ROOT / "src" / "offline_companion" / "shell" / "ui_host" / "desktop" / "app.py"
+SKILLS_DIR = ROOT / "skills"
 STATIC_DESKTOP = (
     ROOT / "src" / "offline_companion" / "shell" / "ui_host" / "desktop" / "static"
 )
@@ -95,6 +96,8 @@ def build(*, onefile: bool = False, entry: str = "cli") -> Path:
             [
                 "--add-data",
                 static_data,
+                "--add-data",
+                f"{SKILLS_DIR}{os.pathsep}skills",
                 "--hidden-import",
                 "offline_companion.shell.ui_host.desktop.app",
                 "--hidden-import",

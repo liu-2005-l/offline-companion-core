@@ -57,6 +57,20 @@ def save_extension_status(db_path: Path, extension_id: str, enabled: bool) -> No
         conn.close()
 
 
+def delete_extension_status(db_path: Path, extension_id: str) -> None:
+    """摘要：删除单个扩展的持久化启用状态。
+
+    参数：
+        db_path: companion SQLite 数据库路径。
+        extension_id: 扩展 ID。
+    """
+    conn = connect(db_path)
+    try:
+        conn.execute("DELETE FROM extension_status WHERE extension_id = ?;", (extension_id,))
+    finally:
+        conn.close()
+
+
 def get_extension_status(db_path: Path, extension_id: str) -> bool:
     """摘要：读取单个扩展状态，未持久化时默认启用。
 

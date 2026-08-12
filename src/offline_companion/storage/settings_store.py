@@ -21,6 +21,9 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "active_persona_id": None,
     "close_to_tray": True,
     "memory_enabled": True,
+    "idle_think_enabled": True,
+    "idle_threshold_seconds": 300,
+    "focus_mode_enabled": False,
 }
 
 

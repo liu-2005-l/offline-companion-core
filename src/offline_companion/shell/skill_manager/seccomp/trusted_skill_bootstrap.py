@@ -14,6 +14,7 @@ _ENTRYPOINT_ENV = "OFFLINE_COMPANION_SKILL_ENTRYPOINT"
 _PROFILE_ENV = "OFFLINE_COMPANION_SKILL_SECCOMP_PROFILE"
 _STATUS_ENV = "OFFLINE_COMPANION_SKILL_SECCOMP_STATUS"
 _REASON_ENV = "OFFLINE_COMPANION_SKILL_SECCOMP_REASON"
+_NETWORK_ALLOWED_ENV = "OFFLINE_COMPANION_SKILL_NETWORK_ALLOWED"
 
 
 def main() -> int:
@@ -25,6 +26,10 @@ def main() -> int:
     result = load_profile(profile_name)
     os.environ[_STATUS_ENV] = "applied" if result.applied else "skipped"
     os.environ[_REASON_ENV] = result.reason
+    if os.environ.get(_NETWORK_ALLOWED_ENV, "0").strip() != "1":
+        from offline_companion.shared.runtime_sandbox import RuntimeSandbox
+
+        RuntimeSandbox(allow_local_socket=True).apply()
     script_path = Path(entrypoint).resolve()
     sys.argv = [str(script_path)]
     runpy.run_path(str(script_path), run_name="__main__")

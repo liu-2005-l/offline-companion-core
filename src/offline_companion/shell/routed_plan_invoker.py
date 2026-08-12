@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -22,8 +23,10 @@ class CloudRouteInvoker:
 
     purpose: str = "plan_step_execution"
     cloud_post: Any = post_cloud_completion
+    cloud_model_provider: Callable[[], dict[str, Any] | None] | None = None
 
     def invoke(self, skill_id: str, payload: dict[str, Any], idempotency_key: str | None = None) -> Any:
+        cloud_model = self.cloud_model_provider() if self.cloud_model_provider is not None else None
         request_payload = {
             "skill_id": skill_id,
             "payload": payload,
@@ -33,6 +36,9 @@ class CloudRouteInvoker:
             CloudCompletionRequest(
                 user_message=json.dumps(request_payload, ensure_ascii=False),
                 purpose=self.purpose,
+                url=str(cloud_model.get("endpoint") or "") if cloud_model else None,
+                api_key=str(cloud_model.get("api_key") or "") if cloud_model else None,
+                model=str(cloud_model.get("model_name") or "") if cloud_model else None,
             )
         )
         try:
@@ -69,9 +75,26 @@ class RoutedPlanInvoker:
             return self.echo_invoker.invoke(skill_id, payload, idempotency_key)
         return self.local_invoker.invoke(skill_id, payload, idempotency_key)
 
-    def invoke_step(self, step: PlanStep, context: TaskContext) -> Any:
+    def invoke_step(
+        self,
+        step: PlanStep,
+        context: TaskContext,
+        step_route_mode: str | None = None,
+    ) -> Any:
+        """摘要：按步骤级路由决策调用后端，并兼容旧的计划级路由字段。"""
+        route_decision = context.get_step_route_decision(step.step_id) or {}
+        route_mode = str(
+            step_route_mode
+            or route_decision.get("mode")
+            or context.context_vars.get("route_mode")
+            or "local"
+        )
+        fallback_chain = route_decision.get("fallback_chain")
+        if not isinstance(fallback_chain, list):
+            fallback_chain = list(context.context_vars.get("fallback_chain") or [])
         payload = dict(step.payload)
-        payload["_route_mode"] = str(context.context_vars.get("route_mode") or "local")
-        payload["_fallback_chain"] = list(context.context_vars.get("fallback_chain") or [])
+        payload["_route_mode"] = route_mode
+        payload["_fallback_chain"] = fallback_chain
         payload["_fallback_index"] = int(context.context_vars.get("fallback_index", 0) or 0)
+        payload["_step_results"] = dict(context.step_results)
         return self.invoke(step.skill_id, payload, step.idempotency_key)

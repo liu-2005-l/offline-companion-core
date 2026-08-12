@@ -8,7 +8,12 @@ from pathlib import Path
 import yaml
 
 from offline_companion.shared.runtime_paths import configs_dir, dev_repo_root, models_dir
-from offline_companion.shared.types import CapabilityTag, ModelDescriptor, ModelRuntimeConfig
+from offline_companion.shared.types import (
+    CapabilityProfile,
+    CapabilityTag,
+    ModelDescriptor,
+    ModelRuntimeConfig,
+)
 
 _SUPPORTED_ARCHITECTURES = {"qwen2", "qwen2moe", "llama", "mistral", "gemma"}
 _REQUIRED_CONFIG_FIELDS = ("chat_template", "n_ctx", "capability_profile")
@@ -103,7 +108,12 @@ def describe_model(model_id: str, *, data_root_override: Path | None = None) -> 
     chat_template = str(config.get("chat_template") or "")
     stop_tokens = _tuple_of_str(config.get("stop_tokens"))
     strip_tags = _tuple_of_str(config.get("strip_output_tags"))
-    capability_profile = _normalize_capability_tag(config.get("capability_profile"))
+    raw_capability_profile = config.get("capability_profile")
+    capability_profile = (
+        _normalize_capability_profile(raw_capability_profile)
+        if isinstance(raw_capability_profile, dict)
+        else CapabilityProfile()
+    )
     default_params = _dict_value(config.get("default_params"))
     moe = _dict_or_none(config.get("moe"))
     incompatible_reason = None
@@ -116,8 +126,6 @@ def describe_model(model_id: str, *, data_root_override: Path | None = None) -> 
         missing_fields.append("chat_template")
     if n_ctx is None:
         missing_fields.append("n_ctx")
-    if capability_profile is None:
-        missing_fields.append("capability_profile")
     status = "ready"
     if incompatible_reason is not None:
         status = "incompatible"
@@ -138,7 +146,7 @@ def describe_model(model_id: str, *, data_root_override: Path | None = None) -> 
         chat_template=chat_template,
         stop_tokens=stop_tokens,
         strip_output_tags=strip_tags,
-        capability_profile=capability_profile or CapabilityTag.CHAT,
+        capability_profile=capability_profile,
         default_params=default_params,
         moe=moe,
         incompatible_reason=incompatible_reason,
@@ -291,3 +299,14 @@ def _normalize_capability_tag(value: object) -> CapabilityTag | None:
         return CapabilityTag(raw)
     except ValueError:
         return None
+
+
+def _normalize_capability_profile(raw: dict[str, object]) -> CapabilityProfile:
+    """摘要：从模型 YAML 映射构造多维能力画像，并为缺失维度提供保守默认值。"""
+    return CapabilityProfile(
+        instruction_following=float(raw.get("instruction_following", 0.5)),
+        roleplay_quality=float(raw.get("roleplay_quality", 0.5)),
+        safety_sensitivity=float(raw.get("safety_sensitivity", 0.5)),
+        reasoning_ability=float(raw.get("reasoning_ability", 0.5)),
+        max_context=int(raw.get("max_context", 4096)),
+    )

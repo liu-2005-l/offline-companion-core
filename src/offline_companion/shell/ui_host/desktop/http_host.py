@@ -17,6 +17,7 @@ from typing import Any
 
 import offline_companion.shell.ui_host.desktop as _desktop_pkg
 from offline_companion import __version__
+from offline_companion.core.hard_gate import HardGate
 from offline_companion.core.memory_lifecycle.fts_ops import (
     count_memory_rows,
     invalidate_memory_chunk,
@@ -29,12 +30,39 @@ from offline_companion.core.persona_session.persona_loader import (
     resolved_companion_display_name,
 )
 from offline_companion.core.persona_session.session import PersonaSessionCore
-from offline_companion.core.plan_orchestrator import ConsentRequest
+from offline_companion.core.plan_orchestrator import (
+    ConsentRequest,
+    PlanOrchestrator,
+    PlanStep,
+    TaskContext,
+)
+from offline_companion.core.plan_orchestrator import PlanStatus as CorePlanStatus
+from offline_companion.core.plan_orchestrator import StepStatus as CoreStepStatus
+from offline_companion.core.skill_execution_tracker import SkillExecutionTracker
+from offline_companion.core.state_manager import StateManager
+from offline_companion.core.subagent_scheduler import SubagentScheduler
 from offline_companion.runtime.inference_backend import create_llama_backend
-from offline_companion.runtime.storage_index.engine import clear_session_messages
-from offline_companion.shared.errors import InferenceBackendError
-from offline_companion.shared.types import PrivacyMode
+from offline_companion.runtime.storage_index.engine import append_message, clear_session_messages
+from offline_companion.shared.errors import (
+    InferenceBackendError,
+    SkillInvocationError,
+    SkillManifestError,
+    SkillSupplyChainError,
+)
+from offline_companion.shared.messages import BaseMessage
+from offline_companion.shared.types import ModelDescriptor, PrivacyMode, PurposeType
+from offline_companion.shell.skill_manager.extension_manager import (
+    ExtensionAlreadyInstalledError,
+    ExtensionNotInstalledError,
+)
+from offline_companion.shell.skill_manager.extension_manager import (
+    install_extension as install_local_extension,
+)
+from offline_companion.shell.skill_manager.extension_manager import (
+    uninstall_extension as uninstall_local_extension,
+)
 from offline_companion.shell.skill_manager.registry import load_installed_manifests
+from offline_companion.shell.skill_router import SkillDecisionEngine, load_skill_descriptions
 from offline_companion.shell.ui_host.desktop.privacy_socket_guard import apply_privacy_socket_guard
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
 from offline_companion.shell.ui_host.model_registry import (
@@ -50,6 +78,13 @@ from offline_companion.shell.ui_host.turn_payload import (
     process_chat_message_stream,
     turn_result_to_payload,
 )
+from offline_companion.storage.cloud_model_repo import (
+    create_cloud_model,
+    delete_cloud_model,
+    get_cloud_model,
+    list_public_cloud_models,
+    update_cloud_model,
+)
 from offline_companion.storage.extension_repo import init_extension_status, save_extension_status
 from offline_companion.storage.persona_repo import (
     activate_persona as activate_persisted_persona,
@@ -57,6 +92,18 @@ from offline_companion.storage.persona_repo import (
 from offline_companion.storage.persona_repo import (
     active_persona,
     list_personas,
+)
+from offline_companion.storage.persona_repo import (
+    create_persona as create_persisted_persona,
+)
+from offline_companion.storage.persona_repo import (
+    delete_persona as delete_persisted_persona,
+)
+from offline_companion.storage.persona_repo import (
+    get_persona as get_persisted_persona,
+)
+from offline_companion.storage.persona_repo import (
+    update_persona as update_persisted_persona,
 )
 from offline_companion.storage.plan_repo import delete_plan, get_plan, save_plan, update_plan
 from offline_companion.storage.settings_store import load_settings, update_settings
@@ -103,7 +150,19 @@ def create_desktop_app(runtime: DesktopRuntime):
         runtime.orchestrator.privacy_mode = persisted_privacy_mode
     runtime.memory_on = bool(settings_state.get("memory_enabled", runtime.memory_on))
     runtime.improve_plan_enabled = bool(settings_state.get("improve_plan_enabled", False))
+    if runtime.state_manager is None:
+        runtime.state_manager = StateManager(runtime.paths.db_path)
+    if runtime.idle_detector is not None:
+        runtime.idle_detector.set_threshold(float(settings_state.get("idle_threshold_seconds", 300)))
+        if bool(settings_state.get("idle_think_enabled", True)):
+            runtime.idle_detector.start()
+        else:
+            runtime.idle_detector.stop()
     model_state: dict[str, Any] = {"auto": bool(settings_state.get("auto_router_enabled", False))}
+    runtime.orchestrator.auto_mode_enabled = bool(model_state["auto"])
+    runtime.orchestrator.cloud_model_provider = lambda: get_cloud_model(
+        runtime.paths.root, str(model_state.get("active") or "")
+    )
     model_lock = threading.Lock()
     extension_state: dict[str, bool] = init_extension_status(runtime.paths.root, runtime.paths.db_path)
     persisted_persona = active_persona(runtime.orchestrator.conn)
@@ -123,6 +182,70 @@ def create_desktop_app(runtime: DesktopRuntime):
     @app.get("/favicon.ico")
     def favicon():
         return send_from_directory(static, "favicon.ico")
+
+    @app.post("/api/idle/touch")
+    def idle_touch():
+        """摘要：刷新 UI 空闲计时器。"""
+        if runtime.idle_detector is not None:
+            runtime.idle_detector.touch()
+        return jsonify({"ok": True})
+
+    @app.get("/api/idle/status")
+    def idle_status():
+        """摘要：返回 IdleThink 检测、提醒与后台推进快照。"""
+        state_manager = runtime.state_manager
+        detector = runtime.idle_detector
+        return _json_response(
+            jsonify,
+            {
+                "idle_enabled": bool(detector.running) if detector is not None else False,
+                "threshold_seconds": detector.threshold_seconds if detector is not None else None,
+                "current_status": (
+                    state_manager.get_system_state("idle_think_status") if state_manager is not None else None
+                ),
+                "last_progress": (
+                    state_manager.get_system_state("idle_think_progress") if state_manager is not None else None
+                ),
+                "last_idle_result": (
+                    state_manager.get_system_state("idle_think_result") if state_manager is not None else None
+                ),
+            },
+        )
+
+    @app.post("/api/idle/toggle")
+    def idle_toggle():
+        """摘要：开启或关闭空闲检测，并可更新空闲阈值。"""
+        detector = runtime.idle_detector
+        data = request.get_json(silent=True) or {}
+        enabled = bool(data.get("enabled", True))
+        threshold_raw = data.get("threshold_seconds")
+        if detector is not None and threshold_raw is not None:
+            try:
+                detector.set_threshold(float(threshold_raw))
+            except (TypeError, ValueError):
+                return _json_response(jsonify, {"error": "invalid_threshold"}, status=400)
+        if detector is not None:
+            if enabled:
+                detector.start()
+            else:
+                detector.stop()
+        saved = update_settings(
+            runtime.paths.root,
+            {
+                "idle_think_enabled": enabled,
+                "idle_threshold_seconds": detector.threshold_seconds if detector is not None else threshold_raw,
+            },
+        )
+        settings_state.update(saved)
+        return _json_response(
+            jsonify,
+            {
+                "ok": True,
+                "idle_enabled": bool(detector.running) if detector is not None else False,
+                "threshold_seconds": detector.threshold_seconds if detector is not None else None,
+                "settings": saved,
+            },
+        )
 
     @app.errorhandler(404)
     def not_found(_error):
@@ -202,6 +325,15 @@ def create_desktop_app(runtime: DesktopRuntime):
             runtime.orchestrator.privacy_mode = mode
         runtime.improve_plan_enabled = bool(saved.get("improve_plan_enabled", False))
         runtime.memory_on = bool(saved.get("memory_enabled", runtime.memory_on))
+        if runtime.idle_detector is not None:
+            try:
+                runtime.idle_detector.set_threshold(float(saved.get("idle_threshold_seconds", 300)))
+            except (TypeError, ValueError):
+                pass
+            if bool(saved.get("idle_think_enabled", True)):
+                runtime.idle_detector.start()
+            else:
+                runtime.idle_detector.stop()
         model_state["auto"] = bool(saved.get("auto_router_enabled", model_state["auto"]))
         return _json_response(
             jsonify,
@@ -381,6 +513,41 @@ def create_desktop_app(runtime: DesktopRuntime):
         items = list_personas(runtime.orchestrator.conn)
         return _json_response(jsonify, {"items": items, "total": len(items)})
 
+    @app.post("/api/personas")
+    def create_persona():
+        data = request.get_json(silent=True) or {}
+        try:
+            item = create_persisted_persona(runtime.orchestrator.conn, data)
+        except ValueError as exc:
+            return _json_response(jsonify, {"error": str(exc)}, status=400)
+        return _json_response(jsonify, {"ok": True, "id": item["id"], "persona": item}, status=201)
+
+    @app.put("/api/personas/<persona_id>")
+    def update_persona(persona_id: str):
+        data = request.get_json(silent=True) or {}
+        try:
+            item = update_persisted_persona(runtime.orchestrator.conn, persona_id, data)
+        except ValueError as exc:
+            return _json_response(jsonify, {"error": str(exc)}, status=400)
+        if item is None:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        if item["active"]:
+            persona = get_persisted_persona(runtime.orchestrator.conn, persona_id)
+            if persona is not None:
+                runtime.orchestrator.session_core = PersonaSessionCore(persona)
+                runtime.persona_name = resolved_companion_display_name(persona)
+        return _json_response(jsonify, {"ok": True, "persona": item})
+
+    @app.delete("/api/personas/<persona_id>")
+    def delete_persona(persona_id: str):
+        try:
+            deleted = delete_persisted_persona(runtime.orchestrator.conn, persona_id)
+        except ValueError as exc:
+            return _json_response(jsonify, {"error": str(exc)}, status=409)
+        if not deleted:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        return _json_response(jsonify, {"ok": True, "deleted": persona_id})
+
     @app.post("/api/personas/<persona_id>/activate")
     def activate_persona(persona_id: str):
         persona = activate_persisted_persona(runtime.orchestrator.conn, persona_id)
@@ -393,7 +560,7 @@ def create_desktop_app(runtime: DesktopRuntime):
 
     @app.get("/api/models")
     def models():
-        items = [_model_payload(model, runtime, model_state) for model in discover_models(data_root_override=runtime.paths.root)]
+        items = [_model_payload(model, runtime, model_state) for model in _visible_model_descriptors(runtime)]
         if not items and runtime.model_label:
             items.append(
                 {
@@ -408,6 +575,34 @@ def create_desktop_app(runtime: DesktopRuntime):
                 }
             )
         return _json_response(jsonify, {"items": items, "auto": bool(model_state["auto"]), "total": len(items)})
+
+    @app.post("/api/models/cloud")
+    def add_cloud_model():
+        data = request.get_json(silent=True) or {}
+        try:
+            item = create_cloud_model(runtime.paths.root, data)
+        except ValueError as exc:
+            return _json_response(jsonify, {"error": str(exc)}, status=400)
+        return _json_response(jsonify, {"ok": True, "id": item["id"], "model": item}, status=201)
+
+    @app.put("/api/models/cloud/<model_id>")
+    def update_cloud_model_endpoint(model_id: str):
+        data = request.get_json(silent=True) or {}
+        try:
+            item = update_cloud_model(runtime.paths.root, model_id, data)
+        except ValueError as exc:
+            return _json_response(jsonify, {"error": str(exc)}, status=400)
+        if item is None:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        return _json_response(jsonify, {"ok": True, "model": item})
+
+    @app.delete("/api/models/cloud/<model_id>")
+    def delete_cloud_model_endpoint(model_id: str):
+        if not delete_cloud_model(runtime.paths.root, model_id):
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        if model_state.get("active") == model_id:
+            model_state["active"] = None
+        return _json_response(jsonify, {"ok": True, "deleted": model_id})
 
     @app.post("/api/models/<model_id>/activate")
     def activate_model(model_id: str):
@@ -476,6 +671,7 @@ def create_desktop_app(runtime: DesktopRuntime):
     def set_model_auto():
         data = request.get_json(silent=True) or {}
         model_state["auto"] = bool(data.get("enabled", True))
+        runtime.orchestrator.auto_mode_enabled = bool(model_state["auto"])
         update_settings(runtime.paths.root, {"auto_router_enabled": bool(model_state["auto"])})
         return _json_response(jsonify, {"ok": True, "auto": bool(model_state["auto"])})
 
@@ -484,12 +680,43 @@ def create_desktop_app(runtime: DesktopRuntime):
         items = _extension_payloads(plugin_gateway, runtime, extension_state)
         return _json_response(jsonify, {"items": items, "total": len(items)})
 
+    @app.post("/api/extensions/install")
+    def install_extension_endpoint():
+        data = request.get_json(silent=True) or {}
+        source_path = str(data.get("source_path") or "").strip()
+        if not source_path:
+            return _json_response(jsonify, {"error": "invalid_source_path"}, status=400)
+        try:
+            result = install_local_extension(runtime.paths.root, runtime.paths.db_path, Path(source_path))
+        except FileNotFoundError:
+            return _json_response(jsonify, {"error": "invalid_source_path"}, status=400)
+        except SkillManifestError as exc:
+            return _json_response(jsonify, {"error": "manifest_validation_failed", "detail": str(exc)}, status=400)
+        except SkillSupplyChainError as exc:
+            return _json_response(jsonify, {"error": "supply_chain_verification_failed", "detail": str(exc)}, status=403)
+        except ExtensionAlreadyInstalledError as exc:
+            return _json_response(jsonify, {"error": "extension_already_installed", "name": str(exc)}, status=409)
+        extension_state[result["id"]] = True
+        save_extension_status(runtime.paths.db_path, result["id"], True)
+        return _json_response(jsonify, result, status=201)
+
     @app.post("/api/extensions/<extension_id>/toggle")
     def toggle_extension(extension_id: str):
         data = request.get_json(silent=True) or {}
         extension_state[extension_id] = bool(data.get("enabled", True))
         save_extension_status(runtime.paths.db_path, extension_id, extension_state[extension_id])
         return _json_response(jsonify, {"ok": True, "id": extension_id, "enabled": extension_state[extension_id]})
+
+    @app.delete("/api/extensions/<extension_id>")
+    def uninstall_extension_endpoint(extension_id: str):
+        try:
+            result = uninstall_local_extension(runtime.paths.root, runtime.paths.db_path, extension_id)
+        except ExtensionNotInstalledError:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        except SkillInvocationError as exc:
+            return _json_response(jsonify, {"error": "extension_running", "detail": str(exc)}, status=409)
+        extension_state.pop(extension_id, None)
+        return _json_response(jsonify, result)
 
     @app.get("/api/plugins")
     def plugins():
@@ -708,7 +935,13 @@ def create_desktop_app(runtime: DesktopRuntime):
         goal = str(data.get("goal") or data.get("message") or "").strip()
         if not goal:
             return _json_response(jsonify, {"error": "missing goal"}, status=400)
-        plan = _create_http_plan(goal)
+        plan_orchestrator = runtime.plan_orchestrator or _fallback_plan_orchestrator(runtime)
+        plan = _steps_to_legacy_plan(
+            goal,
+            plan_orchestrator.decide(goal),
+            skill_name=plan_orchestrator._skill_name,
+            skill_stages=plan_orchestrator._skill_stages,
+        )
         plan = save_plan(runtime.orchestrator.conn, plan)
         return _json_response(jsonify, {"ok": True, "plan": plan}, status=201)
 
@@ -729,6 +962,9 @@ def create_desktop_app(runtime: DesktopRuntime):
         if consent_request_id:
             if not _is_plan_consent_allowed(runtime, consent_request_id):
                 return _json_response(jsonify, {"error": "consent_not_allowed", "status": "consent_not_allowed"}, status=403)
+            step["status"] = "pending"
+            step["consent_request_id"] = consent_request_id
+            plan["status"] = "running"
         elif step.get("requires_auth") and not bool(data.get("consent_granted", False)):
             step["status"] = "consent"
             plan["status"] = "paused"
@@ -759,13 +995,36 @@ def create_desktop_app(runtime: DesktopRuntime):
                 {"ok": False, "error": "timeout", "status": "timeout", "plan": plan, "step": step},
                 status=408,
             )
-        step["status"] = "done"
-        step["result"] = _plan_step_result(step["title"])
-        step["error"] = None
-        plan["updated_at"] = time.time()
-        plan["status"] = "done" if all(s["status"] == "done" for s in plan["steps"]) else "running"
+        plan_orchestrator = runtime.plan_orchestrator or _fallback_plan_orchestrator(runtime)
+        context = _legacy_plan_to_context(plan, session_id=str(data.get("session_id") or runtime.session_id))
+        if consent_request_id:
+            context.step_status[f"step_{int(step['id'])}"] = CoreStepStatus.READY
+            context.context_vars["requires_consent"] = False
+        context = plan_orchestrator.execute_next(context, invoke_skill=_legacy_plan_step_invoker)
+        plan = _sync_legacy_plan_from_context(plan, context)
         plan = update_plan(runtime.orchestrator.conn, plan)
+        if context.paused_reason == "hard_gate_blocked":
+            step = _find_plan_step(plan, int(context.paused_step_id.removeprefix("step_"))) if context.paused_step_id else step
+            return _json_response(
+                jsonify,
+                {
+                    "ok": False,
+                    "error": "hard_gate_blocked",
+                    "status": "hard_gate_blocked",
+                    "missing_stages": context.context_vars.get("hard_gate", {}).get("missing_stages", []),
+                    "message": _hard_gate_message(context),
+                    "plan": plan,
+                    "step": step,
+                },
+                status=409,
+            )
         step = _find_plan_step(plan, int(step["id"])) or step
+        if context.status is CorePlanStatus.FAILED:
+            return _json_response(
+                jsonify,
+                {"ok": False, "error": context.error or "step_failed", "status": "failed", "plan": plan, "step": step},
+                status=500,
+            )
         return _json_response(jsonify, {"ok": True, "status": step["status"], "plan": plan, "step": step})
 
     @app.post("/api/plan/<plan_id>/pause")
@@ -803,6 +1062,64 @@ def create_desktop_app(runtime: DesktopRuntime):
         data = request.get_json(silent=True) or {}
         if not model_lock.acquire(blocking=False):
             return _json_response(jsonify, {"error": "model_loading", "reply": "", "blocked": False}, status=503)
+        if runtime.orchestrator.auto_mode_enabled:
+            message = str(data.get("message", "")).strip()
+            resume = bool(data.get("resume", False))
+            plan_id = str(data.get("plan_id") or "").strip() or None
+            consent_request_id = str(data.get("consent_request_id") or "").strip() or None
+            base_message = BaseMessage(
+                message_id=str(uuid.uuid4()),
+                topic="chat.auto",
+                source="shell",
+                session_id=runtime.session_id,
+                payload={"user_input": message},
+            )
+
+            def generate_auto():
+                user_message_id = None
+                try:
+                    if not resume and not message:
+                        yield _sse_event({"type": "error", "error": "（请输入内容）", "done": True})
+                        return
+                    if not resume:
+                        safety_result = runtime.orchestrator.check_safety(message, memory_on=runtime.memory_on)
+                        if safety_result is not None:
+                            yield _sse_event({"type": "plan_complete", **turn_result_to_payload(safety_result), "done": True})
+                            return
+                    if runtime.auto_turn_orchestrator is None:
+                        raise RuntimeError("auto_turn_orchestrator_unavailable")
+                    if not resume:
+                        user_message_id = append_message(
+                            runtime.orchestrator.conn,
+                            runtime.session_id,
+                            "user",
+                            message,
+                            meta={"channel": "auto"},
+                        )
+                    for event in runtime.auto_turn_orchestrator.execute_turn_stream(
+                        base_message,
+                        message,
+                        plan_id=plan_id,
+                        resume=resume,
+                        consent_request_id=consent_request_id,
+                    ):
+                        if user_message_id is not None:
+                            event.setdefault("user_message_id", user_message_id)
+                        if event.get("type") == "plan_complete" and event.get("reply"):
+                            event["message_id"] = append_message(
+                                runtime.orchestrator.conn,
+                                runtime.session_id,
+                                "assistant",
+                                str(event["reply"]),
+                                meta={"channel": "auto", "plan_id": event.get("plan_id")},
+                            )
+                        yield _sse_event(event)
+                except Exception as exc:
+                    yield _sse_event({"type": "error", "error": str(exc), "done": True})
+                finally:
+                    model_lock.release()
+
+            return _sse_response(Response, generate_auto())
         if bool(data.get("stream", False)):
             message = str(data.get("message", ""))
 
@@ -929,7 +1246,6 @@ def _sse_response(response_factory: Any, generator: Any) -> Any:
     response = response_factory(generator, mimetype="text/event-stream")
     response.headers["Cache-Control"] = "no-cache"
     response.headers["X-Accel-Buffering"] = "no"
-    response.headers["Connection"] = "keep-alive"
     return response
 
 
@@ -969,25 +1285,40 @@ def _memory_row(conn, memory_id: int) -> dict[str, Any] | None:
     }
 
 
-def _create_http_plan(goal: str) -> dict[str, Any]:
-    """摘要：为桌面原型生成最小任务计划结构。"""
+def _steps_to_legacy_plan(
+    goal: str,
+    steps: list[PlanStep],
+    *,
+    skill_name: str | None = None,
+    skill_stages: list[str] | None = None,
+) -> dict[str, Any]:
+    """摘要：把核心计划步骤映射为兼容现有前端的持久化结构。"""
     plan_id = f"plan_{uuid.uuid4().hex[:12]}"
     now = time.time()
-    steps = _decompose_goal_steps(goal)
+    step_indexes = {step.step_id: idx for idx, step in enumerate(steps)}
     return {
         "id": plan_id,
         "goal": goal,
         "status": "pending",
+        "skill_name": skill_name,
+        "skill_stages": list(skill_stages or []),
         "progress": 0,
         "created_at": now,
         "updated_at": now,
         "steps": [
             {
                 "id": idx,
-                "title": step["title"],
-                "deps": step["deps"],
-                "risk": step["risk"],
-                "requires_auth": step["risk"] == "high",
+                "title": step.title or str(step.payload.get("description") or step.skill_id),
+                "description": step.description,
+                "expected_output": step.expected_output,
+                "verification": step.verification,
+                "completion_criteria": step.completion_criteria,
+                "stage": step.stage,
+                "estimated_minutes": step.estimated_minutes,
+                "files": list(step.files),
+                "deps": [step_indexes[dependency] for dependency in step.depends_on],
+                "risk": str(step.payload.get("risk") or ("high" if step.require_consent else "medium")),
+                "requires_auth": step.require_consent,
                 "status": "pending",
                 "result": None,
                 "error": None,
@@ -997,35 +1328,117 @@ def _create_http_plan(goal: str) -> dict[str, Any]:
     }
 
 
-def _decompose_goal_steps(goal: str) -> list[dict[str, Any]]:
-    """摘要：用轻量规则拆解用户目标，后续可替换为真正 PlanOrchestrator。"""
-    if any(keyword in goal for keyword in ("写", "制作", "实现", "开发", "代码")):
-        return [
-            {"title": "理解需求：解析目标功能与约束", "deps": [], "risk": "low"},
-            {"title": "设计方案：确定模块边界与数据流", "deps": [0], "risk": "low"},
-            {"title": "实现核心逻辑：完成主要代码改动", "deps": [1], "risk": "medium"},
-            {"title": "运行验证：执行相关测试与检查", "deps": [2], "risk": "low"},
-            {"title": "整理交付：总结变更与后续风险", "deps": [3], "risk": "low"},
-        ]
-    if any(keyword in goal for keyword in ("部署", "安装", "下载", "网络", "权限")):
-        return [
-            {"title": "检查环境：确认运行时、路径与权限", "deps": [], "risk": "low"},
-            {"title": "准备依赖：下载或定位所需组件", "deps": [0], "risk": "medium"},
-            {"title": "执行变更：修改系统或服务配置", "deps": [1], "risk": "high"},
-            {"title": "验证结果：检查服务状态与日志", "deps": [2], "risk": "low"},
-        ]
-    if any(keyword in goal for keyword in ("分析", "研究", "评估", "梳理")):
-        return [
-            {"title": "收集上下文：整理相关代码与数据", "deps": [], "risk": "low"},
-            {"title": "结构化分析：提取关键事实与差异", "deps": [0], "risk": "low"},
-            {"title": "输出结论：给出判断和建议路径", "deps": [1], "risk": "low"},
-        ]
-    return [
-        {"title": "理解目标：确认任务边界", "deps": [], "risk": "low"},
-        {"title": "制定方案：拆分可执行步骤", "deps": [0], "risk": "low"},
-        {"title": "执行核心步骤", "deps": [1], "risk": "medium"},
-        {"title": "验证与收尾", "deps": [2], "risk": "low"},
-    ]
+def _legacy_plan_to_context(plan: dict[str, Any], *, session_id: str) -> TaskContext:
+    """摘要：把 legacy plan_repo payload 转成核心 PlanContext。"""
+    steps = [_legacy_step_to_plan_step(step) for step in plan.get("steps", [])]
+    context = TaskContext(
+        plan_id=str(plan["id"]),
+        status=CorePlanStatus.RUNNING,
+        steps={step.step_id: step for step in steps},
+        step_status={
+            step.step_id: _legacy_status_to_core(_find_plan_step(plan, int(step.step_id.removeprefix("step_"))))
+            for step in steps
+        },
+    )
+    context.context_vars["session_id"] = session_id
+    if plan.get("skill_name"):
+        context.context_vars["skill_name"] = str(plan["skill_name"])
+    if plan.get("skill_stages"):
+        context.context_vars["skill_stages"] = [str(stage) for stage in plan.get("skill_stages") or []]
+    for step_id, status in context.step_status.items():
+        if status in {CoreStepStatus.DONE, CoreStepStatus.SKIPPED, CoreStepStatus.DEGRADED}:
+            context.mark_dependency_satisfied(step_id)
+    return context
+
+
+def _legacy_step_to_plan_step(step: dict[str, Any]) -> PlanStep:
+    """摘要：把 legacy step payload 转成核心计划步骤。"""
+    step_id = f"step_{int(step['id'])}"
+    title = str(step.get("title") or step_id)
+    verification = str(step.get("verification") or f"确认步骤「{title}」完成。")
+    expected_output = str(step.get("expected_output") or f"步骤「{title}」的执行结果。")
+    return PlanStep(
+        step_id=step_id,
+        skill_id="chat",
+        result_key=f"{step_id}_result",
+        depends_on=tuple(f"step_{int(dep)}" for dep in step.get("deps") or []),
+        require_consent=bool(step.get("requires_auth", False)),
+        payload={
+            "description": title,
+            "query": title,
+            "risk": str(step.get("risk") or "low"),
+            "expected_output": expected_output,
+            "verification": verification,
+            "completion_criteria": str(step.get("completion_criteria") or verification),
+        },
+        title=title,
+        description=str(step.get("description") or title),
+        expected_output=expected_output,
+        verification=verification,
+        completion_criteria=str(step.get("completion_criteria") or verification),
+        stage=str(step["stage"]) if step.get("stage") else None,
+        estimated_minutes=int(step.get("estimated_minutes") or 0),
+        files=tuple(str(path) for path in step.get("files") or []),
+    )
+
+
+def _legacy_status_to_core(step: dict[str, Any] | None) -> CoreStepStatus:
+    """摘要：映射 legacy 步骤状态到核心状态。"""
+    status = str((step or {}).get("status") or "pending")
+    return {
+        "done": CoreStepStatus.DONE,
+        "failed": CoreStepStatus.FAILED,
+        "skipped": CoreStepStatus.SKIPPED,
+        "consent": CoreStepStatus.BLOCKED,
+    }.get(status, CoreStepStatus.PENDING)
+
+
+def _sync_legacy_plan_from_context(plan: dict[str, Any], context: TaskContext) -> dict[str, Any]:
+    """摘要：把核心执行结果同步回 legacy plan payload。"""
+    for step in plan.get("steps", []):
+        step_id = f"step_{int(step['id'])}"
+        status = context.step_status.get(step_id, CoreStepStatus.PENDING)
+        step["status"] = {
+            CoreStepStatus.DONE: "done",
+            CoreStepStatus.FAILED: "failed",
+            CoreStepStatus.SKIPPED: "skipped",
+            CoreStepStatus.DEGRADED: "done",
+            CoreStepStatus.BLOCKED: "blocked",
+        }.get(status, "pending")
+        result = context.get_step_result(step_id)
+        if result is not None:
+            step["result"] = result.get("result") if isinstance(result, dict) and "result" in result else str(result)
+        if step_id in context.step_errors:
+            step["error"] = context.step_errors[step_id]
+    if context.paused_reason == "hard_gate_blocked":
+        plan["status"] = "paused"
+    elif context.status is CorePlanStatus.DONE:
+        plan["status"] = "done"
+    elif context.status is CorePlanStatus.FAILED:
+        plan["status"] = "paused"
+    else:
+        plan["status"] = "running"
+    plan["updated_at"] = time.time()
+    return plan
+
+
+def _legacy_plan_step_invoker(step: PlanStep, _context: TaskContext) -> dict[str, str]:
+    """摘要：为 legacy 计划执行一个可追踪的本地步骤结果。"""
+    evidence = step.verification or step.expected_output or f"步骤「{step.title}」已执行。"
+    return {
+        "result": f"计划步骤已执行：{step.title or step.step_id}",
+        "evidence": evidence,
+    }
+
+
+def _hard_gate_message(context: TaskContext) -> str:
+    """摘要：构造 legacy API 可展示的硬门禁阻断文案。"""
+    payload = context.context_vars.get("hard_gate", {})
+    stage = str(payload.get("stage") or "")
+    missing = [str(item) for item in payload.get("missing_stages") or []]
+    if missing:
+        return f"阶段「{stage}」的前置条件未满足。请先完成：{', '.join(missing)}"
+    return f"阶段「{stage}」未通过硬门禁。"
 
 
 def _find_plan_step(plan: dict[str, Any], step_id: int) -> dict[str, Any] | None:
@@ -1071,6 +1484,7 @@ def _submit_plan_consent(runtime: DesktopRuntime, plan: dict[str, Any], step: di
         step_id=str(step["id"]),
         skill_id="desktop_plan_step",
         operation="execute_step",
+        purpose_type=PurposeType.PLUGIN_HIGH_RISK_SKILL,
         risk_level=str(step.get("risk") or "high"),
         impact_scope="plan_step",
         source="desktop_http_plan",
@@ -1299,36 +1713,70 @@ def _model_payload(model: Any, runtime: DesktopRuntime, model_state: dict[str, A
         if path.is_file():
             size = path.stat().st_size
     active_id = str(model_state.get("active") or runtime.model_label)
+    active_gguf_name = Path(str(gguf_path)).name if gguf_path else ""
     enabled_key = f"enabled:{model_id}"
     model_type = "cloud" if str(getattr(model, "backend", "")).lower() == "cloud" else "local"
+    meta = {
+        "source": str(getattr(model, "source", "")),
+        "backend": str(getattr(model, "backend", "")),
+        "architecture": getattr(model, "architecture", None),
+        "n_ctx": getattr(model, "n_ctx", None),
+        "size": size,
+        "ram": None,
+    }
+    default_params = getattr(model, "default_params", {}) or {}
+    if model_type == "cloud" and isinstance(default_params, dict):
+        meta["endpoint"] = str(default_params.get("endpoint") or "")
+        meta["model_name"] = str(default_params.get("model_name") or getattr(model, "display_name", "") or model_id)
+        meta["api_key_masked"] = str(default_params.get("api_key_masked") or "")
     return {
         "id": model_id,
         "name": str(getattr(model, "display_name", None) or model_id),
         "type": model_type,
         "locked": model_type == "cloud" and not bool(getattr(runtime, "logged_in", False)),
         "enabled": bool(model_state.get(enabled_key, getattr(model, "status", "") == "ready")),
-        "active": model_id == active_id or str(getattr(model, "display_name", "")) == runtime.model_label,
+        "active": (
+            model_id == active_id
+            or str(getattr(model, "display_name", "")) == runtime.model_label
+            or active_gguf_name == runtime.model_label
+        ),
         "status": str(getattr(model, "status", "unknown")),
-        "meta": {
-            "source": str(getattr(model, "source", "")),
-            "backend": str(getattr(model, "backend", "")),
-            "architecture": getattr(model, "architecture", None),
-            "n_ctx": getattr(model, "n_ctx", None),
-            "size": size,
-            "ram": None,
-        },
+        "meta": meta,
     }
+
+
+def _visible_model_descriptors(runtime: DesktopRuntime) -> list[ModelDescriptor]:
+    """摘要：返回本地发现模型与用户配置云端模型的合并列表。"""
+    models = list(discover_models())
+    models.extend(_cloud_model_descriptor(item) for item in list_public_cloud_models(runtime.paths.root))
+    return models
+
+
+def _cloud_model_descriptor(item: dict[str, Any]) -> ModelDescriptor:
+    """摘要：将安全云端模型 payload 转为统一模型描述。"""
+    return ModelDescriptor(
+        model_id=str(item.get("id") or ""),
+        display_name=str(item.get("name") or item.get("model_name") or ""),
+        gguf_path=None,
+        source=str(item.get("source") or "local"),
+        status="ready" if bool(item.get("enabled", True)) else "disabled",
+        backend="cloud",
+        default_params={
+            "endpoint": str(item.get("endpoint") or ""),
+            "model_name": str(item.get("model_name") or item.get("name") or ""),
+            "api_key_masked": str(item.get("api_key") or ""),
+        },
+    )
 
 
 def _find_model_descriptor(model_id: str, runtime: DesktopRuntime) -> Any | None:
     """摘要：按模型 ID 或显示名查找当前可见模型描述。"""
-    for model in discover_models(data_root_override=runtime.paths.root):
+    for model in _visible_model_descriptors(runtime):
         current_id = str(getattr(model, "model_id", "") or getattr(model, "display_name", ""))
         display_name = str(getattr(model, "display_name", "") or "")
         if model_id in {current_id, display_name}:
             return model
     return None
-
 
 def _load_local_model_backend(runtime: DesktopRuntime, model: Any) -> object:
     """摘要：为本地 GGUF 描述创建新的推理后端实例。"""
@@ -1343,6 +1791,34 @@ def _load_local_model_backend(runtime: DesktopRuntime, model: Any) -> object:
         run_health_check=True,
         model_config=model_config,
     )
+
+
+def _fallback_plan_orchestrator(runtime: DesktopRuntime) -> PlanOrchestrator:
+    """摘要：为冷路径构造带硬门禁的计划编排器。"""
+    tracker = SkillExecutionTracker(runtime.orchestrator.conn)
+    return PlanOrchestrator(
+        StateManager(runtime.paths.db_path),
+        hard_gate=HardGate(tracker),
+        skill_tracker=tracker,
+        llm_backend=runtime.orchestrator.backend,
+        skill_resolver=_resolve_prompt_skill,
+        subagent_scheduler=SubagentScheduler(),
+        privacy_mode=runtime.privacy_mode.value,
+    )
+
+
+def _resolve_prompt_skill(user_input: str) -> tuple[str | None, list[str]]:
+    """摘要：在桌面 A 层解析 Prompt Skill 名称与阶段序列。"""
+    decision = SkillDecisionEngine().decide(user_input)
+    if decision.route != "skill" or decision.skill_name is None:
+        return None, []
+    descriptor = next(
+        (item for item in load_skill_descriptions() if item.name == decision.skill_name),
+        None,
+    )
+    if descriptor is None or not descriptor.stages:
+        return None, []
+    return descriptor.name, list(descriptor.stages)
 
 
 def _extension_payloads(
@@ -1408,3 +1884,4 @@ def start_desktop_http(runtime: DesktopRuntime) -> DesktopHttpServer:
     )
     thread.start()
     return DesktopHttpServer(port=port, thread=thread)
+

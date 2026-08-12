@@ -19,6 +19,7 @@ class PurposeType(str, Enum):
     SKILL_FILE_ACCESS = "skill_file_access"
     SKILL_CODE_EXECUTION = "skill_code_execution"
     SKILL_CLOUD_INFERENCE = "skill_cloud_inference"
+    SKILL_INVOKE = "skill_invoke"
     CLOUD_ROUTING = "cloud_routing"
     SANDBOX_DOWNGRADE = "sandbox_downgrade"
     NATIVE_RISK_PROMPT = "native_risk_prompt"
@@ -61,6 +62,86 @@ class CapabilityTag(str, Enum):
     COMPLEX_REASONING = "complex_reasoning"
     CODE_GENERATION = "code_generation"
     TOOL_USE = "tool_use"
+
+
+@dataclass(frozen=True)
+class CapabilityProfile:
+    """摘要：模型多维能力画像，供 B1/B4 动态调整 Prompt 与润色策略。"""
+
+    instruction_following: float = 0.5
+    roleplay_quality: float = 0.5
+    safety_sensitivity: float = 0.5
+    reasoning_ability: float = 0.5
+    max_context: int = 4096
+
+    def __post_init__(self) -> None:
+        for name in (
+            "instruction_following",
+            "roleplay_quality",
+            "safety_sensitivity",
+            "reasoning_ability",
+        ):
+            value = float(getattr(self, name))
+            if not 0.0 <= value <= 1.0:
+                raise ValueError(f"{name} must be between 0.0 and 1.0, got {value}")
+        if int(self.max_context) < 512:
+            raise ValueError(f"max_context must be >= 512, got {self.max_context}")
+
+
+class GoalStatus(str, Enum):
+    """摘要：长期目标的业务状态。"""
+
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    ABANDONED = "abandoned"
+
+
+class GoalPriority(str, Enum):
+    """摘要：长期目标优先级；紧急级别仅允许用户手动标记。"""
+
+    NORMAL = "normal"
+    HIGH = "high"
+    URGENT = "urgent"
+
+
+class FeedbackLevel(str, Enum):
+    """摘要：用户对目标提醒的反馈级别。"""
+
+    STRONG_NEGATIVE = "strong_negative"
+    WEAK_NEGATIVE = "weak_negative"
+    POSITIVE = "positive"
+
+
+@dataclass(frozen=True)
+class Goal:
+    """摘要：持久化于 goal 类型记忆的用户长期目标。"""
+
+    goal_id: str
+    description: str
+    goal_status: str
+    priority: str
+    progress: float
+    created_at: float
+    updated_at: float
+    deadline: float | None
+    reminder_count: int
+    last_reminder_at: float | None
+    negative_feedback_score: float
+    tags: list[str]
+
+
+@dataclass(frozen=True)
+class ReminderCandidate:
+    """摘要：GoalManager 输出的提醒候选，仅包含决策结果，不含展示逻辑。"""
+
+    goal_id: str
+    description: str
+    urgency: float
+    reason: str
+    priority: str
+    deadline: float | None
+    progress: float
+    days_since_last_reminder: float
 
 
 @dataclass(frozen=True)
@@ -143,7 +224,7 @@ class ModelRuntimeConfig:
     chat_template: str = ""
     stop_tokens: tuple[str, ...] = ()
     strip_output_tags: tuple[str, ...] = ()
-    capability_profile: CapabilityTag = CapabilityTag.CHAT
+    capability_profile: CapabilityProfile = field(default_factory=CapabilityProfile)
     default_params: dict[str, Any] = field(default_factory=dict)
     moe: dict[str, Any] | None = None
 
@@ -166,7 +247,7 @@ class ModelDescriptor:
     chat_template: str = ""
     stop_tokens: tuple[str, ...] = ()
     strip_output_tags: tuple[str, ...] = ()
-    capability_profile: CapabilityTag = CapabilityTag.CHAT
+    capability_profile: CapabilityProfile = field(default_factory=CapabilityProfile)
     default_params: dict[str, Any] = field(default_factory=dict)
     moe: dict[str, Any] | None = None
     incompatible_reason: str | None = None
@@ -286,7 +367,7 @@ class ToolResult:
     """摘要：Tool 执行结果，支持暂停等待 Consent 后恢复。"""
 
     tool_id: str
-    status: Literal["completed", "requires_consent", "denied", "consent_rejected", "error"]
+    status: Literal["completed", "blocked", "requires_consent", "denied", "consent_rejected", "error"]
     result: dict[str, object] | None
     error: dict[str, str] | None
     consent_request_id: str | None
@@ -300,6 +381,9 @@ class CloudCompletionRequest:
 
     user_message: str
     purpose: str
+    url: str | None = None
+    api_key: str | None = None
+    model: str | None = None
 
 
 @dataclass(frozen=True)

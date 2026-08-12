@@ -17,12 +17,29 @@ from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManag
 from offline_companion.core.memory_lifecycle.recall import format_recall_prompt_block, recall
 from offline_companion.core.persona_session.persona_loader import resolved_companion_display_name
 from offline_companion.shared.runtime_paths import configs_dir, dev_repo_root
-from offline_companion.shared.types import MemoryRecallHit, MessageRow, OceanVector, Persona
+from offline_companion.shared.types import (
+    CapabilityProfile,
+    MemoryRecallHit,
+    MessageRow,
+    OceanVector,
+    Persona,
+)
 
 _EMOTION_STRATEGIES: dict[str, dict[str, str]] | None = None
 _OCEAN_TONE_MAPPINGS: dict[str, dict[str, object]] | None = None
 _ASSISTANT_NAME_QUESTION_KEYWORDS = ("你叫什么", "你的名字", "你叫啥", "你是谁")
 _DISPLAY_NAME_MAX_CHARS = 32
+SKILL_BOOTSTRAP_PROMPT = """\
+## 技能感知
+
+在处理复杂任务前，检查是否有匹配的技能定义（SKILL.md）。
+如果用户请求匹配某 skill 的 description，必须优先按该 skill 的 Iron Laws 和 Procedure 执行。
+
+技能定义位于 skills/ 目录下。每个 skill 的 SKILL.md 声明了：
+- When to Use（适用场景）
+- Iron Laws（不可绕过的硬规则）
+- Procedure（具体执行步骤）
+"""
 
 logger = logging.getLogger(__name__)
 
@@ -214,6 +231,8 @@ class PersonaSessionCore:
         max_tokens: int = 256,
         reference_block: str = "",
         emotion_context: EmotionContext | None = None,
+        capability_profile: CapabilityProfile | None = None,
+        skill_prompt: str = "",
     ) -> AssembleReplyResult:
         """摘要：装配 prompt、注入记忆召回与情绪/语气策略并调用推理后端。"""
         recalls, combined_memory_block, system_prompt, identity_reply = self._assemble_context(
@@ -222,6 +241,8 @@ class PersonaSessionCore:
             memory_enabled=memory_enabled,
             reference_block=reference_block,
             emotion_context=emotion_context,
+            capability_profile=capability_profile,
+            skill_prompt=skill_prompt,
         )
         if identity_reply is not None:
             return AssembleReplyResult(
@@ -254,6 +275,8 @@ class PersonaSessionCore:
         max_tokens: int = 256,
         reference_block: str = "",
         emotion_context: EmotionContext | None = None,
+        capability_profile: CapabilityProfile | None = None,
+        skill_prompt: str = "",
     ) -> Iterator[dict[str, Any]]:
         """????? prompt ??????????????"""
         recalls, combined_memory_block, system_prompt, identity_reply = self._assemble_context(
@@ -262,6 +285,8 @@ class PersonaSessionCore:
             memory_enabled=memory_enabled,
             reference_block=reference_block,
             emotion_context=emotion_context,
+            capability_profile=capability_profile,
+            skill_prompt=skill_prompt,
         )
         yield {"recall": len(recalls)}
         if identity_reply is not None:
@@ -288,21 +313,33 @@ class PersonaSessionCore:
         memory_enabled: bool,
         reference_block: str = "",
         emotion_context: EmotionContext | None = None,
+        capability_profile: CapabilityProfile | None = None,
+        skill_prompt: str = "",
     ) -> tuple[list[MemoryRecallHit], str, str, str | None]:
         """??????????profile ? system prompt????????????"""
+        profile = capability_profile or CapabilityProfile()
         recalls: list[MemoryRecallHit] = []
         memory_block = ""
         if reference_block.strip():
             memory_block = reference_block.strip()
         elif memory_enabled:
             emotion_label = emotion_context.emotion if emotion_context is not None else None
-            recalls = recall(conn, user_message, limit=8, emotion=emotion_label)
+            recall_limit = 8 if profile.max_context >= 4096 else 4
+            recalls = recall(conn, user_message, limit=recall_limit, emotion=emotion_label)
             memory_block = format_recall_prompt_block(recalls)
         profile_block = self._profile_memory_block(conn) if memory_enabled else ""
         combined_memory_block = "\n\n".join(part for part in (profile_block, memory_block) if part.strip())
         tone_instruction = _build_tone_instruction(self.persona.ocean)
+        if profile.roleplay_quality < 0.4:
+            tone_instruction = ""
         emotion_instruction = _build_emotion_instruction(emotion_context)
-        system_prompt = self._system_prompt_locked(conn) + tone_instruction + emotion_instruction
+        format_hint = ""
+        if profile.instruction_following < 0.4:
+            format_hint = "\n【输出要求】请用简洁自然的中文回答，不要重复用户的话。\n"
+        prompt_parts = [self._system_prompt_locked(conn), SKILL_BOOTSTRAP_PROMPT]
+        if skill_prompt.strip():
+            prompt_parts.append(skill_prompt.strip())
+        system_prompt = "\n\n".join(prompt_parts) + (tone_instruction + emotion_instruction + format_hint)
         if os.getenv("OFFLINE_COMPANION_PROMPT_PROBE") == "1":
             logger.debug("[PROMPT_PROBE] system_prompt=%r", system_prompt[:200])
         identity_reply = self._identity_question_reply(conn, user_message, memory_enabled=memory_enabled)

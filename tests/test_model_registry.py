@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from offline_companion.shared import runtime_paths
 from offline_companion.shared.runtime_paths import dev_repo_root, models_dir
-from offline_companion.shared.types import CapabilityTag
+from offline_companion.shared.types import CapabilityProfile
 from offline_companion.shell.ui_host.model_registry import (
     describe_model,
     discover_models,
@@ -81,7 +83,7 @@ def test_frozen_models_dir_prefers_installed_model(tmp_path, monkeypatch) -> Non
     assert models_dir() == installed_models
 
 
-def test_frozen_models_dir_falls_back_to_data_root(tmp_path, monkeypatch) -> None:
+def test_frozen_models_dir_uses_relative_install_directory(tmp_path, monkeypatch) -> None:
     install_dir = tmp_path / "Offline Companion"
     install_dir.mkdir()
     data = tmp_path / "data"
@@ -89,7 +91,12 @@ def test_frozen_models_dir_falls_back_to_data_root(tmp_path, monkeypatch) -> Non
     monkeypatch.setattr(runtime_paths.sys, "executable", str(install_dir / "OfflineCompanion.exe"))
     monkeypatch.setenv("OFFLINE_COMPANION_DATA_DIR", str(data))
 
-    assert models_dir() == data / "models"
+    assert models_dir() == install_dir / "models"
+    assert (install_dir / "models").is_dir()
+
+
+def test_models_dir_explicit_override_remains_supported(tmp_path) -> None:
+    assert models_dir(data_root_override=tmp_path) == tmp_path / "models"
 
 
 def test_model_config_loads_chat_template_and_stop_tokens() -> None:
@@ -98,7 +105,13 @@ def test_model_config_loads_chat_template_and_stop_tokens() -> None:
     assert "<|im_start|>" in cfg.chat_template
     assert "<|im_end|>" in cfg.stop_tokens
     assert "think" in cfg.strip_output_tags
-    assert cfg.capability_profile is CapabilityTag.SIMPLE_QA
+    assert cfg.capability_profile == CapabilityProfile(
+        instruction_following=0.4,
+        roleplay_quality=0.35,
+        safety_sensitivity=0.6,
+        reasoning_ability=0.3,
+        max_context=4096,
+    )
     assert cfg.n_ctx == 4096
 
 
@@ -118,7 +131,8 @@ def test_describe_model_reports_ready_status(tmp_path, monkeypatch) -> None:
     configs.mkdir(parents=True)
     gguf = models / f"{model_id}.gguf"
     gguf.write_bytes(b"fake")
-    (configs / f"{model_id}.yaml").write_text(
+    config_path = configs / f"{model_id}.yaml"
+    config_path.write_text(
         """
 display_name: Qwen2.5 1.5B Instruct Q4_K_M
 backend: llama_cpp
@@ -137,7 +151,10 @@ stop_tokens:
         encoding="utf-8",
     )
     monkeypatch.setenv("OFFLINE_COMPANION_MODELS_DIR", str(models))
-    monkeypatch.setenv("OFFLINE_COMPANION_CONFIGS_DIR", str(tmp_path / "configs"))
+    monkeypatch.setattr(
+        "offline_companion.shell.ui_host.model_registry.model_config_path",
+        lambda _model_id: config_path,
+    )
     descriptor = describe_model(model_id)
     assert descriptor.status == "ready"
     assert descriptor.gguf_path == str(gguf.resolve())
@@ -162,3 +179,41 @@ def test_discover_models_includes_yaml_only_entries() -> None:
     model_ids = {item.model_id for item in discover_models()}
     assert "qwen2.5-1.5b-instruct-q4_k_m" in model_ids
     assert "qwen2.5-7b-instruct-q4_k_m" in model_ids
+
+
+def test_capability_profile_validates_ranges() -> None:
+    assert CapabilityProfile() == CapabilityProfile(
+        instruction_following=0.5,
+        roleplay_quality=0.5,
+        safety_sensitivity=0.5,
+        reasoning_ability=0.5,
+        max_context=4096,
+    )
+    with pytest.raises(ValueError, match="instruction_following"):
+        CapabilityProfile(instruction_following=1.5)
+    with pytest.raises(ValueError, match="max_context"):
+        CapabilityProfile(max_context=100)
+
+
+def test_legacy_capability_tag_uses_default_profile(tmp_path, monkeypatch) -> None:
+    model_id = "legacy-profile"
+    models = tmp_path / "models"
+    configs = tmp_path / "configs" / "models"
+    models.mkdir()
+    configs.mkdir(parents=True)
+    (models / f"{model_id}.gguf").write_bytes(b"fake")
+    config_path = configs / f"{model_id}.yaml"
+    config_path.write_text(
+        "n_ctx: 4096\nchat_template: legacy\ncapability_profile: simple_qa\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OFFLINE_COMPANION_MODELS_DIR", str(models))
+    monkeypatch.setattr(
+        "offline_companion.shell.ui_host.model_registry.model_config_path",
+        lambda _model_id: config_path,
+    )
+
+    descriptor = describe_model(model_id)
+
+    assert descriptor.status == "ready"
+    assert descriptor.capability_profile == CapabilityProfile()

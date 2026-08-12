@@ -4,6 +4,48 @@
 
 ---
 
+## 未发布 · 2026-08-11
+
+### 修复
+- 本地 GGUF 默认目录统一为程序根目录相对路径 `models/`；开发模式使用仓库 `models/`，冻结版使用可执行文件旁的 `models/`，后续模型下载沿用同一路径。
+
+### 新增能力
+- Superpowers Prompt Skill 支持声明阶段序列；新增 SQLite `skill_executions` 状态跟踪、`HardGate` 前置检查和宿主注入会话 ID 的本地 `skill_advance_stage` 元工具。
+
+---
+
+## v1.2.1 · 2026-08-10（模型适配 P1）
+
+### 增强
+- 新增五维 `CapabilityProfile`，模型 YAML 支持多维画像并兼容旧单值配置。
+- B1 根据模型画像调整 OCEAN 语气指令、记忆召回上限和显式格式约束。
+- B4 本地与云端润色链路按角色扮演能力选择最小修正或完整润色。
+- 云端模型配置支持持久化能力画像，继续严格掩码 API Key。
+
+### 验收
+- 模型适配 P1 三个 Batch 全部闭合：416 passed、3 skipped，Ruff 全绿。
+
+---
+
+## v1.2.0 · 2026-08-10（Sprint 10 Auto Mode）
+
+### 新增能力
+- Auto Turn 将规则拆解、per-step LOCAL/CLOUD 路由、单步 DAG 执行与结果组装接入生产聊天入口。
+- 新增多步骤 SSE 事件协议和前端计划卡片，实时展示步骤路由、进度、失败与跳过状态。
+- Consent 暂停状态与 request_id 持久化到 SQLite，用户决定后可跨请求恢复计划。
+- 云端模型凭证通过宿主 provider 注入执行链，不依赖环境变量且不向 DOM 暴露明文 Key。
+
+### 安全与兼容
+- Consent request_id 由后端生成并校验，不信任客户端自报授权结果。
+- Auto 关闭时普通聊天继续走原 ModelRouter 路径；旧 `/api/plan/decompose` 保留薄代理兼容。
+- Auto 开启前要求至少一个已启用云端模型，并与旧 Plan Mode 互斥。
+
+### 验收
+- Sprint 10 后端完整回归：405 passed、3 skipped。
+- Batch 4 桌面 HTTP 窄测：44 passed；`shell_api.js` 通过 `node --check`。
+
+---
+
 ## v1.0.0 · 2026-08-01（首个桌面发布候选）
 
 ### 发行基线

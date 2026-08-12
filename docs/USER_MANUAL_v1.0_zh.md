@@ -72,7 +72,7 @@ Offline Companion 是一款默认在本机运行的桌面陪伴助手。对话�
 你也可以把自己的 GGUF 模型放入：
 
 ```text
-%LOCALAPPDATA%\Offline Companion\models\
+%LOCALAPPDATA%\Programs\Offline Companion\models\
 ```
 
 ## 8. 卸载

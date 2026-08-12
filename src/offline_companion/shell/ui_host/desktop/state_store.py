@@ -46,19 +46,6 @@ def save_json(path: Path, data: dict[str, Any]) -> None:
         raise
 
 
-def load_plan_store(data_root: Path) -> dict[str, dict[str, Any]]:
-    """摘要：加载桌面 HTTP 计划状态。"""
-    raw = load_json(_plan_store_path(data_root)).get("plans", {})
-    if not isinstance(raw, dict):
-        return {}
-    return {str(plan_id): dict(plan) for plan_id, plan in raw.items() if isinstance(plan, dict)}
-
-
-def save_plan_store(data_root: Path, plans: dict[str, dict[str, Any]]) -> None:
-    """摘要：保存桌面 HTTP 计划状态。"""
-    save_json(_plan_store_path(data_root), {"plans": plans})
-
-
 def load_extension_state(data_root: Path) -> dict[str, bool]:
     """摘要：加载扩展开关状态。"""
     raw = load_json(_extension_state_path(data_root)).get("enabled", {})
@@ -70,10 +57,6 @@ def load_extension_state(data_root: Path) -> dict[str, bool]:
 def save_extension_state(data_root: Path, state: dict[str, bool]) -> None:
     """摘要：保存扩展开关状态。"""
     save_json(_extension_state_path(data_root), {"enabled": state})
-
-
-def _plan_store_path(data_root: Path) -> Path:
-    return data_root / "desktop_plans.json"
 
 
 def _extension_state_path(data_root: Path) -> Path:

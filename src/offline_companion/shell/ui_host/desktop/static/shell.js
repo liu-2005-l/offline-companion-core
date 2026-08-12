@@ -1,4 +1,4 @@
-function setTheme(t) {
+﻿function setTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   document.querySelector('.app').setAttribute('data-theme', t);
   document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
@@ -1158,9 +1158,10 @@ function onOceanEdit(input) {
   if (fill) fill.style.width = val + '%';
 }
 
-function savePersonaEdit() {
+async function savePersonaEdit() {
   var oldName = getActivePersonaName();
   if (!oldName || !_personaRegistry[oldName]) return;
+  var personaId = getActivePersonaId();
 
   var newName = document.getElementById('peName').value.trim() || oldName;
   var desc = document.getElementById('peDesc').value.trim();
@@ -1179,6 +1180,25 @@ function savePersonaEdit() {
   document.querySelectorAll('.persona-traits .tag-edit-chip span').forEach(function(s) {
     traits.push(s.textContent);
   });
+
+  if (personaId && typeof updatePersonaApi === 'function') {
+    try {
+      await updatePersonaApi(personaId, {
+        name: newName,
+        desc: desc,
+        ocean: ocean,
+        traits: traits,
+        anchor: anchor
+      });
+      _personaEditMode = false;
+      var updatedChip = document.querySelector('.persona-chip[data-persona-id="' + personaId + '"]');
+      if (updatedChip) updatedChip.click();
+      showToast('Persona saved');
+    } catch (error) {
+      showToast('Persona save failed: ' + error.message);
+    }
+    return;
+  }
 
   // update registry (handle name change)
   if (newName !== oldName) {
@@ -1249,6 +1269,11 @@ function getActivePersonaName() {
   return active.querySelector('span:last-child').textContent.trim();
 }
 
+function getActivePersonaId() {
+  var active = document.querySelector('.persona-chip.active');
+  return active ? active.getAttribute('data-persona-id') : null;
+}
+
 function deletePersona() {
   var chips = document.querySelectorAll('.persona-chip');
   if (chips.length <= 1) {
@@ -1259,7 +1284,19 @@ function deletePersona() {
   var name = getActivePersonaName();
   if (!name) return;
 
-  showConfirm('删除人格', '确定要删除人格「' + name + '」吗？此操作不可撤销。', function() {
+  showConfirm('删除人格', '确定要删除人格「' + name + '」吗？此操作不可撤销。', async function() {
+    var personaId = getActivePersonaId();
+    if (personaId && typeof deletePersonaApi === 'function') {
+      try {
+        await deletePersonaApi(personaId);
+        var firstApiChip = document.querySelector('.persona-chip');
+        if (firstApiChip) firstApiChip.click();
+        showToast('Persona deleted · ' + name);
+      } catch (error) {
+        showToast('Persona delete failed: ' + error.message);
+      }
+      return;
+    }
     delete _personaRegistry[name];
     var activeChip = document.querySelector('.persona-chip.active');
     if (activeChip) activeChip.remove();
@@ -1601,7 +1638,7 @@ function closePersonaCreator() {
   document.getElementById('personaCreatorOverlay').classList.remove('open');
 }
 
-function savePersona() {
+async function savePersona() {
   var name = document.getElementById('pcName').value.trim();
   if (!name) { showToast('请先填写人格名称'); return; }
   if (_personaRegistry[name]) { showToast('人格名称已存在'); return; }
@@ -1616,6 +1653,25 @@ function savePersona() {
   }
 
   var avatar = name.charAt(name.length - 1);
+  if (typeof createPersonaApi === 'function') {
+    try {
+      var personaId = await createPersonaApi({
+        name: name,
+        avatar: avatar,
+        desc: desc,
+        ocean: _radarValues.slice(),
+        traits: _deriveTraits(_radarValues),
+        anchor: anchor
+      });
+      var createdChip = document.querySelector('.persona-chip[data-persona-id="' + personaId + '"]');
+      if (createdChip) createdChip.click();
+      closePersonaCreator();
+      showToast('Persona created · ' + name);
+    } catch (error) {
+      showToast('Persona create failed: ' + error.message);
+    }
+    return;
+  }
   _personaRegistry[name] = {
     id: name,
     avatar: avatar,
@@ -2091,17 +2147,44 @@ function selectModel(el, name, type) {
   showToast('已切换到 ' + name);
 }
 
-function cloudConnect() {
+var _editingCloudModelId = null;
+
+async function cloudConnect() {
   const ep = document.getElementById('cloudEndpoint').value.trim();
   const key = document.getElementById('cloudKey').value.trim();
   const model = document.getElementById('cloudModel').value.trim();
-  if (!ep || !key || !model) { showToast('请填写完整'); return; }
-  addCloudModel(model, ep, key);
+  if (!ep || !model) { showToast('请填写 API 端点和模型名称'); return; }
+  if (!_editingCloudModelId && !key) { showToast('请填写 API Key'); return; }
+  const payload = {
+    name: model,
+    endpoint: ep,
+    model_name: model
+  };
+  if (key) payload.api_key = key;
+  try {
+    if (_editingCloudModelId && typeof updateCloudModelApi === 'function') {
+      await updateCloudModelApi(_editingCloudModelId, payload);
+      showToast('已更新云端模型 · ' + model);
+    } else if (typeof addCloudModelApi === 'function') {
+      await addCloudModelApi(payload);
+      showToast('已添加云端模型 · ' + model);
+    } else {
+      addCloudModel(model, ep, key);
+      showToast('已添加云端模型 · ' + model);
+    }
+    resetCloudModelForm();
+  } catch (error) {
+    showToast('云端模型保存失败：' + error.message);
+  }
+}
+
+function resetCloudModelForm() {
+  _editingCloudModelId = null;
   document.getElementById('cloudEndpoint').value = '';
   document.getElementById('cloudKey').value = '';
+  document.getElementById('cloudKey').placeholder = 'sk-...';
   document.getElementById('cloudModel').value = '';
   document.getElementById('cloudFormTitle').textContent = '添加云端 API';
-  showToast('已添加云端模型 · ' + model);
 }
 
 function addCloudModel(modelName, endpoint, apiKey) {
@@ -2110,9 +2193,11 @@ function addCloudModel(modelName, endpoint, apiKey) {
   if (empty) empty.remove();
   const item = document.createElement('div');
   item.className = 'model-item';
-  item.setAttribute('data-model', modelName);
+  item.setAttribute('data-model-id', modelName);
+  item.setAttribute('data-model-name', modelName);
+  item.setAttribute('data-model-type', 'cloud');
   item.setAttribute('data-endpoint', endpoint);
-  item.setAttribute('data-apikey', apiKey);
+  item.setAttribute('data-cloud-model-name', modelName);
   item.onclick = function(e) {
     if (e.target.closest('button')) return;
     if (e.target.closest('.model-item-toggle')) return;
@@ -2123,51 +2208,39 @@ function addCloudModel(modelName, endpoint, apiKey) {
     '<div class="model-item-info">' +
       '<div class="model-item-name">' + escapeHtml(modelName) + '</div>' +
       '<div class="model-item-cloud-meta">' + escapeHtml(endpoint) + '</div>' +
-    '</div>' +
-    '<div class="model-item-actions">' +
-      '<button class="edit-btn" onclick="event.stopPropagation(); editCloudModel(this)" title="修改">' +
-        '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
-      '</button>' +
-      '<button class="del-btn" onclick="event.stopPropagation(); deleteCloudModel(this)" title="删除">' +
-        '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
-      '</button>' +
     '</div>';
   list.appendChild(item);
 }
 
 function editCloudModel(btn) {
   const item = btn.closest('.model-item');
+  _editingCloudModelId = item.getAttribute('data-model-id') || null;
   document.getElementById('cloudEndpoint').value = item.getAttribute('data-endpoint') || '';
-  document.getElementById('cloudKey').value = item.getAttribute('data-apikey') || '';
-  document.getElementById('cloudModel').value = item.getAttribute('data-model') || '';
-  document.getElementById('cloudFormTitle').textContent = '修改 · ' + item.getAttribute('data-model');
-  item.remove();
-  if (document.getElementById('cloudModelList').children.length === 0) {
-    const list = document.getElementById('cloudModelList');
-    const empty = document.createElement('div');
-    empty.className = 'model-empty';
-    empty.id = 'cloudEmpty';
-    empty.textContent = '尚未添加云端模型，在下方配置 API';
-    list.appendChild(empty);
-  }
-  showToast('已加载配置到下方表单，修改后保存');
+  document.getElementById('cloudKey').value = '';
+  document.getElementById('cloudKey').placeholder = '留空则不修改 API Key';
+  document.getElementById('cloudModel').value = item.getAttribute('data-cloud-model-name') || item.getAttribute('data-model-name') || '';
+  document.getElementById('cloudFormTitle').textContent = '修改 · ' + (item.getAttribute('data-model-name') || '云端模型');
+  showToast('已加载配置到下方表单，API Key 留空则不修改');
 }
 
 function deleteCloudModel(btn) {
   const item = btn.closest('.model-item');
-  const name = item.getAttribute('data-model');
-  item.remove();
-  if (document.getElementById('cloudModelList').children.length === 0) {
-    const list = document.getElementById('cloudModelList');
-    const empty = document.createElement('div');
-    empty.className = 'model-empty';
-    empty.id = 'cloudEmpty';
-    empty.textContent = '尚未添加云端模型，在下方配置 API';
-    list.appendChild(empty);
-  }
-  showToast('已删除 · ' + name);
+  const modelId = item.getAttribute('data-model-id');
+  const name = item.getAttribute('data-model-name') || '云端模型';
+  showConfirm('删除云端模型', '确定要删除「' + name + '」吗？', async function() {
+    if (modelId && typeof deleteCloudModelApi === 'function') {
+      try {
+        await deleteCloudModelApi(modelId);
+        showToast('已删除 · ' + name);
+      } catch (error) {
+        showToast('云端模型删除失败：' + error.message);
+      }
+      return;
+    }
+    item.remove();
+    showToast('已删除 · ' + name);
+  });
 }
-
 function toggleSessionPanel() {
   document.getElementById('sessionOverlay').classList.toggle('open');
 }
@@ -2364,6 +2437,47 @@ var _sourceBadgeMap = {
   published: '<span class="ext-source-badge published">已上架</span>'
 };
 
+async function promptInstallExtension() {
+  var sourcePath = window.prompt('请输入本地扩展目录路径（目录内需包含 manifest.json）');
+  if (!sourcePath) return;
+  if (typeof installExtension !== 'function') {
+    showToast('扩展安装 API 未就绪');
+    return;
+  }
+  try {
+    var result = await installExtension(sourcePath.trim());
+    showToast('已安装扩展 · ' + (result.name || result.id));
+  } catch (error) {
+    showToast('扩展安装失败：' + error.message);
+  }
+}
+
+function showExtensionStoreSoon() {
+  showToast('扩展商城即将开放，本地导入已可用');
+}
+
+function showExtensionSubmitSoon() {
+  showToast('提交审核即将开放');
+}
+
+function confirmUninstallExtension(id) {
+  var d = _extRegistry[id];
+  if (!d) return;
+  showConfirm('卸载扩展', '确定要卸载「' + d.name + '」吗？', async function() {
+    if (typeof uninstallExtension !== 'function') {
+      showToast('扩展卸载 API 未就绪');
+      return;
+    }
+    try {
+      await uninstallExtension(id);
+      closeExtDetail();
+      showToast('已卸载 · ' + d.name);
+    } catch (error) {
+      showToast('扩展卸载失败：' + error.message);
+    }
+  });
+}
+
 function showExtDetail(id) {
   var d = _extRegistry[id];
   if (!d) return;
@@ -2410,7 +2524,7 @@ function showExtDetail(id) {
   if (d.hasCustomAction) {
     actionsHtml += '<button class="cloud-save-btn" onclick="closeExtDetail(); toggleShellCustom()">打开定制面板</button>';
   }
-  actionsHtml += '<button class="cloud-save-btn" style="background:var(--danger)" onclick="showToast(\'已卸载 ' + d.name + '\'); closeExtDetail()">卸载</button>';
+  actionsHtml += '<button class="cloud-save-btn" style="background:var(--danger)" onclick="confirmUninstallExtension(\'' + id + '\')">卸载</button>';
 
   var html =
     '<div class="ext-detail-header">' +
@@ -2487,3 +2601,4 @@ function togglePerm(el, idx, extId) {
     showToast('已授予权限 · ' + p.name);
   }
 }
+

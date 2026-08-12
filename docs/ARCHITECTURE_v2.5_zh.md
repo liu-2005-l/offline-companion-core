@@ -1,6 +1,6 @@
-﻿# Offline Companion 架构与开发说明 v2.6（权威版）
+﻿# Offline Companion 架构与开发说明 v2.7（权威版）
 
-> **版本**：v2.6 · **日期**：2026-08-01（v1.0 发布闭合版）
+> **版本**：v2.7 · **日期**：2026-08-10（v1.2.1 开发版 · 模型适配 P1 闭合）
 > **历史基线**：[`architecture_v1.0.md`](./architecture_v1.0.md)（只读，冲突以本文为准）
 > **英文**：[`ARCHITECTURE_v2.5_en.md`](./ARCHITECTURE_v2.5_en.md)
 
@@ -15,7 +15,7 @@
 - **桌面宿主**：A1 桌面 UI 使用本地 `127.0.0.1` HTTP API；发布版 HTTP 服务由 Waitress 承载，不使用 Werkzeug development server。
 - **推理后端**：开发模式可继续使用 `llama-cpp-python`；冻结发布包默认使用独立 `llama-server.exe` sidecar，通过 localhost HTTP 调用，避免 PyInstaller 进程内原生 DLL 崩溃影响主进程。
 - **安装器边界**：Inno Setup 只安装主仓库本体、`_internal/` 依赖、`llama_server/` sidecar 和可选默认 GGUF 模型；Skill 仓库与下载器仓库独立演进，不随 v1.0 安装器分发。
-- **路径策略**：程序安装在 `%LOCALAPPDATA%\Programs\Offline Companion\`；用户数据保存在 `%LOCALAPPDATA%\Offline Companion\`，卸载和覆盖升级不删除记忆库与会话 DB。
+- **路径策略**：程序安装在 `%LOCALAPPDATA%\Programs\Offline Companion\`；用户数据保存在 `%LOCALAPPDATA%\Offline Companion\`，卸载和覆盖升级不删除记忆库与会话 DB；本地 GGUF 统一位于程序根目录相对路径 `models/`，开发模式对应仓库根目录，后续默认下载沿用该目录。
 - **发布体验**：桌面壳提供 favicon、About 信息、托盘退出清理、崩溃日志、HTTP JSON 错误响应和 sidecar 异常退出一次重启。
 - **默认模型决策**：v1.0 默认保持 `Qwen2.5-1.5B-Instruct-Q4_K_M.gguf`，7B 模型与模型适配增强后移。
 
@@ -91,6 +91,8 @@ BaseMessage Schema 与消息总线抽象接口均放入 `shared/` 横切层，�
          → C1 generate → B4 → 落库
 
 > **云端模型路由分支**：若 AutoRouter 决策使用云端模型，生成环节将通过 A3 出站调用云端推理 Skill，结果返回后仍需经过 B4 闸门；LOCAL_ONLY 模式下保持原纯本地链路不变。
+
+> **Auto Mode 路径**：Auto 开启时，`/api/chat` 分叉到 `AutoTurnOrchestrator.execute_turn_stream()`，执行 decide → per-step route → execute_next → SSE 事件链；Auto 关闭时继续走原有 ModelRouter 路径，普通聊天零改动。详见 §6.2.17。
 ```
 
 ### 复杂任务路径
@@ -105,6 +107,25 @@ BaseMessage Schema 与消息总线抽象接口均放入 `shared/` 横切层，�
 ```
 
 TaskContext：一个临时的、与任务绑定的数据空间，Skill 执行时读写此上下文，任务完成后可选择性地将关键结果写入 B2 记忆（`#remember`），其余丢弃。PlanOrchestrator 调用 Skill 时仍走 A3 Consent，Skill 仍运行在独立进程，B/C 层不感知计划的存在。
+
+### Auto Turn 路径（Sprint 10）
+
+```text
+用户消息（auto=on）→ AutoTurnOrchestrator.execute_turn_stream()
+  ├─ PlanOrchestrator.decide(user_input) → 规则拆解为 PlanStep DAG
+  ├─ PlanAutoBridge.prepare() → 逐 step AutoRouter 路由 + Consent 提升
+  ├─ 循环 execute_next()
+  │  ├─ routed_plan_invoker.invoke_step() 按 step 级 route_mode 选择 LOCAL/CLOUD
+  │  │  ├─ LOCAL → ConversationPlanInvoker → 本地模型
+  │  │  └─ CLOUD → CloudRouteInvoker → 9B provider 注入 endpoint/key/model
+  │  ├─ yield step_start / step_complete / step_error / step_skipped
+  │  └─ Consent 暂停 → 持久化 request_id → yield consent_required → return
+  ├─ Consent 恢复：POST /api/consent → POST /api/chat {resume, plan_id, consent_request_id}
+  │  └─ load_context(plan_id) 从 SQLite 恢复并继续 execute_next()
+  └─ plan_complete → 组装 reply payload
+```
+
+`decide()` v1 使用从旧 `/api/plan/decompose` 迁移的规则模板；LLM 动态拆解延后至 Sprint 10B。`PlanAutoBridge` 拆为只路由的 `prepare()` 和执行已路由计划的 `execute_routed()`，原 `execute()` 保留为兼容包装。Consent request_id 由后端生成并持久化到 `step_consent_requests[step_id]`，不信任客户端自报。
 
 ---
 
@@ -124,7 +145,8 @@ TaskContext：一个临时的、与任务绑定的数据空间，Skill 执行时
 
 - **Skill 不碰 UI**：只经 localhost API 返回数据；**禁止** `ui_contributions`。
 - **Plugin 不改能力**：不能增加 Agent 能力，只改变已有功能的交互；经 `window.bridge.call_skill` 调 Skill。
-- **Tool 不独立存在**：非独立进程；**无运行时注册入口**；`builtin` 官方 Tool 可运行在主进程，需严格代码审计；第三方轻量能力统一迁移为微型 Skill（独立进程 + localhost API），`external` 仅 `configs/tools_external.yaml`（需显式启用，默认关闭）；结果**不进记忆库**。✅ P5 已落地：`ToolManifest` + `ToolRegistry`（builtin 注册 / external YAML 加载）+ `ToolInvoker`（consent 暂停+恢复，非阻塞）+ builtin 最小集（`datetime_now` allow / `file_read` ask）。`external permission=allow` 在 YAML 解析阶段直接 raise；consent 走 `requires_consent + consent_request_id` 暂停语义，`gateway=None` 时 fail-safe denied；`audit_record` 不扩审计表，由调用层决定持久化。当前版本兜底措施：external Tool 在 `configs/tools_external.yaml` 中默认 `enabled: false`，需用户显式启用并确认风险提示后才生效。S9 收尾前完成所有 external Tool → 微型 Skill 迁移，届时移除 external 入口。
+- **Tool 不独立存在**：非独立进程；**无第三方运行时注册入口**；`builtin` 官方 Tool 可运行在主进程，需严格代码审计；第三方轻量能力统一迁移为微型 Skill（独立进程 + localhost API），`external` 仅 `configs/tools_external.yaml`（需显式启用，默认关闭）；结果**不进记忆库**。✅ P5 已落地：`ToolManifest` + `ToolRegistry`（builtin 注册 / external YAML 加载）+ `ToolInvoker`（consent 暂停+恢复，非阻塞）+ builtin 最小集（`datetime_now` allow / `file_read` ask）。`external permission=allow` 在 YAML 解析阶段直接 raise；consent 走 `requires_consent + consent_request_id` 暂停语义，`gateway=None` 时 fail-safe denied；`audit_record` 不扩审计表，由调用层决定持久化。当前版本兜底措施：external Tool 在 `configs/tools_external.yaml` 中默认 `enabled: false`，需用户显式启用并确认风险提示后才生效。S9 收尾前完成所有 external Tool → 微型 Skill 迁移，届时移除 external 入口。
+- **Superpowers 流程硬门禁**：声明 `stages` 的 Prompt Skill 通过本地 builtin 元工具 `skill_advance_stage` 推进阶段；宿主注入可信 `session_id`，LLM 不得自报。阶段状态与 evidence 写入 companion SQLite 的 `skill_executions` 表，后续阶段开始前必须由 `HardGate` 验证全部前置阶段完成。该元工具仅操作本地流程元数据，不放宽 Consent、AutoRouter 或 B/C 禁网边界。
 - **Skill 可联网**：声明 `cloud_inference` / `network_egress` 后走 A3（`LOCAL_ONLY` 硬拒）。
 - **agent-toolbox 超级 Skill**：一个运行在沙箱中的独立 Python 服务，集成浏览器自动化（Playwright）、代码执行、文件系统操作和网络请求能力。Agent 核心（大脑）通过 A2 编排器调用它（身体）执行具体动作，全程受 A3 Consent 保护。
 - **沙箱实例按调用方隔离**：不同 Skill 调用 agent-toolbox 分配独立沙箱实例，调用结束销毁，文件、进程、网络完全隔离，禁止共享运行时环境。
@@ -134,7 +156,7 @@ TaskContext：一个临时的、与任务绑定的数据空间，Skill 执行时
   | 模式 | 定位 | 隔离级别 | 启动速度 | 单实例内存 | 适用场景 |
   |------|------|----------|----------|------------|----------|
   | **Docker**（核心底座） | 生产环境首选 | 进程级（cgroups + 网络命名空间） | 秒级 | ~50MB | 所有 Skill 默认运行模式 |
-  | **CubeSandbox**（可选增强） | 用户主动安装后可选切换 | KVM 硬件级 | <60ms | <5MB | 用户主动安装 CubeSandbox 后可选切换 |
+  | **CubeSandbox**（可选增强） | 用户主动安装后可选切换 | KVM 硬件级 | <60ms（设计指标） | <5MB（设计指标） | 用户主动安装 CubeSandbox 后可选切换 |
   | **Native**（仅限官方内置 Skill） | Windows/macOS 下仅限官方签名内置 Skill | 声明式（文件沙箱 + 审计兜底） | 零开销 | — | 仅限文件哈希校验通过的内置 Skill，第三方 Skill 禁止使用 |
 
   用户安装时自动检测可用模式，按 Docker → CubeSandbox（若已安装）→ Native 优先级自动选择。每次降级触发 Consent 弹窗，明确提示用户当前隔离强度变化。
@@ -230,7 +252,7 @@ Plugin 形态：WebView 内 JS/CSS 片段 + `ui_contributions`；详见 [`PLUGIN
 |------|------|------|
 | 个人记忆 RAG | `core/memory_lifecycle/` | `#remember`、FTS、衰减、可解释召回；**混合检索**：记忆召回结合向量语义搜索 + BM25 关键词匹配 + SQLite FTS5 全文检索，三路召回后融合排序。AI 回答时附带引用标记（如 [1] [2]），用户可点击跳转到原文片段 |
 | 通用知识 RAG | `core/knowledge_rag/` | 独立 `knowledge.db`；默认关；支持冷热知识分离——热知识（近期文档、今日待办）常驻内存或 SQLite FTS5，毫秒级召回；冷知识（旧日记、旧邮件归档）放入磁盘向量库，仅在深度复盘时检索。RAG 能力以独立服务形式暴露 API，供 Skill（如 novel-writer）调用，实现知识复用 |
-| 可选记忆向量 | `configs/memory/embedding.yaml` | 默认 `enabled: false`；支持冷热分离——最近 N 天记忆（热数据）常驻内存或 SQLite FTS5 快速索引，旧记忆（冷数据）归档到磁盘，仅在显式 `#recall` 或深度搜索时加载。热数据窗口大小在 `embedding.yaml` 中配置。默认阈值：热数据窗口默认 30 天，冷数据归档阈值 90 天，均在 `embedding.yaml` 中配置。向量扩展采用 sqlite-vec；性能基线：10 万条记忆下召回延迟 < 50ms；向量索引构建全异步，不阻塞主流程。**WAL 强制 fsync**：WAL 写入后立即 fsync 落盘，再返回写入成功。**启动时先同步重放 WAL 未索引数据到内存队列**，重放完成前不提供召回服务。**主数据 + 向量索引双写**：写入成功以 SQLite 主库为准。向量索引异步更新，内存缓存未索引队列，召回时合并查询。**索引更新 + 队列移除原子执行**，结果按 ID 自动去重。**索引定期校验**：每小时比对主数据条数与向量索引条数，不一致自动增量修复。reindex 期间双索引过渡，不影响线上召回。 |
+| 可选记忆向量 | `configs/memory/embedding.yaml` | 默认 `enabled: false`；支持冷热分离——最近 N 天记忆（热数据）常驻内存或 SQLite FTS5 快速索引，旧记忆（冷数据）归档到磁盘，仅在显式 `#recall` 或深度搜索时加载。热数据窗口大小在 `embedding.yaml` 中配置。默认阈值：热数据窗口默认 30 天，冷数据归档阈值 90 天，均在 `embedding.yaml` 中配置。向量扩展采用 sqlite-vec；设计目标：10 万条记忆下召回延迟 < 50ms（待压测验证）；向量索引构建全异步，不阻塞主流程。**WAL 强制 fsync**：WAL 写入后立即 fsync 落盘，再返回写入成功。**启动时先同步重放 WAL 未索引数据到内存队列**，重放完成前不提供召回服务。**主数据 + 向量索引双写**：写入成功以 SQLite 主库为准。向量索引异步更新，内存缓存未索引队列，召回时合并查询。**索引更新 + 队列移除原子执行**，结果按 ID 自动去重。**索引定期校验**：每小时比对主数据条数与向量索引条数，不一致自动增量修复。reindex 期间双索引过渡，不影响线上召回。 |
 
 运维与导入见 [`USER_MANUAL`](./USER_MANUAL_v1.0_zh.md) 与 [`PLUGIN_DEV_GUIDE`](./PLUGIN_DEV_GUIDE_v1.0_zh.md) 中「内置能力」交叉引用（Plugin 指南主文为 WebView 扩展）。
 
@@ -373,12 +395,23 @@ models:
 - **能力标签统一**：`capabilities` 字段使用 `shared/` 层统一定义的枚举常量，与 Router LLM 意图分类、Skill 能力声明保持一致。
 - **配置单一数据源**：`model_routing.yaml` 仅存放路由决策元数据，不读取 C1 层模型加载配置。
 - **复杂度阈值**：S9A 当前默认阈值为 `5`，保证本地能力匹配的 code / reasoning 任务优先本地执行。
+- **Per-step 路由**：`PlanAutoBridge._route_steps()` 逐 step 调用 `AutoRouter.route()`，决策写入 `PlanContext.step_route_decisions[step_id]`；Consent 精确落到对应 step。
+- **云端凭证注入**：`routed_plan_invoker` 通过 `cloud_model_provider` 从 9B 云模型管理数据读取 endpoint/key/model，不依赖环境变量。
 
 | 项 | 共识 | 状态 |
 |----|------|------|
 | 规则引擎版路由 | TaskProfiler + CostPredictor + 决策引擎 | ✅ |
 | 云端路由 Consent | 对接 A3 Consent 审计体系 | ✅ |
 | 失败自动回退 | A2 推理调用入口按 fallback 模型回退 | ✅ |
+| Per-step 路由 | PlanAutoBridge 逐 step 独立路由，Consent 精确落到 step | ✅ |
+| 云端凭证注入 | routed_plan_invoker 从 9B provider 注入 endpoint/key/model | ✅ |
+| Auto Turn 编排 | decide → prepare → execute_next → SSE 事件 | ✅ |
+| SSE 多 step 协议 | plan_start / step_start / step_complete / consent_required / plan_complete | ✅ |
+| Consent 持久化恢复 | request_id 持久化到 PlanContext，并从 SQLite 恢复 | ✅ |
+| 模型能力画像 | CapabilityProfile 五维画像；YAML 配置并兼容旧单值与缺失字段 | ✅ |
+| B1 Prompt 模型感知 | 按 roleplay_quality、max_context、instruction_following 调整装配策略 | ✅ |
+| B4 模型感知润色 | 高 roleplay_quality 信任模型原文；本地与云端双路径覆盖 | ✅ |
+| 云端模型画像持久化 | cloud_models.json 持久化 capability_profile；非法画像拒绝写入 | ✅ |
 | 用户反馈学习 | 基于历史反馈个性化调整复杂度阈值 | 📅 S10+ |
 
 #### 6.2.6 PlanOrchestrator（任务编排 · S9A）
@@ -390,6 +423,10 @@ models:
 | 项 | 共识 | 状态 |
 |----|------|------|
 | 模板加载 | 支持从 JSON / YAML 模板加载预设计划 | ✅ |
+| 动态拆解 | `decide(user_input)` 将目标拆解为 PlanStep DAG；v1 规则模板，v2 LLM 拆解（S10B+） | ✅ |
+| 单步执行 | `execute_next(context)` 执行单个 DAG step，供 SSE 逐步 yield | ✅ |
+| Context 恢复 | `load_context(plan_id)` 从 SQLite 恢复 PlanContext | ✅ |
+| Consent request_id | `_prepare_consent_pause()` 生成并持久化 A3 request_id | ✅ |
 | 任务分解 | 将目标拆解为有序步骤序列（Step 1 → Step 2 → Step 3） | ✅ |
 | 依赖管理 | 声明步骤间的数据依赖，支持 DAG 编排 | ✅ |
 | 状态追踪 | 每个步骤状态：pending / running / done / failed；补充 step 级时间戳 | ✅ |
@@ -405,6 +442,10 @@ models:
 - 每一步 Skill 调用均通过 invoker 执行，遵守统一鉴权、熔断规则。
 - 基础模式依赖 TaskContext + 幂等步骤实现错误恢复，不依赖沙箱快照特性；沙箱快照为可选增强。
 - 前端呈现为 PlanNotebook，用于查看任务进度、暂停/恢复/取消计划。
+- `decide()` v1 迁移旧 `/api/plan/decompose` 规则；该端点作为薄代理维持旧 plan dict schema。
+- `execute_next()` 调用 `PlanEngine.run_until_blocked(max_steps=1)`，每次只执行一个 step，供 AutoTurnOrchestrator 逐步生成 SSE 事件。
+- Consent 暂停时持久化完整 PlanContext；恢复时通过 `load_context(plan_id)` 重建上下文，并从 `paused_step_id` 继续。
+- `PlanAutoBridge.execute()` 保留为 `prepare()` + `execute_routed()` 的兼容包装，现有调用方无需迁移。
 
 #### 6.2.7 StateManager（状态中枢）
 
@@ -587,6 +628,44 @@ A1 检测用户 N 分钟无交互
 | 提醒规则配置面板 | 可视化配置提醒规则，无需理解算法细节 | 📅 S8 |
 | 基础门禁已落地 | `check_imports` AST 分层门禁、运行时沙箱最小兜底、pytest 门禁脚本 | 🔶 部分完成 |
 
+#### 6.2.17 AutoTurnOrchestrator（Auto Mode 编排 · Sprint 10）
+
+Auto Mode 生产入口，编排拆解、逐 step 路由、单步执行、SSE 事件和最终结果组装。
+
+| 方法 | 职责 |
+|------|------|
+| `execute_turn(message, user_input)` | 非流式：decide → prepare → execute_routed → 组装 payload |
+| `execute_turn_stream(message, user_input, plan_id, resume, consent_request_id)` | 流式生成器：逐步执行并 yield SSE 事件 |
+
+##### SSE 事件协议
+
+| 事件类型 | 关键字段 | 说明 |
+|----------|----------|------|
+| `plan_start` | `plan_id`, `steps[]` | 计划创建或恢复，包含全部 step 预览 |
+| `step_start` | `step_id`, `description`, `route_mode` | 单步开始执行 |
+| `step_complete` | `step_id`, `result` | 单步执行完成 |
+| `step_error` | `step_id`, `error` | 单步执行失败 |
+| `step_skipped` | `step_id` | 条件不满足而跳过 |
+| `consent_required` | `step_id`, `consent_request_id`, `plan_id`, `consent_payload` | 等待用户授权，当前 SSE 流结束 |
+| `plan_complete` | `reply`, `plan_id`, `steps[]` | 计划完成并返回最终回复 |
+| `plan_failed` | `error`, `plan_id` | 计划执行失败 |
+| `plan_cancelled` | `plan_id` | Consent 被拒绝或计划取消 |
+| `error` | `error` | 编排异常 |
+
+##### Consent 暂停与恢复
+
+```text
+execute_turn_stream() 遇到需要 Consent 的 step
+  → _prepare_consent_pause() 生成 request_id 并持久化 PlanContext
+    → yield consent_required → return
+前端 POST /api/consent {request_id, allowed}
+  → gateway.decide() 持久化 A3 Consent Artifact
+前端 POST /api/chat {resume:true, plan_id, consent_request_id, stream:true}
+  → load_context() → 校验 request_id → 从 paused_step_id 继续执行
+```
+
+**关键约束**：开启 Auto 至少需要一个已启用的云端模型；Auto 与 Plan Mode 互斥；Consent request_id 仅由后端生成并验证；普通聊天路径不受影响；`model_lock` 必须在 SSE 生成器的 `finally` 中释放。
+
 ### 6.3 A3 出站审计（Consent）
 
 统一出站与权限审计入口，所有高危操作、网络出站、沙箱降级均生成可追溯的 Consent Artifact。
@@ -670,6 +749,29 @@ A1 检测用户 N 分钟无交互
 - 抽象 LLMBackend 接口，当前实现 LlamaCppBackend，基于 llama-cpp-python + GGUF。
 - 默认模型：Qwen2.5-1.5B-Instruct Q4_K_M。
 
+##### 模型适配 P1：能力画像层 + Prompt 分层（Sprint 9B · 已闭合）
+
+每个模型声明五维 `CapabilityProfile`，B1/B4 根据画像动态调整策略。Prompt 分为内容层（模型无关，由 B1 装配）与格式层（模型相关，由 `ModelRuntimeConfig.chat_template` / `stop_tokens` 决定）。
+
+| 项 | 共识 | 状态 |
+|----|------|------|
+| CapabilityProfile 数据结构 | instruction_following / roleplay_quality / safety_sensitivity / reasoning_ability / max_context；frozen dataclass + 范围校验 | ✅ |
+| YAML schema | 模型 YAML 使用 `capability_profile` dict；旧单值字符串和缺失字段降级为默认画像 | ✅ |
+| Loader | `model_registry.py` 解析多维 dict；`describe_model()` 返回 `CapabilityProfile` | ✅ |
+| B1 Prompt 调整 | `_assemble_context()` 按画像调整语气指令、召回上限和格式约束 | ✅ |
+| B4 本地润色 | `reformat_local_reply()` 对高 roleplay_quality 模型执行最小修正 | ✅ |
+| B4 云端润色 | `reformat_cloud_reply()` 对高 roleplay_quality 模型执行最小修正 | ✅ |
+| 云端模型画像 | `cloud_models.json` 持久化并公开画像；API Key 继续掩码；非法画像拒绝写入 | ✅ |
+| AutoTurn 注入 | `ConversationPlanInvoker.invoke()` 向 B1 传入本地 backend 画像 | ✅ |
+| CapabilityTag 保留 | `TaskProfile` 继续使用 CapabilityTag 做任务分类 | ✅ |
+| B3 safety 不改 | 危机阻断不随模型能力降低；safety_sensitivity 仅作为后续附加检查信号 | 📅 |
+
+**关键约束**：
+- B3 safety 不根据模型画像调整，危机阻断不能随模型能力降低。
+- 云端模型缺失 capability_profile 时使用全 0.5 的默认画像；非法多维画像拒绝持久化。
+- `CapabilityProfile` 是不可变的 frozen dataclass，避免运行时被意外修改。
+- `CapabilityTag` 负责任务分类，`CapabilityProfile` 负责模型能力画像，两者不互相替代。
+
 #### 6.5.2 C2 存储层
 
 - 抽象 VectorStore 接口，当前实现 SqliteVecStore。
@@ -677,7 +779,7 @@ A1 检测用户 N 分钟无交互
 - 启动时先同步重放 WAL 未索引数据，重放完成前不提供召回服务。
 - 主数据 + 向量索引双写，写入成功以 SQLite 主库为准；召回时合并查询，按 ID 自动去重。
 - 每小时校验主数据与向量索引条数，不一致自动增量修复；提供 reindex 命令重建全量向量。
-- 性能基线：10 万条记忆下召回延迟 < 50ms。
+- 设计目标：10 万条记忆下召回延迟 < 50ms（待压测验证）。
 
 ### 6.6 Plugin 安全隔离（S8）
 
@@ -776,6 +878,11 @@ A1 检测用户 N 分钟无交互
 | 跨端能力缺失 | 局域网 WebUI 接入（数据全在本地）→ 端到端加密多端同步 | 低 | S10+ |
 | 模组开发门槛偏高 | 低代码脚手架 + 商城配套创作者工具 | 低 | S10+ |
 | 模型路由依赖静态规则，缺乏个性化 | AutoRouter + 用户反馈学习（S10+） | 中 | S10+ |
+| Auto Mode 无 LLM 动态拆解 | decide() v1 使用规则模板，v2 替换为 LLM 拆解 | 中 | S10B+ |
+| Auto Mode step 无 token 级流 | 当前 step 整段返回，后续增加 step_token 事件 | 低 | S10B+ |
+| 模型适配 P1 缺 smoke 样例 | Qwen/Llama/Mistral/DeepSeek 最小 smoke 样例未建立 | 低 | S9B 后续 |
+| 云端模型画像为默认值 | cloud_models.json 中模型未配置实际画像时使用保守默认 0.5 | 低 | 按需补 |
+| context 压缩未实现 | 当前按 max_context 调整 recall_limit，尚未自动截断历史 | 低 | S9B 后续 |
 
 ---
 
@@ -785,7 +892,9 @@ A1 检测用户 N 分钟无交互
 
 Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensions/installed/`、`type` 分流、CSP / 错误码占位）。
 
-### Sprint 7（当前）
+### Sprint 7～9B（当前路线图）
+
+**Sprint 状态（2026-08-10）**：Sprint 7、Sprint 8、Sprint 9A、Sprint 10 已闭合；Sprint 9B 为当前推进范围。
 
 **安全地基闭合（Sprint 7 只做安全地基，其余全部后移）**：
 
@@ -879,7 +988,7 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 
 ### Sprint 9B（软能力）
 
-**GoalManager + IdleThink 循环**（被动画像的前置）；**AttentionAwareness**；**Router LLM + Self-Reflection**；**模型适配 P1：能力画像层 + Prompt 分层解耦**（为每个模型声明 `capability_profile`：`instruction_following`、`roleplay_quality`、`safety_sensitivity`、`reasoning_ability`、`max_context`；B1/B3/B4 根据能力画像动态调整人格提示、安全提示、润色强度和上下文压缩阈值；Prompt 拆为内容层与格式层，内容层模型无关，格式层由 chat template / role map / stop tokens 决定）；桌面二次元小人；**UI 微交互**（呼吸灯 + 执行动画 + 待机姿态，与二次元小人并列）。
+**GoalManager + IdleThink 循环**（被动画像的前置）；**AttentionAwareness**；**Router LLM + Self-Reflection**；✅ **模型适配 P1：能力画像层 + Prompt 分层解耦**（2026-08-10 闭合，3 Batch，416 passed；B1/B4 根据五维画像调整策略，B3 危机阻断保持固定）；桌面二次元小人；**UI 微交互**（呼吸灯 + 执行动画 + 待机姿态，与二次元小人并列）。
 
 **Sprint 9B 补充**：
 - **场景静默 + 频率硬锁 + 负反馈硬降权 + 语义负反馈 + 紧急仅用户标记 + B4 闸门 + 默认关闭渐进解锁**
@@ -892,7 +1001,22 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 
 > 9B 目标：在 9A 骨架跑通后，叠加主动关心和注意力感知等软能力，降低调试复杂度。
 
-### Sprint 10+（远期探索）
+### Sprint 10（Auto Mode · 已闭合）
+
+> **状态更新（2026-08-10）**：Sprint 10 Auto Mode 全链闭合，4 个 Batch 全部交付；完整回归基线为 405 passed、3 skipped，前端桌面窄测为 44 passed。
+
+- ✅ Per-step 路由与云端凭证 provider 注入
+- ✅ `PlanOrchestrator.decide()` 统一拆解与 `/api/plan/decompose` 薄代理
+- ✅ `PlanAutoBridge.prepare()` / `execute_routed()` 职责拆分
+- ✅ `AutoTurnOrchestrator` 非流式与 SSE 流式生产入口
+- ✅ `execute_next()` 单步执行与 `load_context()` SQLite 恢复
+- ✅ Consent request_id 后端生成、持久化、A3 决策与跨请求恢复
+- ✅ SSE 多 step 事件协议与 `/api/chat` Auto 分支
+- ✅ 前端云模型校验、计划卡片、步骤状态和 Consent 恢复
+
+**延后至 Sprint 10B+**：LLM 动态拆解、`step_token` token 级流式事件、DAG step 并发执行及云端 streaming 统一降级。
+
+### Sprint 10B+（远期探索）
 
 - **AutoRouter 升级**：TaskProfiler 升级微型 LLM；引入用户反馈学习 + ResourceArbitrator 资源状态反馈，实现个性化路由；**成本预估模型自优化**（根据实际消耗回传数据持续校准预估准确率）
 - **模型适配 P2：统一 Backend 适配层**：扩充 C1 `LLMBackend`，覆盖本地 GGUF（llama.cpp）、OpenAI-compatible 云端 API、特殊模型专用适配（多模态、思考链模型等）；云端模型统一优先走 OpenAI-compatible 适配，避免每新增一个模型就重写一套调用链。
@@ -924,15 +1048,15 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 | 依赖隔离 | venv（每个 Skill 独立 `.venv/`） |
 | 系统调用拦截 | Linux seccomp-bpf / macOS sandbox-exec / Windows Job Object |
 | SBOM | `extensions/installed/<skill-name>/sbom.json` |
-| 向量性能基线 | 10 万条记忆召回延迟 < 50ms（含未索引队列合并开销） |
+| 向量性能目标 | 10 万条记忆召回延迟 < 50ms（含未索引队列合并开销，待压测） |
 | 推理接口抽象 | C1 推理抽象为 LLMBackend 接口，当前实现 LlamaCppBackend |
 | 存储接口抽象 | C2 向量存储抽象为 VectorStore 接口，当前实现 SqliteVecStore |
 | API 版本前缀 | 所有 HTTP 接口统一使用 /api/v1/ 前缀 |
 | 响应格式标准化 | Skill 请求/响应统一封装为 {code, data, error} 结构 |
 | **Skill 沙箱** | Docker（核心底座，进程级隔离）/ CubeSandbox（可选增强，实验性）/ Native（仅限官方内置 Skill） |
-| **CubeSandbox 单实例内存** | <5MB（实验值） |
-| **CubeSandbox 启动速度** | <60ms（实验值） |
-| **CubeSandbox 并发上限** | 20 个实例（实验值；Docker 模式 3 个，Native 模式 1 个） |
+| **CubeSandbox 单实例内存** | <5MB（设计指标，未验证） |
+| **CubeSandbox 启动速度** | <60ms（设计指标，未验证） |
+| **CubeSandbox 并发上限** | 20 个实例（设计指标，未验证；Docker 模式 3 个，Native 模式 1 个） |
 | **模型路由配置** | `configs/model_routing.yaml`（成本、延迟、能力标签、阈值） |
 | **能力标签枚举** | ✅ `shared/types.py` 中 `CapabilityTag` 已落地（`chat`、`simple_qa`、`complex_reasoning`、`code_generation`、`tool_use`），由 `model_routing.yaml`、模型 YAML 与 `capability_catalog` 共同引用 |
 | **模型适配配置** | ✅ `configs/models/<model>.yaml` 已落地正式 schema；`describe_model()` / `ModelDescriptor` 实现 ready / needs_config / incompatible 三态发现 |
@@ -1005,11 +1129,11 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 
 | 指标 | 目标值 | 测量方法 |
 |------|--------|----------|
-| 单轮陪伴响应延迟 | < 2s（本地 GGUF）/ < 5s（云端推理） | `full_acceptance` 计时 |
-| 记忆召回延迟 | < 100ms（10 万条） | FTS 查询计时 |
-| 向量召回延迟 | < 50ms（10 万条，含未索引队列合并开销） | `sqlite-vec` 查询计时 |
-| Skill 首次启动延迟 | < 3s（含 venv 激活） | invoker 启动计时 |
-| 连续运行 24h 内存占用 | < 2GB（含 1 个本地模型） | 系统监控 |
+| 单轮陪伴响应延迟 | < 2s（本地 GGUF）/ < 5s（云端推理；设计目标，待压测） | `full_acceptance` 计时 |
+| 记忆召回延迟 | < 100ms（10 万条；设计目标，待压测） | FTS 查询计时 |
+| 向量召回延迟 | < 50ms（10 万条，含未索引队列合并开销；设计目标，待压测） | `sqlite-vec` 查询计时 |
+| Skill 首次启动延迟 | < 3s（含 venv 激活；设计目标，待压测） | invoker 启动计时 |
+| 连续运行 24h 内存占用 | < 2GB（含 1 个本地模型；设计目标，待压测） | 系统监控 |
 | Skill 调用成功率 | > 99%（不含用户主动停止） | JobScheduler 统计 |
 | 熔断触发误判率 | < 1% | invoker 日志统计 |
 | IdleThink 侵扰投诉率 | < 5%（用户关闭功能视为投诉）；用户关闭提醒视为负反馈信号，GoalManager 自动降低该类型提醒权重 | Auto-Eval 统计 |
@@ -1020,11 +1144,11 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 
 | 层级 | 范围 | 工具 | 频率 | 准入标准 | 准出标准 |
 |------|------|------|------|----------|----------|
-| **单元测试** | 所有模块核心函数 | `pytest` | 每次 commit | 核心模块行覆盖率 ≥80% | 全量 pytest 通过 |
+| **单元测试** | 所有模块核心函数 | `pytest` | 每次 commit | 核心模块行覆盖率 ≥80%（目标；当前未接入覆盖率统计，Sprint 9B 补） | 全量 pytest 通过 |
 | **集成测试** | A/B/C 层间调用链 + Skill 通信 | `pytest` + fixture | 每次 PR | 覆盖所有 A/B/C 跨层调用链路 | 全量通过，无跳过 |
 | **端到端测试** | 完整对话流 + Consent 流程 | `full_acceptance.py` | 每 Sprint 收尾 | — | 全量通过 |
 | **安全扫描** | AST 静态扫描 + 运行时沙箱逃逸测试 + 依赖漏洞扫描 | CI 门禁 | 每次 PR | 三项全启动 | 三项全通过，任一不通过 CI 阻断 |
-| **性能基准** | 非功能需求基线各项指标 | 独立脚本 | 每 Sprint 收尾 | — | 所有指标达标 |
+| **性能基准** | 非功能需求基线各项指标 | 独立脚本 | 每 Sprint 收尾 | — | 所有指标达标（目标，尚未执行） |
 | **降级路径测试** | 沙箱降级、熔断触发、资源紧张、网络异常 | 降级场景测试清单 | Sprint 8 起每 Sprint | 每种场景有标准化测试脚本 | 每次 PR 自动跑 |
 
 **CI 门禁规则**：

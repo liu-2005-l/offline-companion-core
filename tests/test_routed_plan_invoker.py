@@ -49,6 +49,25 @@ def test_routed_plan_invoker_selects_echo() -> None:
     assert echo.calls[0][0] == "skill-x"
 
 
+def test_routed_plan_invoker_prefers_step_route_decision() -> None:
+    local = StubInvoker([], "local")
+    cloud = StubInvoker([], "cloud")
+    invoker = RoutedPlanInvoker(local, cloud)
+    step = PlanStep(step_id="a", skill_id="skill-x", result_key="res")
+    ctx = TaskContext(
+        plan_id="p",
+        steps={"a": step},
+        step_status={"a": StepStatus.PENDING},
+        context_vars={"route_mode": "local"},
+    )
+    ctx.set_step_route_decision("a", {"mode": "cloud", "fallback_chain": ["cloud", "local"]})
+
+    result = invoker.invoke_step(step, ctx)
+
+    assert result == "cloud"
+    assert cloud.calls[0][1]["_fallback_chain"] == ["cloud", "local"]
+
+
 def test_cloud_route_invoker_uses_cloud_completion(monkeypatch) -> None:
     captured = {}
 
@@ -64,6 +83,33 @@ def test_cloud_route_invoker_uses_cloud_completion(monkeypatch) -> None:
 
     assert result == {"ok": True}
     assert captured["request"].purpose == "plan_step_execution"
+
+
+def test_cloud_route_invoker_injects_active_cloud_model() -> None:
+    captured = {}
+
+    class Resp:
+        text = '{"ok": true}'
+
+    def fake_post(request):
+        captured["request"] = request
+        return Resp()
+
+    invoker = CloudRouteInvoker(
+        cloud_post=fake_post,
+        cloud_model_provider=lambda: {
+            "endpoint": "https://example.invalid/v1/chat/completions",
+            "api_key": "secret",
+            "model_name": "cloud-demo",
+        },
+    )
+
+    invoker.invoke("skill-x", {"a": 1})
+
+    request = captured["request"]
+    assert request.url == "https://example.invalid/v1/chat/completions"
+    assert request.api_key == "secret"
+    assert request.model == "cloud-demo"
 
 
 def test_echo_route_invoker_wraps_payload() -> None:

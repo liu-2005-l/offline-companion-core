@@ -15,7 +15,7 @@ Offline Companion 是一款隐私优先、本地默认的离线陪伴助手核�
 推荐使用发布安装器：
 
 ```powershell
-installer\output\OfflineCompanion-Setup-1.1.0.exe
+installer\output\OfflineCompanion-Setup-1.2.1.exe
 ```
 
 安装路径为：
@@ -30,7 +30,7 @@ installer\output\OfflineCompanion-Setup-1.1.0.exe
 %LOCALAPPDATA%\Offline Companion\
 ```
 
-卸载程序只移除安装目录，不删除记忆库、会话 DB 和用户模型数据。
+卸载程序只移除安装目录，不删除用户数据目录中的记忆库和会话 DB。模型位于程序目录的 `models\` 下，卸载前请按需备份。
 
 ## 开发启动
 
@@ -54,7 +54,7 @@ python -m PyInstaller scripts/build_portable.spec --clean --noconfirm
 python scripts/build_installer.py
 ```
 
-模型文件不会强制绑定到用户数据目录。完整安装会把默认 GGUF 放入 `{app}\models\`；精简安装则由用户后续放入 `%LOCALAPPDATA%\Offline Companion\models\`。
+模型文件统一放在程序根目录的相对路径 `models\`。开发运行对应仓库根目录的 `models\`，安装版对应 `{app}\models\`；后续默认下载也写入该目录。
 
 ## 文档
 

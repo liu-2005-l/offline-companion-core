@@ -28,6 +28,7 @@ from offline_companion.core.safety_boundary.classifier import SafetyTier, classi
 from offline_companion.runtime.storage_index.engine import append_message, recent_messages
 from offline_companion.shared.errors import CloudConnectorError, ReformatError
 from offline_companion.shared.types import (
+    CapabilityProfile,
     CloudCompletionRequest,
     ModelRoutingDecision,
     PrivacyMode,
@@ -36,6 +37,8 @@ from offline_companion.shared.types import (
 )
 from offline_companion.shell.model_router import ModelRouter
 from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway
+from offline_companion.shell.skill_router import SkillDecisionEngine
+from offline_companion.shell.tool_registry import ToolInvoker
 
 CloudPost = Callable[[CloudCompletionRequest], Any]
 
@@ -48,6 +51,7 @@ class _PreparedTurn:
     memory_on: bool
     memory_saved: tuple[str, ...]
     memory_skipped: bool
+    skill_prompt: str = ""
 
 
 @dataclass(frozen=True)
@@ -84,11 +88,17 @@ class ConversationOrchestrator:
     model_router: ModelRouter | None = None
     consent_gateway: UIHostConsentGateway | None = None
     cloud_post: CloudPost | None = None
+    cloud_model_provider: Callable[[], dict[str, Any] | None] | None = None
     pending_turns: dict[str, PendingRoutedTurn] = field(default_factory=dict)
+    auto_mode_enabled: bool = False
+    skill_decision_engine: SkillDecisionEngine | None = None
+    tool_invoker: ToolInvoker | None = None
 
     def __post_init__(self) -> None:
         if self.emotion_classifier is None:
             self.emotion_classifier = EmotionClassifier()
+        if self.skill_decision_engine is None:
+            self.skill_decision_engine = SkillDecisionEngine()
 
     def _classify_emotion(self, text: str):
         if self.emotion_classifier is None:
@@ -103,6 +113,32 @@ class ConversationOrchestrator:
         meta = context.raw if context is not None else {}
         label = context.emotion if context is not None else None
         return _EmotionPayload(context=context, meta=meta, label=label)
+
+    def _local_capability_profile(self) -> CapabilityProfile | None:
+        """摘要：从当前本地推理后端读取模型能力画像。"""
+        profile = getattr(getattr(self.backend, "model_config", None), "capability_profile", None)
+        return profile if isinstance(profile, CapabilityProfile) else None
+
+    def _cloud_capability_profile(self) -> CapabilityProfile | None:
+        """摘要：从当前云端模型配置读取能力画像。"""
+        if self.cloud_model_provider is None:
+            return None
+        cloud_model = self.cloud_model_provider()
+        if not cloud_model:
+            return None
+        raw = cloud_model.get("capability_profile")
+        if not isinstance(raw, dict):
+            return None
+        try:
+            return CapabilityProfile(
+                instruction_following=float(raw.get("instruction_following", 0.5)),
+                roleplay_quality=float(raw.get("roleplay_quality", 0.5)),
+                safety_sensitivity=float(raw.get("safety_sensitivity", 0.5)),
+                reasoning_ability=float(raw.get("reasoning_ability", 0.5)),
+                max_context=int(raw.get("max_context", 4096)),
+            )
+        except (TypeError, ValueError):
+            return None
 
     def _safety_result(self, user_text: str, *, memory_on: bool) -> TurnResult | None:
         safety = classify_user_text(user_text)
@@ -123,6 +159,10 @@ class ConversationOrchestrator:
             blocked_by_safety=True,
             safety_tier=safety.tier.value,
         )
+
+    def check_safety(self, user_text: str, *, memory_on: bool) -> TurnResult | None:
+        """摘要：在 Auto 等外部编排入口执行与普通对话一致的本地安全检查。"""
+        return self._safety_result(user_text, memory_on=memory_on)
 
     def _prepare_turn(self, user_text: str, *, memory_on: bool) -> tuple[_PreparedTurn | None, TurnResult | None]:
         chat_text, memory_lines = MemoryLifecycleManager.maybe_extract_memory_commands(user_text)
@@ -187,11 +227,16 @@ class ConversationOrchestrator:
                 memory_only=True,
             )
 
+        skill_prompt = ""
+        if self.skill_decision_engine is not None:
+            skill_decision = self.skill_decision_engine.decide(chat_text)
+            skill_prompt = self.skill_decision_engine.build_prompt(skill_decision)
         return _PreparedTurn(
             chat_text=chat_text,
             memory_on=memory_on,
             memory_saved=tuple(memory_saved),
             memory_skipped=memory_skipped,
+            skill_prompt=skill_prompt,
         ), None
 
     def _append_user_message(
@@ -304,8 +349,14 @@ class ConversationOrchestrator:
             memory_enabled=prepared.memory_on,
             max_tokens=self.max_tokens,
             emotion_context=emotion.context,
+            capability_profile=self._local_capability_profile(),
+            skill_prompt=prepared.skill_prompt,
         )
-        final_reply = reformat_local_reply(assembled.reply, emotion_context=emotion.context)
+        final_reply = reformat_local_reply(
+            assembled.reply,
+            emotion_context=emotion.context,
+            capability_profile=self._local_capability_profile(),
+        )
         self._append_assistant_message(
             final_reply,
             emotion=emotion,
@@ -359,6 +410,8 @@ class ConversationOrchestrator:
             memory_enabled=prepared.memory_on,
             max_tokens=self.max_tokens,
             emotion_context=emotion.context,
+            capability_profile=self._local_capability_profile(),
+            skill_prompt=prepared.skill_prompt,
         ):
             if event.get("token") is not None:
                 raw_parts.append(str(event["token"]))
@@ -366,7 +419,11 @@ class ConversationOrchestrator:
                 recalls = list(event.get("memory_recalls") or [])
                 continue
             yield event
-        final_reply = reformat_local_reply("".join(raw_parts), emotion_context=emotion.context)
+        final_reply = reformat_local_reply(
+            "".join(raw_parts),
+            emotion_context=emotion.context,
+            capability_profile=self._local_capability_profile(),
+        )
         self._append_assistant_message(
             final_reply,
             emotion=emotion,
@@ -407,12 +464,22 @@ class ConversationOrchestrator:
         emotion = self._emotion_payload(prepared.chat_text)
         routing = self._routing_meta(decision, route_mode)
         self._append_user_message(prepared.chat_text, emotion=emotion, channel=route_mode, routing=routing)
-        response = cloud_post(CloudCompletionRequest(user_message=prepared.chat_text, purpose=purpose))
+        cloud_model = self.cloud_model_provider() if self.cloud_model_provider is not None else None
+        response = cloud_post(
+            CloudCompletionRequest(
+                user_message=prepared.chat_text,
+                purpose=purpose,
+                url=str(cloud_model.get("endpoint") or "") if cloud_model else None,
+                api_key=str(cloud_model.get("api_key") or "") if cloud_model else None,
+                model=str(cloud_model.get("model_name") or "") if cloud_model else None,
+            )
+        )
         cloud_raw = str(response.text)
         reply = reformat_cloud_reply(
             cloud_raw,
             self.session_core.persona,
             emotion_context=emotion.context,
+            capability_profile=self._cloud_capability_profile(),
         )
         self._append_assistant_message(
             reply,
@@ -451,7 +518,11 @@ class ConversationOrchestrator:
         except (ReformatError, CloudConnectorError, Exception):
             if not decision.fallback_model:
                 raise
-            reply = self._local_fallback_reply(prepared.chat_text, memory_on=prepared.memory_on)
+            reply = self._local_fallback_reply(
+                prepared.chat_text,
+                memory_on=prepared.memory_on,
+                skill_prompt=prepared.skill_prompt,
+            )
             emotion = self._emotion_payload(prepared.chat_text)
             routing = self._routing_meta(decision, "cloud")
             routing["executed_fallback_model"] = decision.fallback_model
@@ -476,7 +547,7 @@ class ConversationOrchestrator:
             return None
         return self.model_router.model_type(model_name)
 
-    def _local_fallback_reply(self, chat_text: str, *, memory_on: bool) -> str:
+    def _local_fallback_reply(self, chat_text: str, *, memory_on: bool, skill_prompt: str = "") -> str:
         emotion_context = self._classify_emotion(chat_text)
         history = recent_messages(self.conn, self.session_id, limit=self.history_limit)
         assembled = self.session_core.assemble_reply(
@@ -487,8 +558,14 @@ class ConversationOrchestrator:
             memory_enabled=memory_on,
             max_tokens=self.max_tokens,
             emotion_context=emotion_context,
+            capability_profile=self._local_capability_profile(),
+            skill_prompt=skill_prompt,
         )
-        final_reply = reformat_local_reply(assembled.reply, emotion_context=emotion_context)
+        final_reply = reformat_local_reply(
+            assembled.reply,
+            emotion_context=emotion_context,
+            capability_profile=self._local_capability_profile(),
+        )
         return LOCAL_FALLBACK_PREFIX + final_reply
 
     def _build_routing_consent_request(
@@ -503,6 +580,7 @@ class ConversationOrchestrator:
             step_id="turn",
             skill_id="skill_cloud_inference",
             operation="route_cloud_turn",
+            purpose_type=PurposeType.CLOUD_ROUTING,
             risk_level="high",
             impact_scope="single_turn",
             source="conversation_orchestrator",
@@ -609,7 +687,11 @@ class ConversationOrchestrator:
                 route_mode="cloud",
             )
         except (ReformatError, CloudConnectorError, Exception):
-            reply = self._local_fallback_reply(prepared.chat_text, memory_on=prepared.memory_on)
+            reply = self._local_fallback_reply(
+                prepared.chat_text,
+                memory_on=prepared.memory_on,
+                skill_prompt=prepared.skill_prompt,
+            )
             emotion = self._emotion_payload(prepared.chat_text)
             self._append_assistant_message(
                 reply,

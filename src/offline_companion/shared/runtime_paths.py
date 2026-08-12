@@ -83,8 +83,8 @@ def models_dir(*, data_root_override: Path | None = None) -> Path:
 
     优先级：
         ``OFFLINE_COMPANION_MODELS_DIR`` →
-        仓库 ``models/``（仅开发模式，存在 ``registry.yaml`` 时）→
-        ``{data_root}/models/``（冻结模式和用户数据目录）。
+        显式测试/便携数据根下 ``models/`` →
+        程序根目录 ``models/``（开发模式为仓库根，冻结模式为可执行文件目录）。
     """
     env = os.environ.get("OFFLINE_COMPANION_MODELS_DIR")
     if env:
@@ -92,17 +92,12 @@ def models_dir(*, data_root_override: Path | None = None) -> Path:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    if _is_frozen() and data_root_override is None:
-        installed_models = Path(sys.executable).resolve().parent / "models"
-        if installed_models.is_dir() and any(installed_models.glob("*.gguf")):
-            return installed_models
-
-    if not _is_frozen():
-        repo_models = dev_repo_root() / "models"
-        if (repo_models / "registry.yaml").is_file():
-            return repo_models
-
-    root = data_root_override if data_root_override is not None else data_root()
+    if data_root_override is not None:
+        root = data_root_override
+    elif _is_frozen():
+        root = Path(sys.executable).resolve().parent
+    else:
+        root = dev_repo_root()
     path = root / "models"
     path.mkdir(parents=True, exist_ok=True)
     return path

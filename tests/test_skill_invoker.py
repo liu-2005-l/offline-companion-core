@@ -40,7 +40,12 @@ from offline_companion.shell.skill_manager.seccomp.profiles import (
 pytestmark = pytest.mark.security
 
 
-def _build_manifest(*, permissions: tuple[str, ...] = (), entrypoint_path: str = "/entry.py") -> SkillManifest:
+def _build_manifest(
+    *,
+    permissions: tuple[str, ...] = (),
+    required_api_keys: tuple[str, ...] = (),
+    entrypoint_path: str = "/entry.py",
+) -> SkillManifest:
     """摘要：构造测试用 Skill manifest。"""
     return SkillManifest(
         name="dummy",
@@ -56,7 +61,7 @@ def _build_manifest(*, permissions: tuple[str, ...] = (), entrypoint_path: str =
             path=entrypoint_path,
         ),
         permissions=permissions,
-        required_api_keys=(),
+        required_api_keys=required_api_keys,
         output_mode="block",
         raw={},
     )
@@ -389,6 +394,22 @@ class TestSkillInvoker:
         assert payload["profile"] == expected_profile
         supported, _ = seccomp_runtime_supported()
         assert payload["status"] == ("applied" if supported else "skipped")
+
+    def test_required_api_keys_are_injected_from_resolver(self) -> None:
+        manifest = _build_manifest(required_api_keys=("DEMO_API_KEY",))
+        env: dict[str, str] = {}
+        invoker = SkillInvoker(api_key_resolver=lambda name: "secret-value" if name == "DEMO_API_KEY" else None)
+
+        invoker._inject_required_api_keys(env, manifest)
+
+        assert env["DEMO_API_KEY"] == "secret-value"
+
+    def test_missing_required_api_key_fails_closed(self) -> None:
+        manifest = _build_manifest(required_api_keys=("DEMO_API_KEY",))
+        invoker = SkillInvoker(api_key_resolver=lambda _name: None)
+
+        with pytest.raises(SkillInvocationError, match="DEMO_API_KEY"):
+            invoker._inject_required_api_keys({}, manifest)
 
 
 @pytest.mark.parametrize(

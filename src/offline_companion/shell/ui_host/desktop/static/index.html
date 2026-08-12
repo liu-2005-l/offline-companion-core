@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="utf-8">
@@ -61,6 +61,7 @@
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </div>
+    <div class="idle-status-panel" id="idleStatusPanel" hidden></div>
     <div class="sidebar-footer">
       <button class="nav-btn avatar-btn" onclick="toggleLoginCard(event)" title="账户">
         <div class="sidebar-avatar" id="sidebarAvatar">客</div>
@@ -176,15 +177,15 @@
       </header>
       <div class="skill-view">
         <div class="ext-toolbar">
-          <button class="ext-toolbar-btn primary" onclick="showToast('打开技能商城...')">
+          <button class="ext-toolbar-btn primary" onclick="showExtensionStoreSoon()">
             <svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5M5 9v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M9 13h6"/></svg>
             浏览商城
           </button>
-          <button class="ext-toolbar-btn" onclick="showToast('选择本地技能文件/目录...')">
+          <button class="ext-toolbar-btn" onclick="promptInstallExtension()">
             <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/><path d="M3 3h18v18H3z" style="opacity:0.3"/></svg>
             导入本地
           </button>
-          <button class="ext-toolbar-btn" onclick="showToast('提交工单到技能商城...')">
+          <button class="ext-toolbar-btn" onclick="showExtensionSubmitSoon()">
             <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
             提交审核
           </button>
@@ -212,15 +213,15 @@
       </header>
       <div class="skill-view">
         <div class="ext-toolbar">
-          <button class="ext-toolbar-btn primary" onclick="showToast('打开插件商城...')">
+          <button class="ext-toolbar-btn primary" onclick="showExtensionStoreSoon()">
             <svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5M5 9v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M9 13h6"/></svg>
             浏览商城
           </button>
-          <button class="ext-toolbar-btn" onclick="showToast('选择本地插件文件/目录...')">
+          <button class="ext-toolbar-btn" onclick="promptInstallExtension()">
             <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/><path d="M3 3h18v18H3z" style="opacity:0.3"/></svg>
             导入本地
           </button>
-          <button class="ext-toolbar-btn" onclick="showToast('提交工单到插件商城...')">
+          <button class="ext-toolbar-btn" onclick="showExtensionSubmitSoon()">
             <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
             提交审核
           </button>
@@ -431,6 +432,30 @@
           </div>
         </div>
         <div class="settings-section">
+          <h3>空闲思考</h3>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">启用空闲检测</div>
+              <div class="setting-desc">停止输入一段时间后，后台评估目标提醒与待办计划</div>
+            </div>
+            <div class="toggle-switch on" id="idleThinkToggle" onclick="toggleIdleThink(this)"></div>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">空闲阈值</div>
+              <div class="setting-desc">默认 5 分钟；最短 1 分钟，最长 60 分钟</div>
+            </div>
+            <input class="select-control" id="idleThresholdMinutes" type="number" min="1" max="60" value="5" onchange="updateIdleThreshold(this)">
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">专注模式</div>
+              <div class="setting-desc">开启后非紧急提醒会更倾向静默记录</div>
+            </div>
+            <div class="toggle-switch" id="focusModeToggle" onclick="toggleFocusMode(this)"></div>
+          </div>
+        </div>
+        <div class="settings-section">
           <h3>隐私</h3>
           <div class="setting-row">
             <div>
@@ -456,11 +481,10 @@
           <div class="setting-row">
             <div>
               <div class="setting-label">当前模型</div>
-              <div class="setting-desc">尚未加载模型</div>
+              <div class="setting-desc" id="currentModelDescription">正在读取模型状态</div>
             </div>
-            <select class="select-control">
-              <option>尚未加载模型</option>
-              <option>自定义模型...</option>
+            <select class="select-control" id="currentModelSelect" onchange="activateModelFromSettings(this)">
+              <option value="">正在读取模型状态</option>
             </select>
           </div>
           <div class="setting-row" style="display:none;">
@@ -487,7 +511,7 @@
             </div>
           </div>
           <div class="about-info">
-            <strong>Offline Companion</strong> v1.1.0<br>
+            <strong>Offline Companion</strong> v1.2.1<br>
             本地优先 AI 陪伴 Agent<br>
             模型：按实际启用状态加载<br>
             架构：A/B/C 三层 · B/C 层禁网<br>
@@ -737,3 +761,4 @@
 <script src="/shell_api.js"></script>
 </body>
 </html>
+

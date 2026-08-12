@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+import uuid
 from typing import Any
 
 from offline_companion.shared.types import OceanVector, Persona
@@ -131,6 +132,158 @@ def activate_persona(conn: Any, persona_id: str) -> Persona | None:
     return get_persona(conn, persona_id)
 
 
+def create_persona(conn: Any, payload: dict[str, Any]) -> dict[str, Any]:
+    """摘要：创建自定义人格并返回前端 payload。
+
+    参数：
+        conn: SQLite 连接。
+        payload: 前端提交的人格字段。
+
+    返回值：
+        创建后的人格 payload。
+
+    Raises:
+        ValueError: 字段不合法或名称重复。
+    """
+    init_personas(conn)
+    name = _clean_required_text(payload.get("name"), "name")
+    _ensure_unique_name(conn, name)
+    avatar = str(payload.get("avatar") or name[:1] or "").strip()
+    desc = str(payload.get("desc") or "").strip()
+    ocean = _normalize_ocean(payload.get("ocean"))
+    traits = _normalize_traits(payload.get("traits"))
+    anchor = str(payload.get("anchor") or "").strip()
+    system_prompt = anchor or f"你是{name}，一个运行在用户本机的隐私优先离线陪伴人格。"
+    persona_id = uuid.uuid4().hex
+    now = time.time()
+    raw = _raw_payload(persona_id, name, avatar, desc, traits, system_prompt, ocean)
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO personas(
+                id, name, avatar, desc, ocean_json, traits_json, anchor, system_prompt,
+                raw_json, active, created_at, updated_at
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?);
+            """,
+            (
+                persona_id,
+                name,
+                avatar,
+                desc,
+                json.dumps(ocean, ensure_ascii=False),
+                json.dumps(traits, ensure_ascii=False),
+                anchor,
+                system_prompt,
+                json.dumps(raw, ensure_ascii=False),
+                0,
+                now,
+                now,
+            ),
+        )
+    created = _get_persona_payload(conn, persona_id)
+    if created is None:
+        raise ValueError("persona_create_failed")
+    return created
+
+
+def update_persona(conn: Any, persona_id: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+    """摘要：更新指定人格并返回前端 payload。
+
+    参数：
+        conn: SQLite 连接。
+        persona_id: 人格 ID。
+        payload: 允许更新的人格字段。
+
+    返回值：
+        更新后的人格 payload；不存在时返回 None。
+
+    Raises:
+        ValueError: 字段不合法或名称重复。
+    """
+    init_personas(conn)
+    current = _get_persona_payload(conn, persona_id)
+    if current is None:
+        return None
+    updates: dict[str, Any] = {}
+    if "name" in payload:
+        name = _clean_required_text(payload.get("name"), "name")
+        if name != current["name"]:
+            _ensure_unique_name(conn, name, exclude_id=persona_id)
+        updates["name"] = name
+    if "avatar" in payload:
+        updates["avatar"] = str(payload.get("avatar") or "").strip()
+    if "desc" in payload:
+        updates["desc"] = str(payload.get("desc") or "").strip()
+    if "ocean" in payload:
+        updates["ocean_json"] = json.dumps(_normalize_ocean(payload.get("ocean")), ensure_ascii=False)
+    if "traits" in payload:
+        updates["traits_json"] = json.dumps(_normalize_traits(payload.get("traits")), ensure_ascii=False)
+    if "anchor" in payload:
+        anchor = str(payload.get("anchor") or "").strip()
+        updates["anchor"] = anchor
+        updates["system_prompt"] = anchor or str(current.get("anchor") or "")
+    if not updates:
+        return current
+    merged = dict(current)
+    merged.update(
+        {
+            "name": updates.get("name", current["name"]),
+            "avatar": updates.get("avatar", current["avatar"]),
+            "desc": updates.get("desc", current["desc"]),
+            "ocean": _loads_list(updates.get("ocean_json", json.dumps(current["ocean"], ensure_ascii=False))),
+            "traits": _loads_list(updates.get("traits_json", json.dumps(current["traits"], ensure_ascii=False))),
+            "anchor": updates.get("anchor", current["anchor"]),
+        }
+    )
+    updates["raw_json"] = json.dumps(
+        _raw_payload(
+            persona_id,
+            str(merged["name"]),
+            str(merged["avatar"]),
+            str(merged["desc"]),
+            [str(item) for item in merged["traits"]],
+            str(updates.get("system_prompt", merged["anchor"])),
+            [int(item) for item in merged["ocean"]],
+        ),
+        ensure_ascii=False,
+    )
+    updates["updated_at"] = time.time()
+    set_clause = ", ".join(f"{key} = ?" for key in updates)
+    with conn:
+        conn.execute(
+            f"UPDATE personas SET {set_clause} WHERE id = ?;",
+            (*updates.values(), persona_id),
+        )
+    return _get_persona_payload(conn, persona_id)
+
+
+def delete_persona(conn: Any, persona_id: str) -> bool:
+    """摘要：删除非 active 人格。
+
+    参数：
+        conn: SQLite 连接。
+        persona_id: 人格 ID。
+
+    返回值：
+        删除成功返回 True；不存在返回 False。
+
+    Raises:
+        ValueError: 删除 active 或最后一个人格。
+    """
+    init_personas(conn)
+    current = _get_persona_payload(conn, persona_id)
+    if current is None:
+        return False
+    if bool(current["active"]):
+        raise ValueError("cannot_delete_active_persona")
+    row = conn.execute("SELECT COUNT(*) AS count FROM personas;").fetchone()
+    if int(row["count"]) <= 1:
+        raise ValueError("cannot_delete_last_persona")
+    with conn:
+        conn.execute("DELETE FROM personas WHERE id = ?;", (persona_id,))
+    return True
+
+
 def _insert_seed(conn: Any, seed: dict[str, Any], *, active: bool, now: float) -> None:
     raw = {
         "id": seed["id"],
@@ -178,6 +331,85 @@ def _row_payload(row: Any) -> dict[str, Any]:
         "traits": [str(item) for item in _loads_list(row["traits_json"])],
         "anchor": str(row["anchor"] or ""),
         "active": bool(row["active"]),
+    }
+
+
+def _get_persona_payload(conn: Any, persona_id: str) -> dict[str, Any] | None:
+    row = conn.execute(
+        """
+        SELECT id, name, avatar, desc, ocean_json, traits_json, anchor, active
+        FROM personas
+        WHERE id = ?;
+        """,
+        (persona_id,),
+    ).fetchone()
+    return None if row is None else _row_payload(row)
+
+
+def _ensure_unique_name(conn: Any, name: str, *, exclude_id: str | None = None) -> None:
+    if exclude_id is None:
+        row = conn.execute("SELECT id FROM personas WHERE name = ? LIMIT 1;", (name,)).fetchone()
+    else:
+        row = conn.execute(
+            "SELECT id FROM personas WHERE name = ? AND id <> ? LIMIT 1;",
+            (name, exclude_id),
+        ).fetchone()
+    if row is not None:
+        raise ValueError("persona_name_exists")
+
+
+def _clean_required_text(value: Any, field: str) -> str:
+    text = str(value or "").strip()
+    if not text:
+        raise ValueError(f"{field}_required")
+    return text
+
+
+def _normalize_ocean(value: Any) -> list[int]:
+    items = value if isinstance(value, list) else [50, 50, 50, 50, 50]
+    normalized: list[int] = []
+    for item in items[:5]:
+        try:
+            number = int(item)
+        except (TypeError, ValueError):
+            number = 50
+        normalized.append(max(0, min(100, number)))
+    while len(normalized) < 5:
+        normalized.append(50)
+    return normalized
+
+
+def _normalize_traits(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    traits: list[str] = []
+    for item in value:
+        text = str(item or "").strip()
+        if text and text not in traits:
+            traits.append(text)
+    return traits
+
+
+def _raw_payload(
+    persona_id: str,
+    name: str,
+    avatar: str,
+    desc: str,
+    traits: list[str],
+    system_prompt: str,
+    ocean: list[int],
+) -> dict[str, Any]:
+    return {
+        "id": persona_id,
+        "name": name,
+        "avatar": avatar,
+        "description": desc,
+        "traits": traits,
+        "system_prompt": system_prompt,
+        "role_lock": True,
+        "memory_default_on": True,
+        "default_companion_display_name": name,
+        "ocean": _ocean_dict(ocean),
     }
 
 

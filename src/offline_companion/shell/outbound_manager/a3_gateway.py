@@ -17,7 +17,8 @@ DecisionProvider = Callable[[dict[str, Any]], bool]
 
 
 def _purpose_for_request(consent_request: ConsentRequest) -> str:
-    explicit = str(consent_request.metadata.get("purpose_type") or "").strip()
+    raw_purpose = consent_request.purpose_type or consent_request.metadata.get("purpose_type") or ""
+    explicit = raw_purpose.value if isinstance(raw_purpose, PurposeType) else str(raw_purpose).strip()
     if explicit:
         return explicit
     skill = (consent_request.skill_id or "").lower()

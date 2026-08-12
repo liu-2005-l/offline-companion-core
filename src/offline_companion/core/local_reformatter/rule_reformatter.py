@@ -9,7 +9,7 @@ import yaml
 from offline_companion.core.emotion_analyzer.context import EmotionContext
 from offline_companion.shared.errors import ReformatError
 from offline_companion.shared.runtime_paths import configs_dir, dev_repo_root
-from offline_companion.shared.types import Persona
+from offline_companion.shared.types import CapabilityProfile, Persona
 
 LOCAL_FALLBACK_PREFIX = "我现在用自己的方式回答你："
 
@@ -114,11 +114,16 @@ def reformat_cloud_reply(
     text: str,
     persona: Persona,
     emotion_context: EmotionContext | None = None,
+    capability_profile: CapabilityProfile | None = None,
 ) -> str:
     """摘要：将云端返回文本压回人格风格。"""
     body = text.strip()
     if not body:
         raise ReformatError("云端返回为空")
+
+    profile = capability_profile or CapabilityProfile()
+    if profile.roleplay_quality >= 0.7:
+        return body
 
     config = _reformat_config(persona)
     min_chars = int(config.get("min_chars", 8))
@@ -146,11 +151,15 @@ def reformat_cloud_reply(
 def reformat_local_reply(
     text: str,
     emotion_context: EmotionContext | None = None,
+    capability_profile: CapabilityProfile | None = None,
 ) -> str:
     """摘要：对本地模型输出执行 B4 情绪润色。"""
     body = text.strip()
     if not body:
         raise ReformatError("本地回复为空")
+    profile = capability_profile or CapabilityProfile()
+    if profile.roleplay_quality >= 0.7:
+        return body
     result = _apply_emotion_polish(body, emotion_context)
     if not result.strip():
         raise ReformatError("本地润色结果为空")

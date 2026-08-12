@@ -15,7 +15,10 @@ IdleThinkCallback = Callable[[], None]
 
 @dataclass
 class IdleThinkListener:
-    """摘要：监听系统空闲信号并触发 IdleThink。"""
+    """摘要：[DEPRECATED] 监听系统空闲信号并触发旧版 IdleThink。
+
+    新主线使用 A 层 ``IdleThinkCoordinator``，旧监听器只保留兼容测试和历史入口。
+    """
 
     state_manager: StateManager
     on_idle_think: IdleThinkCallback
@@ -42,7 +45,10 @@ class IdleThinkListener:
 
 @dataclass
 class IdleThinkOrchestratorBridge:
-    """摘要：连接 StateManager → IdleThinkListener → PlanOrchestrator 的真实桥接层。"""
+    """摘要：[DEPRECATED] 连接 StateManager → PlanOrchestrator 的旧版模板桥接层。
+
+    此桥接层不经过 GoalManager / AttentionGuard，Phase 3 新链路不得复用它。
+    """
 
     state_manager: StateManager
     plan_orchestrator: PlanOrchestrator

@@ -1,4 +1,4 @@
-// 概要：后端第 1 批接线层，覆盖原型中的 mock 会话、聊天与记忆函数。
+﻿// 概要：后端第 1 批接线层，覆盖原型中的 mock 会话、聊天与记忆函数。
 var _currentSessionId = null;
 var _windowDragState = null;
 var _windowResizeState = null;
@@ -55,6 +55,18 @@ function applySettings(settings) {
     if (memoryToggle) memoryToggle.classList.toggle('on', settings.memory_enabled);
     const memoryStatusLabel = document.getElementById('memoryStatusLabel');
     if (memoryStatusLabel) memoryStatusLabel.textContent = settings.memory_enabled ? '记忆 · 开' : '记忆 · 关';
+  }
+  if (typeof settings.idle_think_enabled === 'boolean') {
+    const idleToggle = document.getElementById('idleThinkToggle');
+    if (idleToggle) idleToggle.classList.toggle('on', settings.idle_think_enabled);
+  }
+  if (settings.idle_threshold_seconds != null) {
+    const idleThreshold = document.getElementById('idleThresholdMinutes');
+    if (idleThreshold) idleThreshold.value = Math.max(1, Math.round(Number(settings.idle_threshold_seconds || 300) / 60));
+  }
+  if (typeof settings.focus_mode_enabled === 'boolean') {
+    const focusToggle = document.getElementById('focusModeToggle');
+    if (focusToggle) focusToggle.classList.toggle('on', settings.focus_mode_enabled);
   }
   if (settings.active_persona_id) {
     window._activePersonaId = settings.active_persona_id;
@@ -205,6 +217,110 @@ window.loadSettings = loadSettings;
 window.saveSetting = saveSetting;
 window.collectSettingsDomSnapshot = collectSettingsDomSnapshot;
 window.postSettingsDomSnapshot = postSettingsDomSnapshot;
+
+let idlePollTimer = null;
+
+function formatIdleTime(timestamp) {
+  if (!timestamp) return '';
+  const numeric = Number(timestamp);
+  if (!Number.isNaN(numeric)) return new Date(numeric * 1000).toLocaleTimeString();
+  return String(timestamp);
+}
+
+function renderIdleStatus(data) {
+  const panel = document.getElementById('idleStatusPanel');
+  if (!panel) return;
+  if (!data || !data.idle_enabled) {
+    panel.hidden = true;
+    panel.innerHTML = '';
+    return;
+  }
+  const status = data.current_status || null;
+  const progress = data.last_progress || null;
+  const result = data.last_idle_result || null;
+  if (!status && !progress && !result) {
+    panel.hidden = true;
+    panel.innerHTML = '';
+    return;
+  }
+  const statusText = !status ? '观察中' :
+    status.status === 'paused' ? '⏸ 暂停：' + (status.reason || '用户输入') :
+    status.status === 'completed' ? '✅ 已完成' :
+    '▶ ' + status.status;
+  const plan = result && result.idle_plan ? result.idle_plan : null;
+  const goal = plan ? '<div class="idle-goal">' + apiEscapeHtml(plan.goal_title || '') + '</div>' : '';
+  const step = progress ? '<div class="idle-progress"><span>' + apiEscapeHtml(progress.title || progress.step_id || '') + '</span><small>' + apiEscapeHtml(String(progress.result || '')) + '</small></div>' : '';
+  panel.hidden = false;
+  panel.innerHTML = '<div class="idle-header">空闲思考</div>' +
+    '<div class="idle-state">' + apiEscapeHtml(statusText) + '</div>' +
+    goal + step +
+    '<div class="idle-time">' + apiEscapeHtml(formatIdleTime((status && status.timestamp) || (progress && progress.timestamp))) + '</div>';
+}
+
+async function loadIdleStatus() {
+  try {
+    const data = await apiJson('/api/idle/status');
+    renderIdleStatus(data);
+    return data;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function startIdlePolling() {
+  if (idlePollTimer) return;
+  loadIdleStatus();
+  idlePollTimer = setInterval(loadIdleStatus, 30000);
+}
+
+async function toggleIdleThink(el) {
+  const enabled = !el.classList.contains('on');
+  const input = document.getElementById('idleThresholdMinutes');
+  const minutes = Math.min(60, Math.max(1, parseInt(input && input.value ? input.value : '5', 10) || 5));
+  try {
+    const data = await apiJson('/api/idle/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: enabled, threshold_seconds: minutes * 60 })
+    });
+    if (data.settings) applySettings(data.settings);
+    await loadIdleStatus();
+  } catch (error) {
+    showToast('空闲检测设置失败：' + error.message);
+  }
+}
+
+async function updateIdleThreshold(input) {
+  const minutes = Math.min(60, Math.max(1, parseInt(input.value || '5', 10) || 5));
+  input.value = String(minutes);
+  const idleToggle = document.getElementById('idleThinkToggle');
+  const enabled = !idleToggle || idleToggle.classList.contains('on');
+  try {
+    const data = await apiJson('/api/idle/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: enabled, threshold_seconds: minutes * 60 })
+    });
+    if (data.settings) applySettings(data.settings);
+  } catch (error) {
+    showToast('空闲阈值保存失败：' + error.message);
+  }
+}
+
+function toggleFocusMode(el) {
+  const enabled = !el.classList.contains('on');
+  el.classList.toggle('on', enabled);
+  saveSetting('focus_mode_enabled', enabled).catch(function(error) {
+    el.classList.toggle('on', !enabled);
+    showToast('专注模式保存失败：' + error.message);
+  });
+}
+
+window.loadIdleStatus = loadIdleStatus;
+window.renderIdleStatus = renderIdleStatus;
+window.toggleIdleThink = toggleIdleThink;
+window.updateIdleThreshold = updateIdleThreshold;
+window.toggleFocusMode = toggleFocusMode;
 
 function setTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
@@ -568,6 +684,7 @@ async function sendMessage() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text) return;
+  fetch('/api/idle/touch', { method: 'POST' }).catch(() => {});
   const chat = document.getElementById('chatMessages');
   const nextIdx = apiNextMsgIdx();
   let quoteHtml = '';
@@ -582,7 +699,7 @@ async function sendMessage() {
   updateSendBtn();
   chat.scrollTop = chat.scrollHeight;
 
-  if (window._planMode) {
+  if (window._planMode && !window._autoRouterEnabled) {
     showTyping();
     try {
       const data = await apiJson('/api/plan/decompose', {
@@ -623,10 +740,14 @@ async function sendMessage() {
       return;
     }
     hideTyping();
-    const bubble = apiCreateStreamingMessage(nextIdx + 1);
+    const bubble = window._autoRouterEnabled ? null : apiCreateStreamingMessage(nextIdx + 1);
     let finalData = null;
     let streamedText = '';
     await apiReadSseStream(resp, function(event) {
+      if (_handleAutoPlanEvent(event, nextIdx + 1)) {
+        if (event.done) finalData = event;
+        return;
+      }
       if (event.error) throw new Error(event.error);
       if (event.recall != null && event.recall > 0) showToast('召回 ' + event.recall + ' 条记忆');
       if (event.token) {
@@ -636,7 +757,13 @@ async function sendMessage() {
       }
       if (event.done) finalData = event;
     });
-    if (finalData && finalData.blocked && bubble) {
+    if (finalData && finalData.type === 'plan_complete') {
+      _finalizeAutoPlan(finalData);
+    } else if (finalData && finalData.type === 'plan_failed') {
+      _failAutoPlan(finalData);
+    } else if (finalData && finalData.type === 'plan_cancelled') {
+      _cancelAutoPlan(finalData);
+    } else if (finalData && finalData.blocked && bubble) {
       const msg = bubble.closest('.msg');
       if (msg) {
         msg.classList.remove('msg-bot');
@@ -883,6 +1010,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   loadRuntimeStatus();
   loadAuthStatus();
   loadImprovePlan();
+  startIdlePolling();
   setTimeout(function() { postSettingsDomSnapshot('after-startup-loads'); }, 300);
   setTimeout(function() { postSettingsDomSnapshot('after-startup-settle'); }, 1200);
 });
@@ -1009,6 +1137,171 @@ async function _rejectConsent(planId, stepId) {
   }
 }
 
+let _autoPlanState = null;
+
+function _renderAutoPlanCard(event, msgIdx) {
+  const chat = document.getElementById('chatMessages');
+  if (!chat) return;
+  if (event.resume && _autoPlanState && _autoPlanState.planId === event.plan_id) return;
+  const steps = event.steps || [];
+  _autoPlanState = { planId: event.plan_id, cardEl: null, consentRequestId: null };
+  const stepsHtml = steps.map(function(step) {
+    return '<div class="auto-step" data-step-id="' + apiEscapeHtml(step.step_id) + '">' +
+      '<div class="auto-step-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></div>' +
+      '<div class="auto-step-desc">' + apiEscapeHtml(step.description || step.step_id) + '</div>' +
+      '<div class="auto-step-route">' + apiEscapeHtml((step.route_mode || '').toUpperCase()) + '</div>' +
+      '<div class="auto-step-status">待执行</div></div>';
+  }).join('');
+  const html = '<div class="msg msg-bot auto-plan-msg" data-msg-idx="' + msgIdx + '" data-plan-id="' + apiEscapeHtml(event.plan_id) + '">' +
+    '<div class="msg-avatar">伴</div><div class="msg-bubble"><div class="auto-plan-card">' +
+    '<div class="auto-plan-header"><span class="auto-plan-title">任务计划</span><span class="auto-plan-progress">0/' + steps.length + '</span></div>' +
+    '<div class="auto-plan-steps">' + stepsHtml + '</div><div class="auto-plan-reply" hidden></div>' +
+    '<div class="auto-plan-consent" hidden></div></div></div></div>';
+  const typing = document.getElementById('typingMsg');
+  if (typing) typing.insertAdjacentHTML('beforebegin', html);
+  else chat.insertAdjacentHTML('beforeend', html);
+  _autoPlanState.cardEl = Array.from(chat.querySelectorAll('[data-plan-id]')).find(function(card) {
+    return card.dataset.planId === String(event.plan_id);
+  }) || null;
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function _updateAutoStep(event, status, result) {
+  if (!_autoPlanState || !_autoPlanState.cardEl) return;
+  const step = Array.from(_autoPlanState.cardEl.querySelectorAll('[data-step-id]')).find(function(item) {
+    return item.dataset.stepId === String(event.step_id);
+  });
+  if (!step) return;
+  step.classList.remove('running', 'done', 'failed', 'skipped');
+  step.classList.add(status);
+  const labels = { running: '执行中', done: '完成', failed: '失败', skipped: '已跳过' };
+  const statusEl = step.querySelector('.auto-step-status');
+  if (statusEl) {
+    statusEl.textContent = labels[status] || status;
+    if (result != null) statusEl.title = String(result).slice(0, 200);
+  }
+  const icon = step.querySelector('.auto-step-icon');
+  if (icon && status === 'running') icon.innerHTML = '<span class="auto-step-spinner"></span>';
+  if (icon && status === 'done') icon.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
+  if (icon && status === 'failed') icon.innerHTML = '<svg viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></svg>';
+  const complete = _autoPlanState.cardEl.querySelectorAll('.auto-step.done, .auto-step.skipped').length;
+  const total = _autoPlanState.cardEl.querySelectorAll('.auto-step').length;
+  const progress = _autoPlanState.cardEl.querySelector('.auto-plan-progress');
+  if (progress) progress.textContent = complete + '/' + total;
+}
+
+function _showAutoConsent(event) {
+  if (!_autoPlanState || !_autoPlanState.cardEl) return;
+  _autoPlanState.planId = event.plan_id;
+  _autoPlanState.consentRequestId = event.consent_request_id;
+  const consent = _autoPlanState.cardEl.querySelector('.auto-plan-consent');
+  if (!consent) return;
+  const payload = event.consent_payload || {};
+  consent.hidden = false;
+  consent.innerHTML = '<div class="auto-consent-card"><div class="auto-consent-title">需要授权</div>' +
+    '<div class="auto-consent-desc">' + apiEscapeHtml(payload.description || ('步骤“' + (event.step_id || '') + '”需要授权后才能执行')) + '</div>' +
+    '<div class="auto-consent-actions"><button class="cloud-test-btn" onclick="_approveAutoConsent()">授权并继续</button>' +
+    '<button class="cloud-save-btn auto-consent-reject" onclick="_rejectAutoConsent()">拒绝</button></div></div>';
+}
+
+async function _decideAutoConsent(allowed) {
+  if (!_autoPlanState || !_autoPlanState.consentRequestId) return;
+  const planId = _autoPlanState.planId;
+  const requestId = _autoPlanState.consentRequestId;
+  const consent = _autoPlanState.cardEl && _autoPlanState.cardEl.querySelector('.auto-plan-consent');
+  if (consent) consent.innerHTML = '<div class="auto-consent-pending">正在记录决定…</div>';
+  try {
+    await apiJson('/api/consent', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ request_id: requestId, allowed: allowed })
+    });
+    if (consent) consent.hidden = true;
+    await _resumeAutoPlan(planId, requestId);
+  } catch (error) {
+    if (consent) {
+      consent.hidden = false;
+      consent.innerHTML = '<div class="auto-consent-error">处理授权失败：' + apiEscapeHtml(error.message) + '</div>';
+    }
+    showToast('处理授权失败：' + error.message);
+  }
+}
+
+function _approveAutoConsent() { return _decideAutoConsent(true); }
+function _rejectAutoConsent() { return _decideAutoConsent(false); }
+
+async function _resumeAutoPlan(planId, consentRequestId) {
+  const response = await fetch('/api/chat', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: '', resume: true, plan_id: planId, consent_request_id: consentRequestId, stream: true })
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(function() { return {}; });
+    throw new Error(data.error || ('HTTP ' + response.status));
+  }
+  let finalData = null;
+  await apiReadSseStream(response, function(event) {
+    if (_handleAutoPlanEvent(event)) {
+      if (event.done) finalData = event;
+      return;
+    }
+    if (event.error) throw new Error(event.error);
+  });
+  if (finalData && finalData.type === 'plan_complete') _finalizeAutoPlan(finalData);
+  else if (finalData && finalData.type === 'plan_failed') _failAutoPlan(finalData);
+  else if (finalData && finalData.type === 'plan_cancelled') _cancelAutoPlan(finalData);
+}
+
+function _handleAutoPlanEvent(event, msgIdx) {
+  if (!event || !event.type) return false;
+  if (event.type === 'plan_start') _renderAutoPlanCard(event, msgIdx);
+  else if (event.type === 'step_start') _updateAutoStep(event, 'running');
+  else if (event.type === 'step_complete') _updateAutoStep(event, 'done', event.result);
+  else if (event.type === 'step_error' || event.type === 'step_failed') _updateAutoStep(event, 'failed', event.message || event.error);
+  else if (event.type === 'step_skipped') _updateAutoStep(event, 'skipped');
+  else if (event.type === 'consent_required') _showAutoConsent(event);
+  else if (event.type === 'plan_blocked') _showAutoPlanBlocked(event);
+  else if (!['plan_complete', 'plan_failed', 'plan_cancelled', 'error'].includes(event.type)) return false;
+  if (['plan_complete', 'plan_failed', 'plan_cancelled'].includes(event.type) && !_autoPlanState && msgIdx != null) {
+    _renderAutoPlanCard({ plan_id: event.plan_id || ('auto-result-' + msgIdx), steps: [] }, msgIdx);
+  }
+  if (event.type === 'error') throw new Error(event.error || 'Auto 执行错误');
+  return true;
+}
+
+function _finishAutoPlan(event, stateClass, message) {
+  if (!_autoPlanState || !_autoPlanState.cardEl) return;
+  const card = _autoPlanState.cardEl;
+  card.classList.add(stateClass);
+  const reply = card.querySelector('.auto-plan-reply');
+  if (reply) {
+    reply.hidden = false;
+    reply.textContent = message;
+  }
+  if (event && event.message_id) apiSetRenderedMessageId(Number(card.closest('.msg').dataset.msgIdx), event.message_id);
+  _autoPlanState = null;
+}
+
+function _finalizeAutoPlan(event) { _finishAutoPlan(event, 'auto-plan-done', event.reply || '计划已完成'); }
+function _failAutoPlan(event) { _finishAutoPlan(event, 'auto-plan-failed', '计划执行失败：' + (event.error || '未知错误')); }
+function _cancelAutoPlan(event) { _finishAutoPlan(event, 'auto-plan-cancelled', '计划已取消'); }
+
+function _showAutoPlanBlocked(event) {
+  if (!_autoPlanState || !_autoPlanState.cardEl) return;
+  if (event.blocked_step_id) _updateAutoStep({ step_id: event.blocked_step_id }, 'failed', event.message);
+  const card = _autoPlanState.cardEl;
+  card.classList.add('auto-plan-failed');
+  const reply = card.querySelector('.auto-plan-reply');
+  if (reply) {
+    reply.hidden = false;
+    const missing = (event.missing_stages || []).join(' → ');
+    reply.textContent = (event.message || '计划被硬门禁阻断') + (missing ? '（缺失阶段：' + missing + '）' : '');
+  }
+  _autoPlanState = null;
+}
+
+window._approveAutoConsent = _approveAutoConsent;
+window._rejectAutoConsent = _rejectAutoConsent;
+
 async function _pausePlan(planId) {
   const plan = window._activePlans[planId];
   if (!plan) return;
@@ -1132,6 +1425,33 @@ async function selectPersona(el, name) {
   }
 }
 
+async function createPersonaApi(formData) {
+  const data = await apiJson('/api/personas', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formData)
+  });
+  await loadPersonas();
+  return data.id || (data.persona && data.persona.id);
+}
+
+async function updatePersonaApi(personaId, formData) {
+  const data = await apiJson('/api/personas/' + encodeURIComponent(personaId), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formData)
+  });
+  await loadPersonas();
+  return data.persona;
+}
+
+async function deletePersonaApi(personaId) {
+  await apiJson('/api/personas/' + encodeURIComponent(personaId), {
+    method: 'DELETE'
+  });
+  await loadPersonas();
+}
+
 function modelMetaLine(model) {
   const meta = model.meta || {};
   const size = meta.size ? (meta.size / 1024 / 1024 / 1024).toFixed(1) + ' GB' : model.status;
@@ -1153,23 +1473,70 @@ function renderModels(items, autoEnabled) {
   });
   (items || []).filter(model => model.type === 'cloud').forEach(function(model) {
     if (!cloudList) return;
+    const meta = model.meta || {};
     cloudList.insertAdjacentHTML('beforeend',
-      '<div class="model-item' + (model.active ? ' active' : '') + (model.locked ? ' locked' : '') + '" data-model-id="' + apiEscapeHtml(model.id) + '" data-model-name="' + apiEscapeHtml(model.name) + '" data-model-type="cloud" data-locked="' + (!!model.locked) + '" onclick="selectModel(this, \'' + apiEscapeHtml(model.name).replace(/'/g, '&#39;') + '\', \'cloud\')">' +
+      '<div class="model-item' + (model.active ? ' active' : '') + (model.locked ? ' locked' : '') + '" data-model-id="' + apiEscapeHtml(model.id) + '" data-model-name="' + apiEscapeHtml(model.name) + '" data-model-type="cloud" data-endpoint="' + apiEscapeHtml(meta.endpoint || '') + '" data-cloud-model-name="' + apiEscapeHtml(meta.model_name || model.name || '') + '" data-api-key-masked="' + apiEscapeHtml(meta.api_key_masked || '') + '" data-locked="' + (!!model.locked) + '" onclick="selectModel(this, \'' + apiEscapeHtml(model.name).replace(/'/g, '&#39;') + '\', \'cloud\')">' +
         '<div class="model-item-toggle' + (model.enabled ? ' on' : '') + '" onclick="event.stopPropagation(); toggleModelEnable(this)"></div>' +
-        '<div class="model-item-info"><div class="model-item-name">' + apiEscapeHtml(model.name) + (model.locked ? ' 🔒' : '') + '</div><div class="model-item-meta">' + apiEscapeHtml(model.locked ? '登录后可用 · ' + modelMetaLine(model) : modelMetaLine(model)) + '</div></div>' +
+        '<div class="model-item-info"><div class="model-item-name">' + apiEscapeHtml(model.name) + (model.locked ? ' 🔒' : '') + '</div><div class="model-item-meta">' + apiEscapeHtml(model.locked ? '登录后可用 · ' + modelMetaLine(model) : modelMetaLine(model)) + '</div><div class="model-item-cloud-meta">' + apiEscapeHtml(meta.endpoint || '') + '</div></div>' +
+        '<div class="model-item-actions">' +
+          '<button class="edit-btn" onclick="event.stopPropagation(); editCloudModel(this)" title="修改"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
+          '<button class="del-btn" onclick="event.stopPropagation(); deleteCloudModel(this)" title="删除"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
+        '</div>' +
       '</div>');
   });
-  const autoToggle = document.getElementById('autoToggle');
+  if (cloudList && !cloudList.children.length) {
+    cloudList.innerHTML = '<div class="model-empty" id="cloudEmpty">尚未添加云端模型，在下方配置 API</div>';
+  }  const autoToggle = document.getElementById('autoToggle');
   if (autoToggle) autoToggle.classList.toggle('on', !!autoEnabled);
   if (window._loadedSettings && typeof window._loadedSettings.auto_router_enabled === 'boolean' && autoToggle) {
     autoToggle.classList.toggle('on', window._loadedSettings.auto_router_enabled);
   }
   const active = (items || []).find(model => model.active);
+  const currentDescription = document.getElementById('currentModelDescription');
+  const currentSelect = document.getElementById('currentModelSelect');
+  if (currentSelect) {
+    currentSelect.innerHTML = '';
+    if (!(items || []).length) {
+      currentSelect.innerHTML = '<option value="">暂无可用模型</option>';
+      currentSelect.disabled = true;
+    } else {
+      (items || []).forEach(function(model) {
+        const option = document.createElement('option');
+        option.value = model.id;
+        option.textContent = model.name;
+        option.dataset.modelName = model.name;
+        option.disabled = !!model.locked || model.status !== 'ready';
+        option.selected = !!model.active;
+        currentSelect.appendChild(option);
+      });
+      currentSelect.disabled = false;
+    }
+  }
   if (active) {
     const switcher = document.getElementById('modelSwitcher');
     if (switcher) switcher.textContent = '模型 · ' + active.name;
+    if (currentDescription) currentDescription.textContent = '已加载 · ' + active.name;
+  } else if (currentDescription) {
+    currentDescription.textContent = '尚未加载模型';
   }
   refreshModelCard();
+}
+
+async function activateModelFromSettings(select) {
+  const modelId = select && select.value;
+  if (!modelId) return;
+  const option = select.options[select.selectedIndex];
+  try {
+    await apiJson('/api/models/' + encodeURIComponent(modelId) + '/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: true, name: option.dataset.modelName || option.textContent || modelId })
+    });
+    await loadModels();
+  } catch (error) {
+    showToast('模型切换失败：' + error.message);
+    await loadModels();
+  }
 }
 
 async function loadModels() {
@@ -1181,6 +1548,32 @@ async function loadModels() {
   }
 }
 
+async function addCloudModelApi(formData) {
+  const data = await apiJson('/api/models/cloud', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formData)
+  });
+  await loadModels();
+  return data.id || (data.model && data.model.id);
+}
+
+async function updateCloudModelApi(modelId, formData) {
+  const data = await apiJson('/api/models/cloud/' + encodeURIComponent(modelId), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formData)
+  });
+  await loadModels();
+  return data.model;
+}
+
+async function deleteCloudModelApi(modelId) {
+  await apiJson('/api/models/cloud/' + encodeURIComponent(modelId), {
+    method: 'DELETE'
+  });
+  await loadModels();
+}
 async function selectModel(el, name, type) {
   const modelId = el.dataset.modelId || name;
   if (el.dataset.locked === 'true') {
@@ -1210,13 +1603,27 @@ async function cardSelectModel(el, name) {
 async function toggleAuto(toggle) {
   const enabled = !toggle.classList.contains('on');
   try {
+    if (enabled) {
+      const models = await apiJson('/api/models');
+      const hasEnabledCloud = (models.items || []).some(function(model) {
+        return model.type === 'cloud' && model.enabled;
+      });
+      if (!hasEnabledCloud) {
+        showToast('Auto 模式需要至少一个已启用的云端模型');
+        return;
+      }
+    }
     const data = await apiJson('/api/models/auto', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled: enabled })
     });
     toggle.classList.toggle('on', data.auto);
-    if (data.auto) document.getElementById('modelSwitcher').textContent = '\u6a21\u578b \u00b7 Auto';
+    window._autoRouterEnabled = !!data.auto;
+    if (data.auto) {
+      document.getElementById('modelSwitcher').textContent = '\u6a21\u578b \u00b7 Auto';
+      window._planMode = false;
+    }
     saveSetting('auto_router_enabled', !!data.auto).catch(function(){});
     showToast(data.auto ? '已启用 Auto 自动路由' : '已关闭 Auto');
   } catch (error) {
@@ -1352,6 +1759,23 @@ async function toggleExtension(btn, extensionId) {
   } catch (error) {
     showToast('扩展状态更新失败：' + error.message);
   }
+}
+
+async function installExtension(sourcePath) {
+  const data = await apiJson('/api/extensions/install', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source_path: sourcePath })
+  });
+  await loadExtensions();
+  return data;
+}
+
+async function uninstallExtension(extensionId) {
+  await apiJson('/api/extensions/' + encodeURIComponent(extensionId), {
+    method: 'DELETE'
+  });
+  await loadExtensions();
 }
 
 async function loadRuntimeStatus() {
@@ -1539,4 +1963,5 @@ function addReaction(btn, emoji) {
   reaction.innerHTML = '<span>' + emoji + '</span>';
   reactionsEl.appendChild(reaction);
 }
+
 

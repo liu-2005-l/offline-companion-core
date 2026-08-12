@@ -12,6 +12,7 @@ from offline_companion.core.plan_orchestrator import ConsentRequest
 from offline_companion.shared.types import PrivacyMode, PurposeType, ToolManifest, ToolResult
 from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway
 
+from .errors import ToolBlockedError
 from .registry import ToolRegistry
 
 
@@ -194,6 +195,7 @@ class ToolInvoker:
             step_id=f"tool:{manifest.tool_id}",
             skill_id=f"tool_{manifest.tool_id}",
             operation=action,
+            purpose_type=purpose_type,
             risk_level="medium",
             impact_scope="single_turn",
             source="tool_invoker",
@@ -286,9 +288,25 @@ class ToolInvoker:
         audit = self._audit_record(manifest, status="completed", session_id=session_id, params=params)
         try:
             if manifest.tool_type == "builtin":
-                result = self.registry.get_builtin_handler(manifest.tool_id)(**params)
+                handler = self.registry.get_builtin_handler(manifest.tool_id)
+                safe_params = dict(params)
+                safe_params.pop("session_id", None)
+                if self.registry.injects_session_id(manifest.tool_id):
+                    result = handler(session_id=session_id, **safe_params)
+                else:
+                    result = handler(**safe_params)
             else:
                 result = self._call_external(manifest, params)
+        except ToolBlockedError as exc:
+            return ToolResult(
+                tool_id=manifest.tool_id,
+                status="blocked",
+                result=exc.data,
+                error={"code": "hard_gate_blocked", "message": str(exc)},
+                consent_request_id=None,
+                audit_record={**audit, "status": "blocked", "reason": str(exc)},
+                duration_ms=(time.perf_counter() - started_at) * 1000.0,
+            )
         except Exception as exc:  # noqa: BLE001
             return ToolResult(
                 tool_id=manifest.tool_id,

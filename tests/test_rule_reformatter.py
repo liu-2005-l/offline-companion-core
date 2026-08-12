@@ -15,6 +15,7 @@ from offline_companion.core.local_reformatter.rule_reformatter import (
 )
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.shared.errors import ReformatError
+from offline_companion.shared.types import CapabilityProfile
 
 
 def _persona():
@@ -108,3 +109,24 @@ def test_reformat_local_reply_uses_emotion_polish() -> None:
 def test_reformat_local_reply_empty_raises() -> None:
     with pytest.raises(ReformatError):
         reformat_local_reply("   ")
+
+
+def test_reformat_local_reply_trusts_high_roleplay_model() -> None:
+    emotion = EmotionContext(emotion="sadness", valence=0.2)
+    output = reformat_local_reply(
+        "  保留原始回答！  ",
+        emotion_context=emotion,
+        capability_profile=CapabilityProfile(roleplay_quality=0.8),
+    )
+    assert output == "保留原始回答！"
+
+
+def test_reformat_cloud_reply_trusts_high_roleplay_model() -> None:
+    persona = _persona()
+    output = reformat_cloud_reply(
+        "  保留云端模型原文。  ",
+        persona,
+        emotion_context=EmotionContext(emotion="sadness", valence=0.2),
+        capability_profile=CapabilityProfile(roleplay_quality=0.8),
+    )
+    assert output == "保留云端模型原文。"

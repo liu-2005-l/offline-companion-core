@@ -12,6 +12,7 @@ SPEC_DIR = Path(SPEC).resolve().parent
 ROOT = SPEC_DIR.parent
 SRC_DIR = ROOT / "src"
 CONFIGS_DIR = ROOT / "configs"
+SKILLS_DIR = ROOT / "skills"
 DESKTOP_STATIC_DIR = (
     SRC_DIR / "offline_companion" / "shell" / "ui_host" / "desktop" / "static"
 )
@@ -37,6 +38,7 @@ a = Analysis(
     datas=(
         [
             (str(CONFIGS_DIR), "configs"),
+            (str(SKILLS_DIR), "skills"),
             (
                 str(DESKTOP_STATIC_DIR),
                 "offline_companion/shell/ui_host/desktop/static",

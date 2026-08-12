@@ -10,6 +10,7 @@ import socket
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
 _ENV_KEY_PREFIX = "OFFLINE_COMPANION_SKILL_KEY_"
 _ENTRYPOINT_ENV = "OFFLINE_COMPANION_SKILL_ENTRYPOINT"
 _SECCOMP_PROFILE_ENV = "OFFLINE_COMPANION_SKILL_SECCOMP_PROFILE"
+_RUNTIME_NETWORK_ALLOWED_ENV = "OFFLINE_COMPANION_SKILL_NETWORK_ALLOWED"
 _CHILD_ENV_ALLOWLIST = (
     "PATH",
     "PATHEXT",
@@ -71,6 +73,12 @@ def _env_key_name(skill_name: str) -> str:
     return f"{_ENV_KEY_PREFIX}{skill_name.upper()}"
 
 
+def _manifest_allows_network(manifest: SkillManifest) -> bool:
+    """摘要：判断 Skill manifest 是否声明了网络或云端权限。"""
+    permissions = set(getattr(manifest, "permissions", ()) or ())
+    return bool(permissions.intersection({"network_egress", "cloud_inference"}))
+
+
 @dataclass
 class SkillProcess:
     """摘要：描述已启动的 Skill 子进程。
@@ -102,6 +110,7 @@ class SkillInvoker:
     _failure_counts: dict[str, int] = field(default_factory=dict)
     _circuit_open: dict[str, float] = field(default_factory=dict)
     _half_open_probe: dict[str, bool] = field(default_factory=dict)
+    api_key_resolver: Callable[[str], str | None] | None = None
     _circuit_cooldown_s: float = 300.0
     _circuit_cooldown_max_s: float = 3600.0
 
@@ -156,6 +165,8 @@ class SkillInvoker:
         env["OFFLINE_COMPANION_HOST_PID"] = str(os.getpid())
         env[_ENTRYPOINT_ENV] = str(script_path)
         env[_SECCOMP_PROFILE_ENV] = resolve_runtime_seccomp_profile(manifest)
+        env[_RUNTIME_NETWORK_ALLOWED_ENV] = "1" if _manifest_allows_network(manifest) else "0"
+        self._inject_required_api_keys(env, manifest)
         self._prepend_pythonpath(env, self._trusted_src_root())
 
         try:
@@ -211,6 +222,25 @@ class SkillInvoker:
                 env[key] = value
         env.setdefault("PYTHONIOENCODING", "utf-8")
         return env
+
+    def _inject_required_api_keys(self, env: dict[str, str], manifest: SkillManifest) -> None:
+        """摘要：按 manifest.required_api_keys 由宿主解析并注入 API key。"""
+        for key_name in manifest.required_api_keys:
+            normalized = str(key_name or "").strip()
+            if not normalized:
+                continue
+            value = self._resolve_api_key(normalized)
+            if not value:
+                raise SkillInvocationError(f"Skill {manifest.name!r} 缺少必需 API key: {normalized}")
+            env[normalized] = value
+
+    def _resolve_api_key(self, key_name: str) -> str | None:
+        """摘要：解析宿主可用的 API key，优先使用显式 resolver，再回退环境变量。"""
+        if self.api_key_resolver is not None:
+            value = self.api_key_resolver(key_name)
+            if value:
+                return str(value)
+        return os.environ.get(key_name) or os.environ.get(key_name.upper())
 
     def _allocate_port_with_retry(self, retries: int = 5) -> int:
         """摘要：分配不与已启动 Skill 冲突的本地端口。"""

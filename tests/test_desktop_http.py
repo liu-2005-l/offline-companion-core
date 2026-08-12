@@ -14,6 +14,11 @@ import offline_companion.shell.ui_host.desktop.http_host as desktop_http
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.core.persona_session.session import PersonaSessionCore
+from offline_companion.core.plan_orchestrator import (
+    A3ConsentAdapter,
+    InMemoryPlanStore,
+    PlanOrchestrator,
+)
 from offline_companion.core.safety_boundary.classifier import SafetyTier
 from offline_companion.runtime.inference_backend.mock import EchoBackend
 from offline_companion.runtime.storage_index.engine import (
@@ -30,10 +35,14 @@ from offline_companion.shared.types import (
     ModelRoutingDecision,
     PrivacyMode,
 )
+from offline_companion.shell.auto_router import AutoRouter, RoutingContext
+from offline_companion.shell.auto_turn_orchestrator import AutoTurnOrchestrator
 from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway
+from offline_companion.shell.plan_auto_bridge import PlanAutoBridge
 from offline_companion.shell.ui_host.bootstrap import ECHO_NO_MODEL_LABEL
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
 from offline_companion.shell.ui_host.desktop.http_host import _json_safe, create_desktop_app
+from offline_companion.shell.ui_host.desktop.idle_detector import IdleDetector
 from offline_companion.shell.ui_host.desktop.privacy_socket_guard import (
     disable_privacy_socket_guard,
     is_socket_guard_enabled,
@@ -97,6 +106,28 @@ def _runtime(tmp_path) -> DesktopRuntime:
     )
 
 
+def _write_test_skill(path: Path, name: str) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "skill.py").write_text("print('ok')\n", encoding="utf-8")
+    (path / "manifest.json").write_text(
+        json.dumps(
+            {
+                "type": "skill",
+                "name": name,
+                "version": "1.0.0",
+                "description": "test skill",
+                "market_id": f"{name}@1.0.0",
+                "trust": "user_installed",
+                "entrypoint": {"type": "local_api", "host": "127.0.0.1", "port": 8765, "path": "/invoke"},
+                "permissions": [],
+                "output_mode": "block",
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_desktop_http_release_metadata(tmp_path) -> None:
     rt = _runtime(tmp_path)
     client = create_desktop_app(rt).test_client()
@@ -108,13 +139,16 @@ def test_desktop_http_release_metadata(tmp_path) -> None:
     api_script = client.get("/shell_api.js")
     assert api_script.status_code == 200
     assert "async function sendMessage" in api_script.text
+    assert "function _handleAutoPlanEvent" in api_script.text
+    assert "function _resumeAutoPlan" in api_script.text
+    assert "model.type === 'cloud' && model.enabled" in api_script.text
 
     sse = client.get("/api/sse-test")
     assert sse.status_code == 200
     assert sse.content_type.startswith("text/event-stream")
     assert sse.headers["Cache-Control"] == "no-cache"
     assert sse.headers["X-Accel-Buffering"] == "no"
-    assert sse.headers["Connection"] == "keep-alive"
+    assert "Connection" not in sse.headers
     assert 'data: {"i": 0}' in sse.text
     assert 'data: {"done": true}' in sse.text
 
@@ -166,7 +200,7 @@ def test_desktop_http_chat_stream_returns_sse_events(tmp_path) -> None:
     assert response.content_type.startswith("text/event-stream")
     assert response.headers["Cache-Control"] == "no-cache"
     assert response.headers["X-Accel-Buffering"] == "no"
-    assert response.headers["Connection"] == "keep-alive"
+    assert "Connection" not in response.headers
     events = _sse_payloads(response.text)
     assert events[0] == {"recall": 0}
     assert [event["token"] for event in events if "token" in event] == ["A", "B"]
@@ -263,7 +297,10 @@ def test_desktop_http_plan_decompose_and_execute(tmp_path) -> None:
     assert executed.status_code == 200
     payload = executed.get_json()
     assert payload["step"]["status"] == "done"
-    assert payload["step"]["result"].startswith("步骤已完成")
+    assert payload["step"]["result"].startswith("计划步骤已执行")
+    assert payload["step"]["result"] != "步骤已完成"
+    assert payload["step"]["expected_output"]
+    assert payload["step"]["verification"]
 
 
 def test_desktop_http_plan_requires_consent_and_resume(tmp_path) -> None:
@@ -272,6 +309,13 @@ def test_desktop_http_plan_requires_consent_and_resume(tmp_path) -> None:
     client = create_desktop_app(rt).test_client()
 
     plan = client.post("/api/plan/decompose", json={"goal": "部署服务并配置网络权限"}).get_json()["plan"]
+    high_risk = next(step for step in plan["steps"] if step["requires_auth"])
+    for prior_step in plan["steps"]:
+        if prior_step["id"] >= high_risk["id"]:
+            break
+        executed = client.post(f"/api/plan/{plan['id']}/execute", json={"step_id": prior_step["id"], "timeout": 20})
+        assert executed.status_code == 200
+        plan = executed.get_json()["plan"]
     high_risk = next(step for step in plan["steps"] if step["requires_auth"])
 
     pending = client.post(f"/api/plan/{plan['id']}/execute", json={"step_id": high_risk["id"], "timeout": 20})
@@ -399,6 +443,69 @@ def test_desktop_http_persona_activation_survives_app_recreate(tmp_path) -> None
     assert next(item for item in personas if item["id"] == target["id"])["active"] is True
 
 
+def test_desktop_http_persona_create_update_delete(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    client = create_desktop_app(rt).test_client()
+
+    created = client.post(
+        "/api/personas",
+        json={
+            "name": "Test Persona",
+            "avatar": "T",
+            "desc": "temporary persona",
+            "ocean": [60, 70, 50, 80, 40],
+            "traits": ["test", "temporary"],
+            "anchor": "You are a temporary test persona.",
+        },
+    )
+    assert created.status_code == 201
+    persona_id = created.get_json()["id"]
+    assert persona_id
+    assert any(item["id"] == persona_id for item in client.get("/api/personas").get_json()["items"])
+
+    updated = client.put(
+        f"/api/personas/{persona_id}",
+        json={"name": "Edited Persona", "desc": "edited", "ocean": [1, 2, 3, 4, 5]},
+    )
+    assert updated.status_code == 200
+    payload = updated.get_json()["persona"]
+    assert payload["name"] == "Edited Persona"
+    assert payload["desc"] == "edited"
+    assert payload["ocean"] == [1, 2, 3, 4, 5]
+
+    deleted = client.delete(f"/api/personas/{persona_id}")
+    assert deleted.status_code == 200
+    assert all(item["id"] != persona_id for item in client.get("/api/personas").get_json()["items"])
+
+
+def test_desktop_http_persona_duplicate_name_rejected(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    client = create_desktop_app(rt).test_client()
+    existing = client.get("/api/personas").get_json()["items"][0]
+
+    created = client.post("/api/personas", json={"name": existing["name"], "anchor": "x"})
+
+    assert created.status_code == 400
+    assert created.get_json()["error"] == "persona_name_exists"
+
+
+def test_desktop_http_persona_delete_guards(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    client = create_desktop_app(rt).test_client()
+    active = next(item for item in client.get("/api/personas").get_json()["items"] if item["active"])
+
+    active_delete = client.delete(f"/api/personas/{active['id']}")
+    assert active_delete.status_code == 409
+    assert active_delete.get_json()["error"] == "cannot_delete_active_persona"
+
+    with rt.orchestrator.conn:
+        rt.orchestrator.conn.execute("DELETE FROM personas WHERE id <> ?;", (active["id"],))
+        rt.orchestrator.conn.execute("UPDATE personas SET active = 0 WHERE id = ?;", (active["id"],))
+    last_delete = client.delete(f"/api/personas/{active['id']}")
+    assert last_delete.status_code == 409
+    assert last_delete.get_json()["error"] == "cannot_delete_last_persona"
+
+
 def test_desktop_http_models_list_activate_and_auto(tmp_path, monkeypatch) -> None:
     rt = _runtime(tmp_path)
     model_path = tmp_path / "models" / "demo-model.gguf"
@@ -433,6 +540,27 @@ def test_desktop_http_models_list_activate_and_auto(tmp_path, monkeypatch) -> No
     assert auto.get_json()["auto"] is True
 
 
+def test_desktop_http_marks_boot_model_active_by_gguf_filename(tmp_path, monkeypatch) -> None:
+    rt = _runtime(tmp_path)
+    model_path = tmp_path / "models" / "boot-model.gguf"
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    model_path.write_bytes(b"gguf")
+    rt.model_label = model_path.name
+    descriptor = ModelDescriptor(
+        model_id="boot-model",
+        display_name="Boot Model",
+        gguf_path=str(model_path),
+        source="test",
+        status="ready",
+        backend="llama_cpp",
+    )
+    monkeypatch.setattr(desktop_http, "discover_models", lambda *, data_root_override=None: [descriptor])
+
+    payload = create_desktop_app(rt).test_client().get("/api/models").get_json()
+
+    assert payload["items"][0]["active"] is True
+
+
 def test_desktop_http_cloud_models_locked_until_login(tmp_path, monkeypatch) -> None:
     rt = _runtime(tmp_path)
     cloud = ModelDescriptor(
@@ -457,6 +585,46 @@ def test_desktop_http_cloud_models_locked_until_login(tmp_path, monkeypatch) -> 
 
     unlocked = client.get("/api/models").get_json()["items"]
     assert unlocked[0]["locked"] is False
+
+
+def test_desktop_http_cloud_model_crud_masks_key(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    client = create_desktop_app(rt).test_client()
+
+    created = client.post(
+        "/api/models/cloud",
+        json={
+            "name": "DeepSeek",
+            "endpoint": "https://api.deepseek.com/v1",
+            "api_key": "sk-secret-123456",
+            "model_name": "deepseek-chat",
+        },
+    )
+    assert created.status_code == 201
+    model_id = created.get_json()["id"]
+    assert "sk-secret-123456" not in created.text
+
+    listed = client.get("/api/models")
+    assert listed.status_code == 200
+    assert "sk-secret-123456" not in listed.text
+    cloud = next(item for item in listed.get_json()["items"] if item["id"] == model_id)
+    assert cloud["type"] == "cloud"
+    assert cloud["meta"]["endpoint"] == "https://api.deepseek.com/v1"
+    assert cloud["meta"]["api_key_masked"] == "sk-****3456"
+
+    updated = client.put(
+        f"/api/models/cloud/{model_id}",
+        json={"name": "DeepSeek Updated", "endpoint": "https://api.deepseek.com", "api_key": ""},
+    )
+    assert updated.status_code == 200
+    assert "sk-secret-123456" not in updated.text
+    stored = json.loads((tmp_path / "cloud_models.json").read_text(encoding="utf-8"))
+    assert stored["items"][0]["api_key"] == "sk-secret-123456"
+    assert stored["items"][0]["name"] == "DeepSeek Updated"
+
+    deleted = client.delete(f"/api/models/cloud/{model_id}")
+    assert deleted.status_code == 200
+    assert all(item["id"] != model_id for item in client.get("/api/models").get_json()["items"])
 
 
 def test_desktop_http_model_activate_reloads_local_backend(tmp_path, monkeypatch) -> None:
@@ -695,6 +863,45 @@ def test_desktop_http_extensions_list_and_toggle(tmp_path) -> None:
     assert toggled.get_json()["enabled"] is False
 
 
+def test_desktop_http_extension_install_duplicate_and_uninstall(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    client = create_desktop_app(rt).test_client()
+    source = tmp_path / "source-skill"
+    _write_test_skill(source, "test-skill")
+
+    installed = client.post("/api/extensions/install", json={"source_path": str(source)})
+
+    assert installed.status_code == 201
+    assert installed.get_json()["id"] == "test-skill"
+    target = tmp_path / "extensions" / "installed" / "test-skill"
+    assert (target / "manifest.json").is_file()
+    assert (target / "sbom.json").is_file()
+    assert any(item["id"] == "test-skill" for item in client.get("/api/extensions").get_json()["items"])
+
+    duplicate = client.post("/api/extensions/install", json={"source_path": str(source)})
+    assert duplicate.status_code == 409
+    assert duplicate.get_json()["error"] == "extension_already_installed"
+
+    uninstalled = client.delete("/api/extensions/test-skill")
+    assert uninstalled.status_code == 200
+    assert not target.exists()
+    assert all(item["id"] != "test-skill" for item in client.get("/api/extensions").get_json()["items"])
+
+
+def test_desktop_http_extension_install_missing_manifest_and_uninstall_missing(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    client = create_desktop_app(rt).test_client()
+    source = tmp_path / "missing-manifest"
+    source.mkdir()
+
+    installed = client.post("/api/extensions/install", json={"source_path": str(source)})
+    missing_uninstall = client.delete("/api/extensions/not-installed")
+
+    assert installed.status_code == 400
+    assert installed.get_json()["error"] == "manifest_validation_failed"
+    assert missing_uninstall.status_code == 404
+
+
 def test_desktop_http_plan_and_extension_state_survive_app_recreate(tmp_path) -> None:
     rt = _runtime(tmp_path)
     client = create_desktop_app(rt).test_client()
@@ -830,6 +1037,68 @@ def test_desktop_http_settings_persist_across_app_recreate(tmp_path) -> None:
     assert settings["theme"] == "dark"
     assert settings["close_to_tray"] is False
     assert models["auto"] is True
+
+
+def test_desktop_http_idle_status_returns_current_state(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    rt.idle_detector = IdleDetector(threshold_seconds=120, check_interval_seconds=60)
+    client = create_desktop_app(rt).test_client()
+    assert rt.state_manager is not None
+    rt.state_manager.set_system_state("idle_think_status", {"status": "paused", "plan_id": "p1"})
+    rt.state_manager.set_system_state("idle_think_progress", {"step_id": "s1", "title": "推进"})
+
+    resp = client.get("/api/idle/status")
+
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["idle_enabled"] is True
+    assert data["threshold_seconds"] == 300.0
+    assert data["current_status"]["status"] == "paused"
+    assert data["last_progress"]["step_id"] == "s1"
+    rt.idle_detector.stop()
+
+
+def test_desktop_http_idle_status_empty_without_detector_data(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    client = create_desktop_app(rt).test_client()
+
+    data = client.get("/api/idle/status").get_json()
+
+    assert data["idle_enabled"] is False
+    assert data["current_status"] is None
+    assert data["last_progress"] is None
+    assert data["last_idle_result"] is None
+
+
+def test_desktop_http_idle_toggle_off_and_on_updates_settings(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    rt.idle_detector = IdleDetector(threshold_seconds=300, check_interval_seconds=60)
+    client = create_desktop_app(rt).test_client()
+
+    off = client.post("/api/idle/toggle", json={"enabled": False, "threshold_seconds": 180})
+    on = client.post("/api/idle/toggle", json={"enabled": True, "threshold_seconds": 240})
+
+    assert off.status_code == 200
+    assert off.get_json()["idle_enabled"] is False
+    assert on.status_code == 200
+    assert on.get_json()["idle_enabled"] is True
+    assert on.get_json()["threshold_seconds"] == 240.0
+    saved = json.loads((tmp_path / "settings.json").read_text(encoding="utf-8"))
+    assert saved["idle_think_enabled"] is True
+    assert saved["idle_threshold_seconds"] == 240.0
+    rt.idle_detector.stop()
+
+
+def test_desktop_http_idle_toggle_rejects_invalid_threshold(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    rt.idle_detector = IdleDetector(threshold_seconds=300, check_interval_seconds=60)
+    client = create_desktop_app(rt).test_client()
+
+    resp = client.post("/api/idle/toggle", json={"enabled": True, "threshold_seconds": 0})
+
+    assert resp.status_code == 400
+    assert resp.get_json()["error"] == "invalid_threshold"
+    rt.idle_detector.stop()
 
 
 def test_desktop_http_privacy_and_auto_update_settings(tmp_path) -> None:
@@ -1003,3 +1272,91 @@ def test_desktop_http_chat_stream_cloud_route_returns_single_done(tmp_path) -> N
     assert events[0]["done"] is True
     assert "cloud reply" in events[0]["reply"]
     assert events[0]["route_mode"] == "cloud"
+
+
+def test_desktop_http_auto_toggle_routes_chat_to_auto_turn(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+
+    class StubAutoTurn:
+        def execute_turn_stream(self, message, user_input, **kwargs):
+            assert message.payload["user_input"] == user_input
+            assert kwargs["resume"] is False
+            yield {"type": "plan_start", "plan_id": "auto-test", "steps": []}
+            yield {"type": "step_start", "step_id": "step_0", "route_mode": "local"}
+            yield {"type": "step_complete", "step_id": "step_0", "result": "auto reply"}
+            yield {
+                "type": "plan_complete",
+                "plan_id": "auto-test",
+                "reply": "auto reply",
+                "route_mode": "auto",
+                "done": True,
+            }
+
+    rt.auto_turn_orchestrator = StubAutoTurn()
+    client = create_desktop_app(rt).test_client()
+
+    enabled = client.post("/api/models/auto", json={"enabled": True})
+    response = client.post("/api/chat", json={"message": "do work", "stream": True})
+
+    assert enabled.get_json()["auto"] is True
+    assert rt.orchestrator.auto_mode_enabled is True
+    events = _sse_payloads(response.text)
+    second = client.post("/api/chat", json={"message": "do more", "stream": True})
+    assert [event["type"] for event in events] == [
+        "plan_start",
+        "step_start",
+        "step_complete",
+        "plan_complete",
+    ]
+    assert events[-1]["done"] is True
+    assert events[-1]["reply"] == "auto reply"
+    assert second.status_code == 200
+
+
+def test_desktop_http_auto_consent_resumes_persisted_plan(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    gateway = UIHostConsentGateway(db_conn=rt.orchestrator.conn)
+    rt.orchestrator.consent_gateway = gateway
+    plan_orchestrator = PlanOrchestrator(
+        InMemoryPlanStore(),
+        consent_adapter=A3ConsentAdapter(gateway),
+        consent_gateway=gateway,
+    )
+    bridge = PlanAutoBridge(
+        AutoRouter(),
+        plan_orchestrator,
+        lambda message: RoutingContext(query=message.topic, privacy_mode="local_only"),
+    )
+    rt.plan_orchestrator = plan_orchestrator
+    rt.auto_turn_orchestrator = AutoTurnOrchestrator(
+        plan_orchestrator,
+        bridge,
+        lambda step, context: {"result": step.payload["description"]},
+    )
+    client = create_desktop_app(rt).test_client()
+    client.post("/api/models/auto", json={"enabled": True})
+
+    initial = client.post(
+        "/api/chat",
+        json={"message": "部署服务并配置网络权限", "stream": True},
+    )
+    consent_event = _sse_payloads(initial.text)[-1]
+    request_id = consent_event["consent_request_id"]
+    plan_id = consent_event["plan_id"]
+    decided = client.post("/api/consent", json={"request_id": request_id, "allowed": True})
+    resumed = client.post(
+        "/api/chat",
+        json={
+            "message": "",
+            "stream": True,
+            "resume": True,
+            "plan_id": plan_id,
+            "consent_request_id": request_id,
+        },
+    )
+
+    assert consent_event["type"] == "consent_required"
+    assert decided.status_code == 200
+    resumed_events = _sse_payloads(resumed.text)
+    assert resumed_events[-1]["type"] == "plan_complete"
+    assert resumed_events[-1]["done"] is True
