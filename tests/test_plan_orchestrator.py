@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import pytest
+
 from offline_companion.core.plan_orchestrator import (
+    A2PlanValidationError,
     A3ConsentAdapter,
     InMemoryPlanStore,
     PlanContext,
@@ -457,12 +460,8 @@ def test_retry_failed_step_rejects_non_failed_step() -> None:
     context.step_status = {step.step_id: StepStatus.DONE}
     orchestrator._store.save(context.plan_id, context)
 
-    try:
+    with pytest.raises(A2PlanValidationError, match="not FAILED"):
         orchestrator.retry_failed_step(context.plan_id, step.step_id)
-    except Exception as exc:
-        assert "not FAILED" in str(exc)
-    else:
-        raise AssertionError("retry_failed_step should reject non-failed steps")
 
 
 def test_retry_failed_step_success_unblocks_downstream() -> None:
