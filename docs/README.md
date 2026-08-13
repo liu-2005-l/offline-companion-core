@@ -18,6 +18,7 @@
 | **Superpowers 集成设计** | [`superpowers-integration-design.md`](./superpowers-integration-design.md) | — |
 | **Subagent 基础设施设计** | [`subagent-infrastructure-design.md`](./subagent-infrastructure-design.md) | — |
 | **UI 自动化 Skill 生成方案** | [`Skill无门槛生成方案.md`](./Skill无门槛生成方案.md) | — |
+| **1.5B Function Calling 方案** | [`FunctionCalling小模型方案.md`](./FunctionCalling小模型方案.md) | — |
 
 ---
 
@@ -32,6 +33,7 @@
 | 查看强任务锚定、HardGate 与 Verification 闭合状态 | **superpowers-integration-design** |
 | 查看 Subagent 隔离、受限工具、审查协议与已知债务 | **subagent-infrastructure-design** |
 | 查看零代码 UI Skill 标注、宿主自动化与安全边界 | **Skill无门槛生成方案** |
+| 查看小模型 GBNF 工具选择、参数校验与降级设计 | **FunctionCalling小模型方案** |
 
 ---
 
