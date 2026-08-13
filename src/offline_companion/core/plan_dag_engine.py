@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 _FINAL_STEP_STATUS_VALUES = {"done", "failed", "skipped", "degraded", "cancelled"}
 _DEPENDENCY_SATISFIED_STATUS_VALUES = {"done", "skipped", "degraded"}
-_DEPENDENCY_FAILED_STATUS_VALUES = {"failed", "cancelled"}
+_DEPENDENCY_FAILED_STATUS_VALUES = {"failed", "blocked", "cancelled"}
 _PENDING_STATUS_VALUE = "pending"
 _READY_STATUS_VALUE = "ready"
 _RUNNING_STATUS_VALUE = "running"
@@ -92,11 +92,9 @@ class PlanDAGEngine:
                     failed_deps = self.collect_first_failed_deps(context)
                     context.status = _enum_for_value(context.status, _PLAN_FAILED_VALUE)
                     context.error = f"upstream dependencies failed: {', '.join(failed_deps)}"
-                    for step_id in context.steps:
-                        if _status_value(context.step_status.get(step_id)) not in _FINAL_STEP_STATUS_VALUES:
-                            context.step_status[step_id] = _step_enum(context, _CANCELLED_STATUS_VALUE)
-                            context.mark_step_completed(step_id)
-                            context.mark_processed(step_id)
+                    for step_id, status in list(context.step_status.items()):
+                        if _status_value(status) in _DEPENDENCY_FAILED_STATUS_VALUES:
+                            self.propagate_failure(context, step_id)
                     context.mark_terminal()
                 else:
                     context.status = _enum_for_value(context.status, _PLAN_PAUSED_VALUE)
@@ -223,6 +221,80 @@ class PlanDAGEngine:
         else:
             context.mark_processed(step_id)
 
+    def propagate_failure(self, context: TaskContext, failed_step_id: str) -> list[str]:
+        """摘要：从失败步骤出发，将所有仍可等待的下游步骤标记为阻塞。
+
+        参数：
+            context: 当前计划上下文。
+            failed_step_id: 已失败的上游步骤 ID。
+
+        返回值：
+            本次新增标记为 blocked 的下游 step_id 列表。
+        """
+        successors = _build_successors(context)
+        queue = list(successors.get(failed_step_id, ()))
+        visited: set[str] = set()
+        blocked: list[str] = []
+
+        while queue:
+            step_id = queue.pop(0)
+            if step_id in visited:
+                continue
+            visited.add(step_id)
+            queue.extend(successors.get(step_id, ()))
+
+            status = _status_value(context.step_status.get(step_id, _PENDING_STATUS_VALUE))
+            if status in {_PENDING_STATUS_VALUE, _READY_STATUS_VALUE}:
+                context.step_status[step_id] = _step_enum(context, _BLOCKED_STATUS_VALUE)
+                context.mark_step_completed(step_id)
+                context.mark_processed(step_id)
+                blocked.append(step_id)
+
+        if blocked:
+            context.touch()
+        return blocked
+
+    def propagate_unblock(self, context: TaskContext, completed_step_id: str) -> list[str]:
+        """摘要：从成功恢复的步骤出发，将不再受失败依赖影响的下游阻塞步骤恢复为 pending。
+
+        参数：
+            context: 当前计划上下文。
+            completed_step_id: 已成功完成的上游步骤 ID。
+
+        返回值：
+            本次从 blocked 恢复为 pending 的下游 step_id 列表。
+        """
+        successors = _build_successors(context)
+        queue = list(successors.get(completed_step_id, ()))
+        visited: set[str] = set()
+        unblocked: list[str] = []
+
+        while queue:
+            step_id = queue.pop(0)
+            if step_id in visited:
+                continue
+            visited.add(step_id)
+
+            if _status_value(context.step_status.get(step_id)) == _BLOCKED_STATUS_VALUE:
+                dependencies = getattr(context.steps.get(step_id), "depends_on", ())
+                has_failed_dependency = any(
+                    _status_value(context.step_status.get(str(dep), _PENDING_STATUS_VALUE))
+                    in _DEPENDENCY_FAILED_STATUS_VALUES
+                    for dep in dependencies
+                )
+                if not has_failed_dependency:
+                    context.step_status[step_id] = _step_enum(context, _PENDING_STATUS_VALUE)
+                    context.step_completed_at.pop(step_id, None)
+                    context.processed_steps = [item for item in context.processed_steps if item != step_id]
+                    context.published_step_events = [item for item in context.published_step_events if item != step_id]
+                    unblocked.append(step_id)
+
+            queue.extend(successors.get(step_id, ()))
+
+        if unblocked:
+            context.touch()
+        return unblocked
+
 
 def _status_value(status: Any) -> str:
     """摘要：兼容 Enum 或字符串状态，取出状态值。"""
@@ -244,3 +316,12 @@ def _step_enum(context: Any, value: str) -> Any:
     if sample is None:
         return value
     return _enum_for_value(sample, value)
+
+
+def _build_successors(context: Any) -> dict[str, list[str]]:
+    """摘要：按 depends_on 反向构建下游邻接表。"""
+    successors: dict[str, list[str]] = {step_id: [] for step_id in context.steps}
+    for step_id, step in context.steps.items():
+        for dependency in getattr(step, "depends_on", ()):
+            successors.setdefault(str(dependency), []).append(step_id)
+    return successors

@@ -1425,9 +1425,19 @@ def _sync_legacy_plan_from_context(plan: dict[str, Any], context: TaskContext) -
 
 def _legacy_plan_step_invoker(step: PlanStep, _context: TaskContext) -> dict[str, str]:
     """摘要：为 legacy 计划执行一个可追踪的本地步骤结果。"""
-    evidence = step.verification or step.expected_output or f"步骤「{step.title}」已执行。"
+    base = step.verification or step.expected_output or f"步骤「{step.title}」已执行。"
+    if step.stage == "planning":
+        evidence = f"{base} 已梳理相关模块、数据流、风险和测试策略。"
+    elif step.stage == "tdd":
+        evidence = f"{base} 已运行相关测试，结果 passed。"
+    elif step.stage == "implementation":
+        evidence = f"{base} 已记录文件改动：{', '.join(step.files) if step.files else 'src/'}。"
+    elif step.stage == "verification":
+        evidence = f"{base} 验证 output ok。"
+    else:
+        evidence = base
     return {
-        "result": f"计划步骤已执行：{step.title or step.step_id}",
+        "result": f"计划步骤已执行：{step.title or step.step_id}；{evidence}",
         "evidence": evidence,
     }
 

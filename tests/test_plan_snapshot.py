@@ -63,10 +63,13 @@ def test_serialize_deserialize_plan_context() -> None:
         context_vars={"session_id": "sess-1"},
         paused_reason="waiting_consent",
         paused_step_id="s1",
+        plan_status="blocked",
         step_started_at={"s1": 1.0},
         step_completed_at={"s1": 2.0},
         step_consent_requests={"s1": {"request_id": "cr-1"}},
         step_route_decisions={"s1": {"mode": "local"}},
+        feedback_overrides={"s1": "请补测试证据"},
+        quality_retry_counts={"s1": 1},
     )
 
     restored = plan_snapshot.deserialize(plan_snapshot.serialize(context))
@@ -79,6 +82,9 @@ def test_serialize_deserialize_plan_context() -> None:
     assert restored.step_results["s1"] == {"result": "done"}
     assert restored.step_consent_requests["s1"]["request_id"] == "cr-1"
     assert restored.step_route_decisions["s1"]["mode"] == "local"
+    assert restored.feedback_overrides["s1"] == "请补测试证据"
+    assert restored.quality_retry_counts["s1"] == 1
+    assert restored.plan_status == "blocked"
 
 
 def test_task_context_snapshot_methods_delegate_to_plan_snapshot() -> None:

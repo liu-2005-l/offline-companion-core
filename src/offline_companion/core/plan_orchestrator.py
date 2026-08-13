@@ -15,7 +15,7 @@ from uuid import uuid4
 from offline_companion.core import plan_snapshot
 from offline_companion.core.plan_dag_engine import PlanDAGEngine
 from offline_companion.core.plan_decomposer import PlanDecomposer
-from offline_companion.core.plan_enums import PlanErrorCode
+from offline_companion.core.plan_enums import PlanErrorCode, PlanEventName
 from offline_companion.core.plan_gateway import PlanGateway
 from offline_companion.core.plan_subagent_dispatch import PlanSubagentDispatch
 from offline_companion.core.state_manager import StateManager
@@ -64,7 +64,7 @@ FINAL_STEP_STATUSES = frozenset(
     }
 )
 DEPENDENCY_SATISFIED_STATUSES = frozenset({StepStatus.DONE, StepStatus.SKIPPED, StepStatus.DEGRADED})
-DEPENDENCY_FAILED_STATUSES = frozenset({StepStatus.FAILED, StepStatus.CANCELLED})
+DEPENDENCY_FAILED_STATUSES = frozenset({StepStatus.FAILED, StepStatus.BLOCKED, StepStatus.CANCELLED})
 FINAL_PLAN_STATUSES = frozenset({PlanStatus.DONE, PlanStatus.FAILED, PlanStatus.CANCELLED})
 DEFAULT_RETRYABLE_ERRORS = (RuntimeError, TimeoutError, ConnectionError)
 
@@ -120,6 +120,7 @@ class TaskContext:
     error: str | None = None
     paused_reason: str | None = None
     paused_step_id: str | None = None
+    plan_status: str | None = None
     started_at: float | None = None
     updated_at: float | None = None
     completed_at: float | None = None
@@ -127,6 +128,8 @@ class TaskContext:
     step_completed_at: dict[str, float] = field(default_factory=dict)
     step_consent_requests: dict[str, dict[str, Any]] = field(default_factory=dict)
     step_route_decisions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    feedback_overrides: dict[str, str] = field(default_factory=dict)
+    quality_retry_counts: dict[str, int] = field(default_factory=dict)
     _dependency_satisfied_set: set[str] = field(default_factory=set, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -731,6 +734,10 @@ class PlanOrchestrator:
                 self._store.save(context.plan_id, context)
                 return self._run(context)
         consent_prepared = False
+        if self._finalize_plan_status(context) is None and context.status is PlanStatus.FAILED:
+            context.status = PlanStatus.RUNNING
+            context.completed_at = None
+            context.touch()
         step_events = self._collect_step_events(context)
         plan_events = self._collect_plan_events(context)
         if context.status is PlanStatus.PAUSED and context.paused_reason == PlanErrorCode.WAITING_CONSENT.value and context.paused_step_id:
@@ -750,13 +757,27 @@ class PlanOrchestrator:
 
     def execute_next(
         self,
-        context: PlanContext,
+        context: PlanContext | str,
         *,
         invoke_skill: Callable[[PlanStep, TaskContext], Any] | None = None,
     ) -> PlanContext:
         """摘要：执行至多一个 DAG 步骤，供 SSE 编排器逐步推进计划。"""
-        if context.is_terminal():
+        if isinstance(context, str):
+            loaded = self.load_context(context)
+            if loaded is None:
+                raise A2PlanValidationError(f"plan {context!r} not found")
+            context = loaded
+        if context.plan_status in {"completed", "failed", "blocked"}:
             return context
+        if context.status in {PlanStatus.DONE, PlanStatus.CANCELLED}:
+            return context
+        if context.status is PlanStatus.FAILED and self._finalize_plan_status(context) is not None:
+            self._store.save(context.plan_id, context)
+            return context
+        if context.status is PlanStatus.FAILED:
+            context.status = PlanStatus.RUNNING
+            context.completed_at = None
+            context.touch()
         if context.status is PlanStatus.PAUSED and context.paused_reason == PlanErrorCode.HARD_GATE_BLOCKED.value:
             return context
         if invoke_skill is not None:
@@ -781,31 +802,20 @@ class PlanOrchestrator:
             self._event_publisher.publish("task.plan_blocked", context, current_step=context.paused_step_id)
             return context
 
+        previous_statuses = dict(context.step_status)
+
         def executor(step: PlanStep, context_vars: dict[str, Any]) -> Any:
             session_id = self._gateway.session_id(context)
             skill_name = self._gateway.skill_name(context, self._skill_name)
             self._gateway.start_tracked_stage(session_id, skill_name, step)
             try:
-                if step.subagent_type is not None and self._subagent_dispatch.is_available:
-                    result = self._subagent_dispatch.dispatch(
-                        context,
-                        step,
-                        parent_session_id=session_id,
-                        privacy_mode=str(context_vars.get("privacy_mode") or self._privacy_mode or "local_only"),
-                    )
-                elif self._routed_invoker is not None:
-                    result = self._routed_invoker.invoke_step(step, context)
-                else:
-                    if self._skill_invoker is None:
-                        raise A2PlanExecutionError("skill_invoker is required")
-                    payload = dict(step.payload)
-                    if context_vars.get("route_mode") is not None:
-                        payload["_route_mode"] = context_vars.get("route_mode")
-                    if context_vars.get("fallback_chain") is not None:
-                        payload["_fallback_chain"] = list(context_vars.get("fallback_chain") or [])
-                    if context_vars.get("fallback_index") is not None:
-                        payload["_fallback_index"] = int(context_vars.get("fallback_index") or 0)
-                    result = self._skill_invoker.invoke(step.skill_id, payload, step.idempotency_key)
+                result = self._execute_step_with_quality_retry(
+                    context,
+                    step,
+                    context_vars,
+                    session_id=session_id,
+                    skill_name=skill_name,
+                )
             except (A2PlanExecutionError, KeyError, RuntimeError, TimeoutError, ConnectionError, ValueError) as exc:
                 if step.subagent_type is not None:
                     self._subagent_dispatch.handle_subagent_error(context, step, exc)
@@ -838,6 +848,12 @@ class PlanOrchestrator:
             self._store.save(context.plan_id, context)
             context = self._dag_engine.run_until_blocked(context, executor, sleep_fn=sleep, max_steps=1)
 
+        for failed_step_id, status in list(context.step_status.items()):
+            if status is StepStatus.FAILED:
+                self._dag_engine.propagate_failure(context, failed_step_id)
+        self._propagate_unblock_events(context, previous_statuses)
+        self._finalize_plan_status(context)
+
         if context.paused_reason == PlanErrorCode.WAITING_CONSENT.value and context.paused_step_id:
             consent_prepared = self._gateway.prepare_consent_pause(context)
         else:
@@ -859,6 +875,169 @@ class PlanOrchestrator:
         self._store.save(context.plan_id, context)
         return context
 
+    def retry_failed_step(self, plan_id: str, step_id: str, user_feedback: str | None = None) -> TaskContext:
+        """摘要：手动重置失败步骤，交由下一次 execute_next 走完整执行与校验链路。
+
+        参数：
+            plan_id: 计划 ID。
+            step_id: 需要重试的失败步骤 ID。
+            user_feedback: 可选用户反馈，会注入下一次执行上下文。
+
+        返回值：
+            已更新并持久化的计划上下文。
+
+        Raises:
+            A2PlanValidationError: 计划不存在、步骤不存在或步骤不是 failed 状态。
+        """
+        context = self._store.load(plan_id)
+        if context is None:
+            raise A2PlanValidationError(f"plan {plan_id!r} not found")
+        step = context.steps.get(step_id)
+        if step is None:
+            raise A2PlanValidationError(f"step {step_id!r} not found")
+        if _step_status_value(context.step_status.get(step_id)) != StepStatus.FAILED.value:
+            raise A2PlanValidationError(f"step {step_id!r} is not FAILED")
+
+        context.step_status[step_id] = StepStatus.PENDING
+        context.step_errors.pop(step_id, None)
+        context.step_attempts.pop(step_id, None)
+        context.step_results.pop(step.result_key, None)
+        context.context_vars.pop(step.result_key, None)
+        context.quality_retry_counts.pop(step_id, None)
+        context.step_started_at.pop(step_id, None)
+        context.step_completed_at.pop(step_id, None)
+        context.processed_steps = [item for item in context.processed_steps if item != step_id]
+        context.published_step_events = [item for item in context.published_step_events if item != step_id]
+        if context.paused_step_id == step_id:
+            context.paused_reason = None
+            context.paused_step_id = None
+        if user_feedback:
+            context.feedback_overrides[step_id] = user_feedback
+        else:
+            context.feedback_overrides.pop(step_id, None)
+        context.status = PlanStatus.RUNNING
+        context.error = None
+        context.completed_at = None
+        context.plan_status = None
+        context.touch()
+        self._store.save(plan_id, context)
+        self._event_publisher.publish("task.step_retry", context, current_step=step_id)
+        return context
+
+    def _execute_step_with_quality_retry(
+        self,
+        context: TaskContext,
+        step: PlanStep,
+        context_vars: dict[str, Any],
+        *,
+        session_id: str,
+        skill_name: str | None,
+    ) -> Any:
+        """摘要：执行单步并在后置校验失败时最多带反馈重试一次。"""
+        del session_id, skill_name
+        result = self._execute_step_raw(context, step, context_vars)
+        post_issues = self._gateway.verify_post_execution(step, result) if step.stage else []
+        if not post_issues:
+            context.feedback_overrides.pop(step.step_id, None)
+            return result
+        if context.quality_retry_counts.get(step.step_id, 0) >= 1:
+            context.paused_reason = PlanErrorCode.POST_VERIFICATION_FAILED.value
+            context.paused_step_id = step.step_id
+            context.touch()
+            raise A2PlanValidationError("; ".join(post_issues))
+
+        context.quality_retry_counts[step.step_id] = context.quality_retry_counts.get(step.step_id, 0) + 1
+        context.feedback_overrides[step.step_id] = self._gateway.build_retry_feedback(step, post_issues)
+        retry_events = context.context_vars.setdefault("quality_retry_events", [])
+        if isinstance(retry_events, list):
+            retry_events.append(
+                {
+                    "event": PlanEventName.STEP_RETRY.value,
+                    "step_id": step.step_id,
+                    "issues": list(post_issues),
+                }
+            )
+        context.touch()
+        self._store.save(context.plan_id, context)
+
+        retry_result = self._execute_step_raw(context, step, context_vars)
+        retry_issues = self._gateway.verify_post_execution(step, retry_result) if step.stage else []
+        if retry_issues:
+            context.paused_reason = PlanErrorCode.POST_VERIFICATION_FAILED.value
+            context.paused_step_id = step.step_id
+            context.touch()
+            raise A2PlanValidationError("; ".join(retry_issues))
+        context.feedback_overrides.pop(step.step_id, None)
+        context.touch()
+        return retry_result
+
+    def _execute_step_raw(self, context: TaskContext, step: PlanStep, context_vars: dict[str, Any]) -> Any:
+        """摘要：执行一次计划步骤，不做 DAG 推进或质量重试。"""
+        feedback = context.feedback_overrides.get(step.step_id)
+        if step.subagent_type is not None and self._subagent_dispatch.is_available:
+            return self._subagent_dispatch.dispatch(
+                context,
+                step,
+                parent_session_id=self._gateway.session_id(context),
+                privacy_mode=str(context_vars.get("privacy_mode") or self._privacy_mode or "local_only"),
+            )
+        if self._routed_invoker is not None:
+            if feedback:
+                context.context_vars["_quality_retry_feedback"] = feedback
+            try:
+                return self._routed_invoker.invoke_step(step, context)
+            finally:
+                context.context_vars.pop("_quality_retry_feedback", None)
+        if self._skill_invoker is None:
+            raise A2PlanExecutionError("skill_invoker is required")
+        payload = dict(step.payload)
+        if context_vars.get("route_mode") is not None:
+            payload["_route_mode"] = context_vars.get("route_mode")
+        if context_vars.get("fallback_chain") is not None:
+            payload["_fallback_chain"] = list(context_vars.get("fallback_chain") or [])
+        if context_vars.get("fallback_index") is not None:
+            payload["_fallback_index"] = int(context_vars.get("fallback_index") or 0)
+        if feedback:
+            payload["_quality_retry_feedback"] = feedback
+        return self._skill_invoker.invoke(step.skill_id, payload, step.idempotency_key)
+
+    def _propagate_unblock_events(self, context: TaskContext, previous_statuses: Mapping[str, Any]) -> None:
+        """摘要：对本轮新完成步骤执行下游解除阻断，并暂存待发布事件。"""
+        unblocked_events = context.context_vars.setdefault("_step_unblocked_events", [])
+        for step_id, status in list(context.step_status.items()):
+            if _step_status_value(status) != StepStatus.DONE.value:
+                continue
+            if _step_status_value(previous_statuses.get(step_id)) == StepStatus.DONE.value:
+                continue
+            unblocked = self._dag_engine.propagate_unblock(context, step_id)
+            if isinstance(unblocked_events, list):
+                unblocked_events.extend(unblocked)
+
+    def _finalize_plan_status(self, context: TaskContext) -> str | None:
+        """摘要：当计划所有步骤都不可继续调度时缓存最终 plan_status。"""
+        if context.plan_status in {"completed", "failed", "blocked"}:
+            return None
+        if context.status is PlanStatus.PAUSED and context.paused_reason in {
+            PlanErrorCode.WAITING_CONSENT.value,
+            PlanErrorCode.HARD_GATE_BLOCKED.value,
+        }:
+            return None
+        statuses = {_step_status_value(status) for status in context.step_status.values()}
+        if statuses & {StepStatus.PENDING.value, StepStatus.READY.value, StepStatus.RUNNING.value}:
+            return None
+        status = self._gateway.evaluate_plan_status(context)
+        if status not in {"completed", "failed", "blocked"}:
+            return None
+        if status == "blocked" and not statuses & {StepStatus.FAILED.value, StepStatus.CANCELLED.value}:
+            return None
+        context.plan_status = status
+        if status == "completed":
+            context.status = PlanStatus.DONE
+        else:
+            context.status = PlanStatus.FAILED
+        context.mark_terminal()
+        return status
+
     def _ensure_plan_skill_context(self, context: TaskContext) -> None:
         """摘要：把当前匹配 Skill 写入计划上下文，供恢复与门禁复用。"""
         if self._skill_name and self._skill_stages:
@@ -873,6 +1052,7 @@ class PlanOrchestrator:
 
     def _collect_step_events(self, context: TaskContext) -> list[tuple[str, str]]:
         events: list[tuple[str, str]] = []
+        unblocked_events = context.context_vars.pop("_step_unblocked_events", [])
         published = set(context.published_step_events)
         for step_id in context.processed_steps:
             if step_id in published:
@@ -884,19 +1064,28 @@ class PlanOrchestrator:
                 events.append(("task.step_failed", step_id))
             elif status is StepStatus.DEGRADED:
                 events.append(("task.step_degraded", step_id))
+            elif status is StepStatus.BLOCKED:
+                events.append(("task.step_blocked", step_id))
             else:
                 continue
             context.published_step_events.append(step_id)
             published.add(step_id)
+        if isinstance(unblocked_events, list):
+            for step_id in unblocked_events:
+                events.append(("task.step_unblocked", str(step_id)))
         return events
 
     def _collect_plan_events(self, context: TaskContext) -> list[tuple[str, str | None]]:
+        if context.plan_status == "completed":
+            return [("task.plan_completed", None)]
+        if context.plan_status == "blocked":
+            return [("task.plan_blocked", context.paused_step_id)]
+        if context.plan_status == "failed":
+            return [("task.plan_failed", None)]
         if context.status is PlanStatus.PAUSED and context.paused_reason == PlanErrorCode.WAITING_CONSENT.value:
             return [("task.plan_paused", context.paused_step_id)]
         if context.status is PlanStatus.DONE:
             return [("task.plan_completed", None)]
-        if context.status is PlanStatus.FAILED:
-            return [("task.plan_failed", None)]
         return []
 
     def _load_raw_template(self, path: Path) -> Any:
@@ -936,3 +1125,8 @@ class PlanOrchestrator:
             files=tuple(str(path) for path in item.get("files", ()) or ()),
             subagent_type=plan_snapshot.normalize_subagent_role(item.get("subagent_type")),
         )
+
+
+def _step_status_value(status: Any) -> str:
+    """摘要：兼容 Enum 或字符串形式的步骤状态。"""
+    return str(getattr(status, "value", status))

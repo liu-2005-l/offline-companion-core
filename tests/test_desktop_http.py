@@ -76,6 +76,19 @@ def _sse_payloads(text: str) -> list[dict]:
     return items
 
 
+def _stage_aware_auto_result(step, context):
+    """摘要：按阶段返回满足计划后置校验的 Auto 测试产出。"""
+    if step.stage == "planning":
+        return {"result": f"{step.payload['description']}；涉及 plan_orchestrator 模块、数据流和风险。"}
+    if step.stage == "tdd":
+        return {"result": f"{step.payload['description']}；测试 passed。"}
+    if step.stage == "implementation":
+        return {"result": f"{step.payload['description']}；修改 src/app.py。"}
+    if step.stage == "verification":
+        return {"result": f"{step.payload['description']}；验证 output ok。"}
+    return {"result": step.payload["description"]}
+
+
 def _runtime(tmp_path) -> DesktopRuntime:
     conn = connect(tmp_path / "http.db")
     persona = load_persona_file(
@@ -1331,7 +1344,7 @@ def test_desktop_http_auto_consent_resumes_persisted_plan(tmp_path) -> None:
     rt.auto_turn_orchestrator = AutoTurnOrchestrator(
         plan_orchestrator,
         bridge,
-        lambda step, context: {"result": step.payload["description"]},
+        _stage_aware_auto_result,
     )
     client = create_desktop_app(rt).test_client()
     client.post("/api/models/auto", json={"enabled": True})

@@ -13,6 +13,17 @@ from offline_companion.core.plan_orchestrator import (
 from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway
 
 
+class RecordingPlanEventPublisher:
+    """摘要：记录 PlanOrchestrator 发布的事件，供集成测试断言。"""
+
+    def __init__(self) -> None:
+        self.events: list[tuple[str, str | None]] = []
+
+    def publish(self, event_name: str, context: TaskContext, *, current_step: str | None = None) -> None:
+        del context
+        self.events.append((event_name, current_step))
+
+
 def test_task_context_from_v1_snapshot_keeps_old_data() -> None:
     payload = {
         "plan_id": "p1",
@@ -298,6 +309,317 @@ def test_execute_next_runs_only_one_step() -> None:
     assert first.status is PlanStatus.RUNNING
     second = orchestrator.execute_next(first)
     assert second.status is PlanStatus.DONE
+
+
+def test_execute_next_post_verification_failure_marks_step_failed() -> None:
+    """摘要：后置校验失败时步骤进入 FAILED，并记录 post verification 错误。"""
+    store = InMemoryPlanStore()
+    orchestrator = PlanOrchestrator(
+        store,
+        skill_invoker=lambda skill_id, payload, idem: "",
+    )
+    context = orchestrator.create_context("post-verification")
+    step = PlanStep(
+        step_id="planning",
+        skill_id="chat",
+        result_key="result",
+        stage="planning",
+    )
+    context.steps = {step.step_id: step}
+    context.step_status = {step.step_id: StepStatus.PENDING}
+
+    failed = orchestrator.execute_next(context)
+
+    assert failed.status is PlanStatus.FAILED
+    assert failed.step_status["planning"] is StepStatus.FAILED
+    assert failed.paused_reason == "post_verification_failed"
+    assert "planning_stage_empty_output" in failed.step_errors["planning"]
+
+
+def test_execute_next_post_verification_retry_succeeds() -> None:
+    """摘要：第一次后置校验失败时注入 feedback 并重试一次，成功后步骤完成。"""
+    store = InMemoryPlanStore()
+    calls: list[dict[str, object]] = []
+
+    def invoke(step: PlanStep, context: TaskContext) -> str:
+        calls.append(dict(context.feedback_overrides))
+        if len(calls) == 1:
+            return ""
+        assert "planning" in context.feedback_overrides[step.step_id]
+        return "模块 plan_dag_engine，数据流 A 到 B，测试策略覆盖。"
+
+    orchestrator = PlanOrchestrator(store)
+    context = orchestrator.create_context("post-verification-retry")
+    step = PlanStep(step_id="planning", skill_id="chat", result_key="result", stage="planning")
+    context.steps = {step.step_id: step}
+    context.step_status = {step.step_id: StepStatus.PENDING}
+
+    completed = orchestrator.execute_next(context, invoke_skill=invoke)
+
+    assert completed.status is PlanStatus.DONE
+    assert completed.step_status["planning"] is StepStatus.DONE
+    assert len(calls) == 2
+    assert completed.quality_retry_counts["planning"] == 1
+    assert "planning" not in completed.feedback_overrides
+    assert completed.get_step_result("planning") == "模块 plan_dag_engine，数据流 A 到 B，测试策略覆盖。"
+
+
+def test_execute_next_post_verification_retry_failure_marks_failed() -> None:
+    """摘要：重试仍失败时标记 FAILED，且不会第三次重试。"""
+    call_count = {"n": 0}
+
+    def invoke(_step: PlanStep, _context: TaskContext) -> str:
+        call_count["n"] += 1
+        return ""
+
+    orchestrator = PlanOrchestrator(InMemoryPlanStore())
+    context = orchestrator.create_context("post-verification-retry-failed")
+    step = PlanStep(step_id="planning", skill_id="chat", result_key="result", stage="planning")
+    context.steps = {step.step_id: step}
+    context.step_status = {step.step_id: StepStatus.PENDING}
+
+    failed = orchestrator.execute_next(context, invoke_skill=invoke)
+
+    assert call_count["n"] == 2
+    assert failed.status is PlanStatus.FAILED
+    assert failed.step_status["planning"] is StepStatus.FAILED
+    assert failed.paused_reason == "post_verification_failed"
+    assert failed.quality_retry_counts["planning"] == 1
+
+
+def test_execute_next_post_verification_failure_blocks_downstream() -> None:
+    """摘要：上游后置校验重试仍失败时，下游依赖步骤自动进入 BLOCKED。"""
+    publisher = RecordingPlanEventPublisher()
+    calls: list[str] = []
+
+    def invoke(step: PlanStep, _context: TaskContext) -> str:
+        calls.append(step.step_id)
+        return ""
+
+    orchestrator = PlanOrchestrator(InMemoryPlanStore(), event_publisher=publisher)
+    context = orchestrator.create_context("post-verification-propagation")
+    first = PlanStep(step_id="planning", skill_id="chat", result_key="ra", stage="planning")
+    second = PlanStep(step_id="implementation", skill_id="chat", result_key="rb", depends_on=("planning",))
+    context.steps = {first.step_id: first, second.step_id: second}
+    context.step_status = {first.step_id: StepStatus.PENDING, second.step_id: StepStatus.PENDING}
+
+    failed = orchestrator.execute_next(context, invoke_skill=invoke)
+
+    assert calls == ["planning", "planning"]
+    assert failed.status is PlanStatus.FAILED
+    assert failed.step_status["planning"] is StepStatus.FAILED
+    assert failed.step_status["implementation"] is StepStatus.BLOCKED
+    assert failed.paused_reason == "post_verification_failed"
+    assert ("task.step_failed", "planning") in publisher.events
+    assert ("task.step_blocked", "implementation") in publisher.events
+
+
+def test_retry_failed_step_resets_failed_state() -> None:
+    """摘要：手动重试只重置失败步骤状态，不直接执行。"""
+    publisher = RecordingPlanEventPublisher()
+    orchestrator = PlanOrchestrator(InMemoryPlanStore(), event_publisher=publisher)
+    context = orchestrator.create_context("retry-reset")
+    step = PlanStep(step_id="planning", skill_id="chat", result_key="result", stage="planning")
+    context.steps = {step.step_id: step}
+    context.step_status = {step.step_id: StepStatus.FAILED}
+    context.step_errors = {step.step_id: "post_verification_failed"}
+    context.step_results = {step.result_key: "old"}
+    context.context_vars = {step.result_key: "old"}
+    context.quality_retry_counts = {step.step_id: 1}
+    context.processed_steps = [step.step_id]
+    context.published_step_events = [step.step_id]
+    context.paused_reason = "post_verification_failed"
+    context.paused_step_id = step.step_id
+    orchestrator._store.save(context.plan_id, context)
+
+    reset = orchestrator.retry_failed_step(context.plan_id, step.step_id, user_feedback="请补完整 evidence")
+
+    assert reset.status is PlanStatus.RUNNING
+    assert reset.step_status[step.step_id] is StepStatus.PENDING
+    assert step.step_id not in reset.step_errors
+    assert step.result_key not in reset.step_results
+    assert step.result_key not in reset.context_vars
+    assert step.step_id not in reset.quality_retry_counts
+    assert reset.feedback_overrides[step.step_id] == "请补完整 evidence"
+    assert reset.paused_reason is None
+    assert reset.paused_step_id is None
+    assert step.step_id not in reset.processed_steps
+    assert step.step_id not in reset.published_step_events
+    assert ("task.step_retry", step.step_id) in publisher.events
+
+
+def test_retry_failed_step_rejects_non_failed_step() -> None:
+    """摘要：非 failed 步骤不能走手动重试恢复。"""
+    orchestrator = PlanOrchestrator(InMemoryPlanStore())
+    context = orchestrator.create_context("retry-non-failed")
+    step = PlanStep(step_id="planning", skill_id="chat", result_key="result")
+    context.steps = {step.step_id: step}
+    context.step_status = {step.step_id: StepStatus.DONE}
+    orchestrator._store.save(context.plan_id, context)
+
+    try:
+        orchestrator.retry_failed_step(context.plan_id, step.step_id)
+    except Exception as exc:
+        assert "not FAILED" in str(exc)
+    else:
+        raise AssertionError("retry_failed_step should reject non-failed steps")
+
+
+def test_retry_failed_step_success_unblocks_downstream() -> None:
+    """摘要：失败步骤手动重试成功后，下游 blocked 步骤恢复 pending 并发事件。"""
+    publisher = RecordingPlanEventPublisher()
+    calls: list[str] = []
+
+    def invoke(step: PlanStep, _context: TaskContext) -> str:
+        calls.append(step.step_id)
+        return "模块 plan_dag_engine，数据流 A 到 B，测试策略覆盖。"
+
+    orchestrator = PlanOrchestrator(InMemoryPlanStore(), event_publisher=publisher)
+    context = orchestrator.create_context("retry-unblock")
+    first = PlanStep(step_id="planning", skill_id="chat", result_key="ra", stage="planning")
+    second = PlanStep(step_id="implementation", skill_id="chat", result_key="rb", depends_on=("planning",))
+    context.steps = {first.step_id: first, second.step_id: second}
+    context.step_status = {first.step_id: StepStatus.FAILED, second.step_id: StepStatus.BLOCKED}
+    context.step_errors = {first.step_id: "post_verification_failed"}
+    context.quality_retry_counts = {first.step_id: 1}
+    context.processed_steps = [first.step_id, second.step_id]
+    context.published_step_events = [first.step_id, second.step_id]
+    context.status = PlanStatus.FAILED
+    context.paused_reason = "post_verification_failed"
+    context.paused_step_id = first.step_id
+    orchestrator._store.save(context.plan_id, context)
+
+    reset = orchestrator.retry_failed_step(context.plan_id, first.step_id)
+    completed = orchestrator.execute_next(reset, invoke_skill=invoke)
+
+    assert calls == ["planning"]
+    assert completed.step_status[first.step_id] is StepStatus.DONE
+    assert completed.step_status[second.step_id] is StepStatus.PENDING
+    assert ("task.step_completed", first.step_id) in publisher.events
+    assert ("task.step_unblocked", second.step_id) in publisher.events
+
+
+def test_completed_plan_status_short_circuits_execute_next() -> None:
+    """摘要：已缓存 completed 的计划再次 execute_next 时不再调度 DAG。"""
+    orchestrator = PlanOrchestrator(InMemoryPlanStore())
+    context = orchestrator.create_context("terminal-completed")
+    step = PlanStep(step_id="a", skill_id="chat", result_key="ra")
+    context.steps = {step.step_id: step}
+    context.step_status = {step.step_id: StepStatus.DONE}
+    context.plan_status = "completed"
+    orchestrator._store.save(context.plan_id, context)
+    called = {"dag": False}
+
+    def fail_if_called(*args, **kwargs):
+        del args, kwargs
+        called["dag"] = True
+        raise AssertionError("DAG should not run for cached terminal plan")
+
+    orchestrator._dag_engine.run_until_blocked = fail_if_called
+
+    result = orchestrator.execute_next(context.plan_id)
+
+    assert called["dag"] is False
+    assert result.plan_status == "completed"
+
+
+def test_terminal_plan_event_emitted_once() -> None:
+    """摘要：最后一步完成时缓存 plan_status 并只发布一次 plan completed 事件。"""
+    publisher = RecordingPlanEventPublisher()
+    orchestrator = PlanOrchestrator(
+        InMemoryPlanStore(),
+        skill_invoker=lambda skill_id, payload, idem: "ok",
+        event_publisher=publisher,
+    )
+    context = orchestrator.create_context("terminal-event-once")
+    step = PlanStep(step_id="a", skill_id="chat", result_key="ra")
+    context.steps = {step.step_id: step}
+    context.step_status = {step.step_id: StepStatus.PENDING}
+
+    completed = orchestrator.execute_next(context)
+    second = orchestrator.execute_next(completed.plan_id)
+
+    assert completed.plan_status == "completed"
+    assert second.plan_status == "completed"
+    assert publisher.events.count(("task.plan_completed", None)) == 1
+
+
+def test_failed_without_downstream_sets_failed_plan_status() -> None:
+    """摘要：单步骤失败且无下游可恢复链时，计划终态为 failed。"""
+    publisher = RecordingPlanEventPublisher()
+    orchestrator = PlanOrchestrator(InMemoryPlanStore(), event_publisher=publisher)
+    context = orchestrator.create_context("terminal-failed")
+    step = PlanStep(step_id="planning", skill_id="chat", result_key="ra", stage="planning")
+    context.steps = {step.step_id: step}
+    context.step_status = {step.step_id: StepStatus.PENDING}
+
+    failed = orchestrator.execute_next(context, invoke_skill=lambda step, context: "")
+
+    assert failed.plan_status == "failed"
+    assert ("task.plan_failed", None) in publisher.events
+
+
+def test_blocked_downstream_sets_blocked_plan_status() -> None:
+    """摘要：失败传播导致下游 blocked 且无其他可跑分支时，计划终态为 blocked。"""
+    publisher = RecordingPlanEventPublisher()
+    orchestrator = PlanOrchestrator(InMemoryPlanStore(), event_publisher=publisher)
+    context = orchestrator.create_context("terminal-blocked")
+    first = PlanStep(step_id="planning", skill_id="chat", result_key="ra", stage="planning")
+    second = PlanStep(step_id="implementation", skill_id="chat", result_key="rb", depends_on=("planning",))
+    context.steps = {first.step_id: first, second.step_id: second}
+    context.step_status = {first.step_id: StepStatus.PENDING, second.step_id: StepStatus.PENDING}
+
+    blocked = orchestrator.execute_next(context, invoke_skill=lambda step, context: "")
+
+    assert blocked.plan_status == "blocked"
+    assert blocked.step_status[second.step_id] is StepStatus.BLOCKED
+    assert ("task.plan_blocked", blocked.paused_step_id) in publisher.events
+
+
+def test_retry_failed_step_clears_plan_status() -> None:
+    """摘要：手动 retry 是唯一回退终态缓存的入口。"""
+    orchestrator = PlanOrchestrator(InMemoryPlanStore())
+    context = orchestrator.create_context("retry-clears-plan-status")
+    step = PlanStep(step_id="planning", skill_id="chat", result_key="ra")
+    context.steps = {step.step_id: step}
+    context.step_status = {step.step_id: StepStatus.FAILED}
+    context.plan_status = "failed"
+    context.status = PlanStatus.FAILED
+    orchestrator._store.save(context.plan_id, context)
+
+    reset = orchestrator.retry_failed_step(context.plan_id, step.step_id)
+
+    assert reset.plan_status is None
+    assert reset.status is PlanStatus.RUNNING
+
+
+def test_independent_branch_continues_after_partial_failure() -> None:
+    """摘要：A→B 失败阻塞时，独立 X→Y 分支仍可继续执行，plan_status 不提前缓存。"""
+    calls: list[str] = []
+
+    def invoke(step: PlanStep, _context: TaskContext) -> str:
+        calls.append(step.step_id)
+        if step.step_id == "a":
+            return ""
+        return "ok"
+
+    orchestrator = PlanOrchestrator(InMemoryPlanStore())
+    context = orchestrator.create_context("partial-failure-continues")
+    first = PlanStep(step_id="a", skill_id="chat", result_key="ra", stage="planning")
+    blocked_child = PlanStep(step_id="b", skill_id="chat", result_key="rb", depends_on=("a",))
+    independent = PlanStep(step_id="x", skill_id="chat", result_key="rx")
+    tail = PlanStep(step_id="y", skill_id="chat", result_key="ry", depends_on=("x",))
+    context.steps = {step.step_id: step for step in (first, blocked_child, independent, tail)}
+    context.step_status = {step_id: StepStatus.PENDING for step_id in context.steps}
+
+    after_failure = orchestrator.execute_next(context, invoke_skill=invoke)
+    after_independent = orchestrator.execute_next(after_failure, invoke_skill=invoke)
+
+    assert calls == ["a", "a", "x"]
+    assert after_failure.step_status["b"] is StepStatus.BLOCKED
+    assert after_failure.plan_status is None
+    assert after_independent.step_status["x"] is StepStatus.DONE
+    assert after_independent.plan_status is None
 
 
 def test_execute_next_persists_real_consent_request_id() -> None:

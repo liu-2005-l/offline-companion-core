@@ -28,6 +28,7 @@ def serialize(context: Any) -> dict[str, Any]:
         "error": context.error,
         "paused_reason": context.paused_reason,
         "paused_step_id": context.paused_step_id,
+        "plan_status": context.plan_status,
         "started_at": context.started_at,
         "updated_at": context.updated_at,
         "completed_at": context.completed_at,
@@ -35,6 +36,8 @@ def serialize(context: Any) -> dict[str, Any]:
         "step_completed_at": dict(context.step_completed_at),
         "step_consent_requests": dict(context.step_consent_requests),
         "step_route_decisions": dict(context.step_route_decisions),
+        "feedback_overrides": dict(context.feedback_overrides),
+        "quality_retry_counts": dict(context.quality_retry_counts),
         "progress": context.progress,
     }
 
@@ -70,6 +73,7 @@ def deserialize(payload: Mapping[str, Any], *, context_cls: type[Any] | None = N
         error=payload.get("error"),
         paused_reason=payload.get("paused_reason"),
         paused_step_id=payload.get("paused_step_id"),
+        plan_status=payload.get("plan_status"),
         started_at=optional_float(payload.get("started_at")),
         updated_at=optional_float(payload.get("updated_at")),
         completed_at=optional_float(payload.get("completed_at")),
@@ -77,6 +81,11 @@ def deserialize(payload: Mapping[str, Any], *, context_cls: type[Any] | None = N
         step_completed_at=float_dict(payload.get("step_completed_at")),
         step_consent_requests=dict_of_dict(payload.get("step_consent_requests")),
         step_route_decisions=dict_of_dict(payload.get("step_route_decisions")),
+        feedback_overrides={str(key): str(value) for key, value in dict(payload.get("feedback_overrides", {})).items()},
+        quality_retry_counts={
+            str(key): safe_non_negative_int(value)
+            for key, value in dict(payload.get("quality_retry_counts", {})).items()
+        },
     )
 
 

@@ -11,6 +11,7 @@ class PlanEventName(str, Enum):
     ERROR = "error"
     PLAN_START = "plan_start"
     PLAN_COMPLETE = "plan_complete"
+    PLAN_COMPLETED = "plan_completed"
     PLAN_FAILED = "plan_failed"
     PLAN_CANCELLED = "plan_cancelled"
     PLAN_BLOCKED = "plan_blocked"
@@ -19,6 +20,9 @@ class PlanEventName(str, Enum):
     STEP_COMPLETE = "step_complete"
     STEP_FAILED = "step_failed"
     STEP_ERROR = "step_error"
+    STEP_RETRY = "step_retry"
+    STEP_BLOCKED = "step_blocked"
+    STEP_UNBLOCKED = "step_unblocked"
     STEP_SKIPPED = "step_skipped"
     CONSENT_REQUIRED = "consent_required"
 

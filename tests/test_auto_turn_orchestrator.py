@@ -90,8 +90,21 @@ def _streaming_auto_turn(*, gateway=None):
     return AutoTurnOrchestrator(
         plan_orchestrator=plan_orchestrator,
         auto_bridge=bridge,
-        invoke_skill=lambda step, context: {"result": step.payload["description"]},
+        invoke_skill=_stage_aware_result,
     )
+
+
+def _stage_aware_result(step, context):
+    """摘要：按阶段返回满足后置校验的测试产出。"""
+    if step.stage == "planning":
+        return {"result": f"{step.payload['description']}；涉及 plan_orchestrator 模块、数据流和风险。"}
+    if step.stage == "tdd":
+        return {"result": f"{step.payload['description']}；测试 passed。"}
+    if step.stage == "implementation":
+        return {"result": f"{step.payload['description']}；修改 src/app.py。"}
+    if step.stage == "verification":
+        return {"result": f"{step.payload['description']}；验证 output ok。"}
+    return {"result": step.payload["description"]}
 
 
 def test_auto_turn_stream_emits_step_sequence() -> None:

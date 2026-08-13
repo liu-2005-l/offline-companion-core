@@ -7,6 +7,9 @@ def test_plan_event_name_values_match_public_sse_contract() -> None:
     """摘要：Plan SSE 事件枚举值保持现有前后端契约。"""
     assert PlanEventName.PLAN_START.value == "plan_start"
     assert PlanEventName.STEP_COMPLETE.value == "step_complete"
+    assert PlanEventName.PLAN_COMPLETED.value == "plan_completed"
+    assert PlanEventName.STEP_BLOCKED.value == "step_blocked"
+    assert PlanEventName.STEP_UNBLOCKED.value == "step_unblocked"
     assert PlanEventName.CONSENT_REQUIRED.value == "consent_required"
     assert PlanEventName.ERROR.value == "error"
 

@@ -38,7 +38,7 @@ def test_execute_next_blocks_stage_when_prerequisite_missing(tmp_path) -> None:
     tracker, gate = _tracker_and_gate(tmp_path)
     orchestrator = PlanOrchestrator(
         InMemoryPlanStore(),
-        skill_invoker=lambda skill_id, payload, idem: "ok",
+        skill_invoker=lambda skill_id, payload, idem: "计划包含 plan_orchestrator 模块、数据流和测试策略。",
         hard_gate=gate,
         skill_tracker=tracker,
     )
@@ -94,7 +94,7 @@ def test_execute_next_allows_stage_after_prerequisite_completed(tmp_path) -> Non
     tracker.complete_stage("sess1", "coding-agent", "brainstorming", "需求已明确")
     orchestrator = PlanOrchestrator(
         InMemoryPlanStore(),
-        skill_invoker=lambda skill_id, payload, idem: "ok",
+        skill_invoker=lambda skill_id, payload, idem: "计划包含 plan_orchestrator 模块、数据流和测试策略。",
         hard_gate=gate,
         skill_tracker=tracker,
     )
@@ -114,20 +114,20 @@ def test_execute_next_allows_stage_after_prerequisite_completed(tmp_path) -> Non
     assert completed.status is PlanStatus.DONE
     assert progress[-1]["stage"] == "planning"
     assert progress[-1]["status"] == "completed"
-    assert progress[-1]["evidence"] == "计划包含可验证步骤。"
+    assert progress[-1]["evidence"] == "计划包含 plan_orchestrator 模块、数据流和测试策略。"
 
 
 def test_execute_next_without_skill_or_gate_keeps_existing_behavior(tmp_path) -> None:
     tracker, gate = _tracker_and_gate(tmp_path)
     no_skill = PlanOrchestrator(
         InMemoryPlanStore(),
-        skill_invoker=lambda skill_id, payload, idem: "ok",
+        skill_invoker=lambda skill_id, payload, idem: "计划包含 plan_orchestrator 模块、数据流和测试策略。",
         hard_gate=gate,
         skill_tracker=tracker,
     )
     no_gate = PlanOrchestrator(
         InMemoryPlanStore(),
-        skill_invoker=lambda skill_id, payload, idem: "ok",
+        skill_invoker=lambda skill_id, payload, idem: "计划包含 plan_orchestrator 模块、数据流和测试策略。",
         hard_gate=None,
         skill_tracker=None,
     )
