@@ -8,6 +8,7 @@ from offline_companion.runtime.inference_backend.backend import (
     resolve_gguf_path,
     try_stderr_cuda_hint,
 )
+from offline_companion.runtime.inference_backend.llama_server_backend import LlamaServerStartupError
 from offline_companion.runtime.inference_backend.mock import EchoBackend
 
 
@@ -46,6 +47,7 @@ __all__ = [
     "InferenceBackend",
     "InferenceHealthReport",
     "LlamaCppBackend",
+    "LlamaServerStartupError",
     "check_model",
     "create_llama_backend",
     "resolve_gguf_path",

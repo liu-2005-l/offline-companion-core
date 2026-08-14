@@ -18,6 +18,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "custom_appearance": {},
     "improve_plan_enabled": False,
     "auto_router_enabled": False,
+    "active_model_id": None,
     "active_persona_id": None,
     "close_to_tray": True,
     "memory_enabled": True,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import uuid
 from dataclasses import dataclass
@@ -25,6 +26,7 @@ from offline_companion.core.subagent_scheduler import RestrictedToolRegistry, Su
 from offline_companion.core.subagent_types import SubagentContext, SubagentRouterResponse
 from offline_companion.runtime.inference_backend import (
     EchoBackend,
+    LlamaServerStartupError,
     create_llama_backend,
     try_stderr_cuda_hint,
 )
@@ -60,6 +62,7 @@ from offline_companion.shell.ui_host.model_registry import (
     resolve_default_model_config,
     resolve_n_gpu_layers,
 )
+from offline_companion.storage.cloud_model_repo import list_cloud_models
 from offline_companion.storage.settings_store import load_settings
 
 ECHO_NO_MODEL_LABEL = "Echo (no model)"
@@ -140,11 +143,44 @@ class UISessionBundle:
     persona_name: str
     privacy_mode: PrivacyMode
     model_label: str
+    backend_mode: str
+    local_available: bool
+    cloud_available: bool
+    local_error: str | None
+    active_cloud_model_id: str | None
     plan_orchestrator: PlanOrchestrator
     auto_turn_orchestrator: AutoTurnOrchestrator
     idle_detector: IdleDetector
     idle_coordinator: IdleThinkCoordinator
     state_manager: StateManager
+
+
+def _configured_cloud_model(paths: AppPaths, settings: dict[str, Any]) -> dict[str, Any] | None:
+    """摘要：选择本地保存或环境变量提供的完整云端模型配置。"""
+    models = list_cloud_models(paths.root)
+    active_model_id = str(settings.get("active_model_id") or "").strip()
+    candidates = sorted(
+        models,
+        key=lambda item: str(item.get("id") or "") != active_model_id,
+    )
+    for item in candidates:
+        if not bool(item.get("enabled", True)):
+            continue
+        if all(str(item.get(key) or "").strip() for key in ("endpoint", "model_name", "api_key")):
+            return item
+    endpoint = os.environ.get("OFFLINE_COMPANION_CLOUD_URL", "").strip()
+    model_name = os.environ.get("OFFLINE_COMPANION_CLOUD_MODEL", "").strip()
+    api_key = os.environ.get("OFFLINE_COMPANION_CLOUD_API_KEY", "").strip()
+    if endpoint and model_name and api_key:
+        return {
+            "id": "environment",
+            "name": model_name,
+            "endpoint": endpoint,
+            "model_name": model_name,
+            "api_key": api_key,
+            "enabled": True,
+        }
+    return None
 
 
 def resolve_app_paths(data_dir: str | None) -> AppPaths:
@@ -218,19 +254,36 @@ def bootstrap_ui_session(
     gguf_path = Path(model).expanduser() if model else resolve_default_gguf_path()
     model_config = None if model else resolve_default_model_config()
     n_gpu = resolve_n_gpu_layers(n_gpu_layers)
+    local_available = False
+    local_error: str | None = None
     if gguf_path is not None:
         try_stderr_cuda_hint()
-        backend = create_llama_backend(
-            gguf_path,
-            n_ctx=n_ctx,
-            n_gpu_layers=n_gpu,
-            run_health_check=True,
-            model_config=model_config,
-        )
+        try:
+            backend = create_llama_backend(
+                gguf_path,
+                n_ctx=n_ctx,
+                n_gpu_layers=n_gpu,
+                run_health_check=True,
+                model_config=model_config,
+            )
+            local_available = True
+        except (LlamaServerStartupError, InferenceBackendError, OSError) as exc:
+            backend = EchoBackend("local-unavailable")
+            local_error = str(exc)
         model_label = gguf_path.name
     else:
-        backend = EchoBackend("no-model")
+        backend = EchoBackend("local-unavailable")
         model_label = ECHO_NO_MODEL_LABEL
+        local_error = "未配置本地模型"
+
+    cloud_model = _configured_cloud_model(paths, settings_state)
+    cloud_available = cloud_model is not None
+    if local_available:
+        backend_mode = "local"
+    elif cloud_available and privacy is not PrivacyMode.LOCAL_ONLY:
+        backend_mode = "cloud_fallback"
+    else:
+        backend_mode = "no_backend"
 
     consent_gateway = UIHostConsentGateway(db_conn=conn)
     tool_registry = ToolRegistry()
@@ -246,6 +299,10 @@ def bootstrap_ui_session(
         model_router=ModelRouter(),
         consent_gateway=consent_gateway,
         cloud_post=post_cloud_completion,
+        cloud_model_provider=lambda: cloud_model,
+        backend_mode=backend_mode,
+        local_available=local_available,
+        cloud_available=cloud_available,
         tool_invoker=tool_invoker,
     )
 
@@ -326,6 +383,11 @@ def bootstrap_ui_session(
         persona_name=resolved_companion_display_name(persona),
         privacy_mode=privacy,
         model_label=model_label,
+        backend_mode=backend_mode,
+        local_available=local_available,
+        cloud_available=cloud_available,
+        local_error=local_error,
+        active_cloud_model_id=(str(cloud_model.get("id")) if cloud_model else None),
         plan_orchestrator=plan_orchestrator,
         auto_turn_orchestrator=auto_turn_orchestrator,
         idle_detector=idle_detector,

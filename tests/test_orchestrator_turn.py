@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import pytest
+
 from offline_companion.core.emotion_analyzer import EmotionClassifier
 from offline_companion.core.local_reformatter.rule_reformatter import LOCAL_FALLBACK_PREFIX
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
@@ -261,3 +263,76 @@ def test_orchestrator_cloud_failure_uses_router_fallback_model(tmp_path) -> None
     row = conn.execute("SELECT meta_json FROM messages WHERE role = 'assistant' ORDER BY id DESC LIMIT 1;").fetchone()
     assert row is not None
     assert "executed_fallback_model" in row["meta_json"]
+
+
+def test_local_failure_auto_routes_cloud_without_using_local_backend(tmp_path) -> None:
+    decision = ModelRoutingDecision(
+        selected_model="qwen2.5-1.5b-instruct-q4_k_m",
+        fallback_model=None,
+        requires_consent=False,
+        reason="local_candidate_satisfies_threshold",
+        estimated_input_tokens=64,
+        estimated_output_tokens=192,
+        estimated_cost=0.0,
+    )
+    cloud_calls: list[CloudCompletionRequest] = []
+
+    def cloud_ok(request: CloudCompletionRequest) -> CloudCompletionResponse:
+        cloud_calls.append(request)
+        return CloudCompletionResponse(text="云端可用", raw={})
+
+    orchestrator, _conn = _routed_orch(
+        tmp_path,
+        decision=decision,
+        selected_type="local",
+        cloud_post=cloud_ok,
+    )
+    orchestrator.backend.generate = lambda **_kwargs: pytest.fail("不应调用本地后端")
+    orchestrator.backend_mode = "cloud_fallback"
+    orchestrator.local_available = False
+    orchestrator.cloud_available = True
+    orchestrator.privacy_mode = PrivacyMode.AUTO_ROUTE_CLOUD
+    orchestrator.cloud_model_provider = lambda: {
+        "id": "cloud-ready",
+        "endpoint": "https://example.test/v1/chat/completions",
+        "api_key": "secret",
+        "model_name": "cloud-model",
+    }
+
+    result = orchestrator.run_turn("你好", memory_on=False)
+
+    assert result.cloud_used is True
+    assert result.fallback_model is None
+    assert len(cloud_calls) == 1
+
+
+def test_local_failure_local_only_returns_no_backend_without_outbound(tmp_path) -> None:
+    decision = ModelRoutingDecision(
+        selected_model="deepseek-v4",
+        fallback_model=None,
+        requires_consent=False,
+        reason="cloud_candidate_selected",
+        estimated_input_tokens=64,
+        estimated_output_tokens=192,
+        estimated_cost=0.01,
+    )
+    cloud_calls: list[CloudCompletionRequest] = []
+    orchestrator, _conn = _routed_orch(
+        tmp_path,
+        decision=decision,
+        selected_type="cloud",
+        cloud_post=lambda request: cloud_calls.append(request),
+    )
+    orchestrator.backend.generate = lambda **_kwargs: pytest.fail("不应调用本地后端")
+    orchestrator.backend_mode = "no_backend"
+    orchestrator.local_available = False
+    orchestrator.cloud_available = True
+    orchestrator.privacy_mode = PrivacyMode.LOCAL_ONLY
+
+    result = orchestrator.run_turn("你好", memory_on=False)
+    stream = list(orchestrator.run_turn_stream("再试一次", memory_on=False))
+
+    assert result.route_mode == "none"
+    assert "LOCAL_ONLY" in str(result.reply)
+    assert stream[-1]["turn_result"].route_mode == "none"
+    assert cloud_calls == []

@@ -410,9 +410,7 @@ def create_llama_backend(
             model_config=model_config,
         )
         if run_health_check:
-            report = backend.health_check()
-            if not report.ok:
-                raise InferenceBackendError(report.message)
+            backend.start()
         return backend
 
     if run_health_check:

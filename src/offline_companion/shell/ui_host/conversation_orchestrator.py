@@ -91,6 +91,9 @@ class ConversationOrchestrator:
     cloud_model_provider: Callable[[], dict[str, Any] | None] | None = None
     pending_turns: dict[str, PendingRoutedTurn] = field(default_factory=dict)
     auto_mode_enabled: bool = False
+    backend_mode: str = "local"
+    local_available: bool = True
+    cloud_available: bool = False
     skill_decision_engine: SkillDecisionEngine | None = None
     tool_invoker: ToolInvoker | None = None
 
@@ -504,7 +507,11 @@ class ConversationOrchestrator:
         cloud_post: CloudPost,
         decision: ModelRoutingDecision,
     ) -> TurnResult:
-        route_mode = self._route_mode_for_model(decision.selected_model)
+        route_mode = (
+            "cloud"
+            if decision.reason == "local_backend_unavailable"
+            else self._route_mode_for_model(decision.selected_model)
+        )
         if route_mode != "cloud":
             return self._execute_local_prepared(prepared, decision=decision, route_mode=route_mode or "local")
         try:
@@ -517,7 +524,23 @@ class ConversationOrchestrator:
             )
         except (ReformatError, CloudConnectorError, Exception):
             if not decision.fallback_model:
-                raise
+                reply = "云端模型暂时不可用，本地模型也尚未恢复，请稍后重试。"
+                emotion = self._emotion_payload(prepared.chat_text)
+                self._append_assistant_message(
+                    reply,
+                    emotion=emotion,
+                    channel="no_backend",
+                    routing=self._routing_meta(decision, "cloud"),
+                    extra_meta={"had_cloud_raw": False},
+                )
+                return self._turn_result_with_route(
+                    reply=reply,
+                    prepared=prepared,
+                    decision=decision,
+                    route_mode="none",
+                    cloud_used=True,
+                    cloud_degraded=True,
+                )
             reply = self._local_fallback_reply(
                 prepared.chat_text,
                 memory_on=prepared.memory_on,
@@ -546,6 +569,65 @@ class ConversationOrchestrator:
         if self.model_router is None or not model_name:
             return None
         return self.model_router.model_type(model_name)
+
+    def _unavailable_backend_result(self, prepared: _PreparedTurn) -> TurnResult:
+        """摘要：本地不可用且不能安全使用云端时返回可见降级结果。"""
+        if self.privacy_mode is PrivacyMode.LOCAL_ONLY and self.cloud_available:
+            reply = "本地模型加载失败，当前 LOCAL_ONLY 隐私模式禁止切换到云端。"
+        elif not self.cloud_available:
+            reply = "本地模型加载失败，且未配置可用的云端模型。"
+        else:
+            reply = "当前没有可用的推理后端。"
+        emotion = self._emotion_payload(prepared.chat_text)
+        self._append_user_message(prepared.chat_text, emotion=emotion, channel="no_backend")
+        self._append_assistant_message(reply, emotion=emotion, channel="no_backend")
+        return TurnResult(
+            reply=reply,
+            memory_on=prepared.memory_on,
+            memory_saved=prepared.memory_saved,
+            memory_skipped_trigger=prepared.memory_skipped,
+            route_mode="none",
+            routing_reason="no_backend_available",
+        )
+
+    def _cloud_fallback_decision(self) -> ModelRoutingDecision | None:
+        """摘要：为本地启动失败场景构造不回退本地的云端路由决策。"""
+        cloud_model = self.cloud_model_provider() if self.cloud_model_provider is not None else None
+        if not self.cloud_available or not cloud_model:
+            return None
+        selected_model = str(
+            cloud_model.get("id") or cloud_model.get("model_name") or cloud_model.get("name") or "cloud"
+        )
+        return ModelRoutingDecision(
+            selected_model=selected_model,
+            fallback_model=None,
+            requires_consent=self.privacy_mode
+            in {PrivacyMode.ASK_BEFORE_CLOUD, PrivacyMode.ALWAYS_ASK},
+            reason="local_backend_unavailable",
+            estimated_input_tokens=0,
+            estimated_output_tokens=0,
+            estimated_cost=0.0,
+        )
+
+    def _run_without_local_backend(self, prepared: _PreparedTurn) -> TurnResult:
+        """摘要：绕过本地路由器，按隐私模式执行云端降级或无后端回复。"""
+        if self.backend_mode != "cloud_fallback" or self.privacy_mode is PrivacyMode.LOCAL_ONLY:
+            return self._unavailable_backend_result(prepared)
+        decision = self._cloud_fallback_decision()
+        if decision is None or self.cloud_post is None:
+            return self._unavailable_backend_result(prepared)
+        if decision.requires_consent:
+            return self._submit_routing_consent(
+                prepared,
+                decision,
+                purpose="Cloud fallback because local model failed to load",
+            )
+        return self._execute_cloud_with_fallback(
+            prepared,
+            purpose="Cloud fallback because local model failed to load",
+            cloud_post=self.cloud_post,
+            decision=decision,
+        )
 
     def _local_fallback_reply(self, chat_text: str, *, memory_on: bool, skill_prompt: str = "") -> str:
         emotion_context = self._classify_emotion(chat_text)
@@ -717,6 +799,8 @@ class ConversationOrchestrator:
         if early_result is not None:
             return early_result
         assert prepared is not None
+        if not self.local_available:
+            return self._run_without_local_backend(prepared)
         if self.model_router is None or self.cloud_post is None:
             return self._execute_local_prepared(prepared)
         decision = self.model_router.route(prepared.chat_text, privacy_mode=self.privacy_mode)
@@ -751,6 +835,9 @@ class ConversationOrchestrator:
             yield {"done": True, "turn_result": early_result}
             return
         assert prepared is not None
+        if not self.local_available:
+            yield {"done": True, "turn_result": self._run_without_local_backend(prepared)}
+            return
         if self.model_router is None or self.cloud_post is None:
             yield from self._execute_local_prepared_stream(prepared)
             return

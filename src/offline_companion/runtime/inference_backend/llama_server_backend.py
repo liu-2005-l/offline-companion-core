@@ -27,6 +27,10 @@ from offline_companion.shared.runtime_paths import data_root
 from offline_companion.shared.types import MessageRow, ModelRuntimeConfig
 
 
+class LlamaServerStartupError(InferenceBackendError):
+    """摘要：llama-server 子进程创建或就绪等待失败。"""
+
+
 def find_llama_server_exe() -> Path:
     """摘要：定位开发环境或 PyInstaller 目录中的 llama-server 可执行文件。
 
@@ -77,7 +81,7 @@ class LlamaServerBackend:
         n_gpu_layers: int = 0,
         verbose: bool = False,
         model_config: ModelRuntimeConfig | None = None,
-        startup_timeout: float = 120.0,
+        startup_timeout: float = 30.0,
         request_timeout: float = 180.0,
     ) -> None:
         """摘要：保存服务启动参数，首次健康检查或生成时再启动进程。
@@ -143,6 +147,9 @@ class LlamaServerBackend:
                 if restore_dll_directory:
                     ctypes.windll.kernel32.SetDllDirectoryW(restore_dll_directory)
             self._wait_until_ready()
+        except OSError as exc:
+            self.stop()
+            raise LlamaServerStartupError(f"llama-server 进程启动失败: {exc}") from exc
         except Exception:
             self.stop()
             raise
@@ -296,7 +303,7 @@ class LlamaServerBackend:
             process = self._process
             if process is None or process.poll() is not None:
                 return_code = None if process is None else process.returncode
-                raise InferenceBackendError(f"llama-server 提前退出，退出码: {return_code}")
+                raise LlamaServerStartupError(f"llama-server 提前退出，退出码: {return_code}")
             try:
                 with urllib.request.urlopen(f"{self._base_url}/health", timeout=2) as response:
                     if response.status == 200:
@@ -304,7 +311,7 @@ class LlamaServerBackend:
             except (urllib.error.URLError, TimeoutError, OSError):
                 pass
             time.sleep(0.25)
-        raise InferenceBackendError(f"llama-server 在 {self.startup_timeout:g} 秒内未就绪")
+        raise LlamaServerStartupError(f"llama-server 在 {self.startup_timeout:g} 秒内未就绪")
 
     def _post_json(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         request = urllib.request.Request(

@@ -1800,6 +1800,15 @@ async function loadRuntimeStatus() {
     window._loggedIn = !!data.logged_in;
     renderPrivacyMode(window._privacyMode);
     renderLoginState(window._loggedIn, data.account_name || 'local-user');
+    if (data.backend_mode === 'cloud_fallback') {
+      showToast('本地模型加载失败，已切换到云端模式');
+    } else if (data.backend_mode === 'no_backend') {
+      if (data.privacy_mode === 'local_only' && data.cloud_available) {
+        showToast('本地模型加载失败，LOCAL_ONLY 隐私模式阻止上云');
+      } else {
+        showToast('本地模型加载失败，且未配置可用的云端模型');
+      }
+    }
   } catch (error) {
     showToast('状态加载失败：' + error.message);
   }

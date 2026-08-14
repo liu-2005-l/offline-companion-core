@@ -155,6 +155,8 @@ def test_desktop_http_release_metadata(tmp_path) -> None:
     assert "function _handleAutoPlanEvent" in api_script.text
     assert "function _resumeAutoPlan" in api_script.text
     assert "model.type === 'cloud' && model.enabled" in api_script.text
+    assert "本地模型加载失败，已切换到云端模式" in api_script.text
+    assert "LOCAL_ONLY 隐私模式阻止上云" in api_script.text
 
     sse = client.get("/api/sse-test")
     assert sse.status_code == 200
@@ -174,6 +176,22 @@ def test_desktop_http_release_metadata(tmp_path) -> None:
     missing = client.get("/missing")
     assert missing.status_code == 404
     assert missing.get_json() == {"error": "not_found"}
+
+
+def test_desktop_status_exposes_backend_runtime_state(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    rt.backend_mode = "no_backend"
+    rt.local_available = False
+    rt.cloud_available = True
+    rt.local_error = "模型加载超时"
+    client = create_desktop_app(rt).test_client()
+
+    status = client.get("/api/status").get_json()
+
+    assert status["backend_mode"] == "no_backend"
+    assert status["local_available"] is False
+    assert status["cloud_available"] is True
+    assert status["local_error"] == "模型加载超时"
 
 
 def test_desktop_http_chat_and_clear(tmp_path) -> None:
@@ -547,6 +565,8 @@ def test_desktop_http_models_list_activate_and_auto(tmp_path, monkeypatch) -> No
     activated = client.post(f"/api/models/{model_id}/activate", json={"enabled": True, "name": "demo-model"})
     assert activated.status_code == 200
     assert activated.get_json()["active_model_id"] == model_id
+    settings = json.loads((tmp_path / "settings.json").read_text(encoding="utf-8"))
+    assert settings["active_model_id"] == model_id
 
     auto = client.post("/api/models/auto", json={"enabled": True})
     assert auto.status_code == 200

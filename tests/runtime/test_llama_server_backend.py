@@ -7,6 +7,7 @@ import pytest
 
 from offline_companion.runtime.inference_backend.llama_server_backend import (
     LlamaServerBackend,
+    LlamaServerStartupError,
     check_llama_server_model,
 )
 from offline_companion.shared.errors import InferenceBackendError
@@ -17,6 +18,53 @@ def _model_file(tmp_path: Path) -> Path:
     path = tmp_path / "model.gguf"
     path.write_bytes(b"GGUF")
     return path
+
+
+def test_startup_timeout_defaults_to_30_seconds(tmp_path: Path) -> None:
+    backend = LlamaServerBackend(_model_file(tmp_path))
+
+    assert backend.startup_timeout == 30.0
+
+
+def test_start_wraps_popen_oserror(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    backend = LlamaServerBackend(_model_file(tmp_path))
+    monkeypatch.setattr(
+        "offline_companion.runtime.inference_backend.llama_server_backend.find_llama_server_exe",
+        lambda: tmp_path / "llama-server.exe",
+    )
+
+    def fail_popen(*_args: object, **_kwargs: object) -> object:
+        raise OSError("cannot spawn")
+
+    monkeypatch.setattr("subprocess.Popen", fail_popen)
+
+    with pytest.raises(LlamaServerStartupError, match="进程启动失败"):
+        backend.start()
+
+
+def test_wait_until_ready_wraps_early_exit(tmp_path: Path) -> None:
+    backend = LlamaServerBackend(_model_file(tmp_path))
+
+    class _ExitedProcess:
+        returncode = 9
+
+        def poll(self) -> int:
+            return self.returncode
+
+    backend._process = _ExitedProcess()  # type: ignore[assignment]
+
+    with pytest.raises(LlamaServerStartupError, match="提前退出.*9"):
+        backend._wait_until_ready()
+
+
+def test_wait_until_ready_wraps_timeout(tmp_path: Path) -> None:
+    backend = LlamaServerBackend(_model_file(tmp_path), startup_timeout=0)
+
+    with pytest.raises(LlamaServerStartupError, match="0 秒内未就绪"):
+        backend._wait_until_ready()
 
 
 def test_generate_posts_openai_messages(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

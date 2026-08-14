@@ -27,6 +27,11 @@ class DesktopRuntime:
     model_label: str
     triggers: TriggerRegistry
     paths: AppPaths
+    backend_mode: str = "local"
+    local_available: bool = True
+    cloud_available: bool = False
+    local_error: str | None = None
+    active_cloud_model_id: str | None = None
     socket_guard_enabled: bool = False
     plan_orchestrator: PlanOrchestrator | None = None
     auto_turn_orchestrator: AutoTurnOrchestrator | None = None
@@ -44,6 +49,11 @@ class DesktopRuntime:
             persona_name=bundle.persona_name,
             privacy_mode=bundle.privacy_mode,
             model_label=bundle.model_label,
+            backend_mode=bundle.backend_mode,
+            local_available=bundle.local_available,
+            cloud_available=bundle.cloud_available,
+            local_error=bundle.local_error,
+            active_cloud_model_id=bundle.active_cloud_model_id,
             triggers=TriggerRegistry(version=1, path=bundle.paths.root / "triggers.yaml", enabled={"on_summarize_request": False, "on_explicit_save": True, "on_emotion_shift": False}),
             paths=bundle.paths,
             plan_orchestrator=bundle.plan_orchestrator,

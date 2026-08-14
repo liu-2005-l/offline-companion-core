@@ -159,11 +159,49 @@ def create_desktop_app(runtime: DesktopRuntime):
             runtime.idle_detector.start()
         else:
             runtime.idle_detector.stop()
-    model_state: dict[str, Any] = {"auto": bool(settings_state.get("auto_router_enabled", False))}
+    active_model_id = str(
+        settings_state.get("active_model_id") or runtime.active_cloud_model_id or ""
+    ).strip()
+    model_state: dict[str, Any] = {
+        "auto": bool(settings_state.get("auto_router_enabled", False)),
+        "active": active_model_id or None,
+    }
     runtime.orchestrator.auto_mode_enabled = bool(model_state["auto"])
-    runtime.orchestrator.cloud_model_provider = lambda: get_cloud_model(
-        runtime.paths.root, str(model_state.get("active") or "")
-    )
+    bootstrap_cloud_model_provider = runtime.orchestrator.cloud_model_provider
+
+    def current_cloud_model() -> dict[str, Any] | None:
+        """摘要：返回当前激活云模型，缺失时保留启动期云配置。"""
+        active = get_cloud_model(runtime.paths.root, str(model_state.get("active") or ""))
+        if active is not None:
+            return active
+        return bootstrap_cloud_model_provider() if bootstrap_cloud_model_provider is not None else None
+
+    def sync_backend_mode() -> None:
+        """摘要：按隐私模式同步本地加载失败后的运行模式。"""
+        if runtime.local_available:
+            mode = "local"
+        elif runtime.cloud_available and runtime.privacy_mode is not PrivacyMode.LOCAL_ONLY:
+            mode = "cloud_fallback"
+        else:
+            mode = "no_backend"
+        runtime.backend_mode = mode
+        runtime.orchestrator.backend_mode = mode
+        runtime.orchestrator.local_available = runtime.local_available
+        runtime.orchestrator.cloud_available = runtime.cloud_available
+
+    def set_active_model(model_id: str | None) -> None:
+        """摘要：更新并持久化当前激活模型 ID。"""
+        model_state["active"] = model_id
+        update_settings(runtime.paths.root, {"active_model_id": model_id})
+
+    runtime.orchestrator.cloud_model_provider = current_cloud_model
+    configured_cloud_model = current_cloud_model()
+    if configured_cloud_model is not None and all(
+        str(configured_cloud_model.get(key) or "").strip()
+        for key in ("endpoint", "model_name", "api_key")
+    ):
+        runtime.cloud_available = True
+    sync_backend_mode()
     model_lock = threading.Lock()
     extension_state: dict[str, bool] = init_extension_status(runtime.paths.root, runtime.paths.db_path)
     persisted_persona = active_persona(runtime.orchestrator.conn)
@@ -283,6 +321,10 @@ def create_desktop_app(runtime: DesktopRuntime):
                 "persona_name": runtime.persona_name,
                 "privacy_mode": runtime.privacy_mode.value,
                 "model_label": runtime.model_label,
+                "backend_mode": runtime.backend_mode,
+                "local_available": runtime.local_available,
+                "cloud_available": runtime.cloud_available,
+                "local_error": runtime.local_error,
                 "logged_in": bool(getattr(runtime, "logged_in", False)),
                 "socket_guard_enabled": bool(getattr(runtime, "socket_guard_enabled", False)),
             },
@@ -324,6 +366,7 @@ def create_desktop_app(runtime: DesktopRuntime):
         if mode is not None:
             runtime.privacy_mode = mode
             runtime.orchestrator.privacy_mode = mode
+            sync_backend_mode()
         runtime.improve_plan_enabled = bool(saved.get("improve_plan_enabled", False))
         runtime.memory_on = bool(saved.get("memory_enabled", runtime.memory_on))
         if runtime.idle_detector is not None:
@@ -459,6 +502,7 @@ def create_desktop_app(runtime: DesktopRuntime):
             return _json_response(jsonify, {"error": "invalid privacy mode"}, status=400)
         runtime.privacy_mode = mode
         runtime.orchestrator.privacy_mode = mode
+        sync_backend_mode()
         runtime.socket_guard_enabled = apply_privacy_socket_guard(mode is PrivacyMode.LOCAL_ONLY)
         update_settings(runtime.paths.root, {"privacy_mode": mode.value})
         return _json_response(
@@ -602,7 +646,7 @@ def create_desktop_app(runtime: DesktopRuntime):
         if not delete_cloud_model(runtime.paths.root, model_id):
             return _json_response(jsonify, {"error": "not_found"}, status=404)
         if model_state.get("active") == model_id:
-            model_state["active"] = None
+            set_active_model(None)
         return _json_response(jsonify, {"ok": True, "deleted": model_id})
 
     @app.post("/api/models/<model_id>/activate")
@@ -618,7 +662,7 @@ def create_desktop_app(runtime: DesktopRuntime):
             model = _find_model_descriptor(model_id, runtime)
             if model is None:
                 if model_id == runtime.model_label:
-                    model_state["active"] = model_id
+                    set_active_model(model_id)
                     return _json_response(
                         jsonify,
                         {"ok": True, "active_model_id": model_state.get("active"), "enabled": True, "reloaded": False},
@@ -627,7 +671,8 @@ def create_desktop_app(runtime: DesktopRuntime):
             payload = _model_payload(model, runtime, model_state)
             if payload["type"] == "cloud":
                 # 切到云端模型时有意保留本地 backend 常驻，便于快速切回本地模型。
-                model_state["active"] = model_id
+                set_active_model(model_id)
+                runtime.active_cloud_model_id = model_id
                 runtime.model_label = str(data.get("name") or payload["name"])
                 return _json_response(
                     jsonify,
@@ -647,13 +692,16 @@ def create_desktop_app(runtime: DesktopRuntime):
             except (InferenceBackendError, OSError, RuntimeError) as exc:
                 return _json_response(jsonify, {"error": "model_reload_failed", "detail": str(exc)}, status=500)
             runtime.orchestrator.backend = new_backend
+            runtime.local_available = True
+            runtime.local_error = None
+            sync_backend_mode()
             stop = getattr(old_backend, "stop", None)
             if callable(stop):
                 try:
                     stop()
                 except Exception:
                     logger.warning("old backend stop failed after model swap", exc_info=True)
-            model_state["active"] = model_id
+            set_active_model(model_id)
             runtime.model_label = str(data.get("name") or payload["name"])
             return _json_response(
                 jsonify,
