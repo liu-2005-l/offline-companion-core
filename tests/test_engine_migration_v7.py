@@ -69,7 +69,7 @@ def test_engine_migrates_v6_to_current_schema(tmp_path: Path) -> None:
 
     conn = connect(db_path)
     version = conn.execute("SELECT value FROM meta WHERE key = 'schema_version';").fetchone()[0]
-    assert int(version) == 10
+    assert int(version) == 11
 
     table_names = {
         row[0]
@@ -83,12 +83,18 @@ def test_engine_migrates_v6_to_current_schema(tmp_path: Path) -> None:
         "personas",
         "plans",
         "plan_steps",
+        "stream_events",
     } <= table_names
     job_task_columns = {
         row[1]
         for row in conn.execute("PRAGMA table_info(job_tasks);").fetchall()
     }
     assert "error" in job_task_columns
+    message_columns = {
+        row[1]
+        for row in conn.execute("PRAGMA table_info(messages);").fetchall()
+    }
+    assert "status" in message_columns
 
     session_count = conn.execute("SELECT COUNT(*) FROM sessions;").fetchone()[0]
     message_count = conn.execute("SELECT COUNT(*) FROM messages;").fetchone()[0]

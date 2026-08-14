@@ -39,6 +39,12 @@ class _StubRouter:
         return self.selected_type
 
 
+class _FailingStreamBackend(EchoBackend):
+    def generate_stream(self, **_kwargs):
+        yield "半条回复"
+        raise RuntimeError("stream failed")
+
+
 def _orch(tmp_path, db_name: str = "o.db") -> tuple[ConversationOrchestrator, object]:
     conn = connect(tmp_path / db_name)
     persona = load_persona_file(Path(__file__).resolve().parents[1] / "configs" / "personas" / "default.yaml")
@@ -76,6 +82,38 @@ def test_orchestrator_safety_block(tmp_path) -> None:
     assert result.safety_tier == SafetyTier.CRISIS_SELF.value
     row = conn.execute("SELECT role, content FROM messages ORDER BY id DESC LIMIT 1;").fetchone()
     assert row["role"] == "assistant"
+
+
+def test_stream_close_persists_partial_assistant_message(tmp_path) -> None:
+    orchestrator, conn = _orch(tmp_path)
+    stream = orchestrator.run_turn_stream("测试断连", memory_on=False)
+
+    assert next(stream) == {"recall": 0}
+    assert next(stream)["token"]
+    stream.close()
+
+    row = conn.execute(
+        "SELECT role, content, status, meta_json FROM messages ORDER BY id DESC LIMIT 1;"
+    ).fetchone()
+    assert row["role"] == "assistant"
+    assert "测试断连" in row["content"]
+    assert row["status"] == "partial"
+    assert "stream_interrupted" in row["meta_json"]
+
+
+def test_stream_error_persists_error_assistant_message(tmp_path) -> None:
+    orchestrator, conn = _orch(tmp_path)
+    orchestrator.backend = _FailingStreamBackend("failing")
+
+    with pytest.raises(RuntimeError, match="stream failed"):
+        list(orchestrator.run_turn_stream("测试异常", memory_on=False))
+
+    row = conn.execute(
+        "SELECT role, content, status FROM messages ORDER BY id DESC LIMIT 1;"
+    ).fetchone()
+    assert row["role"] == "assistant"
+    assert row["content"] == "半条回复"
+    assert row["status"] == "error"
 
 
 def test_orchestrator_remember_and_chat(tmp_path) -> None:

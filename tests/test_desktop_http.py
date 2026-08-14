@@ -23,6 +23,7 @@ from offline_companion.core.safety_boundary.classifier import SafetyTier
 from offline_companion.runtime.inference_backend.mock import EchoBackend
 from offline_companion.runtime.storage_index.engine import (
     append_message,
+    append_stream_event,
     connect,
     new_session,
     recent_messages,
@@ -157,6 +158,8 @@ def test_desktop_http_release_metadata(tmp_path) -> None:
     assert "model.type === 'cloud' && model.enabled" in api_script.text
     assert "本地模型加载失败，已切换到云端模式" in api_script.text
     assert "LOCAL_ONLY 隐私模式阻止上云" in api_script.text
+    assert "SSE_MAX_RECONNECT = 3" in api_script.text
+    assert "回复因连接中断未完成" in api_script.text
 
     sse = client.get("/api/sse-test")
     assert sse.status_code == 200
@@ -233,13 +236,58 @@ def test_desktop_http_chat_stream_returns_sse_events(tmp_path) -> None:
     assert response.headers["X-Accel-Buffering"] == "no"
     assert "Connection" not in response.headers
     events = _sse_payloads(response.text)
-    assert events[0] == {"recall": 0}
+    assert events[0]["recall"] == 0
+    assert events[0]["seq"] > 0
     assert [event["token"] for event in events if "token" in event] == ["A", "B"]
     assert events[-1]["done"] is True
     assert events[-1]["reply"] == "AB"
     assert events[-1]["message_id"]
     assert events[-1]["memory_recall_count"] == 0
     assert len(recent_messages(rt.orchestrator.conn, "h1", limit=10)) >= 2
+    status = rt.orchestrator.conn.execute(
+        "SELECT status FROM messages WHERE role = 'assistant' ORDER BY id DESC LIMIT 1;"
+    ).fetchone()["status"]
+    assert status == "completed"
+
+
+def test_desktop_http_stream_disconnect_persists_partial_and_replays_events(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    rt.orchestrator.backend = _SplitStreamBackend("split")
+    client = create_desktop_app(rt).test_client()
+    response = client.post(
+        "/api/chat",
+        json={"message": "disconnect", "stream": True},
+        buffered=False,
+    )
+    chunks = iter(response.response)
+
+    recall_event = _sse_payloads(next(chunks).decode("utf-8"))[0]
+    token_event = _sse_payloads(next(chunks).decode("utf-8"))[0]
+    response.close()
+
+    partial = rt.orchestrator.conn.execute(
+        "SELECT content, status FROM messages WHERE role = 'assistant' ORDER BY id DESC LIMIT 1;"
+    ).fetchone()
+    replay = client.get(
+        f"/api/sessions/h1/events?from_seq={recall_event['seq']}"
+    ).get_json()
+    assert token_event["token"] == "A"
+    assert partial["content"] == "A"
+    assert partial["status"] == "partial"
+    assert replay["events"] == [token_event]
+    assert replay["latest_seq"] == token_event["seq"]
+
+
+def test_desktop_http_events_endpoint_filters_by_sequence(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    first = append_stream_event(rt.orchestrator.conn, "h1", {"token": "A"})
+    second = append_stream_event(rt.orchestrator.conn, "h1", {"token": "B"})
+    client = create_desktop_app(rt).test_client()
+
+    payload = client.get(f"/api/sessions/h1/events?from_seq={first['seq']}").get_json()
+
+    assert payload["events"] == [second]
+    assert payload["latest_seq"] == second["seq"]
 
 
 def test_desktop_http_chat_stream_safety_returns_single_done(tmp_path) -> None:

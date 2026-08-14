@@ -677,6 +677,13 @@ async function apiReadSseStream(resp, onEvent) {
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let latestSeq = 0;
+  let done = false;
+  const consumeEvent = function(event) {
+    if (event.seq) latestSeq = Math.max(latestSeq, Number(event.seq) || 0);
+    if (event.done) done = true;
+    onEvent(event);
+  };
   while (true) {
     const result = await reader.read();
     if (result.done) break;
@@ -687,12 +694,36 @@ async function apiReadSseStream(resp, onEvent) {
       part.split('\n').forEach(function(line) {
         if (!line.startsWith('data:')) return;
         const raw = line.slice(5).trim();
-        if (raw) onEvent(JSON.parse(raw));
+        if (raw) consumeEvent(JSON.parse(raw));
       });
     });
   }
   const rest = buffer.trim();
-  if (rest.startsWith('data:')) onEvent(JSON.parse(rest.slice(5).trim()));
+  if (rest.startsWith('data:')) consumeEvent(JSON.parse(rest.slice(5).trim()));
+  return { done: done, latestSeq: latestSeq };
+}
+
+const SSE_MAX_RECONNECT = 3;
+
+async function apiRepairSseGap(sessionId, fromSeq, onEvent) {
+  let latestSeq = Number(fromSeq) || 0;
+  for (let attempt = 1; attempt <= SSE_MAX_RECONNECT; attempt++) {
+    const data = await apiJson(
+      '/api/sessions/' + encodeURIComponent(sessionId) + '/events?from_seq=' + latestSeq
+    );
+    let done = false;
+    (data.events || []).forEach(function(event) {
+      latestSeq = Math.max(latestSeq, Number(event.seq) || 0);
+      if (event.done) done = true;
+      onEvent(event);
+    });
+    latestSeq = Math.max(latestSeq, Number(data.latest_seq) || 0);
+    if (done) return { done: true, latestSeq: latestSeq };
+    if (attempt < SSE_MAX_RECONNECT) {
+      await new Promise(function(resolve) { setTimeout(resolve, Math.min(attempt * 1000, 5000)); });
+    }
+  }
+  return { done: false, latestSeq: latestSeq };
 }
 
 async function sendMessage() {
@@ -758,7 +789,9 @@ async function sendMessage() {
     const bubble = window._autoRouterEnabled ? null : apiCreateStreamingMessage(nextIdx + 1);
     let finalData = null;
     let streamedText = '';
-    await apiReadSseStream(resp, function(event) {
+    let lastStreamSeq = 0;
+    const handleStreamEvent = function(event) {
+      if (event.seq) lastStreamSeq = Math.max(lastStreamSeq, Number(event.seq) || 0);
       if (_handleAutoPlanEvent(event, nextIdx + 1)) {
         if (event.done) finalData = event;
         return;
@@ -771,7 +804,20 @@ async function sendMessage() {
         chat.scrollTop = chat.scrollHeight;
       }
       if (event.done) finalData = event;
-    });
+    };
+    let streamState;
+    try {
+      streamState = await apiReadSseStream(resp, handleStreamEvent);
+      lastStreamSeq = Math.max(lastStreamSeq, streamState.latestSeq || 0);
+    } catch (streamError) {
+      const repaired = await apiRepairSseGap(_currentSessionId, lastStreamSeq, handleStreamEvent);
+      if (!repaired.done) throw streamError;
+      streamState = repaired;
+    }
+    if (!streamState.done) {
+      const repaired = await apiRepairSseGap(_currentSessionId, lastStreamSeq, handleStreamEvent);
+      if (!repaired.done) throw new Error('流式连接中断，已保留未完成回复');
+    }
     if (finalData && finalData.type === PLAN_EVENTS.PLAN_COMPLETE) {
       _finalizeAutoPlan(finalData);
     } else if (finalData && finalData.type === PLAN_EVENTS.PLAN_FAILED) {
@@ -800,7 +846,10 @@ function renderChatHistory(messages) {
   if (!chat) return;
   let html = '<div class="msg msg-system"><div class="msg-bubble">会话已加载 · 本地记忆可用</div></div>';
   (messages || []).forEach(function(msg) {
-    html += apiRenderMessage(msg.role === 'assistant' ? 'assistant' : msg.role, msg.content, msg.msg_idx, msg.created_at, '', msg.id);
+    const suffix = msg.status === 'partial' ? '（回复因连接中断未完成）' :
+      (msg.status === 'error' ? '（回复生成异常，内容未完成）' : '');
+    const content = suffix ? (msg.content + '\n' + suffix) : msg.content;
+    html += apiRenderMessage(msg.role === 'assistant' ? 'assistant' : msg.role, content, msg.msg_idx, msg.created_at, '', msg.id);
   });
   chat.innerHTML = html;
   apiEnsureTypingNode();

@@ -270,6 +270,7 @@ class ConversationOrchestrator:
         channel: str,
         routing: dict[str, Any] | None = None,
         extra_meta: dict[str, Any] | None = None,
+        status: str = "completed",
     ) -> None:
         meta: dict[str, Any] = {"channel": channel, "emotion": emotion.meta}
         if routing is not None:
@@ -283,6 +284,7 @@ class ConversationOrchestrator:
             reply,
             meta=meta,
             emotion=emotion.label,
+            status=status,
         )
 
     def _routing_meta(self, decision: ModelRoutingDecision, route_mode: str) -> dict[str, Any]:
@@ -397,7 +399,7 @@ class ConversationOrchestrator:
         decision: ModelRoutingDecision | None = None,
         route_mode: str = "local",
     ) -> Iterator[dict[str, Any]]:
-        """摘要：执行本地单轮流式回复；断连时不落 assistant partial。"""
+        """摘要：执行本地流式回复，并在断连或异常时保存 assistant partial。"""
         emotion = self._emotion_payload(prepared.chat_text)
         routing = self._routing_meta(decision, route_mode) if decision is not None else None
         self._append_user_message(prepared.chat_text, emotion=emotion, channel=route_mode, routing=routing)
@@ -405,55 +407,80 @@ class ConversationOrchestrator:
         history_for_model = history[:-1] if history and history[-1].role == "user" else history
         raw_parts: list[str] = []
         recalls: list[Any] = []
-        for event in self.session_core.assemble_reply_stream(
-            self.backend,
-            self.conn,
-            user_message=prepared.chat_text,
-            history=history_for_model,
-            memory_enabled=prepared.memory_on,
-            max_tokens=self.max_tokens,
-            emotion_context=emotion.context,
-            capability_profile=self._local_capability_profile(),
-            skill_prompt=prepared.skill_prompt,
-        ):
-            if event.get("token") is not None:
-                raw_parts.append(str(event["token"]))
-            if event.get("done"):
-                recalls = list(event.get("memory_recalls") or [])
-                continue
-            yield event
-        final_reply = reformat_local_reply(
-            "".join(raw_parts),
-            emotion_context=emotion.context,
-            capability_profile=self._local_capability_profile(),
-        )
-        self._append_assistant_message(
-            final_reply,
-            emotion=emotion,
-            channel=route_mode,
-            routing=routing,
-            extra_meta={"reformatted": True},
-        )
-        explanation = get_memory_explanation(recalls) if prepared.memory_on and recalls else None
-        if decision is None:
-            result = TurnResult(
-                reply=final_reply,
-                memory_on=prepared.memory_on,
-                memory_saved=prepared.memory_saved,
-                memory_skipped_trigger=prepared.memory_skipped,
-                memory_recalls=tuple(recalls),
-                memory_explanation=explanation,
+        assistant_persisted = False
+        try:
+            for event in self.session_core.assemble_reply_stream(
+                self.backend,
+                self.conn,
+                user_message=prepared.chat_text,
+                history=history_for_model,
+                memory_enabled=prepared.memory_on,
+                max_tokens=self.max_tokens,
+                emotion_context=emotion.context,
+                capability_profile=self._local_capability_profile(),
+                skill_prompt=prepared.skill_prompt,
+            ):
+                if event.get("token") is not None:
+                    raw_parts.append(str(event["token"]))
+                if event.get("done"):
+                    recalls = list(event.get("memory_recalls") or [])
+                    continue
+                yield event
+            final_reply = reformat_local_reply(
+                "".join(raw_parts),
+                emotion_context=emotion.context,
+                capability_profile=self._local_capability_profile(),
             )
-        else:
-            result = self._turn_result_with_route(
-                reply=final_reply,
-                prepared=prepared,
-                decision=decision,
-                route_mode=route_mode,
-                memory_recalls=tuple(recalls),
-                memory_explanation=explanation,
+            self._append_assistant_message(
+                final_reply,
+                emotion=emotion,
+                channel=route_mode,
+                routing=routing,
+                extra_meta={"reformatted": True},
             )
-        yield {"done": True, "turn_result": result}
+            assistant_persisted = True
+            explanation = get_memory_explanation(recalls) if prepared.memory_on and recalls else None
+            if decision is None:
+                result = TurnResult(
+                    reply=final_reply,
+                    memory_on=prepared.memory_on,
+                    memory_saved=prepared.memory_saved,
+                    memory_skipped_trigger=prepared.memory_skipped,
+                    memory_recalls=tuple(recalls),
+                    memory_explanation=explanation,
+                )
+            else:
+                result = self._turn_result_with_route(
+                    reply=final_reply,
+                    prepared=prepared,
+                    decision=decision,
+                    route_mode=route_mode,
+                    memory_recalls=tuple(recalls),
+                    memory_explanation=explanation,
+                )
+            yield {"done": True, "turn_result": result}
+        except GeneratorExit:
+            if raw_parts and not assistant_persisted:
+                self._append_assistant_message(
+                    "".join(raw_parts),
+                    emotion=emotion,
+                    channel=route_mode,
+                    routing=routing,
+                    extra_meta={"stream_interrupted": True},
+                    status="partial",
+                )
+            raise
+        except Exception:
+            if raw_parts and not assistant_persisted:
+                self._append_assistant_message(
+                    "".join(raw_parts),
+                    emotion=emotion,
+                    channel=route_mode,
+                    routing=routing,
+                    extra_meta={"stream_interrupted": True},
+                    status="error",
+                )
+            raise
 
     def _execute_cloud_once(
         self,

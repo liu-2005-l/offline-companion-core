@@ -10,7 +10,7 @@ from typing import Any
 
 from offline_companion.shared.types import MessageRow
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -68,6 +68,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if version < 10:
         _init_v10(conn)
         version = 10
+    if version < 11:
+        _init_v11(conn)
+        version = 11
     conn.execute(
         "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
@@ -348,6 +351,25 @@ def _init_v10(conn: sqlite3.Connection) -> None:
     )
 
 
+def _init_v11(conn: sqlite3.Connection) -> None:
+    """摘要：增加消息完成状态与可按序重放的 SSE 事件。"""
+    message_columns = {row[1] for row in conn.execute("PRAGMA table_info(messages);").fetchall()}
+    if "status" not in message_columns:
+        conn.execute("ALTER TABLE messages ADD COLUMN status TEXT NOT NULL DEFAULT 'completed';")
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS stream_events (
+            seq INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+            event_json TEXT NOT NULL,
+            created_at REAL NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_stream_events_session_seq
+            ON stream_events(session_id, seq);
+        """
+    )
+
+
 def new_session(conn: sqlite3.Connection, session_id: str, persona_id: str, title: str | None) -> None:
     now = time.time()
     conn.execute(
@@ -367,11 +389,13 @@ def append_message(
     content: str,
     meta: dict[str, Any] | None = None,
     emotion: str | None = None,
+    status: str = "completed",
 ) -> int:
+    """摘要：追加会话消息，并记录 completed、partial 或 error 状态。"""
     message_id = conn.execute(
-        "INSERT INTO messages(session_id, role, content, emotion, created_at, meta_json) "
-        "VALUES(?,?,?,?,?,?);",
-        (session_id, role, content, emotion, time.time(), json.dumps(meta or {})),
+        "INSERT INTO messages(session_id, role, content, emotion, created_at, meta_json, status) "
+        "VALUES(?,?,?,?,?,?,?);",
+        (session_id, role, content, emotion, time.time(), json.dumps(meta or {}), status),
     ).lastrowid
     assert message_id is not None
     touch_session(conn, session_id)
@@ -380,8 +404,53 @@ def append_message(
 
 def clear_session_messages(conn: sqlite3.Connection, session_id: str) -> int:
     cursor = conn.execute("DELETE FROM messages WHERE session_id = ?;", (session_id,))
+    conn.execute("DELETE FROM stream_events WHERE session_id = ?;", (session_id,))
     touch_session(conn, session_id)
     return int(cursor.rowcount)
+
+
+def append_stream_event(
+    conn: sqlite3.Connection,
+    session_id: str,
+    event: dict[str, Any],
+) -> dict[str, Any]:
+    """摘要：持久化一条 SSE 事件并返回带全局递增序号的副本。"""
+    payload = dict(event)
+    cursor = conn.execute(
+        "INSERT INTO stream_events(session_id, event_json, created_at) VALUES(?,?,?);",
+        (session_id, json.dumps(payload, ensure_ascii=False), time.time()),
+    )
+    assert cursor.lastrowid is not None
+    payload["seq"] = int(cursor.lastrowid)
+    return payload
+
+
+def stream_events_after(
+    conn: sqlite3.Connection,
+    session_id: str,
+    from_seq: int = 0,
+) -> list[dict[str, Any]]:
+    """摘要：读取指定会话中序号大于 from_seq 的 SSE 事件。"""
+    rows = conn.execute(
+        "SELECT seq, event_json FROM stream_events WHERE session_id = ? AND seq > ? ORDER BY seq ASC;",
+        (session_id, int(from_seq)),
+    ).fetchall()
+    events: list[dict[str, Any]] = []
+    for row in rows:
+        event = json.loads(row["event_json"])
+        if isinstance(event, dict):
+            event["seq"] = int(row["seq"])
+            events.append(event)
+    return events
+
+
+def latest_stream_event_seq(conn: sqlite3.Connection, session_id: str) -> int:
+    """摘要：返回指定会话当前最新 SSE 事件序号。"""
+    row = conn.execute(
+        "SELECT MAX(seq) AS latest_seq FROM stream_events WHERE session_id = ?;",
+        (session_id,),
+    ).fetchone()
+    return int(row["latest_seq"] or 0) if row is not None else 0
 
 
 def recent_messages(conn: sqlite3.Connection, session_id: str, limit: int) -> list[MessageRow]:

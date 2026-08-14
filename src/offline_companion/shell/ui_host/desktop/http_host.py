@@ -43,7 +43,13 @@ from offline_companion.core.skill_execution_tracker import SkillExecutionTracker
 from offline_companion.core.state_manager import StateManager
 from offline_companion.core.subagent_scheduler import SubagentScheduler
 from offline_companion.runtime.inference_backend import create_llama_backend
-from offline_companion.runtime.storage_index.engine import append_message, clear_session_messages
+from offline_companion.runtime.storage_index.engine import (
+    append_message,
+    append_stream_event,
+    clear_session_messages,
+    latest_stream_event_seq,
+    stream_events_after,
+)
 from offline_companion.shared.errors import (
     InferenceBackendError,
     SkillInvocationError,
@@ -956,7 +962,7 @@ def create_desktop_app(runtime: DesktopRuntime):
     def session_messages(session_id: str):
         rows = runtime.orchestrator.conn.execute(
             """
-            SELECT id, role, content, emotion, created_at, meta_json
+            SELECT id, role, content, emotion, created_at, meta_json, status
             FROM messages
             WHERE session_id = ?
             ORDER BY id ASC;
@@ -973,10 +979,25 @@ def create_desktop_app(runtime: DesktopRuntime):
                 "emotion": row["emotion"],
                 "created_at": row["created_at"],
                 "meta": _loads_json(row["meta_json"]),
+                "status": row["status"],
             }
             for msg_idx, row in enumerate(rows)
         ]
         return _json_response(jsonify, {"session_id": session_id, "items": items, "total": len(items)})
+
+    @app.get("/api/sessions/<session_id>/events")
+    def session_events(session_id: str):
+        """摘要：返回指定序号之后的持久化 SSE 事件，供断线缺口修复。"""
+        from_seq = max(0, request.args.get("from_seq", default=0, type=int) or 0)
+        events = stream_events_after(runtime.orchestrator.conn, session_id, from_seq)
+        return _json_response(
+            jsonify,
+            {
+                "session_id": session_id,
+                "events": events,
+                "latest_seq": latest_stream_event_seq(runtime.orchestrator.conn, session_id),
+            },
+        )
 
     @app.post("/api/plan/decompose")
     def decompose_plan():
@@ -1173,11 +1194,21 @@ def create_desktop_app(runtime: DesktopRuntime):
             message = str(data.get("message", ""))
 
             def generate():
+                stream = process_chat_message_stream(runtime, message)
                 try:
-                    for event in process_chat_message_stream(runtime, message):
-                        yield _sse_event(event)
+                    for event in stream:
+                        persisted_event = append_stream_event(
+                            runtime.orchestrator.conn,
+                            runtime.session_id,
+                            event,
+                        )
+                        yield _sse_event(persisted_event)
+                except GeneratorExit:
+                    raise
                 except Exception as exc:
-                    yield _sse_event(
+                    error_event = append_stream_event(
+                        runtime.orchestrator.conn,
+                        runtime.session_id,
                         {
                             "done": True,
                             "error": str(exc),
@@ -1185,9 +1216,11 @@ def create_desktop_app(runtime: DesktopRuntime):
                             "blocked": False,
                             "memory_saved": [],
                             "memory_recall_count": 0,
-                        }
+                        },
                     )
+                    yield _sse_event(error_event)
                 finally:
+                    stream.close()
                     model_lock.release()
 
             return _sse_response(Response, generate())
