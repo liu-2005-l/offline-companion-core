@@ -33,6 +33,7 @@ class DesktopRuntime:
     local_error: str | None = None
     active_cloud_model_id: str | None = None
     repaired_state_files: tuple[str, ...] = ()
+    pending_crash_log: str | None = None
     socket_guard_enabled: bool = False
     plan_orchestrator: PlanOrchestrator | None = None
     auto_turn_orchestrator: AutoTurnOrchestrator | None = None

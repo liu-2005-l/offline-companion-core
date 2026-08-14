@@ -15,6 +15,12 @@ from offline_companion.shell.ui_host.bootstrap import (
     bootstrap_ui_session_or_exit,
     resolve_app_paths,
 )
+from offline_companion.shell.ui_host.desktop.crash_reporting import (
+    check_previous_crash,
+    mark_app_started,
+    mark_app_stopped,
+    setup_crash_handler,
+)
 from offline_companion.shell.ui_host.desktop.http_host import start_desktop_http
 from offline_companion.shell.ui_host.desktop.instance_ipc import (
     remove_pid_file,
@@ -171,8 +177,16 @@ def run_desktop(args: argparse.Namespace) -> int:
         )
         return 0
 
-    bundle = bootstrap_ui_session_or_exit(args, session_title="Desktop")
+    previous_crash = check_previous_crash(paths.root)
+    setup_crash_handler(paths.root)
+    mark_app_started(paths.root)
+    try:
+        bundle = bootstrap_ui_session_or_exit(args, session_title="Desktop")
+    except SystemExit:
+        mark_app_stopped(paths.root)
+        raise
     runtime = DesktopRuntime.from_bundle(bundle)
+    runtime.pending_crash_log = str(previous_crash.path) if previous_crash is not None else None
     http = start_desktop_http(runtime)
     time.sleep(0.3)
     load_url = f"http://{_ALLOWED_HOST}:{http.port}/"
@@ -201,6 +215,7 @@ def run_desktop(args: argparse.Namespace) -> int:
         is_quitting = True
         remove_pid_file(data_root)
         _shutdown_runtime(bundle)
+        mark_app_stopped(data_root)
         if tray_icon is not None:
             try:
                 tray_icon.stop()
@@ -353,7 +368,10 @@ def run_desktop(args: argparse.Namespace) -> int:
         f"{'开' if tray_ready else '关'}）",
         file=sys.stderr,
     )
-    webview.start(debug=False)
+    try:
+        webview.start(debug=False)
+    finally:
+        begin_quit()
     return 0
 
 

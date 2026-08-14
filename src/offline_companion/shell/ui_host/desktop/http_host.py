@@ -70,6 +70,7 @@ from offline_companion.shell.skill_manager.extension_manager import (
 )
 from offline_companion.shell.skill_manager.registry import load_installed_manifests
 from offline_companion.shell.skill_router import SkillDecisionEngine, load_skill_descriptions
+from offline_companion.shell.ui_host.desktop.crash_reporting import archive_crash_report
 from offline_companion.shell.ui_host.desktop.privacy_socket_guard import apply_privacy_socket_guard
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
 from offline_companion.shell.ui_host.model_registry import (
@@ -225,6 +226,32 @@ def create_desktop_app(runtime: DesktopRuntime):
     logging.getLogger("PIL").setLevel(logging.WARNING)
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
+    def pending_crash_payload() -> dict[str, Any] | None:
+        """摘要：读取当前运行时记录的待处理崩溃日志。"""
+        raw_path = str(runtime.pending_crash_log or "").strip()
+        if not raw_path:
+            return None
+        path = Path(raw_path)
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError:
+            runtime.pending_crash_log = None
+            return None
+        return {"path": path, "content": content}
+
+    def archive_pending_crash(category: str) -> Path | None:
+        """摘要：归档当前待处理崩溃日志并清除运行时标记。"""
+        pending = pending_crash_payload()
+        if pending is None:
+            return None
+        archived = archive_crash_report(
+            runtime.paths.root,
+            pending["path"],
+            category=category,
+        )
+        runtime.pending_crash_log = None
+        return archived
+
     @app.get("/")
     def index():
         return send_from_directory(static, "index.html")
@@ -353,6 +380,39 @@ def create_desktop_app(runtime: DesktopRuntime):
                 "architecture": "PyInstaller + llama-server sidecar",
                 "license": "BSD-2-Clause",
                 "repository": "offline-companion-core",
+            },
+        )
+
+    @app.get("/api/crash-report/pending")
+    def pending_crash_report():
+        pending = pending_crash_payload()
+        if pending is None:
+            return _json_response(jsonify, {"has_crash": False})
+        return _json_response(
+            jsonify,
+            {
+                "has_crash": True,
+                "content": pending["content"],
+            },
+        )
+
+    @app.post("/api/crash-report/dismiss")
+    def dismiss_crash_report():
+        archived = archive_pending_crash("archived")
+        return _json_response(
+            jsonify,
+            {"ok": True, "archived": archived is not None},
+        )
+
+    @app.post("/api/crash-report/submit")
+    def submit_crash_report():
+        submitted = archive_pending_crash("submitted")
+        return _json_response(
+            jsonify,
+            {
+                "ok": True,
+                "submitted": submitted is not None,
+                "outbound_sent": False,
             },
         )
 

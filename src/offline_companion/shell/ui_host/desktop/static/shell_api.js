@@ -1072,6 +1072,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   loadModels();
   loadExtensions();
   loadRuntimeStatus();
+  loadPendingCrashReport();
   loadAuthStatus();
   loadImprovePlan();
   startIdlePolling();
@@ -1863,6 +1864,25 @@ async function loadRuntimeStatus() {
     }
   } catch (error) {
     showToast('状态加载失败：' + error.message);
+  }
+}
+
+async function loadPendingCrashReport() {
+  try {
+    const data = await apiJson('/api/crash-report/pending');
+    if (!data.has_crash) return;
+    const markForSubmit = window.confirm(
+      '上次运行异常退出。是否将本地崩溃日志标记为待上报？\n应用不会自动联网发送。'
+    );
+    const endpoint = markForSubmit ? '/api/crash-report/submit' : '/api/crash-report/dismiss';
+    const result = await apiJson(endpoint, { method: 'POST' });
+    if (markForSubmit && result.submitted) {
+      showToast('崩溃日志已保存为待上报（未自动联网）');
+    } else {
+      showToast('崩溃日志已在本地归档');
+    }
+  } catch (error) {
+    showToast('处理崩溃日志失败：' + error.message);
   }
 }
 

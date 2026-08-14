@@ -42,6 +42,11 @@ from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGat
 from offline_companion.shell.plan_auto_bridge import PlanAutoBridge
 from offline_companion.shell.ui_host.bootstrap import ECHO_NO_MODEL_LABEL
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
+from offline_companion.shell.ui_host.desktop.crash_reporting import (
+    check_previous_crash,
+    mark_app_started,
+    write_crash_report,
+)
 from offline_companion.shell.ui_host.desktop.http_host import _json_safe, create_desktop_app
 from offline_companion.shell.ui_host.desktop.idle_detector import IdleDetector
 from offline_companion.shell.ui_host.desktop.privacy_socket_guard import (
@@ -162,6 +167,8 @@ def test_desktop_http_release_metadata(tmp_path) -> None:
     assert "SSE_MAX_RECONNECT = 3" in api_script.text
     assert "回复因连接中断未完成" in api_script.text
     assert "检测到配置文件损坏，已从备份恢复" in api_script.text
+    assert "loadPendingCrashReport();" in api_script.text
+    assert "应用不会自动联网发送" in api_script.text
 
     sse = client.get("/api/sse-test")
     assert sse.status_code == 200
@@ -197,6 +204,52 @@ def test_desktop_status_exposes_backend_runtime_state(tmp_path) -> None:
     assert status["local_available"] is False
     assert status["cloud_available"] is True
     assert status["local_error"] == "模型加载超时"
+
+
+def test_desktop_http_crash_report_dismiss_archives_locally(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    mark_app_started(tmp_path)
+    error = RuntimeError("desktop crash")
+    crash_path = write_crash_report(
+        tmp_path,
+        type(error),
+        error,
+        error.__traceback__,
+        source="test",
+    )
+    pending = check_previous_crash(tmp_path)
+    assert pending is not None
+    rt.pending_crash_log = str(pending.path)
+    client = create_desktop_app(rt).test_client()
+
+    payload = client.get("/api/crash-report/pending").get_json()
+    dismissed = client.post("/api/crash-report/dismiss").get_json()
+
+    assert payload["has_crash"] is True
+    assert "desktop crash" in payload["content"]
+    assert dismissed == {"ok": True, "archived": True}
+    assert not crash_path.exists()
+    assert list((tmp_path / "crashes" / "archived").glob("crash_*.log"))
+    assert client.get("/api/crash-report/pending").get_json() == {"has_crash": False}
+
+
+def test_desktop_http_crash_submit_never_sends_outbound(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    error = RuntimeError("submit crash")
+    crash_path = write_crash_report(
+        tmp_path,
+        type(error),
+        error,
+        error.__traceback__,
+        source="test",
+    )
+    rt.pending_crash_log = str(crash_path)
+    client = create_desktop_app(rt).test_client()
+
+    submitted = client.post("/api/crash-report/submit").get_json()
+
+    assert submitted == {"ok": True, "outbound_sent": False, "submitted": True}
+    assert list((tmp_path / "crashes" / "submitted").glob("crash_*.log"))
 
 
 def test_desktop_http_chat_and_clear(tmp_path) -> None:
