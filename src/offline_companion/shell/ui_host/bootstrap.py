@@ -63,6 +63,7 @@ from offline_companion.shell.ui_host.model_registry import (
     resolve_n_gpu_layers,
 )
 from offline_companion.storage.cloud_model_repo import list_cloud_models
+from offline_companion.storage.json_state_store import check_state_integrity
 from offline_companion.storage.settings_store import load_settings
 
 ECHO_NO_MODEL_LABEL = "Echo (no model)"
@@ -148,6 +149,7 @@ class UISessionBundle:
     cloud_available: bool
     local_error: str | None
     active_cloud_model_id: str | None
+    repaired_state_files: tuple[str, ...]
     plan_orchestrator: PlanOrchestrator
     auto_turn_orchestrator: AutoTurnOrchestrator
     idle_detector: IdleDetector
@@ -240,6 +242,7 @@ def bootstrap_ui_session(
     session_title: str = "UI",
 ) -> UISessionBundle:
     paths = resolve_app_paths(data_dir)
+    repaired_state_files = tuple(check_state_integrity(paths.root))
     settings_state = load_settings(paths.root)
     persona = load_persona_file(Path(persona_path).expanduser())
     session_core = PersonaSessionCore(persona)
@@ -388,6 +391,7 @@ def bootstrap_ui_session(
         cloud_available=cloud_available,
         local_error=local_error,
         active_cloud_model_id=(str(cloud_model.get("id")) if cloud_model else None),
+        repaired_state_files=repaired_state_files,
         plan_orchestrator=plan_orchestrator,
         auto_turn_orchestrator=auto_turn_orchestrator,
         idle_detector=idle_detector,

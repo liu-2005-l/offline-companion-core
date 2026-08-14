@@ -1849,6 +1849,9 @@ async function loadRuntimeStatus() {
     window._loggedIn = !!data.logged_in;
     renderPrivacyMode(window._privacyMode);
     renderLoginState(window._loggedIn, data.account_name || 'local-user');
+    if (data.repaired_state_files && data.repaired_state_files.length) {
+      showToast('检测到配置文件损坏，已从备份恢复');
+    }
     if (data.backend_mode === 'cloud_fallback') {
       showToast('本地模型加载失败，已切换到云端模式');
     } else if (data.backend_mode === 'no_backend') {

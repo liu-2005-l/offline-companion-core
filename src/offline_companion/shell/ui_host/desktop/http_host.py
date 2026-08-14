@@ -93,6 +93,7 @@ from offline_companion.storage.cloud_model_repo import (
     update_cloud_model,
 )
 from offline_companion.storage.extension_repo import init_extension_status, save_extension_status
+from offline_companion.storage.json_state_store import JsonStateStore, check_state_integrity
 from offline_companion.storage.persona_repo import (
     activate_persona as activate_persisted_persona,
 )
@@ -150,6 +151,10 @@ def create_desktop_app(runtime: DesktopRuntime):
     static = _static_dir()
     app = Flask(__name__, static_folder=str(static), static_url_path="")
     plugin_gateway = PluginSecurityGateway(runtime, build_mock_plugin_registry())
+    repaired_state_files = tuple(check_state_integrity(runtime.paths.root))
+    runtime.repaired_state_files = tuple(
+        dict.fromkeys((*runtime.repaired_state_files, *repaired_state_files))
+    )
     settings_state: dict[str, Any] = load_settings(runtime.paths.root)
     persisted_privacy_mode = _parse_privacy_mode(settings_state.get("privacy_mode"))
     if persisted_privacy_mode is not None:
@@ -331,6 +336,7 @@ def create_desktop_app(runtime: DesktopRuntime):
                 "local_available": runtime.local_available,
                 "cloud_available": runtime.cloud_available,
                 "local_error": runtime.local_error,
+                "repaired_state_files": list(runtime.repaired_state_files),
                 "logged_in": bool(getattr(runtime, "logged_in", False)),
                 "socket_guard_enabled": bool(getattr(runtime, "socket_guard_enabled", False)),
             },
@@ -1643,21 +1649,17 @@ def _append_jsonl(path: Path, item: dict[str, Any]) -> None:
 def _ensure_auth_file(root: Path) -> dict[str, Any]:
     """摘要：确保本地登录 token 文件存在，并返回认证配置。"""
     path = root / "auth.json"
-    if path.is_file():
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            data = {}
-        if isinstance(data, dict) and str(data.get("token") or ""):
-            data.setdefault("account_name", "local-user")
-            return data
+    store = JsonStateStore(root)
+    data = store.load(path, {})
+    if isinstance(data, dict) and str(data.get("token") or ""):
+        data.setdefault("account_name", "local-user")
+        return data
     data = {
         "token": secrets.token_hex(16),
         "created_at": time.time(),
         "account_name": "local-user",
     }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    store.save(path, data)
     return data
 
 
@@ -1674,21 +1676,16 @@ def _auth_status_payload(runtime: DesktopRuntime, auth: dict[str, Any]) -> dict[
 
 def _read_improve_plan_state(root: Path) -> dict[str, Any]:
     """摘要：读取本地改进计划开关状态。"""
-    path = root / "improve_plan.json"
-    if not path.is_file():
-        return {"enabled": False, "last_upload_at": None}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {"enabled": False, "last_upload_at": None}
+    data = JsonStateStore(root).load(
+        root / "improve_plan.json",
+        {"enabled": False, "last_upload_at": None},
+    )
     return data if isinstance(data, dict) else {"enabled": False, "last_upload_at": None}
 
 
 def _write_improve_plan_state(root: Path, state: dict[str, Any]) -> None:
     """摘要：持久化本地改进计划开关状态。"""
-    path = root / "improve_plan.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(_json_safe(state), ensure_ascii=False, indent=2), encoding="utf-8")
+    JsonStateStore(root).save(root / "improve_plan.json", _json_safe(state))
 
 
 def _improve_plan_payload(runtime: DesktopRuntime) -> dict[str, Any]:

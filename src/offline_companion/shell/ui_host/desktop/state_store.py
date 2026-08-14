@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import json
-import os
-import tempfile
 from pathlib import Path
 from typing import Any
+
+from offline_companion.storage.json_state_store import JsonStateStore
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -18,10 +17,7 @@ def load_json(path: Path) -> dict[str, Any]:
     返回值：
         解析后的字典；不可解析或顶层不是字典时返回空字典。
     """
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return {}
+    payload = JsonStateStore(path.parent).load(path, {})
     if not isinstance(payload, dict):
         return {}
     return payload
@@ -34,16 +30,7 @@ def save_json(path: Path, data: dict[str, Any]) -> None:
         path: 状态文件路径。
         data: 需要写入的 JSON 字典。
     """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
-    tmp_path = Path(tmp)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump(data, handle, ensure_ascii=False, indent=2)
-        os.replace(str(tmp_path), str(path))
-    except Exception:
-        tmp_path.unlink(missing_ok=True)
-        raise
+    JsonStateStore(path.parent).save(path, data)
 
 
 def load_extension_state(data_root: Path) -> dict[str, bool]:

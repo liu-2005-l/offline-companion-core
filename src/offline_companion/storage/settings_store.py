@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
-import os
-import tempfile
 import time
 from pathlib import Path
 from typing import Any
+
+from offline_companion.storage.json_state_store import JsonStateStore
 
 DEFAULT_SETTINGS: dict[str, Any] = {
     "theme": "light",
@@ -47,11 +46,7 @@ def load_settings(data_root: Path) -> dict[str, Any]:
     返回值：
         合并默认值后的扁平设置字典。
     """
-    path = settings_path(data_root)
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8-sig"))
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        raw = {}
+    raw = JsonStateStore(data_root).load(settings_path(data_root), {})
     if not isinstance(raw, dict):
         raw = {}
     settings = dict(DEFAULT_SETTINGS)
@@ -71,7 +66,7 @@ def save_settings(data_root: Path, settings: dict[str, Any]) -> dict[str, Any]:
     payload = dict(DEFAULT_SETTINGS)
     payload.update(settings)
     payload["updated_at"] = time.time()
-    _save_json(settings_path(data_root), payload)
+    JsonStateStore(data_root).save(settings_path(data_root), payload)
     return payload
 
 
@@ -87,16 +82,3 @@ def update_settings(data_root: Path, patch: dict[str, Any]) -> dict[str, Any]:
     current = load_settings(data_root)
     current.update(patch)
     return save_settings(data_root, current)
-
-
-def _save_json(path: Path, data: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
-    tmp_path = Path(tmp)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump(data, handle, ensure_ascii=False, indent=2)
-        os.replace(str(tmp_path), str(path))
-    except Exception:
-        tmp_path.unlink(missing_ok=True)
-        raise

@@ -32,6 +32,7 @@ class DesktopRuntime:
     cloud_available: bool = False
     local_error: str | None = None
     active_cloud_model_id: str | None = None
+    repaired_state_files: tuple[str, ...] = ()
     socket_guard_enabled: bool = False
     plan_orchestrator: PlanOrchestrator | None = None
     auto_turn_orchestrator: AutoTurnOrchestrator | None = None
@@ -54,6 +55,7 @@ class DesktopRuntime:
             cloud_available=bundle.cloud_available,
             local_error=bundle.local_error,
             active_cloud_model_id=bundle.active_cloud_model_id,
+            repaired_state_files=bundle.repaired_state_files,
             triggers=TriggerRegistry(version=1, path=bundle.paths.root / "triggers.yaml", enabled={"on_summarize_request": False, "on_explicit_save": True, "on_emotion_shift": False}),
             paths=bundle.paths,
             plan_orchestrator=bundle.plan_orchestrator,

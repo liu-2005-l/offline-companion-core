@@ -49,6 +49,7 @@ from offline_companion.shell.ui_host.desktop.privacy_socket_guard import (
     is_socket_guard_enabled,
 )
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
+from offline_companion.storage.settings_store import update_settings
 
 
 class _HttpRouter:
@@ -160,6 +161,7 @@ def test_desktop_http_release_metadata(tmp_path) -> None:
     assert "LOCAL_ONLY 隐私模式阻止上云" in api_script.text
     assert "SSE_MAX_RECONNECT = 3" in api_script.text
     assert "回复因连接中断未完成" in api_script.text
+    assert "检测到配置文件损坏，已从备份恢复" in api_script.text
 
     sse = client.get("/api/sse-test")
     assert sse.status_code == 200
@@ -1082,6 +1084,20 @@ def test_desktop_http_settings_missing_and_corrupt_fall_back_to_defaults(tmp_pat
     corrupt = create_desktop_app(rt).test_client().get("/api/settings")
     assert corrupt.status_code == 200
     assert corrupt.get_json()["settings"]["privacy_mode"] == PrivacyMode.LOCAL_ONLY.value
+
+
+def test_desktop_http_repairs_corrupt_settings_from_backup(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    update_settings(tmp_path, {"theme": "dark"})
+    update_settings(tmp_path, {"theme": "light"})
+    (tmp_path / "settings.json").write_text("{broken", encoding="utf-8")
+
+    client = create_desktop_app(rt).test_client()
+    settings = client.get("/api/settings").get_json()["settings"]
+    status = client.get("/api/status").get_json()
+
+    assert settings["theme"] == "dark"
+    assert status["repaired_state_files"] == ["settings.json"]
 
 
 def test_desktop_http_settings_loads_utf8_bom_json(tmp_path) -> None:

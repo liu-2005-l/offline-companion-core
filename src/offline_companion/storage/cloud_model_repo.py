@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import json
-import os
-import tempfile
 import time
 import uuid
 from pathlib import Path
 from typing import Any
 
 from offline_companion.shared.types import CapabilityProfile
+from offline_companion.storage.json_state_store import JsonStateStore
 
 
 def cloud_models_path(data_root: Path) -> Path:
@@ -250,22 +248,9 @@ def _required_text(value: Any, field: str) -> str:
 
 def _load(data_root: Path) -> dict[str, Any]:
     path = cloud_models_path(data_root)
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8-sig"))
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return {"items": []}
+    payload = JsonStateStore(data_root).load(path, {"items": []})
     return payload if isinstance(payload, dict) else {"items": []}
 
 
 def _save(data_root: Path, data: dict[str, Any]) -> None:
-    path = cloud_models_path(data_root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
-    tmp_path = Path(tmp)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump(data, handle, ensure_ascii=False, indent=2)
-        os.replace(str(tmp_path), str(path))
-    except Exception:
-        tmp_path.unlink(missing_ok=True)
-        raise
+    JsonStateStore(data_root).save(cloud_models_path(data_root), data)
