@@ -6,6 +6,7 @@ import threading
 from typing import Any
 
 from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway
+from offline_companion.shell.ui_host.consent_feedback import consent_decision_payload
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
 from offline_companion.shell.ui_host.turn_payload import (
     process_chat_message,
@@ -60,4 +61,4 @@ class DesktopBridge:
         """摘要：提交单轮同意决策，并在允许时恢复执行。"""
         with self._turn_lock:
             result = self._runtime.orchestrator.resume_pending_turn(request_id, allowed=allowed)
-            return turn_result_to_payload(result)
+            return consent_decision_payload(turn_result_to_payload(result), allowed=allowed)

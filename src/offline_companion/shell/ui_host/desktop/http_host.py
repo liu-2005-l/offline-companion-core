@@ -70,6 +70,10 @@ from offline_companion.shell.skill_manager.extension_manager import (
 )
 from offline_companion.shell.skill_manager.registry import load_installed_manifests
 from offline_companion.shell.skill_router import SkillDecisionEngine, load_skill_descriptions
+from offline_companion.shell.ui_host.consent_feedback import (
+    CONSENT_DECLINED_MESSAGE,
+    consent_decision_payload,
+)
 from offline_companion.shell.ui_host.desktop.crash_reporting import archive_crash_report
 from offline_companion.shell.ui_host.desktop.privacy_socket_guard import apply_privacy_socket_guard
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
@@ -1097,7 +1101,21 @@ def create_desktop_app(runtime: DesktopRuntime):
         consent_request_id = str(data.get("consent_request_id") or "").strip()
         if consent_request_id:
             if not _is_plan_consent_allowed(runtime, consent_request_id):
-                return _json_response(jsonify, {"error": "consent_not_allowed", "status": "consent_not_allowed"}, status=403)
+                step["status"] = "skipped"
+                step["error"] = None
+                plan["status"] = "paused"
+                plan = update_plan(runtime.orchestrator.conn, plan)
+                step = _find_plan_step(plan, int(step["id"])) or step
+                return _json_response(
+                    jsonify,
+                    {
+                        "ok": True,
+                        "status": "declined",
+                        "message": CONSENT_DECLINED_MESSAGE,
+                        "plan": plan,
+                        "step": step,
+                    },
+                )
             step["status"] = "pending"
             step["consent_request_id"] = consent_request_id
             plan["status"] = "running"
@@ -1333,14 +1351,32 @@ def create_desktop_app(runtime: DesktopRuntime):
             return _json_response(jsonify, {"error": "missing request_id"}, status=400)
         try:
             result = runtime.orchestrator.resume_pending_turn(request_id, allowed=allowed)
-            return _json_response(jsonify, turn_result_to_payload(result))
+            payload = consent_decision_payload(turn_result_to_payload(result), allowed=allowed)
+            return _json_response(jsonify, payload)
         except KeyError as exc:
             gateway = getattr(runtime.orchestrator, "consent_gateway", None)
             pending = gateway.get_pending(request_id) if gateway is not None else None
             if pending is None:
                 return _json_response(jsonify, {"error": str(exc)}, status=404)
             artifact = gateway.decide(request_id, allowed)
-            return _json_response(jsonify, {"ok": True, "artifact": artifact, "consent": gateway.to_modal_payload(request_id)})
+            payload = {
+                "ok": True,
+                "artifact": artifact,
+                "consent": gateway.to_modal_payload(request_id),
+            }
+            if not allowed:
+                consent_request = pending.consent_request
+                plan = get_plan(runtime.orchestrator.conn, consent_request.plan_id)
+                step_id = str(consent_request.step_id).removeprefix("step_")
+                step = _find_plan_step(plan, int(step_id)) if plan is not None and step_id.isdigit() else None
+                if plan is not None and step is not None:
+                    step["status"] = "skipped"
+                    step["error"] = None
+                    plan["status"] = "paused"
+                    plan = update_plan(runtime.orchestrator.conn, plan)
+                    payload["plan"] = plan
+                    payload["step"] = _find_plan_step(plan, int(step_id))
+            return _json_response(jsonify, consent_decision_payload(payload, allowed=allowed))
 
     @app.post("/api/clear")
     def clear_chat():

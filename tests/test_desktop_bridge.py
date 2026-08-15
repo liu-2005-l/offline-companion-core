@@ -122,3 +122,31 @@ def test_bridge_consent_decision_resumes_pending_turn(tmp_path) -> None:
     resumed = br.consent_decision(request_id, True)
     assert "云端已恢复" in resumed["reply"]
     assert resumed["route_mode"] == "cloud"
+
+
+def test_bridge_consent_decline_returns_natural_feedback(tmp_path) -> None:
+    br = _bridge(tmp_path)
+    gateway = UIHostConsentGateway(db_conn=br._runtime.orchestrator.conn)
+    br._runtime.orchestrator.consent_gateway = gateway
+    br._runtime.orchestrator.privacy_mode = PrivacyMode.ALWAYS_ASK
+    br._runtime.orchestrator.model_router = _BridgeRouter(
+        ModelRoutingDecision(
+            selected_model="deepseek-v4",
+            fallback_model="qwen2.5-1.5b-instruct-q4_k_m",
+            requires_consent=True,
+            reason="cloud_candidate_selected",
+            estimated_input_tokens=100,
+            estimated_output_tokens=200,
+            estimated_cost=0.02,
+        ),
+        selected_type="cloud",
+    )
+    br._runtime.orchestrator.cloud_post = lambda _req: CloudCompletionResponse(text="不应调用", raw={})
+
+    pending = br.run_turn("请联网查询一下")
+    assert pending["consent_request_id"]
+    declined = br.consent_decision(pending["consent_request_id"], False)
+
+    assert declined["status"] == "declined"
+    assert declined["message"] == "好的，那我不做这个了。"
+    assert "error" not in declined

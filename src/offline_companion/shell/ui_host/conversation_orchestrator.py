@@ -39,6 +39,7 @@ from offline_companion.shell.model_router import ModelRouter
 from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway
 from offline_companion.shell.skill_router import SkillDecisionEngine
 from offline_companion.shell.tool_registry import ToolInvoker
+from offline_companion.shell.ui_host.consent_feedback import CONSENT_DECLINED_MESSAGE
 
 CloudPost = Callable[[CloudCompletionRequest], Any]
 
@@ -330,6 +331,37 @@ class ConversationOrchestrator:
             estimated_input_tokens=decision.estimated_input_tokens,
             estimated_output_tokens=decision.estimated_output_tokens,
             estimated_cost=decision.estimated_cost,
+        )
+
+    def _declined_turn_result(
+        self,
+        pending_turn: PendingRoutedTurn,
+        *,
+        request_id: str,
+    ) -> TurnResult:
+        """摘要：持久化 Consent 拒绝对话，并返回正常单轮结果。"""
+        prepared = pending_turn.prepared
+        decision = pending_turn.decision
+        emotion = self._emotion_payload(prepared.chat_text)
+        routing = self._routing_meta(decision, "cloud")
+        self._append_user_message(
+            prepared.chat_text,
+            emotion=emotion,
+            channel="consent_declined",
+            routing=routing,
+        )
+        self._append_assistant_message(
+            CONSENT_DECLINED_MESSAGE,
+            emotion=emotion,
+            channel="consent_declined",
+            routing=routing,
+            extra_meta={"consent_request_id": request_id, "consent_decision": "deny"},
+        )
+        return self._turn_result_with_route(
+            reply=CONSENT_DECLINED_MESSAGE,
+            prepared=prepared,
+            decision=decision,
+            route_mode="cloud",
         )
 
     def _execute_local_prepared(
@@ -740,11 +772,9 @@ class ConversationOrchestrator:
                     cloud_post=self.cloud_post,
                     decision=decision,
                 )
-            return self._turn_result_with_route(
-                reply="已取消本轮云端请求。",
-                prepared=prepared,
-                decision=decision,
-                route_mode="cloud",
+            return self._declined_turn_result(
+                PendingRoutedTurn(prepared=prepared, decision=decision, purpose=purpose),
+                request_id=pending.request_id,
             )
         if allowed and request_id:
             self.pending_turns.pop(request_id, None)
@@ -918,12 +948,7 @@ class ConversationOrchestrator:
             if pending is not None and not pending.decided:
                 self.consent_gateway.decide(request_id, allowed)
         if not allowed:
-            return self._turn_result_with_route(
-                reply="已取消本轮云端请求。",
-                prepared=pending_turn.prepared,
-                decision=pending_turn.decision,
-                route_mode="cloud",
-            )
+            return self._declined_turn_result(pending_turn, request_id=request_id)
         if self.cloud_post is None:
             raise RuntimeError("cloud_post is required to resume routed cloud turn")
         return self._execute_cloud_with_fallback(

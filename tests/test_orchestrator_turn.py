@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -273,8 +274,13 @@ def test_orchestrator_routed_cloud_turn_denied_does_not_execute(tmp_path) -> Non
     pending = orchestrator.run_turn("请联网搜索后给我答案", memory_on=False)
     denied = orchestrator.resume_pending_turn(pending.consent_request_id, allowed=False)
 
-    assert denied.reply == "已取消本轮云端请求。"
-    assert conn.execute("SELECT COUNT(*) AS c FROM messages;").fetchone()["c"] == 0
+    assert denied.reply == "好的，那我不做这个了。"
+    messages = conn.execute("SELECT role, content, meta_json FROM messages ORDER BY id;").fetchall()
+    assert [(row["role"], row["content"]) for row in messages] == [
+        ("user", "请联网搜索后给我答案"),
+        ("assistant", "好的，那我不做这个了。"),
+    ]
+    assert json.loads(messages[-1]["meta_json"])["consent_decision"] == "deny"
 
 
 def test_orchestrator_cloud_failure_uses_router_fallback_model(tmp_path) -> None:

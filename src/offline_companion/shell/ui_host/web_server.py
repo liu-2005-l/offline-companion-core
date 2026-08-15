@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from offline_companion.shell.ui_host.consent_feedback import consent_decision_payload
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
 from offline_companion.shell.ui_host.turn_payload import (
     process_chat_message,
@@ -93,7 +94,7 @@ def create_app(runtime: WebRuntime):
             result = runtime.orchestrator.resume_pending_turn(request_id, allowed=allowed)
         except KeyError as exc:
             return jsonify({"error": str(exc)}), 404
-        return jsonify(turn_result_to_payload(result))
+        return jsonify(consent_decision_payload(turn_result_to_payload(result), allowed=allowed))
 
     return app
 

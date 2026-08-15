@@ -660,6 +660,12 @@ function apiAppendMessage(role, content, msgIdx, createdAt, quoteHtml, messageId
   if (typing) typing.insertAdjacentHTML('beforebegin', apiRenderMessage(role, content, msgIdx, createdAt, quoteHtml, messageId));
 }
 
+function apiAppendConsentDeclined(message) {
+  const chat = document.getElementById('chatMessages');
+  apiAppendMessage('assistant', message, apiNextMsgIdx(), Date.now() / 1000);
+  if (chat) chat.scrollTop = chat.scrollHeight;
+}
+
 function apiCreateStreamingMessage(msgIdx) {
   apiAppendMessage('assistant', '', msgIdx, Date.now() / 1000);
   const chat = document.getElementById('chatMessages');
@@ -1187,16 +1193,19 @@ async function _rejectConsent(planId, stepId) {
     return;
   }
   try {
-    await apiJson('/api/consent', {
+    const data = await apiJson('/api/consent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ request_id: consentRequestId, allowed: false })
     });
-    step.status = 'failed';
-    step.error = '用户拒绝授权';
-    plan.status = 'paused';
-    _updatePlanCard(plan);
-    showToast('已拒绝授权，计划已暂停');
+    if (data.plan) window._activePlans[planId] = data.plan;
+    else {
+      step.status = 'skipped';
+      delete step.error;
+      plan.status = 'paused';
+    }
+    _updatePlanCard(window._activePlans[planId] || plan);
+    if (data.status === 'declined') apiAppendConsentDeclined(data.message);
   } catch (error) {
     showToast('拒绝授权记录失败：' + error.message);
   }
@@ -1276,11 +1285,12 @@ async function _decideAutoConsent(allowed) {
   const consent = _autoPlanState.cardEl && _autoPlanState.cardEl.querySelector('.auto-plan-consent');
   if (consent) consent.innerHTML = '<div class="auto-consent-pending">正在记录决定…</div>';
   try {
-    await apiJson('/api/consent', {
+    const data = await apiJson('/api/consent', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ request_id: requestId, allowed: allowed })
     });
     if (consent) consent.hidden = true;
+    if (!allowed && data.status === 'declined') apiAppendConsentDeclined(data.message);
     await _resumeAutoPlan(planId, requestId);
   } catch (error) {
     if (consent) {

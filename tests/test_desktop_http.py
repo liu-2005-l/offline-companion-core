@@ -169,6 +169,9 @@ def test_desktop_http_release_metadata(tmp_path) -> None:
     assert "检测到配置文件损坏，已从备份恢复" in api_script.text
     assert "loadPendingCrashReport();" in api_script.text
     assert "应用不会自动联网发送" in api_script.text
+    assert "function apiAppendConsentDeclined" in api_script.text
+    assert "data.status === 'declined'" in api_script.text
+    assert "showToast('已拒绝授权，计划已暂停')" not in api_script.text
 
     sse = client.get("/api/sse-test")
     assert sse.status_code == 200
@@ -498,8 +501,13 @@ def test_desktop_http_plan_consent_reject_keeps_plan_paused(tmp_path) -> None:
     rejected = client.post("/api/consent", json={"request_id": request_id, "allowed": False})
 
     assert rejected.status_code == 200
-    assert rejected.get_json()["artifact"]["user_decision"] == "deny"
-    assert rejected.get_json()["artifact"]["allowed"] is False
+    rejected_payload = rejected.get_json()
+    assert rejected_payload["status"] == "declined"
+    assert rejected_payload["message"] == "好的，那我不做这个了。"
+    assert "error" not in rejected_payload
+    assert rejected_payload["artifact"]["user_decision"] == "deny"
+    assert rejected_payload["artifact"]["allowed"] is False
+    assert rejected_payload["step"]["status"] == "skipped"
     pending = rt.orchestrator.consent_gateway.pending[request_id]
     assert pending.decided is True
     assert pending.allowed is False
@@ -508,8 +516,12 @@ def test_desktop_http_plan_consent_reject_keeps_plan_paused(tmp_path) -> None:
         f"/api/plan/{plan['id']}/execute",
         json={"step_id": high_risk["id"], "timeout": 20, "consent_request_id": request_id},
     )
-    assert denied_execute.status_code == 403
-    assert denied_execute.get_json()["error"] == "consent_not_allowed"
+    assert denied_execute.status_code == 200
+    denied_payload = denied_execute.get_json()
+    assert denied_payload["status"] == "declined"
+    assert denied_payload["message"] == "好的，那我不做这个了。"
+    assert "error" not in denied_payload
+    assert denied_payload["step"]["status"] == "skipped"
     restored_plan = rt.orchestrator.conn.execute(
         "SELECT status FROM plans WHERE plan_id = ?;",
         (plan["id"],),
@@ -1395,6 +1407,44 @@ def test_desktop_http_consent_roundtrip(tmp_path) -> None:
     payload = resumed.get_json()
     assert "云端已批准" in payload["reply"]
     assert payload["route_mode"] == "cloud"
+
+
+def test_desktop_http_consent_decline_returns_normal_feedback(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    rt.orchestrator.consent_gateway = UIHostConsentGateway(db_conn=rt.orchestrator.conn)
+    rt.orchestrator.privacy_mode = PrivacyMode.ALWAYS_ASK
+    rt.orchestrator.model_router = _HttpRouter(
+        ModelRoutingDecision(
+            selected_model="deepseek-v4",
+            fallback_model="qwen2.5-1.5b-instruct-q4_k_m",
+            requires_consent=True,
+            reason="cloud_candidate_selected",
+            estimated_input_tokens=100,
+            estimated_output_tokens=200,
+            estimated_cost=0.02,
+        ),
+        selected_type="cloud",
+    )
+    rt.orchestrator.cloud_post = lambda _req: CloudCompletionResponse(text="不应调用", raw={})
+    client = create_desktop_app(rt).test_client()
+
+    pending = client.post("/api/chat", json={"message": "请联网查询一下"}).get_json()
+    declined = client.post(
+        "/api/consent",
+        json={"request_id": pending["consent_request_id"], "allowed": False},
+    )
+
+    assert declined.status_code == 200
+    payload = declined.get_json()
+    assert payload["status"] == "declined"
+    assert payload["message"] == "好的，那我不做这个了。"
+    assert payload["reply"] == payload["message"]
+    assert "error" not in payload
+    artifact = rt.orchestrator.conn.execute(
+        "SELECT artifact_json FROM consent_artifacts WHERE request_id = ?;",
+        (pending["consent_request_id"],),
+    ).fetchone()
+    assert json.loads(artifact["artifact_json"])["user_decision"] == "deny"
 
 
 def test_desktop_http_chat_stream_cloud_route_returns_single_done(tmp_path) -> None:
