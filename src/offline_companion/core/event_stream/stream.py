@@ -8,12 +8,19 @@ import threading
 import time
 import uuid
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Protocol
 
 from .registry import EventTypeRegistry
 from .types import DomainEvent
 
 logger = logging.getLogger(__name__)
+
+
+class EventSink(Protocol):
+    """接收已提交领域事件的持久化接口。"""
+
+    def enqueue(self, event: DomainEvent) -> None:
+        """异步接收事件。"""
 
 
 class EventStream:
@@ -24,13 +31,19 @@ class EventStream:
         registry: 事件类型注册表。
     """
 
-    def __init__(self, stream_id: str, registry: EventTypeRegistry) -> None:
+    def __init__(
+        self,
+        stream_id: str,
+        registry: EventTypeRegistry,
+        persistence: EventSink | None = None,
+    ) -> None:
         self._stream_id = stream_id
         self._registry = registry
         self._events: list[DomainEvent] = []
         self._observers: list[Callable[[DomainEvent], None]] = []
         self._lock = threading.Lock()
         self._notification_state = threading.local()
+        self._persistence = persistence
 
     @property
     def stream_id(self) -> str:
@@ -81,6 +94,12 @@ class EventStream:
             observers = tuple(self._observers)
             self._events.append(event)
 
+        if self._persistence is not None:
+            try:
+                self._persistence.enqueue(event)
+            except Exception:
+                logger.exception("事件持久化入队失败，已保留内存事件")
+
         self._notification_state.active = True
         try:
             for observer in observers:
@@ -91,6 +110,17 @@ class EventStream:
         finally:
             self._notification_state.active = False
         return event
+
+    def restore_events(self, events: list[DomainEvent]) -> None:
+        """恢复连续事件到空流，不触发 observer 或再次持久化。"""
+        with self._lock:
+            if self._events:
+                raise ValueError("只能向空事件流恢复事件")
+            if any(event.stream_id != self._stream_id for event in events):
+                raise ValueError("恢复事件的 stream_id 不匹配")
+            if any(event.seq != index for index, event in enumerate(events)):
+                raise ValueError("恢复事件的 seq 必须从 0 连续递增")
+            self._events.extend(events)
 
     def subscribe(self, observer: Callable[[DomainEvent], None]) -> Callable[[], None]:
         """订阅事件并返回取消订阅函数。
