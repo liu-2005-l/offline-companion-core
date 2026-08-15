@@ -253,6 +253,36 @@ class ModelDownloader:
         with self._lock:
             return self._downloads.get(model_id)
 
+    def verify_local_model(self, model_id: str, path: Path | None = None) -> bool:
+        """摘要：校验本地模型文件并写入完整性事件。
+
+        参数：
+            model_id: 注册表中的模型 ID。
+            path: 待校验路径；省略时使用模型目录中的标准路径。
+        返回值：
+            SHA256 校验通过返回 True，否则返回 False。
+        Raises:
+            ModelNotFoundError: 模型未注册。
+        """
+        entry = self._registry.get(model_id)
+        if entry is None:
+            raise ModelNotFoundError(model_id)
+        model_path = path or self._directory.model_path(model_id)
+        actual_sha256 = self._sha256(model_path)
+        if actual_sha256 is not None and actual_sha256.lower() == entry.sha256.lower():
+            self._emit("model/verified", {"model_id": model_id, "sha256_ok": True})
+            return True
+        self._emit(
+            "model/verification_failed",
+            {
+                "model_id": model_id,
+                "expected": entry.sha256,
+                "actual": actual_sha256,
+                "path": str(model_path),
+            },
+        )
+        return False
+
     def _download_from_url(
         self,
         entry: ModelEntry,
@@ -326,13 +356,19 @@ class ModelDownloader:
     @staticmethod
     def _verify_sha256(path: Path, expected: str) -> bool:
         """摘要：分块计算文件 SHA256，不将模型整体读入内存。"""
-        if not expected or not path.is_file():
-            return False
+        actual = ModelDownloader._sha256(path)
+        return bool(actual and expected and actual.lower() == expected.lower())
+
+    @staticmethod
+    def _sha256(path: Path) -> str | None:
+        """摘要：分块计算文件 SHA256，文件不存在时返回 None。"""
+        if not path.is_file():
+            return None
         digest = hashlib.sha256()
         with path.open("rb") as handle:
             for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
                 digest.update(chunk)
-        return digest.hexdigest().lower() == expected.lower()
+        return digest.hexdigest()
 
     def _set_failed(
         self,

@@ -26,6 +26,8 @@ DEFAULT_EVENT_TYPES = (
     "model/download_completed",
     "model/download_failed",
     "model/download_cancelled",
+    "model/verified",
+    "model/verification_failed",
     "session/created",
     "session/message",
     "session/turn_start",

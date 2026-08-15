@@ -67,7 +67,10 @@ from offline_companion.shell.tool_registry import (
 )
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
 from offline_companion.shell.ui_host.desktop.idle_detector import IdleDetector
+from offline_companion.shell.ui_host.model_downloader import ModelDownloader
 from offline_companion.shell.ui_host.model_registry import (
+    BUILTIN_MODELS,
+    resolve_active_model_id,
     resolve_default_gguf_path,
     resolve_default_model_config,
     resolve_n_gpu_layers,
@@ -276,8 +279,21 @@ def bootstrap_ui_session(
     local_available = False
     local_error: str | None = None
     if gguf_path is not None:
-        try_stderr_cuda_hint()
+        active_local_model_id = resolve_active_model_id() if model is None else None
+        verification_entry = next(
+            (entry for entry in BUILTIN_MODELS if entry.model_id == active_local_model_id),
+            None,
+        )
+        integrity_ok = True
+        if verification_entry is not None:
+            integrity_ok = ModelDownloader(
+                BUILTIN_MODELS,
+                event_stream=event_stream,
+            ).verify_local_model(verification_entry.model_id, gguf_path)
         try:
+            if not integrity_ok:
+                raise InferenceBackendError("模型文件校验失败，请重新下载")
+            try_stderr_cuda_hint()
             backend = create_llama_backend(
                 gguf_path,
                 n_ctx=n_ctx,
