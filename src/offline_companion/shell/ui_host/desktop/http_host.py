@@ -17,6 +17,7 @@ from typing import Any
 
 import offline_companion.shell.ui_host.desktop as _desktop_pkg
 from offline_companion import __version__
+from offline_companion.core.event_stream import TRAJECTORY_PROJECTION
 from offline_companion.core.hard_gate import HardGate
 from offline_companion.core.memory_lifecycle.fts_ops import (
     count_memory_rows,
@@ -1068,6 +1069,15 @@ def create_desktop_app(runtime: DesktopRuntime):
                 "latest_seq": latest_stream_event_seq(runtime.orchestrator.conn, session_id),
             },
         )
+
+    @app.get("/api/trajectory/<stream_id>")
+    def trajectory(stream_id: str):
+        """摘要：返回开发模式 Trajectory 投影，不改变事件源。"""
+        manager = getattr(runtime, "event_stream_manager", None)
+        stream = manager.get(stream_id) if manager is not None else None
+        if stream is None:
+            return _json_response(jsonify, {"timeline": [], "summary": {"event_count": 0}})
+        return _json_response(jsonify, TRAJECTORY_PROJECTION.project(stream.get_events()))
 
     @app.post("/api/plan/decompose")
     def decompose_plan():

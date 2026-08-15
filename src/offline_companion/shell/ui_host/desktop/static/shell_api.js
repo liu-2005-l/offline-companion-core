@@ -921,9 +921,54 @@ async function loadSessions() {
       const info = document.getElementById('sessionInfo');
       if (info) info.textContent = '\u4f1a\u8bdd \u00b7 ' + (current.title || current.session_id);
       await loadCurrentSessionMessages(_currentSessionId);
+      if (trajectoryDebugEnabled()) await loadTrajectory();
     }
   } catch (error) {
     showToast('会话加载失败：' + error.message);
+  }
+}
+
+function trajectoryDebugEnabled() {
+  return new URLSearchParams(window.location.search).get('debug') === 'trajectory';
+}
+
+function ensureTrajectoryPanel() {
+  if (!trajectoryDebugEnabled()) return null;
+  let panel = document.getElementById('trajectoryDebugPanel');
+  if (panel) return panel;
+  panel = document.createElement('aside');
+  panel.id = 'trajectoryDebugPanel';
+  panel.style.cssText = 'position:fixed;right:12px;bottom:12px;width:420px;max-height:45vh;overflow:auto;z-index:900;background:rgba(20,20,28,.96);color:#f3f4f6;border:1px solid #6366f1;border-radius:10px;padding:12px;font:12px/1.5 sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.3);';
+  document.body.appendChild(panel);
+  return panel;
+}
+
+function renderTrajectory(data) {
+  const panel = ensureTrajectoryPanel();
+  if (!panel) return;
+  const summary = data.summary || {};
+  const rows = (data.timeline || []).map(function(item) {
+    const payload = item.payload || {};
+    const label = payload.step_title || payload.content_preview || payload.model || payload.status || '';
+    return '<tr><td>' + apiEscapeHtml(item.seq) + '</td><td>' + apiEscapeHtml(item.type) + '</td><td>' + apiEscapeHtml(label) + '</td></tr>';
+  }).join('');
+  panel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+    '<strong>Trajectory（开发模式）</strong><button id="trajectoryRefresh" style="background:none;border:0;color:#a5b4fc;cursor:pointer;">刷新</button></div>' +
+    '<div style="color:#c4b5fd;margin-bottom:8px;">事件 ' + apiEscapeHtml(summary.event_count || 0) +
+    ' · 当前步骤 ' + apiEscapeHtml(summary.current_step || '—') + '</div>' +
+    '<table style="width:100%;border-collapse:collapse;"><thead><tr><th>seq</th><th>类型</th><th>摘要</th></tr></thead><tbody>' +
+    (rows || '<tr><td colspan="3">暂无事件</td></tr>') + '</tbody></table>';
+  const refresh = document.getElementById('trajectoryRefresh');
+  if (refresh) refresh.onclick = loadTrajectory;
+}
+
+async function loadTrajectory() {
+  if (!trajectoryDebugEnabled() || !_currentSessionId) return;
+  try {
+    const data = await apiJson('/api/trajectory/' + encodeURIComponent(_currentSessionId));
+    renderTrajectory(data);
+  } catch (error) {
+    showToast('Trajectory 加载失败：' + error.message);
   }
 }
 
