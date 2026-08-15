@@ -1,8 +1,8 @@
 ﻿# Offline Companion Architecture & Development Notes v2.5 (Authoritative)
 
-> **Version**: v2.5 · **Date**: 2026-07-26 (Sprint 9A P0-P4 synchronization revision)
+> **Version**: v2.5 · **Date**: 2026-08-15 (v1.3.0-alpha2 Phase 1 reliability synchronization)
 > **Historical baseline**: [`architecture_v1.0.md`](./architecture_v1.0.md) (read-only; this document wins on conflicts)
-> **Chinese**: [`ARCHITECTURE_v2.4_zh.md`](./ARCHITECTURE_v2.4_zh.md)
+> **Chinese**: [`ARCHITECTURE_v2.5_zh.md`](./ARCHITECTURE_v2.5_zh.md)
 
 > **Extension development**: [`SKILL_DEV_GUIDE`](./SKILL_DEV_GUIDE_v1.0_en.md) · [`PLUGIN_DEV_GUIDE`](./PLUGIN_DEV_GUIDE_v1.0_en.md)
 > **User manual**: [`USER_MANUAL`](./USER_MANUAL_v1.0_en.md)
@@ -95,6 +95,27 @@ User complex goal → A2 PlanOrchestrator
 ```
 
 TaskContext is temporary and bound to a task; during Skill execution it can be read/written, and after completion key results may optionally be persisted to B2 memory (`#remember`), while the rest is discarded. PlanOrchestrator still goes through A3 Consent when calling Skills, Skills still run in isolated processes, and B/C do not perceive the existence of the plan.
+
+### 5.1 Phase 1 reliability contracts
+
+#### Local model loading degradation
+
+- `llama-server` startup is bounded to 30 seconds. Process creation failure, early exit, and health-check timeout are normalized as `LlamaServerStartupError`, followed by `terminate → kill` cleanup.
+- A placeholder `EchoBackend("local-unavailable")` may preserve the desktop object graph, but orchestration must bypass it whenever `local_available=false`; it is never treated as a real local model.
+- On local failure, `LOCAL_ONLY` enters `no_backend` with zero outbound calls. `ASK_BEFORE_CLOUD` / `ALWAYS_ASK` still require A3 Consent. Only `AUTO_ROUTE_CLOUD` may enter `cloud_fallback` when a complete cloud configuration exists.
+- `/api/status` exposes `backend_mode`, local/cloud availability, and `local_error`; the desktop reports cloud fallback, missing cloud configuration, or LOCAL_ONLY blocking explicitly.
+
+#### Local JSON state recovery
+
+- `JsonStateStore` writes local JSON state atomically and keeps up to three valid previous versions under `backups/` before replacement.
+- Startup integrity checks restore the newest valid backup when the main file is corrupt; without a valid backup, the application uses safe defaults instead of failing startup.
+- Restored filenames are exposed through `/api/status.repaired_state_files`, allowing the desktop to notify the user without exposing corrupt content or credentials.
+
+#### Consent decline feedback
+
+- A user decline is a normal decision, not a service error: return HTTP 200 with `status=declined` and a natural-language `message`, with no `error` field or error toast.
+- The current fixed response is `好的，那我不做这个了。` (“Okay, I won't do that.”) and does not invoke a local or cloud model.
+- The `deny` Consent Artifact remains auditable. Conversation input/feedback is persisted, and declined plan steps become `skipped` so the same prompt is not shown again after restart.
 
 ## 6. Skills / Plugins / Tools strict split
 

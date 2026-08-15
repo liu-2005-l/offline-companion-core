@@ -1,6 +1,6 @@
 ﻿# Offline Companion 架构与开发说明 v2.7（权威版）
 
-> **版本**：v2.7 · **日期**：2026-08-10（v1.2.1 开发版 · 模型适配 P1 闭合）
+> **版本**：v2.7 · **日期**：2026-08-15（v1.3.0-alpha2 · Phase 1 可靠性加固同步）
 > **历史基线**：[`architecture_v1.0.md`](./architecture_v1.0.md)（只读，冲突以本文为准）
 > **英文**：[`ARCHITECTURE_v2.5_en.md`](./ARCHITECTURE_v2.5_en.md)
 
@@ -390,6 +390,9 @@ models:
 ##### 关键约束
 
 - **隐私优先**：LOCAL_ONLY 模式下绝不穿透到云端；若本地无可用模型，返回 `local_only_no_local_model`。隐私敏感度判定复用 B3 安全模块的检测规则与关键词库。
+- **本地模型加载降级链**：`llama-server` 启动默认最多等待 30 秒；进程创建失败、提前退出或健康检查超时统一归一为 `LlamaServerStartupError`，退出链执行 `terminate → kill`。桌面对象图可临时保留 `EchoBackend("local-unavailable")`，但 `local_available=false` 时编排器必须绕过 Echo，禁止将其当作真实本地模型。
+- **禁止静默上云**：本地加载失败后，`LOCAL_ONLY` 进入 `no_backend` 且不出站；`ASK_BEFORE_CLOUD` / `ALWAYS_ASK` 继续经过 A3 Consent；仅 `AUTO_ROUTE_CLOUD` 可在存在完整云端配置时进入 `cloud_fallback`。云端降级调用不得配置损坏的本地 fallback，云端失败后直接返回用户可见降级结果。
+- **运行状态可见**：A1 通过 `/api/status` 暴露 `backend_mode`（`local` / `cloud_fallback` / `no_backend`）、`local_available`、`cloud_available` 与 `local_error`；前端必须提示已切云端、未配置云端或 LOCAL_ONLY 阻止上云的具体原因。
 - **Consent 审计**：每次云端路由决策生成独立 Consent Artifact，含预估 token 数、预估花费、推荐理由。
 - **A2 执行回退**：AutoRouter 只产出路由决策（含 fallback 模型），不参与实际调用；云端调用超时/失败时，由 `ConversationOrchestrator` 执行回退。
 - **能力标签统一**：`capabilities` 字段使用 `shared/` 层统一定义的枚举常量，与 Router LLM 意图分类、Skill 能力声明保持一致。
@@ -403,6 +406,7 @@ models:
 | 规则引擎版路由 | TaskProfiler + CostPredictor + 决策引擎 | ✅ |
 | 云端路由 Consent | 对接 A3 Consent 审计体系 | ✅ |
 | 失败自动回退 | A2 推理调用入口按 fallback 模型回退 | ✅ |
+| 本地加载失败降级 | 30 秒启动边界 + cloud_fallback / no_backend 状态 + 禁止 Echo 执行 | ✅ |
 | Per-step 路由 | PlanAutoBridge 逐 step 独立路由，Consent 精确落到 step | ✅ |
 | 云端凭证注入 | routed_plan_invoker 从 9B provider 注入 endpoint/key/model | ✅ |
 | Auto Turn 编排 | decide → prepare → execute_next → SSE 事件 | ✅ |
@@ -467,6 +471,12 @@ A2 层单一状态数据源，基于 SQLite + 内存缓存实现，只存状态�
 - 所有模块读写状态必须经 StateManager DAO 层，CI 拦截直连数据库操作的代码。
 - 仅负责状态存储与事件分发，不承载任何业务逻辑；空闲检测由 A1 负责，检测后发布事件到 StateManager，IdleThink 模块订阅事件自行触发。
 - 事件命名与 payload 遵循 `shared/` 层统一规范，携带 trace_id、触发源、版本号。
+
+##### 本地 JSON 状态备份与恢复
+
+- `settings.json`、`cloud_models.json` 等本地 JSON 状态统一通过 `JsonStateStore` 原子写入；覆盖主文件前在 `backups/` 保存上一份有效版本，每个状态文件最多保留最近三份备份。
+- 启动与桌面 HTTP 宿主创建时执行完整性检查。主文件 JSON 损坏时按时间从新到旧选择首个有效备份恢复；没有有效备份时返回安全默认值，不因配置损坏阻断启动。
+- 恢复结果通过 `/api/status.repaired_state_files` 暴露，前端显示“检测到配置文件损坏，已从备份恢复”；损坏内容与 API Key 不进入 toast 或外部日志。
 
 #### 6.2.8 JobScheduler（后台任务调度 · S8）
 
@@ -660,6 +670,8 @@ execute_turn_stream() 遇到需要 Consent 的 step
     → yield consent_required → return
 前端 POST /api/consent {request_id, allowed}
   → gateway.decide() 持久化 A3 Consent Artifact
+  → allowed=false：返回 status=declined + 固定自然语言回复，不返回 error
+    → 计划步骤标记 skipped / 计划取消，回复写入对话流
 前端 POST /api/chat {resume:true, plan_id, consent_request_id, stream:true}
   → load_context() → 校验 request_id → 从 paused_step_id 继续执行
 ```
@@ -687,6 +699,12 @@ execute_turn_stream() 遇到需要 Consent 的 step
 | `agent_toolbox_high_risk` | agent-toolbox 高危接口调用 | `caller_skill_id`、`operation`、`reason` | 单次会话 | 否 |
 
 **说明**：所有 Consent 条目均记录 `created_at`、`trace_id`、`actor`，统一一次性审计，不做跨会话复用。
+
+#### 拒绝反馈契约
+
+- 用户拒绝 Consent 属于正常产品决策，不属于服务错误；HTTP 返回 200、`status=declined` 和自然语言 `message`，不得携带 `error` 字段或触发错误 toast。
+- 当前固定回复为“好的，那我不做这个了。”，不调用本地或云端模型，避免拒绝后再次产生推理或出站行为。
+- 拒绝仍必须持久化 `user_decision=deny` 的 Consent Artifact；对话路径同步保存用户输入与助手回复，计划路径将对应步骤标记为 `skipped`，重启后不得再次弹出同一授权。
 
 #### 降级路径矩阵
 
