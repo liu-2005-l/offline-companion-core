@@ -16,6 +16,11 @@
 ### 新增能力
 - Superpowers Prompt Skill 支持声明阶段序列；新增 SQLite `skill_executions` 状态跟踪、`HardGate` 前置检查和宿主注入会话 ID 的本地 `skill_advance_stage` 元工具。
 
+### Phase 2 事件流
+- 新增全局 append-only `DomainEvent` 事件流、SQLite 持久化与启动恢复，按 `(stream_id, seq)` 保证顺序和幂等。
+- SSE 断连支持 seq gap repair；Projection 提供开发模式 Trajectory 时间线，事件以 `trace_id` 串联一次 turn。
+- Consent 事件补齐 `consent/asked` + `consent/decided` 审计对；模型切换、降级和不可用状态记录 `model/switched`、`model/degraded`、`model/unavailable`。
+
 ---
 
 ## v1.3.0-alpha2 · 2026-08-15（Phase 1 可靠性加固）

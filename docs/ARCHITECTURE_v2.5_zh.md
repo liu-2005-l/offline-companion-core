@@ -401,6 +401,18 @@ models:
 - **Per-step 路由**：`PlanAutoBridge._route_steps()` 逐 step 调用 `AutoRouter.route()`，决策写入 `PlanContext.step_route_decisions[step_id]`；Consent 精确落到对应 step。
 - **云端凭证注入**：`routed_plan_invoker` 通过 `cloud_model_provider` 从 9B 云模型管理数据读取 endpoint/key/model，不依赖环境变量。
 
+##### 模型事件与降级审计
+
+模型选择、切换和不可用状态同时写入事件流，供 Trajectory 与故障诊断使用；事件 payload 不包含 API Key 或提示词原文。
+
+| 事件类型 | 触发条件 | 关键字段 |
+|----------|----------|----------|
+| `model/switched` | 本地、云端或路由模型发生切换 | `from_backend`、`to_backend`、`model_id`、`reason` |
+| `model/degraded` | 本地模型加载失败并进入云端降级，或模型能力降级 | `from_mode`、`to_mode`、`reason`、`local_error` |
+| `model/unavailable` | 没有可用的本地或云端后端 | `backend`、`reason`、`privacy_mode` |
+
+`model/degraded` 必须与运行状态中的 `backend_mode` 变化一致；`LOCAL_ONLY` 下不得以降级事件为理由发起云端请求，只记录 `model/unavailable` 或本地失败事实。
+
 | 项 | 共识 | 状态 |
 |----|------|------|
 | 规则引擎版路由 | TaskProfiler + CostPredictor + 决策引擎 | ✅ |
@@ -477,6 +489,18 @@ A2 层单一状态数据源，基于 SQLite + 内存缓存实现，只存状态�
 - `settings.json`、`cloud_models.json` 等本地 JSON 状态统一通过 `JsonStateStore` 原子写入；覆盖主文件前在 `backups/` 保存上一份有效版本，每个状态文件最多保留最近三份备份。
 - 启动与桌面 HTTP 宿主创建时执行完整性检查。主文件 JSON 损坏时按时间从新到旧选择首个有效备份恢复；没有有效备份时返回安全默认值，不因配置损坏阻断启动。
 - 恢复结果通过 `/api/status.repaired_state_files` 暴露，前端显示“检测到配置文件损坏，已从备份恢复”；损坏内容与 API Key 不进入 toast 或外部日志。
+
+##### 全局 append-only 事件流（Phase 2）
+
+事件流是并行新增的事实层，不替换 `StateManager`、`consent_artifacts`、SSE partial 消息或其他既有审计链。一次交互以 `session_id` 作为 `stream_id`，通过不可变 `DomainEvent` envelope 记录 `event_id`、`stream_id`、`seq`、`event_type`、`timestamp`、`schema_version` 与 JSON `payload`。
+
+- `EventTypeRegistry` 负责事件类型与 schema 版本注册；append 前校验类型和 JSON payload。
+- `EventStream.append()` 的提交边界固定为“校验 → 创建 frozen 事件 → 提交内存序列 → 通知 observer”；observer 失败不回滚已提交事件，重入 append 直接拒绝。
+- `EventPersistence` 使用 SQLite `domain_events` 表和 write-behind 批量队列；`(stream_id, seq)` 唯一约束保证幂等，启动时恢复所有 stream。
+- 恢复发现 seq 缺口时只加载连续前缀并标记 `recovery_mode`，记录 warning，不让 C 端因事件损坏崩溃。
+- SSE 推送沿用 Phase 1 的 `stream_events` partial 兜底，并以 seq 检测跳号、拉取历史补齐和丢弃重复帧；两条存储链保持并行。
+- `Projection` 从事件序列构造开发视图；`?debug=trajectory` 启用 Trajectory 时间线，默认 UI 不展示。
+- 关键事件按 `plan/*`、`consent/*`、`model/*`、`session/*` 注册；一次 turn 的事件通过 `trace_id` 串联，可从输入回放到模型、工具和返回。
 
 #### 6.2.8 JobScheduler（后台任务调度 · S8）
 
@@ -699,6 +723,17 @@ execute_turn_stream() 遇到需要 Consent 的 step
 | `agent_toolbox_high_risk` | agent-toolbox 高危接口调用 | `caller_skill_id`、`operation`、`reason` | 单次会话 | 否 |
 
 **说明**：所有 Consent 条目均记录 `created_at`、`trace_id`、`actor`，统一一次性审计，不做跨会话复用。
+
+#### 事件流中的 Consent 审计对
+
+每次需要用户决定的 Consent 请求必须在同一 `stream_id` 中形成不可拆分语义的审计对：先写入 `consent/asked`，用户做出决定后再写入 `consent/decided`。两条事件共享 `trace_id` 与 `request_id`，并保留 `purpose_type`、`actor` 和决定时间；`decided` 缺失时请求仍保持待决，不得推断为允许。
+
+| 事件类型 | 写入时机 | 关键字段 |
+|----------|----------|----------|
+| `consent/asked` | 生成 Consent 请求并展示给用户 | `request_id`、`purpose_type`、`reason`、`trace_id` |
+| `consent/decided` | 用户允许或拒绝后 | `request_id`、`decision`、`purpose_type`、`trace_id` |
+
+拒绝也必须写入 `consent/decided`（`decision=deny`），并沿用自然语言 `declined` 回复契约；事件流审计不能替代既有 Consent Artifact，二者并行保存。
 
 #### 拒绝反馈契约
 
