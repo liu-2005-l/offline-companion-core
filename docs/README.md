@@ -42,5 +42,6 @@
 | 文件 | 用途 |
 |------|------|
 | [`_TEMP_NEXT_STEPS_2026-06-12.md`](./_TEMP_NEXT_STEPS_2026-06-12.md) | 临时代办与阶段性缺口记录，后续应收敛进正式文档 |
+| [`_TEMP_PHASE1_5_TIMEOUT_SCAN.md`](./_TEMP_PHASE1_5_TIMEOUT_SCAN.md) | Phase 1.5 隐性超时扫描范围、结论与回归验证记录 |
 
 仓库入口：[`../README.md`](../README.md)

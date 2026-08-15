@@ -8,6 +8,7 @@ import os
 import sys
 import threading
 import time
+from collections.abc import Callable
 
 from offline_companion import __version__
 from offline_companion.shared.types import PrivacyMode
@@ -35,6 +36,40 @@ _WINDOW_TITLE = "Offline Companion"
 _TRAY_TITLE = "Offline Companion"
 _ALLOWED_HOST = "127.0.0.1"
 _DEFAULT_WINDOW_BOUNDS = {"width": 960, "height": 640}
+
+
+class _DeferredTimerRegistry:
+    """摘要：登记桌面退出阶段的短延时 Timer，并提供统一取消路径。"""
+
+    def __init__(self) -> None:
+        self._timers: set[threading.Timer] = set()
+        self._lock = threading.Lock()
+
+    def schedule(self, delay: float, callback: Callable[[], None]) -> threading.Timer:
+        """摘要：以 daemon Timer 调度回调，并在执行后移出登记表。"""
+        timer: threading.Timer
+
+        def run_callback() -> None:
+            try:
+                callback()
+            finally:
+                with self._lock:
+                    self._timers.discard(timer)
+
+        timer = threading.Timer(delay, run_callback)
+        timer.daemon = True
+        with self._lock:
+            self._timers.add(timer)
+        timer.start()
+        return timer
+
+    def cancel_all(self) -> None:
+        """摘要：取消并清空所有尚未执行的 Timer。"""
+        with self._lock:
+            timers = tuple(self._timers)
+            self._timers.clear()
+        for timer in timers:
+            timer.cancel()
 
 
 class WindowAPI:
@@ -199,6 +234,7 @@ def run_desktop(args: argparse.Namespace) -> int:
     hide_to_tray_hint_shown = False
     is_quitting = False
     data_root = bundle.paths.root
+    destroy_timers = _DeferredTimerRegistry()
 
     def show_main_window() -> None:
         win = window_holder["window"]
@@ -238,7 +274,7 @@ def run_desktop(args: argparse.Namespace) -> int:
                 os._exit(0)
 
         # 不在 pystray/JS bridge 回调栈里同步 destroy，避免 WinForms closing 重入。
-        threading.Timer(0.05, _destroy_window).start()
+        destroy_timers.schedule(0.05, _destroy_window)
 
     def start_tray() -> bool:
         """摘要：启动系统托盘；失败时关窗将直接退出（避免无托盘却后台驻留）。"""
@@ -319,7 +355,7 @@ def run_desktop(args: argparse.Namespace) -> int:
                     except Exception:
                         os._exit(0)
 
-                threading.Timer(0.05, _destroy_window).start()
+                destroy_timers.schedule(0.05, _destroy_window)
             return {"ok": True, "action": "quit"}
 
         win = window_holder["window"]
@@ -371,6 +407,7 @@ def run_desktop(args: argparse.Namespace) -> int:
     try:
         webview.start(debug=False)
     finally:
+        destroy_timers.cancel_all()
         begin_quit()
     return 0
 

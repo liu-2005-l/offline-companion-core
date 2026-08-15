@@ -5,6 +5,8 @@ import threading
 import time
 from pathlib import Path
 
+import pytest
+
 from offline_companion.runtime.storage_index.engine import connect, new_session
 from offline_companion.shared.messages import BaseMessage, MessageDirection
 from offline_companion.shell.auto_router import (
@@ -252,6 +254,36 @@ def test_message_router_timeout_returns_timeout_result(tmp_path: Path) -> None:
         ("idem-timeout",),
     ).fetchone()
     assert row["status"] == "failed"
+
+
+def test_message_router_timeout_does_not_wait_for_slow_handler() -> None:
+    router = MessageRouter()
+    handler_started = threading.Event()
+    release_handler = threading.Event()
+
+    def _slow_handler(message: BaseMessage) -> object:
+        handler_started.set()
+        release_handler.wait(timeout=1.0)
+        return message.message_id
+
+    router.register("task", _slow_handler)
+    message = BaseMessage(
+        message_id="m-real-timeout",
+        topic="task.timeout",
+        source="shell",
+        timeout_sec=0.02,
+    )
+
+    started = time.perf_counter()
+    try:
+        with pytest.raises(TimeoutError):
+            router._execute_with_timeout(message)
+        elapsed = time.perf_counter() - started
+    finally:
+        release_handler.set()
+
+    assert handler_started.is_set()
+    assert elapsed < 0.3
 
 
 def test_message_router_retries_handler_once_then_succeeds(tmp_path: Path) -> None:
