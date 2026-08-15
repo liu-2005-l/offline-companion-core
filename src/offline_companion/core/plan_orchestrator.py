@@ -9,10 +9,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from time import sleep, time
-from typing import Any, Protocol
+from typing import Any, ClassVar, Protocol
 from uuid import uuid4
 
 from offline_companion.core import plan_snapshot
+from offline_companion.core.event_stream import EventStream
 from offline_companion.core.plan_dag_engine import PlanDAGEngine
 from offline_companion.core.plan_decomposer import PlanDecomposer
 from offline_companion.core.plan_enums import PlanErrorCode, PlanEventName
@@ -415,6 +416,47 @@ class StateManagerPlanEventPublisher:
                 },
             },
             source=self._source,
+        )
+
+
+class EventStreamPlanEventPublisher:
+    """并行转发计划事件到 DomainEvent 流，不替换既有发布器。"""
+
+    _EVENT_TYPES: ClassVar[dict[str, str]] = {
+        "task.plan_created": "plan/created",
+        "task.step_completed": "plan/step_completed",
+        "task.step_failed": "plan/step_failed",
+        "task.step_degraded": "plan/step_failed",
+        "task.step_blocked": "plan/step_failed",
+        "task.plan_completed": "plan/status_changed",
+        "task.plan_failed": "plan/status_changed",
+        "task.plan_blocked": "plan/status_changed",
+        "task.plan_cancelled": "plan/status_changed",
+        "task.plan_started": "plan/status_changed",
+        "task.plan_resumed": "plan/status_changed",
+        "task.plan_paused": "plan/status_changed",
+    }
+
+    def __init__(self, delegate: PlanEventPublisher, stream: EventStream) -> None:
+        self._delegate = delegate
+        self._stream = stream
+
+    def publish(self, event_name: str, context: TaskContext, *, current_step: str | None = None) -> None:
+        """先调用旧发布器，再追加统一领域事件。"""
+        self._delegate.publish(event_name, context, current_step=current_step)
+        event_type = self._EVENT_TYPES.get(event_name)
+        if event_type is None:
+            return
+        self._stream.append(
+            event_type,
+            {
+                "plan_id": context.plan_id,
+                "step_id": current_step,
+                "status": context.status.value,
+                "event_name": event_name,
+                "trace_id": context.trace_id,
+                "error": context.error,
+            },
         )
 
 

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
+from offline_companion.core.event_stream import EventStream
 from offline_companion.core.plan_enums import PlanErrorCode, PlanEventName
 from offline_companion.core.plan_orchestrator import (
     PlanContext,
@@ -61,6 +62,7 @@ class AutoTurnOrchestrator:
     plan_orchestrator: PlanOrchestrator
     auto_bridge: PlanAutoBridge
     invoke_skill: PlanStepInvoker
+    event_stream: EventStream | None = None
 
     def execute_turn(
         self,
@@ -154,6 +156,16 @@ class AutoTurnOrchestrator:
                     break
                 continue
             next_step = ready_steps[0]
+            if self.event_stream is not None:
+                self.event_stream.append(
+                    "plan/step_started",
+                    {
+                        "plan_id": context.plan_id,
+                        "step_id": next_step.step_id,
+                        "step_title": next_step.title,
+                        "trace_id": context.trace_id,
+                    },
+                )
             yield {"type": PlanEventName.STEP_START.value, **self._step_event_payload(context, next_step)}
             previous_processed = set(context.processed_steps)
             context = self.plan_orchestrator.execute_next(context, invoke_skill=self.invoke_skill)

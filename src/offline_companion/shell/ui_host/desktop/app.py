@@ -158,6 +158,13 @@ def _shutdown_runtime(bundle) -> None:
             close()
         except Exception as exc:
             print(f"警告：关闭数据库连接失败: {exc}", file=sys.stderr)
+    event_persistence = getattr(bundle, "event_persistence", None)
+    shutdown = getattr(event_persistence, "shutdown", None)
+    if callable(shutdown):
+        try:
+            shutdown()
+        except Exception as exc:
+            print(f"警告：关闭事件持久化失败: {exc}", file=sys.stderr)
 
 
 def _require_desktop_deps() -> None:

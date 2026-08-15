@@ -6,8 +6,10 @@ import sqlite3
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from typing import Any
+from uuid import uuid4
 
 from offline_companion.core.emotion_analyzer import EmotionClassifier
+from offline_companion.core.event_stream import EventStream
 from offline_companion.core.local_reformatter.rule_reformatter import (
     LOCAL_FALLBACK_PREFIX,
     reformat_cloud_reply,
@@ -97,6 +99,8 @@ class ConversationOrchestrator:
     cloud_available: bool = False
     skill_decision_engine: SkillDecisionEngine | None = None
     tool_invoker: ToolInvoker | None = None
+    event_stream: EventStream | None = None
+    _active_trace_id: str | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.emotion_classifier is None:
@@ -156,6 +160,18 @@ class ConversationOrchestrator:
             "assistant",
             safety.user_visible_reply,
             meta={"safety": "fixed_reply"},
+        )
+        self._append_domain_event(
+            "session/message",
+            {"role": "user", "content_preview": user_text[:100], "channel": "safety"},
+        )
+        self._append_domain_event(
+            "session/message",
+            {
+                "role": "assistant",
+                "content_preview": safety.user_visible_reply[:100],
+                "channel": "safety",
+            },
         )
         return TurnResult(
             reply=safety.user_visible_reply,
@@ -223,6 +239,10 @@ class ConversationOrchestrator:
 
         if clarification_prompt is not None:
             append_message(self.conn, self.session_id, "assistant", clarification_prompt, meta={"memory": "clarify"})
+            self._append_domain_event(
+                "session/message",
+                {"role": "assistant", "content_preview": clarification_prompt[:100], "channel": "memory"},
+            )
             return None, TurnResult(
                 reply=clarification_prompt,
                 memory_on=memory_on,
@@ -262,6 +282,10 @@ class ConversationOrchestrator:
             meta=meta,
             emotion=emotion.label,
         )
+        self._append_domain_event(
+            "session/message",
+            {"role": "user", "content_preview": chat_text[:100], "channel": channel},
+        )
 
     def _append_assistant_message(
         self,
@@ -287,6 +311,43 @@ class ConversationOrchestrator:
             emotion=emotion.label,
             status=status,
         )
+        self._append_domain_event(
+            "session/message",
+            {
+                "role": "assistant",
+                "content_preview": reply[:100],
+                "channel": channel,
+                "status": status,
+            },
+        )
+
+    def _append_domain_event(self, event_type: str, payload: dict[str, Any]) -> None:
+        """并行追加领域事件；失败不影响既有对话链路。"""
+        if self.event_stream is None:
+            return
+        event_payload = dict(payload)
+        if self._active_trace_id is not None:
+            event_payload.setdefault("trace_id", self._active_trace_id)
+        try:
+            self.event_stream.append(event_type, event_payload)
+        except Exception:
+            return
+
+    def _begin_turn(self, user_text: str) -> str:
+        """创建本轮 trace_id 并记录 turn_start。"""
+        trace_id = uuid4().hex
+        self._active_trace_id = trace_id
+        self._append_domain_event(
+            "session/turn_start",
+            {"trace_id": trace_id, "content_preview": user_text[:100]},
+        )
+        return trace_id
+
+    def _end_turn(self, trace_id: str, *, status: str) -> None:
+        """记录 turn_end 并清理本轮 trace 上下文。"""
+        self._active_trace_id = trace_id
+        self._append_domain_event("session/turn_end", {"trace_id": trace_id, "status": status})
+        self._active_trace_id = None
 
     def _routing_meta(self, decision: ModelRoutingDecision, route_mode: str) -> dict[str, Any]:
         return {
@@ -393,6 +454,10 @@ class ConversationOrchestrator:
             assembled.reply,
             emotion_context=emotion.context,
             capability_profile=self._local_capability_profile(),
+        )
+        self._append_domain_event(
+            "model/switched",
+            {"mode": route_mode, "model": getattr(self.backend, "model_name", None)},
         )
         self._append_assistant_message(
             final_reply,
@@ -527,6 +592,14 @@ class ConversationOrchestrator:
         routing = self._routing_meta(decision, route_mode)
         self._append_user_message(prepared.chat_text, emotion=emotion, channel=route_mode, routing=routing)
         cloud_model = self.cloud_model_provider() if self.cloud_model_provider is not None else None
+        self._append_domain_event(
+            "model/switched",
+            {
+                "mode": "cloud",
+                "model": decision.selected_model,
+                "provider_model": cloud_model.get("model_name") if cloud_model else None,
+            },
+        )
         response = cloud_post(
             CloudCompletionRequest(
                 user_message=prepared.chat_text,
@@ -582,6 +655,10 @@ class ConversationOrchestrator:
                 route_mode="cloud",
             )
         except (ReformatError, CloudConnectorError, Exception):
+            self._append_domain_event(
+                "model/degraded",
+                {"reason": "cloud_request_failed", "model": decision.selected_model},
+            )
             if not decision.fallback_model:
                 reply = "云端模型暂时不可用，本地模型也尚未恢复，请稍后重试。"
                 emotion = self._emotion_payload(prepared.chat_text)
@@ -671,10 +748,22 @@ class ConversationOrchestrator:
     def _run_without_local_backend(self, prepared: _PreparedTurn) -> TurnResult:
         """摘要：绕过本地路由器，按隐私模式执行云端降级或无后端回复。"""
         if self.backend_mode != "cloud_fallback" or self.privacy_mode is PrivacyMode.LOCAL_ONLY:
+            self._append_domain_event(
+                "model/unavailable",
+                {"reason": "local_backend_unavailable", "backend_mode": self.backend_mode},
+            )
             return self._unavailable_backend_result(prepared)
         decision = self._cloud_fallback_decision()
         if decision is None or self.cloud_post is None:
+            self._append_domain_event(
+                "model/unavailable",
+                {"reason": "cloud_backend_unavailable", "backend_mode": self.backend_mode},
+            )
             return self._unavailable_backend_result(prepared)
+        self._append_domain_event(
+            "model/degraded",
+            {"reason": "local_backend_unavailable", "target": decision.selected_model},
+        )
         if decision.requires_consent:
             return self._submit_routing_consent(
                 prepared,
@@ -735,6 +824,7 @@ class ConversationOrchestrator:
                 "estimated_output_tokens": decision.estimated_output_tokens,
                 "estimated_cost": decision.estimated_cost,
                 "message_preview": prepared.chat_text[:120],
+                "trace_id": self._active_trace_id,
             },
         )
 
@@ -849,6 +939,19 @@ class ConversationOrchestrator:
             )
 
     def run_turn(self, user_text: str, *, memory_on: bool) -> TurnResult:
+        trace_id = self._begin_turn(user_text)
+        status = "completed"
+        try:
+            return self._run_turn_impl(user_text, memory_on=memory_on)
+        except Exception:
+            status = "error"
+            raise
+        else:
+            status = "completed"
+        finally:
+            self._end_turn(trace_id, status=status)
+
+    def _run_turn_impl(self, user_text: str, *, memory_on: bool) -> TurnResult:
         safety_result = self._safety_result(user_text, memory_on=memory_on)
         if safety_result is not None:
             return safety_result
@@ -882,6 +985,22 @@ class ConversationOrchestrator:
         )
 
     def run_turn_stream(self, user_text: str, *, memory_on: bool) -> Iterator[dict[str, Any]]:
+        trace_id = self._begin_turn(user_text)
+        status = "completed"
+        try:
+            yield from self._run_turn_stream_impl(user_text, memory_on=memory_on)
+        except GeneratorExit:
+            status = "interrupted"
+            raise
+        except Exception:
+            status = "error"
+            raise
+        else:
+            status = "completed"
+        finally:
+            self._end_turn(trace_id, status=status)
+
+    def _run_turn_stream_impl(self, user_text: str, *, memory_on: bool) -> Iterator[dict[str, Any]]:
         """摘要：流式执行单轮对话；当前仅本地模型逐 token，云端/同意路径退化为单个 done。"""
         safety_result = self._safety_result(user_text, memory_on=memory_on)
         if safety_result is not None:

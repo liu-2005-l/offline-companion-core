@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from offline_companion.core.event_stream import EventStream
 from offline_companion.core.plan_orchestrator import ConsentRequest
 from offline_companion.shared.types import PurposeType
 from offline_companion.shell.outbound_manager.consent import persist_consent_artifact
@@ -77,6 +78,7 @@ class UIHostConsentGateway:
 
     decision_provider: DecisionProvider | None = None
     db_conn: sqlite3.Connection | None = None
+    event_stream: EventStream | None = None
     pending: dict[str, PendingConsent] = field(default_factory=dict)
     last_artifact: dict[str, Any] | None = None
 
@@ -90,6 +92,18 @@ class UIHostConsentGateway:
         )
         self.pending[request_id] = pending
         self.last_artifact = artifact
+        if self.event_stream is not None:
+            self.event_stream.append(
+                "consent/asked",
+                {
+                    "request_id": request_id,
+                    "plan_id": consent_request.plan_id,
+                    "step_id": consent_request.step_id,
+                    "purpose": _purpose_for_request(consent_request),
+                    "risk_level": consent_request.risk_level,
+                    "trace_id": consent_request.metadata.get("trace_id"),
+                },
+            )
 
         # 默认异步：仅登记待审批请求，由 UI 弹窗决策后回写。
         if self.decision_provider is None:
@@ -123,6 +137,18 @@ class UIHostConsentGateway:
         pending.decided = True
         pending.allowed = allowed
         self.last_artifact = artifact
+        if self.event_stream is not None:
+            self.event_stream.append(
+                "consent/decided",
+                {
+                    "request_id": request_id,
+                    "plan_id": pending.consent_request.plan_id,
+                    "step_id": pending.consent_request.step_id,
+                    "allowed": allowed,
+                    "decision": decision,
+                    "trace_id": pending.consent_request.metadata.get("trace_id"),
+                },
+            )
         if self.db_conn is not None:
             self.db_conn.execute(
                 """

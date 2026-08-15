@@ -10,6 +10,11 @@ from pathlib import Path
 from typing import Any
 
 from offline_companion.core.attention_awareness import AttentionContext, AttentionGuard
+from offline_companion.core.event_stream import (
+    EventPersistence,
+    StreamManager,
+    build_default_registry,
+)
 from offline_companion.core.fallback_controller import FallbackController
 from offline_companion.core.goal_manager import GoalEvaluator, GoalManager, GoalRepository
 from offline_companion.core.hard_gate import HardGate
@@ -19,7 +24,12 @@ from offline_companion.core.persona_session.persona_loader import (
     resolved_companion_display_name,
 )
 from offline_companion.core.persona_session.session import PersonaSessionCore
-from offline_companion.core.plan_orchestrator import A3ConsentAdapter, PlanOrchestrator
+from offline_companion.core.plan_orchestrator import (
+    A3ConsentAdapter,
+    EventStreamPlanEventPublisher,
+    PlanOrchestrator,
+    StateManagerPlanEventPublisher,
+)
 from offline_companion.core.skill_execution_tracker import SkillExecutionTracker
 from offline_companion.core.state_manager import StateManager
 from offline_companion.core.subagent_scheduler import RestrictedToolRegistry, SubagentScheduler
@@ -155,6 +165,8 @@ class UISessionBundle:
     idle_detector: IdleDetector
     idle_coordinator: IdleThinkCoordinator
     state_manager: StateManager
+    event_stream_manager: StreamManager | None = None
+    event_persistence: EventPersistence | None = None
 
 
 def _configured_cloud_model(paths: AppPaths, settings: dict[str, Any]) -> dict[str, Any] | None:
@@ -250,6 +262,10 @@ def bootstrap_ui_session(
     triggers = load_triggers()
 
     conn = connect(paths.db_path)
+    event_persistence = EventPersistence(paths.db_path)
+    event_stream_manager = StreamManager(build_default_registry(), event_persistence)
+    event_stream_manager.restore_from_disk()
+    event_stream = event_stream_manager.get_or_create(session_id)
     row = conn.execute("SELECT id FROM sessions WHERE id = ?;", (session_id,)).fetchone()
     if not row:
         new_session(conn, session_id, persona.persona_id, title=session_title)
@@ -288,7 +304,7 @@ def bootstrap_ui_session(
     else:
         backend_mode = "no_backend"
 
-    consent_gateway = UIHostConsentGateway(db_conn=conn)
+    consent_gateway = UIHostConsentGateway(db_conn=conn, event_stream=event_stream)
     tool_registry = ToolRegistry()
     register_skill_advance_stage_tool(tool_registry, conn)
     tool_invoker = ToolInvoker(tool_registry, consent_gateway=consent_gateway)
@@ -307,6 +323,7 @@ def bootstrap_ui_session(
         local_available=local_available,
         cloud_available=cloud_available,
         tool_invoker=tool_invoker,
+        event_stream=event_stream,
     )
 
     state_manager = StateManager(paths.db_path)
@@ -329,6 +346,9 @@ def bootstrap_ui_session(
             ),
         ),
         privacy_mode=privacy.value,
+        event_publisher=EventStreamPlanEventPublisher(
+            StateManagerPlanEventPublisher(state_manager), event_stream
+        ),
     )
     conversation_plan_invoker = ConversationPlanInvoker(orchestrator)
     routed_invoker = RoutedPlanInvoker(
@@ -354,6 +374,7 @@ def bootstrap_ui_session(
         plan_orchestrator=plan_orchestrator,
         auto_bridge=auto_bridge,
         invoke_skill=routed_invoker.invoke_step,
+        event_stream=event_stream,
     )
     goal_repository = GoalRepository(conn)
     goal_manager = GoalManager(
@@ -397,6 +418,8 @@ def bootstrap_ui_session(
         idle_detector=idle_detector,
         idle_coordinator=idle_coordinator,
         state_manager=state_manager,
+        event_stream_manager=event_stream_manager,
+        event_persistence=event_persistence,
     )
 
 
