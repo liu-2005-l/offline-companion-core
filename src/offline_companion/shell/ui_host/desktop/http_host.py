@@ -79,6 +79,9 @@ from offline_companion.shell.ui_host.desktop.crash_reporting import archive_cras
 from offline_companion.shell.ui_host.desktop.privacy_socket_guard import apply_privacy_socket_guard
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
 from offline_companion.shell.ui_host.model_registry import (
+    BUILTIN_MODELS,
+    ModelDirectory,
+    builtin_model_payload,
     discover_models,
     runtime_config_from_descriptor,
 )
@@ -697,6 +700,27 @@ def create_desktop_app(runtime: DesktopRuntime):
                 }
             )
         return _json_response(jsonify, {"items": items, "auto": bool(model_state["auto"]), "total": len(items)})
+
+    @app.get("/api/models/registry")
+    def model_registry():
+        """摘要：返回首次引导可选择的内置模型注册表。"""
+        directory = ModelDirectory(runtime.paths.root)
+        items = [builtin_model_payload(entry, directory) for entry in BUILTIN_MODELS]
+        return _json_response(jsonify, {"items": items, "total": len(items)})
+
+    @app.get("/api/models/local")
+    def local_models():
+        """摘要：返回模型目录中已下载的本地模型。"""
+        directory = ModelDirectory(runtime.paths.root)
+        items = [
+            {
+                "model_id": model_id,
+                "path": str(directory.model_path(model_id)),
+                "size_bytes": directory.model_path(model_id).stat().st_size,
+            }
+            for model_id in directory.list_local_models()
+        ]
+        return _json_response(jsonify, {"items": items, "total": len(items)})
 
     @app.post("/api/models/cloud")
     def add_cloud_model():

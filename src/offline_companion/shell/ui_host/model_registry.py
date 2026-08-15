@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import yaml
@@ -17,6 +18,95 @@ from offline_companion.shared.types import (
 
 _SUPPORTED_ARCHITECTURES = {"qwen2", "qwen2moe", "llama", "mistral", "gemma"}
 _REQUIRED_CONFIG_FIELDS = ("chat_template", "n_ctx", "capability_profile")
+
+
+@dataclass(frozen=True)
+class ModelEntry:
+    """摘要：描述可供首次引导选择的本地模型及其下载元数据。"""
+
+    model_id: str
+    display_name: str
+    family: str
+    size_bytes: int
+    sha256: str
+    quant: str
+    context_length: int
+    recommended: bool
+    description: str
+    download_urls: tuple[str, ...]
+    min_ram_mb: int
+
+
+BUILTIN_MODELS: tuple[ModelEntry, ...] = (
+    ModelEntry(
+        model_id="qwen2.5-1.5b-instruct-q4_k_m",
+        display_name="Qwen2.5 1.5B (Q4_K_M)",
+        family="qwen2.5",
+        size_bytes=1_117_320_736,
+        sha256="6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+        quant="Q4_K_M",
+        context_length=4096,
+        recommended=True,
+        description="推荐配置，约 1.1GB，普通电脑可流畅运行",
+        download_urls=(
+            "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+            "https://hf-mirror.com/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+        ),
+        min_ram_mb=2048,
+    ),
+)
+
+
+class ModelDirectory:
+    """摘要：管理数据根目录下的 GGUF 模型文件。"""
+
+    def __init__(self, data_root: Path) -> None:
+        """摘要：创建模型目录访问器。
+
+        参数：
+            data_root: 应用数据根目录。
+        """
+        self.models_dir = models_dir(data_root_override=data_root)
+
+    def model_path(self, model_id: str) -> Path:
+        """摘要：返回指定模型的安全文件路径。
+
+        参数：
+            model_id: 注册表中的模型 ID。
+        返回值：
+            模型 GGUF 文件路径。
+        """
+        safe_id = (model_id or "").strip()
+        if not safe_id or Path(safe_id).name != safe_id:
+            raise ValueError("模型 ID 无效")
+        return self.models_dir / f"{safe_id}.gguf"
+
+    def is_downloaded(self, model_id: str) -> bool:
+        """摘要：判断模型文件是否存在且非空。"""
+        path = self.model_path(model_id)
+        return path.is_file() and path.stat().st_size > 0
+
+    def list_local_models(self) -> list[str]:
+        """摘要：列出模型目录中已存在的非空 GGUF 文件 ID。"""
+        if not self.models_dir.is_dir():
+            return []
+        return sorted(
+            path.stem
+            for path in self.models_dir.glob("*.gguf")
+            if path.is_file() and path.stat().st_size > 0
+        )
+
+    def ensure_dir(self) -> None:
+        """摘要：确保模型目录存在。"""
+        self.models_dir.mkdir(parents=True, exist_ok=True)
+
+
+def builtin_model_payload(entry: ModelEntry, directory: ModelDirectory) -> dict[str, object]:
+    """摘要：将内置模型元数据转换为 API 安全 payload。"""
+    payload = asdict(entry)
+    payload["download_urls"] = list(entry.download_urls)
+    payload["downloaded"] = directory.is_downloaded(entry.model_id)
+    return payload
 
 
 def registry_path(*, data_root_override: Path | None = None) -> Path:
