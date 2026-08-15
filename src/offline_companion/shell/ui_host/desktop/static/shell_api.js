@@ -679,16 +679,35 @@ function apiSetRenderedMessageId(msgIdx, messageId) {
   if (msg) msg.dataset.messageId = String(messageId);
 }
 
-async function apiReadSseStream(resp, onEvent) {
+async function apiReadSseStream(resp, onEvent, options) {
+  options = options || {};
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
-  let latestSeq = 0;
+  let latestSeq = Number.isFinite(Number(options.initialSeq)) ? Number(options.initialSeq) : -1;
   let done = false;
-  const consumeEvent = function(event) {
-    if (event.seq) latestSeq = Math.max(latestSeq, Number(event.seq) || 0);
+  const consumeEvent = async function(event) {
+    const seq = Number(event && event.seq);
+    if (Number.isFinite(seq)) {
+      if (seq <= latestSeq) return;
+      if (seq > latestSeq + 1 && typeof options.onGap === 'function') {
+        const repaired = await options.onGap(latestSeq, seq - 1);
+        if (repaired && Number.isFinite(Number(repaired.latestSeq))) {
+          latestSeq = Math.max(latestSeq, Number(repaired.latestSeq));
+        }
+        if (latestSeq < seq - 1) throw new Error('SSE 事件缺口修复失败');
+      }
+      latestSeq = seq;
+    }
     if (event.done) done = true;
-    onEvent(event);
+    await onEvent(event);
+  };
+  const consumePart = async function(part) {
+    for (const line of part.split('\n')) {
+      if (!line.startsWith('data:')) continue;
+      const raw = line.slice(5).trim();
+      if (raw) await consumeEvent(JSON.parse(raw));
+    }
   };
   while (true) {
     const result = await reader.read();
@@ -696,16 +715,10 @@ async function apiReadSseStream(resp, onEvent) {
     buffer += decoder.decode(result.value, { stream: true });
     const parts = buffer.split('\n\n');
     buffer = parts.pop() || '';
-    parts.forEach(function(part) {
-      part.split('\n').forEach(function(line) {
-        if (!line.startsWith('data:')) return;
-        const raw = line.slice(5).trim();
-        if (raw) consumeEvent(JSON.parse(raw));
-      });
-    });
+    for (const part of parts) await consumePart(part);
   }
   const rest = buffer.trim();
-  if (rest.startsWith('data:')) consumeEvent(JSON.parse(rest.slice(5).trim()));
+  if (rest.startsWith('data:')) await consumePart(rest);
   return { done: done, latestSeq: latestSeq };
 }
 
@@ -719,11 +732,13 @@ async function apiRepairSseGap(sessionId, fromSeq, onEvent) {
     );
     let done = false;
     (data.events || []).forEach(function(event) {
-      latestSeq = Math.max(latestSeq, Number(event.seq) || 0);
+      const eventSeq = Number(event.seq);
+      if (!Number.isFinite(eventSeq) || eventSeq <= latestSeq) return;
+      if (eventSeq > latestSeq + 1) return;
+      latestSeq = eventSeq;
       if (event.done) done = true;
       onEvent(event);
     });
-    latestSeq = Math.max(latestSeq, Number(data.latest_seq) || 0);
     if (done) return { done: true, latestSeq: latestSeq };
     if (attempt < SSE_MAX_RECONNECT) {
       await new Promise(function(resolve) { setTimeout(resolve, Math.min(attempt * 1000, 5000)); });
@@ -811,9 +826,15 @@ async function sendMessage() {
       }
       if (event.done) finalData = event;
     };
+    const repairGap = function(fromSeq) {
+      return apiRepairSseGap(_currentSessionId, fromSeq, handleStreamEvent);
+    };
     let streamState;
     try {
-      streamState = await apiReadSseStream(resp, handleStreamEvent);
+      streamState = await apiReadSseStream(resp, handleStreamEvent, {
+        initialSeq: lastStreamSeq,
+        onGap: repairGap
+      });
       lastStreamSeq = Math.max(lastStreamSeq, streamState.latestSeq || 0);
     } catch (streamError) {
       const repaired = await apiRepairSseGap(_currentSessionId, lastStreamSeq, handleStreamEvent);
