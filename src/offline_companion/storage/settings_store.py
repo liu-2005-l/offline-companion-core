@@ -24,6 +24,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "idle_think_enabled": True,
     "idle_threshold_seconds": 300,
     "focus_mode_enabled": False,
+    "onboarding": {"completed": False, "step": 0, "skipped_model": False},
 }
 
 

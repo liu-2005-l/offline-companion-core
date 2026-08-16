@@ -1171,6 +1171,31 @@ body {
 }
 .about-info { font-size: 12px; color: var(--text-secondary); line-height: 1.8; }
 .about-info strong { color: var(--text); }
+
+.onboarding-overlay {
+  position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center;
+  justify-content: center; background: rgba(15, 23, 42, 0.42); padding: 20px;
+}
+.onboarding-card {
+  width: min(520px, 100%); max-height: 90vh; overflow: auto; padding: 28px;
+  border-radius: 18px; background: var(--bg-surface); color: var(--text);
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+}
+.onboarding-progress { margin-bottom: 18px; color: var(--accent); letter-spacing: 8px; text-align: center; }
+.onboarding-title { margin: 0 0 8px; font-size: 22px; }
+.onboarding-desc { color: var(--text-secondary); line-height: 1.7; }
+.onboarding-models { display: grid; gap: 10px; margin: 18px 0; }
+.onboarding-model { display: block; padding: 12px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+.onboarding-model:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.onboarding-model-name { font-weight: 600; }
+.onboarding-model-meta { margin-top: 4px; color: var(--text-tertiary); font-size: 12px; }
+.onboarding-field { width: 100%; box-sizing: border-box; margin: 12px 0; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-input); color: var(--text); }
+.onboarding-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
+.onboarding-actions button { padding: 9px 16px; border: 0; border-radius: 8px; cursor: pointer; }
+.onboarding-primary { background: var(--accent); color: var(--text-on-accent); }
+.onboarding-secondary { background: var(--bg-surface-hover); color: var(--text-secondary); }
+.onboarding-progressbar { height: 8px; margin: 14px 0; overflow: hidden; border-radius: 4px; background: var(--border-light); }
+.onboarding-progressbar > div { height: 100%; background: var(--accent); transition: width .2s; }
  
 /* ── 状态栏 ── */
 .statusbar {

@@ -478,6 +478,49 @@ def create_desktop_app(runtime: DesktopRuntime):
             },
         )
 
+    def onboarding_payload() -> dict[str, Any]:
+        """摘要：构造首次引导状态及当前可用后端摘要。"""
+        settings = load_settings(runtime.paths.root)
+        raw = settings.get("onboarding")
+        onboarding = raw if isinstance(raw, dict) else {}
+        try:
+            step = int(onboarding.get("step", 0) or 0)
+        except (TypeError, ValueError):
+            step = 0
+        directory = ModelDirectory(runtime.paths.root)
+        return {
+            "completed": bool(onboarding.get("completed", False)),
+            "step": max(0, min(3, step)),
+            "skipped_model": bool(onboarding.get("skipped_model", False)),
+            "has_local_model": bool(directory.list_local_models()),
+            "has_cloud": bool(runtime.cloud_available),
+            "privacy_mode": runtime.privacy_mode.value,
+        }
+
+    @app.get("/api/onboarding/state")
+    def onboarding_state():
+        """摘要：返回首次引导当前状态。"""
+        return _json_response(jsonify, onboarding_payload())
+
+    @app.post("/api/onboarding/complete")
+    def complete_onboarding():
+        """摘要：标记首次引导完成。"""
+        skipped_model = onboarding_payload()["skipped_model"]
+        saved = update_settings(
+            runtime.paths.root,
+            {"onboarding": {"completed": True, "step": 3, "skipped_model": skipped_model}},
+        )
+        return _json_response(jsonify, {"ok": True, "onboarding": saved["onboarding"]})
+
+    @app.post("/api/onboarding/skip")
+    def skip_onboarding():
+        """摘要：跳过首次引导并记录跳过模型选择。"""
+        saved = update_settings(
+            runtime.paths.root,
+            {"onboarding": {"completed": True, "step": 3, "skipped_model": True}},
+        )
+        return _json_response(jsonify, {"ok": True, "onboarding": saved["onboarding"]})
+
     @app.get("/api/settings/apply-trace")
     def settings_apply_trace():
         path = runtime.paths.root / "settings_apply_trace.json"

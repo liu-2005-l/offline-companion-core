@@ -731,15 +731,18 @@ async function apiRepairSseGap(sessionId, fromSeq, onEvent) {
       '/api/sessions/' + encodeURIComponent(sessionId) + '/events?from_seq=' + latestSeq
     );
     let done = false;
+    let progressed = false;
     (data.events || []).forEach(function(event) {
       const eventSeq = Number(event.seq);
       if (!Number.isFinite(eventSeq) || eventSeq <= latestSeq) return;
       if (eventSeq > latestSeq + 1) return;
       latestSeq = eventSeq;
+      progressed = true;
       if (event.done) done = true;
       onEvent(event);
     });
     if (done) return { done: true, latestSeq: latestSeq };
+    if (!progressed && (data.events || []).length > 0) break;
     if (attempt < SSE_MAX_RECONNECT) {
       await new Promise(function(resolve) { setTimeout(resolve, Math.min(attempt * 1000, 5000)); });
     }
@@ -1129,6 +1132,142 @@ async function deleteMemory() {
   });
 }
 
+let _onboardingState = null;
+let _onboardingStep = 0;
+let _onboardingDownloadTimer = null;
+let _onboardingModelsLoaded = false;
+
+async function loadOnboardingState() {
+  try {
+    const data = await apiJson('/api/onboarding/state');
+    _onboardingState = data || {};
+    _onboardingStep = Number(_onboardingState.step || 0);
+    if (!_onboardingState.completed) openOnboarding();
+  } catch (error) {
+    console.warn('[onboarding] state load failed', error);
+  }
+}
+
+function openOnboarding() {
+  const overlay = document.getElementById('onboardingOverlay');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  renderOnboarding();
+}
+
+function closeOnboarding() {
+  const overlay = document.getElementById('onboardingOverlay');
+  if (overlay) overlay.style.display = 'none';
+  if (_onboardingDownloadTimer) clearInterval(_onboardingDownloadTimer);
+  _onboardingDownloadTimer = null;
+}
+
+function renderOnboarding() {
+  const content = document.getElementById('onboardingContent');
+  const actions = document.getElementById('onboardingActions');
+  const progress = document.getElementById('onboardingProgress');
+  if (!content || !actions || !progress) return;
+  progress.textContent = _onboardingStep === 0 ? '● ○ ○' : _onboardingStep === 1 ? '○ ● ○' : '○ ○ ●';
+  if (_onboardingStep === 0) {
+    content.innerHTML = '<h2 class="onboarding-title">欢迎使用 Offline Companion</h2><p class="onboarding-desc">这是一个本地优先的 AI 私人助理。接下来 3 步完成首次设置，你可以随时在设置中修改。</p>';
+    actions.innerHTML = '<button class="onboarding-secondary" onclick="skipOnboarding()">跳过引导</button><button class="onboarding-primary" onclick="startOnboarding()">开始设置</button>';
+  } else if (_onboardingStep === 1) {
+    const models = _onboardingState.models || [];
+    const modelHtml = models.map(function(model, index) {
+      return '<label class="onboarding-model"><input type="radio" name="onboardingModel" value="' + apiEscapeHtml(model.model_id) + '" ' + (model.recommended || index === 0 ? 'checked' : '') + '><span class="onboarding-model-name">' + apiEscapeHtml(model.display_name) + '</span><div class="onboarding-model-meta">约 ' + Math.round(Number(model.size_bytes || 0) / 1048576) + ' MB · 最低内存 ' + model.min_ram_mb + ' MB</div></label>';
+    }).join('');
+    content.innerHTML = '<h2 class="onboarding-title">选择本地模型</h2><p class="onboarding-desc">推荐模型会下载到本地，下载完成后即可开始对话。</p><div class="onboarding-models">' + modelHtml + '</div><div id="onboardingDownloadProgress"></div>';
+    actions.innerHTML = '<button class="onboarding-secondary" onclick="skipOnboardingModel()">跳过，使用云端模式</button><button class="onboarding-primary" onclick="downloadOnboardingModel()">下载模型</button>';
+    if (!_onboardingModelsLoaded) loadOnboardingModels();
+  } else if (_onboardingStep === 2) {
+    content.innerHTML = '<h2 class="onboarding-title">设置你的偏好</h2><p class="onboarding-desc">这些偏好只保存在本地，用来让后续对话更自然。</p><input class="onboarding-field" id="onboardingName" placeholder="你想让我怎么称呼你？" maxlength="40"><label class="setting-row"><span><span class="setting-label">允许联网搜索</span><br><span class="setting-desc">默认关闭，之后可在设置中修改</span></span><input type="checkbox" id="onboardingWebSearch"></label>';
+    actions.innerHTML = '<button class="onboarding-secondary" onclick="previousOnboardingStep()">上一步</button><button class="onboarding-primary" onclick="saveOnboardingPreferences()">下一步</button>';
+  } else {
+    content.innerHTML = '<h2 class="onboarding-title">设置完成！</h2><p class="onboarding-desc">你可以随时在设置里修改这些选项。现在开始和你的本地陪伴 Agent 对话吧。</p>';
+    actions.innerHTML = '<button class="onboarding-primary" onclick="completeOnboarding()">开始使用</button>';
+  }
+}
+
+async function loadOnboardingModels() {
+  try {
+    const data = await apiJson('/api/models/registry');
+    _onboardingState.models = data.items || [];
+    _onboardingModelsLoaded = true;
+    if (_onboardingStep === 1) renderOnboarding();
+  } catch (error) {
+    showToast('模型列表加载失败：' + error.message);
+  }
+}
+
+function startOnboarding() { _onboardingStep = 1; renderOnboarding(); }
+function previousOnboardingStep() { _onboardingStep = Math.max(1, _onboardingStep - 1); renderOnboarding(); }
+
+async function skipOnboardingModel() {
+  if (!_onboardingState.has_cloud) return showToast('未配置云端模型，请下载本地模型或先配置 API Key');
+  _onboardingState.skipped_model = true;
+  _onboardingStep = 2;
+  renderOnboarding();
+}
+
+async function downloadOnboardingModel() {
+  const selected = document.querySelector('input[name="onboardingModel"]:checked');
+  if (!selected) return showToast('请先选择一个模型');
+  const modelId = selected.value;
+  try {
+    await apiJson('/api/models/download', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model_id: modelId }) });
+    if (_onboardingDownloadTimer) clearInterval(_onboardingDownloadTimer);
+    _onboardingDownloadTimer = setInterval(async function() {
+      const data = await apiJson('/api/models/download/status');
+      const item = (data.items || []).find(function(candidate) { return candidate.model_id === modelId; });
+      const node = document.getElementById('onboardingDownloadProgress');
+      if (!item || !node) return;
+      const percent = item.total_bytes ? Math.min(100, item.downloaded_bytes / item.total_bytes * 100) : 0;
+      node.innerHTML = '<div class="onboarding-progressbar"><div style="width:' + percent + '%"></div></div><div class="setting-desc">' + Math.round(percent) + '% · ' + item.state + '</div>';
+      if (item.state === 'completed') {
+        clearInterval(_onboardingDownloadTimer);
+        _onboardingStep = 2;
+        renderOnboarding();
+      } else if (item.state === 'failed' || item.state === 'cancelled') {
+        clearInterval(_onboardingDownloadTimer);
+        showToast(item.state === 'cancelled' ? '下载已取消，可以重新下载' : '下载失败，可以稍后重试');
+      }
+    }, 500);
+  } catch (error) {
+    showToast('下载启动失败：' + error.message);
+  }
+}
+
+async function saveOnboardingPreferences() {
+  const name = (document.getElementById('onboardingName') || {}).value || '';
+  const allowWebSearch = !!((document.getElementById('onboardingWebSearch') || {}).checked);
+  try {
+    if (name.trim()) await apiJson('/api/memories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: '用户希望被称呼为：' + name.trim(), source: 'onboarding', tags: ['preference', 'onboarding'] }) });
+    await apiJson('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ onboarding: { completed: false, step: 2, skipped_model: !!_onboardingState.skipped_model }, onboarding_allow_web_search: allowWebSearch }) });
+    _onboardingStep = 3;
+    renderOnboarding();
+  } catch (error) {
+    showToast('偏好保存失败：' + error.message);
+  }
+}
+
+async function completeOnboarding() {
+  try {
+    await apiJson('/api/onboarding/complete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    closeOnboarding();
+  } catch (error) {
+    showToast('引导完成失败：' + error.message);
+  }
+}
+
+async function skipOnboarding() {
+  try {
+    await apiJson('/api/onboarding/skip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    closeOnboarding();
+  } catch (error) {
+    showToast('跳过引导失败：' + error.message);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
   apiEnsureTypingNode();
   syncWindowMaximizedState();
@@ -1147,6 +1286,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   loadPendingCrashReport();
   loadAuthStatus();
   loadImprovePlan();
+  loadOnboardingState();
   startIdlePolling();
   setTimeout(function() { postSettingsDomSnapshot('after-startup-loads'); }, 300);
   setTimeout(function() { postSettingsDomSnapshot('after-startup-settle'); }, 1200);
