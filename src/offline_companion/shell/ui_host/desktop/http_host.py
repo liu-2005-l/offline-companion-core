@@ -10,6 +10,7 @@ import threading
 import time
 import traceback
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -78,6 +79,12 @@ from offline_companion.shell.ui_host.consent_feedback import (
 from offline_companion.shell.ui_host.desktop.crash_reporting import archive_crash_report
 from offline_companion.shell.ui_host.desktop.privacy_socket_guard import apply_privacy_socket_guard
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
+from offline_companion.shell.ui_host.model_downloader import (
+    DownloadProgress,
+    DownloadState,
+    ModelDownloader,
+    ThrottledProgressReporter,
+)
 from offline_companion.shell.ui_host.model_registry import (
     BUILTIN_MODELS,
     ModelDirectory,
@@ -223,6 +230,8 @@ def create_desktop_app(runtime: DesktopRuntime):
         runtime.cloud_available = True
     sync_backend_mode()
     model_lock = threading.Lock()
+    download_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="model-download")
+    download_futures: dict[str, object] = {}
     extension_state: dict[str, bool] = init_extension_status(runtime.paths.root, runtime.paths.db_path)
     persisted_persona = active_persona(runtime.orchestrator.conn)
     if persisted_persona is not None:
@@ -700,6 +709,112 @@ def create_desktop_app(runtime: DesktopRuntime):
                 }
             )
         return _json_response(jsonify, {"items": items, "auto": bool(model_state["auto"]), "total": len(items)})
+
+    def model_downloader() -> ModelDownloader:
+        """摘要：获取当前桌面会话共享的模型下载器。"""
+        downloader = getattr(runtime, "model_downloader", None)
+        if downloader is None:
+            manager = getattr(runtime, "event_stream_manager", None)
+            stream = manager.get(runtime.session_id) if manager is not None else None
+            downloader = ModelDownloader(BUILTIN_MODELS, ModelDirectory(runtime.paths.root), stream)
+            runtime.model_downloader = downloader
+        return downloader
+
+    @app.post("/api/models/download")
+    def download_model():
+        """摘要：后台启动模型下载，重复请求返回当前进度。"""
+        data = request.get_json(silent=True) or {}
+        model_id = str(data.get("model_id") or "").strip()
+        if not any(entry.model_id == model_id for entry in BUILTIN_MODELS):
+            return _json_response(jsonify, {"error": "model_not_found"}, status=404)
+        downloader = model_downloader()
+        current = downloader.get_progress(model_id)
+        if current is not None and current.state in {
+            DownloadState.PENDING,
+            DownloadState.DOWNLOADING,
+            DownloadState.VERIFYING,
+        }:
+            return _json_response(jsonify, _download_progress_payload(current))
+        try:
+            future = download_executor.submit(downloader.download, model_id)
+        except RuntimeError:
+            return _json_response(jsonify, {"error": "download_executor_unavailable"}, status=503)
+        download_futures[model_id] = future
+        return _json_response(
+            jsonify,
+            {"download_id": model_id, "model_id": model_id, "status": DownloadState.PENDING.value},
+            status=202,
+        )
+
+    @app.post("/api/models/download/cancel")
+    def cancel_model_download():
+        """摘要：请求取消指定模型的后台下载。"""
+        data = request.get_json(silent=True) or {}
+        model_id = str(data.get("model_id") or "").strip()
+        downloader = model_downloader()
+        current = downloader.get_progress(model_id)
+        if current is None and model_id not in download_futures:
+            return _json_response(jsonify, {"error": "download_not_found"}, status=404)
+        if current is not None and current.state in {
+            DownloadState.COMPLETED,
+            DownloadState.FAILED,
+            DownloadState.CANCELLED,
+        }:
+            return _json_response(jsonify, {"error": "download_not_active"}, status=409)
+        downloader.cancel(model_id)
+        return _json_response(jsonify, {"ok": True, "model_id": model_id, "status": "cancel_requested"})
+
+    @app.get("/api/models/download/status")
+    def download_status():
+        """摘要：返回全部模型下载状态。"""
+        downloader = model_downloader()
+        items = [
+            _download_progress_payload(progress)
+            for entry in BUILTIN_MODELS
+            if (progress := downloader.get_progress(entry.model_id)) is not None
+        ]
+        return _json_response(jsonify, {"items": items, "total": len(items)})
+
+    @app.get("/api/models/download/events")
+    def download_events():
+        """摘要：以 500ms 节流推送模型下载进度。"""
+        model_id = str(request.args.get("model_id") or "").strip() or None
+        if model_id is not None and not any(entry.model_id == model_id for entry in BUILTIN_MODELS):
+            return _json_response(jsonify, {"error": "model_not_found"}, status=404)
+        downloader = model_downloader()
+
+        def generate():
+            pending: list[DownloadProgress] = []
+            reporters: dict[str, ThrottledProgressReporter] = {}
+            while True:
+                progresses = (
+                    [downloader.get_progress(model_id)]
+                    if model_id
+                    else [downloader.get_progress(entry.model_id) for entry in BUILTIN_MODELS]
+                )
+                visible = [progress for progress in progresses if progress is not None]
+                for progress in visible:
+                    reporter = reporters.setdefault(
+                        progress.model_id,
+                        ThrottledProgressReporter(pending.append, interval=0.5),
+                    )
+                    reporter.report(progress)
+                while pending:
+                    yield _sse_event(_download_progress_payload(pending.pop(0)))
+                if not visible and (
+                    (model_id is not None and model_id not in download_futures)
+                    or (model_id is None and not download_futures)
+                ):
+                    break
+                if visible and all(
+                    progress.state
+                    in {DownloadState.COMPLETED, DownloadState.FAILED, DownloadState.CANCELLED}
+                    for progress in visible
+                ):
+                    break
+                time.sleep(0.1)
+
+        return _sse_response(Response, generate())
 
     @app.get("/api/models/registry")
     def model_registry():
@@ -1432,6 +1547,23 @@ def create_desktop_app(runtime: DesktopRuntime):
         return _json_response(jsonify, gateway.to_modal_payload())
 
     return app
+
+
+def _download_progress_payload(progress: DownloadProgress) -> dict[str, Any]:
+    """摘要：将下载进度转换为 API 与 SSE 共用的 JSON payload。"""
+    return {
+        "model_id": progress.model_id,
+        "state": progress.state.value,
+        "status": progress.state.value,
+        "downloaded_bytes": progress.downloaded_bytes,
+        "total_bytes": progress.total_bytes,
+        "speed_bytes_per_sec": progress.speed_bytes_per_sec,
+        "error": progress.error,
+        "source_url": progress.source_url,
+        "attempt": progress.attempt,
+        "source_index": progress.source_index,
+        "type": "model/download_progress",
+    }
 
 
 def _json_safe(payload: Any) -> Any:

@@ -43,6 +43,7 @@ class DesktopRuntime:
     state_manager: StateManager | None = None
     event_stream_manager: StreamManager | None = None
     event_persistence: EventPersistence | None = None
+    model_downloader: object | None = None
 
     @classmethod
     def from_bundle(cls, bundle: UISessionBundle) -> DesktopRuntime:

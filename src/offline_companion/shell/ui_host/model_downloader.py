@@ -52,6 +52,29 @@ class DownloadProgress:
     source_index: int
 
 
+class ThrottledProgressReporter:
+    """摘要：按时间间隔合并下载进度回调，避免 SSE 事件洪泛。"""
+
+    def __init__(self, callback: Callable[[DownloadProgress], None], interval: float = 0.5) -> None:
+        """摘要：初始化节流报告器。"""
+        self._callback = callback
+        self._interval = max(0.0, float(interval))
+        self._last_report = 0.0
+        self._last_progress: DownloadProgress | None = None
+
+    def report(self, progress: DownloadProgress) -> None:
+        """摘要：在达到间隔或进入终态时报告最新进度。"""
+        now = time.monotonic()
+        if (
+            self._last_progress is None
+            or now - self._last_report >= self._interval
+            or progress.state is not DownloadState.DOWNLOADING
+        ):
+            self._callback(progress)
+            self._last_report = now
+        self._last_progress = progress
+
+
 class DownloadError(RuntimeError):
     """摘要：模型下载或完整性校验失败。"""
 
@@ -128,8 +151,7 @@ class ModelDownloader:
                 DownloadState.VERIFYING,
             }:
                 raise DownloadError(f"模型正在下载: {model_id}")
-            cancel_flag = threading.Event()
-            self._cancel_flags[model_id] = cancel_flag
+            cancel_flag = self._cancel_flags.setdefault(model_id, threading.Event())
 
         final_path = self._directory.model_path(model_id)
         temp_path = final_path.with_suffix(final_path.suffix + ".tmp")
@@ -151,6 +173,8 @@ class ModelDownloader:
         )
         last_error: Exception | None = None
         try:
+            if cancel_flag.is_set():
+                raise DownloadCancelled(model_id)
             for source_index, url in enumerate(entry.download_urls):
                 for attempt in range(1, self._max_retries + 1):
                     try:
@@ -244,8 +268,7 @@ class ModelDownloader:
     def cancel(self, model_id: str) -> None:
         """摘要：设置指定模型的取消标志。"""
         with self._lock:
-            flag = self._cancel_flags.get(model_id)
-        if flag is not None:
+            flag = self._cancel_flags.setdefault(model_id, threading.Event())
             flag.set()
 
     def get_progress(self, model_id: str) -> DownloadProgress | None:
