@@ -9,6 +9,7 @@ from typing import Any, Protocol
 
 import yaml
 
+from offline_companion.core.provider import ModelRequest, ProviderRegistry
 from offline_companion.shared.messages import BaseMessage
 from offline_companion.shared.runtime_paths import configs_dir, dev_repo_root
 from offline_companion.shared.types import CapabilityTag, PrivacyMode, RoutingMode
@@ -139,12 +140,34 @@ class AutoRouter:
         complexity_threshold: int = 5,
         policy: RoutingPolicy | None = None,
         advisor: RouterAdvisor | None = None,
+        provider_registry: ProviderRegistry | None = None,
     ) -> None:
         self._complexity_threshold = complexity_threshold
         self._policy = policy or DefaultRoutingPolicy()
         self._advisor = advisor
+        self._provider_registry = provider_registry
         self.active_model_id: str | None = None
         self.active_model_path: str | None = None
+
+    def chat(self, request: ModelRequest) -> str:
+        """摘要：解析一次 Provider 快照并执行非流式生成。
+
+        参数：
+            request: 已冻结的模型请求；必须包含 Provider ID。
+
+        返回值：
+            Provider 生成的文本。
+
+        异常：
+            RuntimeError: AutoRouter 未配置 Provider 注册表或请求缺少 Provider ID。
+        """
+        if self._provider_registry is None:
+            raise RuntimeError("AutoRouter 未配置 ProviderRegistry")
+        provider_id = request.provider_id or self.active_model_id
+        if not provider_id:
+            raise RuntimeError("模型请求缺少 Provider ID")
+        registration = self._provider_registry.resolve(provider_id)
+        return registration.provider.generate(request)
 
     def reload_model(self, model_id: str, path: str | Path) -> None:
         """摘要：更新自动路由当前可用的本地模型元数据。
