@@ -62,3 +62,9 @@ class GoalManager:
         if result.level is not None:
             self._repo.record_feedback(goal_id, result.level)
         return result.level
+
+    def close(self) -> None:
+        """摘要：释放 GoalManager 对目标评估资源的引用。"""
+        self._repo = None
+        self._evaluator = None
+        self._guard = None
