@@ -13,6 +13,11 @@
 ### 修复
 - 本地 GGUF 默认目录统一为程序根目录相对路径 `models/`；开发模式使用仓库 `models/`，冻结版使用可执行文件旁的 `models/`，后续模型下载沿用同一路径。
 
+### Phase 3 模型下载与首次引导
+- 新增 A 层模型下载器：断点续传、多源回退、SHA256 校验、取消、进度 API/SSE 和下载生命周期审计。
+- 新增首次启动三步引导；模型下载完成后自动激活本地 backend 并同步 AutoRouter，加载失败沿用 Phase 1 降级链。
+- 安全模型明确下载器属于 A 层并受 A2 许可；模型文件缺失、损坏或校验失败时提示重新下载，不静默上云。
+
 ### 新增能力
 - Superpowers Prompt Skill 支持声明阶段序列；新增 SQLite `skill_executions` 状态跟踪、`HardGate` 前置检查和宿主注入会话 ID 的本地 `skill_advance_stage` 元工具。
 

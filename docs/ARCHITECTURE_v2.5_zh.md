@@ -430,7 +430,19 @@ models:
 | 云端模型画像持久化 | cloud_models.json 持久化 capability_profile；非法画像拒绝写入 | ✅ |
 | 用户反馈学习 | 基于历史反馈个性化调整复杂度阈值 | 📅 S10+ |
 
-#### 6.2.6 PlanOrchestrator（任务编排 · S9A）
+#### 6.2.6 模型下载器与首次引导（Phase 3）
+
+模型下载器属于 A 层宿主能力，负责模型目录、断点续传、多源回退、进度展示和下载生命周期；模型文件本身由 C 层推理后端消费。下载器不得在 B/C 层引入网络出站，也不得绕过 A2/A3 策略边界。
+
+- **A2 许可**：下载属于网络出站能力，必须由 A2 策略确认目标来源、模型 ID 和当前隐私模式；`LOCAL_ONLY` 不允许下载或切换到云端，云端配置仍必须经过既有 Consent 路径。
+- **完整性**：下载完成后先校验注册表中的 SHA256，再通过临时文件原子替换为 `.gguf`；校验失败删除临时文件，不得登记为可用或 active 模型。
+- **可靠性**：网络中断从 `.tmp` 文件继续，按注册表顺序尝试多个来源；取消保留可识别的 `CANCELLED` 状态，用户可重新下载。下载进度通过状态 API 和 SSE 暴露。
+- **自动激活**：校验成功后由 A 层创建本地 backend，替换成功才更新 `active_model_id`、AutoRouter 和模型事件；新 backend 创建失败时保留旧对象图，进入 Phase 1 降级链，不将 EchoBackend 当作真实本地模型。
+- **审计事件**：下载完成、激活和切换分别记录 `model/download_completed`、`model/activated`、`model/switched`；激活失败记录 `model/degraded`，事件 payload 不包含 API Key。
+
+首次引导由 A1/A2 提供三步状态机：选择推荐模型并下载、设置偏好与称呼、确认完成。引导状态持久化到本地 settings；跳过模型下载时仅在存在完整 API Key 且策略允许时进入云端模式，否则明确提示“需要模型或 API key”。引导完成后下次启动进入正常模式。模型缺失、文件被 truncate 或完整性检测失败时，启动必须提示重新下载并沿用 `local → cloud_fallback/no_backend` 降级链，不能静默上云。
+
+#### 6.2.7 PlanOrchestrator（任务编排 · S9A）
 
 任务规划与执行监控核心，将用户复杂目标拆解为可执行步骤序列并调度执行。
 
@@ -463,7 +475,7 @@ models:
 - Consent 暂停时持久化完整 PlanContext；恢复时通过 `load_context(plan_id)` 重建上下文，并从 `paused_step_id` 继续。
 - `PlanAutoBridge.execute()` 保留为 `prepare()` + `execute_routed()` 的兼容包装，现有调用方无需迁移。
 
-#### 6.2.7 StateManager（状态中枢）
+#### 6.2.8 StateManager（状态中枢）
 
 A2 层单一状态数据源，基于 SQLite + 内存缓存实现，只存状态不做业务逻辑，所有判断、计算留在各自模块。
 
@@ -502,7 +514,7 @@ A2 层单一状态数据源，基于 SQLite + 内存缓存实现，只存状态�
 - `Projection` 从事件序列构造开发视图；`?debug=trajectory` 启用 Trajectory 时间线，默认 UI 不展示。
 - 关键事件按 `plan/*`、`consent/*`、`model/*`、`session/*` 注册；一次 turn 的事件通过 `trace_id` 串联，可从输入回放到模型、工具和返回。
 
-#### 6.2.8 JobScheduler（后台任务调度 · S8）
+#### 6.2.9 JobScheduler（后台任务调度 · S8）
 
 后台任务调度器，管理长时间运行、定时、延迟和事件监听任务。
 
@@ -520,7 +532,7 @@ A2 层单一状态数据源，基于 SQLite + 内存缓存实现，只存状态�
 | 调度算法 | 首批采用队列式（FIFO） | ✅ |
 | 暂停恢复 | ResourceArbitrator 解除资源紧张后，按暂停顺序恢复任务 | 🔶 占位接口，S9+ |
 
-#### 6.2.9 统一错误代码规范（S8）
+#### 6.2.10 统一错误代码规范（S8）
 
 贯穿 A/B/C 层的标准化错误结构，每个错误携带 `source`（来源层）和 `recoverable`（是否可恢复）标签。
 
@@ -561,7 +573,7 @@ A2 层单一状态数据源，基于 SQLite + 内存缓存实现，只存状态�
 - 核心模块每个模块错误码控制在 10-20 个以内，不过度细化。
 - Skill 返回的错误必须包含 `error_code` 字段，否则 invoker 自动包装为 `E_SKILL_UNHANDLED_ERROR`。
 
-#### 6.2.10 熔断机制（S8）
+#### 6.2.11 熔断机制（S8）
 
 A2 invoker 为每个 Skill 维护失败计数，连续失败达到阈值后自动熔断。
 
@@ -577,7 +589,7 @@ A2 invoker 为每个 Skill 维护失败计数，连续失败达到阈值后自�
 - 熔断计数仅统计 `source: SKILL|TOOLBOX` 且 `recoverable: true` 的错误。
 - 半开探测同样区分错误类型，客户端错误不算探测失败。
 
-#### 6.2.11 ResourceArbitrator（资源仲裁 · S9）
+#### 6.2.12 ResourceArbitrator（资源仲裁 · S9）
 
 多进程资源仲裁器，防止 llama.cpp + 沙箱 + Playwright 同时运行时 OOM。
 
@@ -590,7 +602,7 @@ A2 invoker 为每个 Skill 维护失败计数，连续失败达到阈值后自�
 | 硬件基准测试 | 补充硬件基准测试，确定各档位合理阈值 | 📅 S8 |
 | 临时默认值 | 内存阈值默认 500MB，显存阈值默认 2GB，基准测试后调整 | 📅 S8 |
 
-#### 6.2.12 Router LLM & Self-Reflection（S9B）
+#### 6.2.13 Router LLM & Self-Reflection（S9B）
 
 | 项 | 共识 | 状态 |
 |----|------|------|
@@ -601,7 +613,7 @@ A2 invoker 为每个 Skill 维护失败计数，连续失败达到阈值后自�
 - Router LLM 输出意图标签使用 `shared/` 层统一定义枚举，与 AutoRouter、Skill 能力声明对齐。
 - Self-Reflection 生成的记忆必须用户确认后才入库，不静默写入，不弹窗打断。
 
-#### 6.2.13 GoalManager（长期目标管理 · S9B）
+#### 6.2.14 GoalManager（长期目标管理 · S9B）
 
 长期目标管理子系统，让 Agent 从「被动响应」走向「主动关心」。
 
@@ -615,7 +627,7 @@ A2 invoker 为每个 Skill 维护失败计数，连续失败达到阈值后自�
 | 负反馈三级判定 | 强/弱/正三级反馈对应不同权重系数，语义负反馈做关键词 + 语义双重判断 | 📅 S9B |
 | 紧急提醒仅用户标记 | 只有用户手动标记「紧急」的提醒才可突破静默期 | 📅 S9B |
 
-#### 6.2.14 IdleThink 循环（S9B）
+#### 6.2.15 IdleThink 循环（S9B）
 
 后台主动思考循环，依赖 GoalManager 驱动。
 
@@ -634,7 +646,7 @@ A1 检测用户 N 分钟无交互
 - 底栏提供一键全局静默按钮，静默状态持久化。
 - 根据硬件能力自动降级驱动模式：显存 ≥8GB 用 LLM 驱动，4-6GB 用规则 + 轻量 LLM 混合，<4GB 纯规则引擎。
 
-#### 6.2.15 AttentionAwareness（注意力感知 · S9B）
+#### 6.2.16 AttentionAwareness（注意力感知 · S9B）
 
 与 GoalManager 并列的注意力感知模块，确保主动关心不侵扰用户。
 
@@ -648,7 +660,7 @@ A1 检测用户 N 分钟无交互
 | 频率硬锁 | 主动提醒每小时 ≤1 次，每天 ≤3 次，上限不可突破 | 📅 S9B |
 | 负反馈硬降权 | 用户关闭/忽略同类型提醒 2 次 → 7 天内不触发；语义负反馈同步生效 | 📅 S9B |
 
-#### 6.2.16 A1 DevTools & Auto-Eval（S8）
+#### 6.2.17 A1 DevTools & Auto-Eval（S8）
 
 内置开发者工具与自动化评测系统。
 
@@ -662,7 +674,7 @@ A1 检测用户 N 分钟无交互
 | 提醒规则配置面板 | 可视化配置提醒规则，无需理解算法细节 | 📅 S8 |
 | 基础门禁已落地 | `check_imports` AST 分层门禁、运行时沙箱最小兜底、pytest 门禁脚本 | 🔶 部分完成 |
 
-#### 6.2.17 AutoTurnOrchestrator（Auto Mode 编排 · Sprint 10）
+#### 6.2.18 AutoTurnOrchestrator（Auto Mode 编排 · Sprint 10）
 
 Auto Mode 生产入口，编排拆解、逐 step 路由、单步执行、SSE 事件和最终结果组装。
 
