@@ -1097,6 +1097,14 @@ def create_desktop_app(runtime: DesktopRuntime):
     def plugins():
         return _json_response(jsonify, {"items": plugin_gateway.list_plugins()})
 
+    @app.get("/api/plugins/config")
+    def plugin_config():
+        """摘要：返回声明式插件配置及当前 Fiber 状态。"""
+        loader = getattr(runtime, "plugin_loader", None)
+        if loader is None:
+            return _json_response(jsonify, {"config": None, "plugins": [], "source": "not_loaded"})
+        return _json_response(jsonify, loader.dump_config())
+
     @app.post("/api/plugins/session")
     def create_plugin_session():
         data = request.get_json(silent=True) or {}
