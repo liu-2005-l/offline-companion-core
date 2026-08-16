@@ -125,6 +125,35 @@ def test_invalid_state_transitions_are_rejected() -> None:
 
     with pytest.raises(RuntimeError, match="Cannot load fiber"):
         run(fiber.load({}, {}))
+
+
+def test_unload_emits_unloading_and_disposed_events() -> None:
+    stream = EventStream("fiber-events", build_default_registry())
+    fiber = PluginFiber(PluginDefinition(id="demo", factory=lambda _context: None))
+
+    run(fiber.load({}, {}, stream))
+    run(fiber.unload())
+
+    assert [event.event_type for event in stream.get_events()] == [
+        "plugin/loaded",
+        "plugin/unloading",
+        "plugin/disposed",
+    ]
+
+
+def test_unload_bounds_async_disposer_and_reaches_disposed(caplog) -> None:
+    async def hanging_disposer() -> None:
+        await asyncio.sleep(10)
+
+    def factory(context):
+        context.effect.add_disposer(hanging_disposer)
+
+    fiber = PluginFiber(PluginDefinition(id="slow", factory=factory))
+    run(fiber.load({}, {}))
+    run(fiber.unload(grace_timeout=0.01))
+
+    assert fiber.state is LifecycleState.DISPOSED
+    assert "Plugin effect disposal exceeded" in caplog.text
     run(fiber.unload())
     with pytest.raises(RuntimeError, match="Cannot load fiber"):
         run(fiber.load({}, {}))

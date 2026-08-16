@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -106,24 +107,29 @@ class PluginFiber:
             self._append_event("plugin/failed", {"plugin_id": self.plugin_id, "error": str(exc)})
             raise
 
-    async def unload(self) -> None:
-        """摘要：递归释放子插件和当前插件资源。"""
+    async def unload(self, grace_timeout: float = 10.0) -> None:
+        """摘要：按有界流程递归释放子插件和当前插件资源。"""
         if self._state is LifecycleState.DISPOSED:
             return
         if self._state is not LifecycleState.ACTIVE:
             raise RuntimeError(f"Cannot unload fiber {self.plugin_id} from state {self._state}")
         self._state = LifecycleState.UNLOADING
+        self._append_event("plugin/unloading", {"plugin_id": self.plugin_id})
         for child in self._children:
             try:
-                await child.unload()
+                await child.unload(grace_timeout)
             except Exception:
                 logger.exception("Child fiber unload failed: %s", child.plugin_id)
         if self._effect is not None:
-            await self._effect.dispose()
+            try:
+                await asyncio.wait_for(self._effect.dispose(), timeout=max(0.0, grace_timeout))
+            except asyncio.TimeoutError:
+                logger.warning("Plugin effect disposal exceeded %.1fs: %s", grace_timeout, self.plugin_id)
         self._children.clear()
         self._service_snapshot.clear()
         self._service = None
         self._state = LifecycleState.DISPOSED
+        self._append_event("plugin/disposed", {"plugin_id": self.plugin_id})
 
     def add_child(self, child: PluginFiber) -> None:
         """摘要：注册一个由当前 Fiber 管理的子 Fiber。"""

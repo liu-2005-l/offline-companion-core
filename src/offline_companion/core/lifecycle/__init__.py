@@ -7,6 +7,7 @@ from .fiber import DependencyError, PluginFiber
 from .loader import PluginLoader
 from .topo import CircularDependencyError, MissingDependencyError, topological_sort
 from .types import Cleanup, LifecycleState, PluginDefinition
+from .worker_cleanup import cleanup_worker
 
 __all__ = [
     "CircularDependencyError",
@@ -22,5 +23,6 @@ __all__ = [
     "PluginFiber",
     "PluginLoader",
     "PluginsConfig",
+    "cleanup_worker",
     "topological_sort",
 ]
