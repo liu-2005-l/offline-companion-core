@@ -36,6 +36,8 @@ DEFAULT_EVENT_TYPES = (
     "extension/loaded",
     "extension/unloaded",
     "extension/failed",
+    "plugin/loaded",
+    "plugin/failed",
 )
 
 
