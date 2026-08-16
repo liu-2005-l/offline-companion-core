@@ -102,6 +102,10 @@ class IdleThinkCoordinator:
             self._interrupted = True
         logger.info("IdleThink interrupted by user input")
 
+    def close(self) -> None:
+        """摘要：请求中断当前 IdleThink 工作，供生命周期卸载使用。"""
+        self.on_user_input()
+
     def _resume_paused_plan_if_any(self) -> bool:
         """摘要：优先恢复上次被用户输入中断的 idle 计划。"""
         status = self._state_manager.get_system_state("idle_think_status")
