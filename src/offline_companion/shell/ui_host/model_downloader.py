@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import shutil
 import threading
 import time
 import urllib.error
@@ -123,6 +124,26 @@ class ModelDownloader:
         self._cancel_flags: dict[str, threading.Event] = {}
         self._lock = threading.RLock()
 
+    def cleanup_stale_temp_files(self, *, max_age_seconds: float = 24 * 60 * 60) -> list[Path]:
+        """摘要：清理超过保留期限的中断下载临时文件。
+
+        参数：
+            max_age_seconds: 临时文件最大保留秒数；近期文件保留以支持断点续传。
+        返回值：
+            已删除的临时文件路径列表。
+        """
+        now = time.time()
+        removed: list[Path] = []
+        for path in self._directory.models_dir.glob("*.gguf.tmp"):
+            try:
+                if now - path.stat().st_mtime <= max(0.0, float(max_age_seconds)):
+                    continue
+                path.unlink()
+                removed.append(path)
+            except OSError:
+                logger.warning("清理模型临时文件失败: %s", path, exc_info=True)
+        return removed
+
     def download(
         self,
         model_id: str,
@@ -157,11 +178,25 @@ class ModelDownloader:
         temp_path = final_path.with_suffix(final_path.suffix + ".tmp")
         self._directory.ensure_dir()
         total_bytes = int(entry.size_bytes)
+        partial_bytes = temp_path.stat().st_size if temp_path.exists() else 0
+        required_bytes = max(0, total_bytes - partial_bytes)
+        try:
+            available_bytes = int(shutil.disk_usage(self._directory.models_dir).free)
+        except OSError as exc:
+            error_text = f"无法检查磁盘空间: {exc}"
+            self._set_failed(model_id, error_text, progress_callback)
+            self._emit("model/download_failed", {"model_id": model_id, "error": error_text})
+            raise DownloadError(error_text) from exc
+        if available_bytes < required_bytes:
+            error_text = f"磁盘空间不足，需要至少 {required_bytes} 字节"
+            self._set_failed(model_id, error_text, progress_callback)
+            self._emit("model/download_failed", {"model_id": model_id, "error": error_text})
+            raise DownloadError(error_text)
         self._set_progress(
             DownloadProgress(
                 model_id,
                 DownloadState.PENDING,
-                temp_path.stat().st_size if temp_path.exists() else 0,
+                partial_bytes,
                 total_bytes,
                 0.0,
                 None,

@@ -49,4 +49,31 @@ def test_onboarding_ui_contains_three_steps_and_model_fallback_actions() -> None
     assert "downloadOnboardingModel" in source
     assert "skipOnboardingModel" in source
     assert "saveOnboardingPreferences" in source
+    assert "校验中" in source
     assert "id=\"onboardingOverlay\"" in html
+
+
+def test_onboarding_step_is_restored_after_restart(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+    (tmp_path / "settings.json").write_text(
+        '{"onboarding": {"completed": false, "step": 1, "skipped_model": false}}',
+        encoding="utf-8",
+    )
+
+    state = create_desktop_app(runtime).test_client().get("/api/onboarding/state").get_json()
+
+    assert state["completed"] is False
+    assert state["step"] == 1
+
+
+def test_legacy_active_model_without_onboarding_skips_first_run(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+    runtime.model_label = "legacy-model.gguf"
+    (tmp_path / "settings.json").write_text(
+        '{"active_model_id": "legacy-model"}',
+        encoding="utf-8",
+    )
+
+    state = create_desktop_app(runtime).test_client().get("/api/onboarding/state").get_json()
+
+    assert state["completed"] is True

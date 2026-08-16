@@ -542,13 +542,20 @@ def create_desktop_app(runtime: DesktopRuntime):
         settings = load_settings(runtime.paths.root)
         raw = settings.get("onboarding")
         onboarding = raw if isinstance(raw, dict) else {}
+        has_onboarding_state = False
+        try:
+            raw_settings = json.loads((runtime.paths.root / "settings.json").read_text(encoding="utf-8"))
+            has_onboarding_state = isinstance(raw_settings, dict) and "onboarding" in raw_settings
+        except (OSError, TypeError, ValueError):
+            pass
+        legacy_model_active = bool(str(settings.get("active_model_id") or "").strip())
         try:
             step = int(onboarding.get("step", 0) or 0)
         except (TypeError, ValueError):
             step = 0
         directory = ModelDirectory(runtime.paths.root)
         return {
-            "completed": bool(onboarding.get("completed", False)),
+            "completed": bool(onboarding.get("completed")) if has_onboarding_state else legacy_model_active,
             "step": max(0, min(3, step)),
             "skipped_model": bool(onboarding.get("skipped_model", False)),
             "has_local_model": bool(directory.list_local_models()),
@@ -820,6 +827,7 @@ def create_desktop_app(runtime: DesktopRuntime):
             stream = manager.get(runtime.session_id) if manager is not None else None
             downloader = ModelDownloader(BUILTIN_MODELS, ModelDirectory(runtime.paths.root), stream)
             runtime.model_downloader = downloader
+            downloader.cleanup_stale_temp_files()
         return downloader
 
     @app.post("/api/models/download")

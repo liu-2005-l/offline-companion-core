@@ -1,6 +1,8 @@
 """模型下载器的断点、重试、校验、取消与事件流测试。"""
 
 import hashlib
+import os
+import time
 import urllib.error
 
 import pytest
@@ -155,3 +157,38 @@ def test_cancel_preserves_partial_file_and_reports_cancelled(tmp_path, monkeypat
 
     assert downloader.get_progress(entry.model_id).state is DownloadState.CANCELLED
     assert ModelDirectory(tmp_path).model_path(entry.model_id).with_suffix(".gguf.tmp").exists()
+
+
+def test_cleanup_stale_temp_files_removes_old_downloads_but_keeps_recent(tmp_path) -> None:
+    directory = ModelDirectory(tmp_path)
+    directory.ensure_dir()
+    old_path = directory.model_path("old").with_suffix(".gguf.tmp")
+    recent_path = directory.model_path("recent").with_suffix(".gguf.tmp")
+    old_path.write_bytes(b"old")
+    recent_path.write_bytes(b"recent")
+    old_timestamp = time.time() - 3600
+    os.utime(old_path, (old_timestamp, old_timestamp))
+    downloader = ModelDownloader((), directory)
+
+    removed = downloader.cleanup_stale_temp_files(max_age_seconds=60)
+
+    assert removed == [old_path]
+    assert not old_path.exists()
+    assert recent_path.exists()
+
+
+def test_download_fails_before_network_when_disk_space_is_insufficient(tmp_path, monkeypatch) -> None:
+    entry = make_entry(b"expected")
+    calls = []
+    monkeypatch.setattr(
+        "offline_companion.shell.ui_host.model_downloader.shutil.disk_usage",
+        lambda _path: type("Usage", (), {"free": 0})(),
+    )
+    monkeypatch.setattr("urllib.request.urlopen", lambda *_args, **_kwargs: calls.append(True))
+    downloader = ModelDownloader((entry,), ModelDirectory(tmp_path), retry_backoff_base=0)
+
+    with pytest.raises(RuntimeError, match="磁盘空间不足"):
+        downloader.download(entry.model_id)
+
+    assert calls == []
+    assert downloader.get_progress(entry.model_id).state is DownloadState.FAILED

@@ -1223,6 +1223,7 @@ async function downloadOnboardingModel() {
       if (!item || !node) return;
       const percent = item.total_bytes ? Math.min(100, item.downloaded_bytes / item.total_bytes * 100) : 0;
       node.innerHTML = '<div class="onboarding-progressbar"><div style="width:' + percent + '%"></div></div><div class="setting-desc">' + Math.round(percent) + '% · ' + item.state + '</div>';
+      node.innerHTML = node.innerHTML.replace('verifying', '校验中').replace('downloading', '下载中');
       if (item.state === 'completed') {
         clearInterval(_onboardingDownloadTimer);
         _onboardingStep = 2;
