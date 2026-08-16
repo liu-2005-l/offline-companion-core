@@ -174,6 +174,11 @@ class EventPersistence:
                     expected_seq,
                     row["seq"],
                 )
+                self._conn.execute(
+                    "DELETE FROM domain_events WHERE stream_id = ? AND seq >= ?",
+                    (stream_id, expected_seq),
+                )
+                self._conn.commit()
                 break
             events.append(
                 DomainEvent(

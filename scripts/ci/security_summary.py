@@ -10,14 +10,20 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class SecuritySummary:
     static_checks_passed: bool
-    security_pytests_passed: bool
+    security_pytests_passed: bool | None
     dependency_audit_passed: bool
     notes: tuple[str, ...] = ()
 
     def format_line(self) -> str:
         parts = [
             "static checks passed" if self.static_checks_passed else "static checks failed",
-            "security pytest gate passed" if self.security_pytests_passed else "security pytest gate failed",
+            (
+                "security pytest gate passed"
+                if self.security_pytests_passed is True
+                else "security pytest gate not run"
+                if self.security_pytests_passed is None
+                else "security pytest gate failed"
+            ),
             "dependency audit passed" if self.dependency_audit_passed else "dependency audit failed",
         ]
         return "Security summary: " + " | ".join(parts)
@@ -31,7 +37,7 @@ def main() -> int:
     args = parser.parse_args()
     summary = SecuritySummary(
         static_checks_passed=args.static_checks,
-        security_pytests_passed=args.security_pytests,
+        security_pytests_passed=True if args.security_pytests else None,
         dependency_audit_passed=args.dependency_audit,
     )
     print(summary.format_line())

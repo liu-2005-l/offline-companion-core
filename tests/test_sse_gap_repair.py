@@ -24,3 +24,10 @@ def test_sse_reconnect_reuses_last_sequence_and_deduplicates_history() -> None:
     assert "onGap: repairGap" in source
     assert "eventSeq <= latestSeq" in source
     assert "apiRepairSseGap(_currentSessionId, lastStreamSeq, handleStreamEvent)" in source
+
+
+def test_sse_gap_repair_stops_when_no_progress_is_possible() -> None:
+    source = SHELL_API.read_text(encoding="utf-8")
+
+    assert "let progressed = false" in source
+    assert "if (!progressed && (data.events || []).length > 0) break;" in source

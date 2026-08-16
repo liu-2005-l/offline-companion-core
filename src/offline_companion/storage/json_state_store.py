@@ -7,6 +7,7 @@ import logging
 import os
 import tempfile
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -92,7 +93,7 @@ class JsonStateStore:
         backups = self._backup_paths(path)
         while len(backups) >= self.max_backups:
             backups.pop(0).unlink(missing_ok=True)
-        backup_path = self.backup_dir / f"{path.name}.bak.{time.time_ns()}"
+        backup_path = self.backup_dir / f"{path.name}.bak.{time.time_ns()}-{uuid.uuid4().hex}"
         self._atomic_write(backup_path, data)
 
     def _load_from_backup(self, path: Path, default: Any) -> JsonLoadResult:

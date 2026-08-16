@@ -102,3 +102,32 @@ def test_enqueue_remains_non_blocking_when_writer_connection_fails(tmp_path) -> 
 
     assert event.seq == 0
     persistence.shutdown()
+
+
+def test_seq_gap_deletes_orphaned_events_before_next_append(tmp_path) -> None:
+    db_path = tmp_path / "events.db"
+    persistence = EventPersistence(db_path)
+    manager = StreamManager(build_default_registry(), persistence)
+    stream = manager.get_or_create("s")
+    stream.append("session/created", {})
+    stream.append("session/message", {"role": "user"})
+    stream.append("session/turn_end", {})
+    wait_for_events(persistence)
+    persistence.shutdown()
+
+    with sqlite3.connect(db_path) as connection:
+        connection.execute("DELETE FROM domain_events WHERE stream_id = 's' AND seq = 1")
+        connection.commit()
+
+    recovered_persistence = EventPersistence(db_path)
+    recovered_manager = StreamManager(build_default_registry(), recovered_persistence)
+    recovered_manager.restore_from_disk()
+    recovered_stream = recovered_manager.get("s")
+    assert recovered_stream is not None
+    recovered_stream.append("session/message", {"role": "assistant"})
+    wait_for_events(recovered_persistence)
+
+    loaded = recovered_persistence.load_stream("s")
+    assert [event.seq for event in loaded] == [0, 1]
+    assert loaded[-1].payload == {"role": "assistant"}
+    recovered_persistence.shutdown()
