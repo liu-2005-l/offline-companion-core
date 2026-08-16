@@ -58,6 +58,14 @@ class MessageRouter:
         """?????????????"""
         self._auto_router = auto_router
 
+    def close(self) -> None:
+        """摘要：清理路由注册表与会话锁，供插件生命周期卸载使用。"""
+        self._handlers.clear()
+        self._wildcard_handler = None
+        self._auto_router = None
+        with self._session_locks_guard:
+            self._session_locks.clear()
+
     def route(self, message: BaseMessage) -> object:
         namespace = message.namespace().strip()
         if not namespace:
