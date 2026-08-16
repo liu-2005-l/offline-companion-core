@@ -1259,4 +1259,43 @@ Sprint 0～6.8；**7.1 ✅** `skill_manager` registry/policy + 收尾（`extensi
 
 - 所有原架构共识、安全约束、功能规划、排期计划全部保留，未做任何实质删减。
 
+## 十一、Phase 4：统一扩展生命周期
+
+### 11.1 Extension Ecosystem
+
+Skill、Plugin 与 Tool 的业务职责继续分离，但 A 层统一通过 `PluginFiber` 管理可加载扩展的生命周期。Fiber 负责状态、依赖快照和事件边界，`EffectScope` 负责 timer、listener、后台线程及其他资源的逆序释放；现有 Skill/Plugin/Tool manager 与新生命周期系统并行演进，不跨层迁移职责。
+
+### 11.2 插件生命周期
+
+`PluginFiber` 的状态只能沿明确边界流转：`PENDING → LOADING → ACTIVE`，加载失败进入 `FAILED`；卸载进入 `UNLOADING → DISPOSED`。加载失败会回滚已登记的 effect，父 Fiber 卸载时递归卸载子 Fiber。`EffectScope` 按 LIFO 顺序执行 disposer，释放操作幂等且单个 disposer 失败不阻断后续清理。
+
+卸载采用有界等待：先协作停止后台任务，再在 `grace_timeout` 内等待；超时记录 warning，不以不安全的线程强杀破坏进程。生命周期事件写入事件流，包括 `plugin/loaded`、`plugin/failed`、`plugin/unloading` 和 `plugin/disposed`。
+
+### 11.3 声明式加载
+
+插件配置使用 YAML 声明 `id`、模块、启用状态、版本和必选/可选依赖。加载器先校验配置，再进行稳定拓扑排序；依赖缺失、循环依赖或上游加载失败时，依赖链不会被静默启动。`enabled: false` 表示卸载而不是跳过审计，`dump_config` 同时输出最终配置与每个 Fiber 状态。
+
+### 11.4 Provider 抽象
+
+模型路由通过 `core/provider` 的 `ModelProvider`、`ModelRequest` 和 `ProviderRegistry` 解耦具体本地/云端 backend。注册、批量注册和替换均在锁内完成；注册返回幂等 disposer。请求开始时解析 `ProviderRegistration` 快照，因此 HMR 替换只影响新请求，在途请求继续使用旧 Provider。`AutoRouter` 仅通过可选 Registry 路由，不直接依赖具体 backend。
+
+### 11.5 安全模型补充
+
+`GuardChain` 遵守 Monotonic Guard：Guard 只能增加限制，不能撤销前置拒绝；Guard 异常按 fail-closed 处理，未知工具默认拒绝。需要用户审批的调用使用 `ApprovalAuditPair`，必须连续写入 `consent/asked` 与 `consent/decided`，任一事件写入失败均向调用方抛错，不返回未审计的授权结果。
+
+### 11.6 A 层模块图更新
+
+```text
+A2 Skill / Plugin / Tool
+          │
+          ▼
+  PluginLoader → PluginFiber → EffectScope
+          │             │
+          │             └─ lifecycle events → EventStream
+          ▼
+   ProviderRegistry → AutoRouter → local/cloud Provider
+          │
+          └─ GuardChain → Consent Audit Pair → A3 出站闸门
+```
+
 

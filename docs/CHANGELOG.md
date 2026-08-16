@@ -6,6 +6,11 @@
 
 ## 未发布 · 2026-08-13
 
+### Phase 4 插件架构
+- 统一扩展生命周期：`PluginFiber` 状态机、`EffectScope` 资源托管、声明式 YAML 拓扑加载和确定性卸载。
+- 新增 `ProviderRegistry` 与 `ModelProvider` 抽象；请求开始捕获 Provider 快照，支持 HMR 且不影响在途请求。
+- 新增 Monotonic Guard 与 fail-closed 默认策略；Consent 审计强制 `asked` + `decided` 配对。
+
 ### 设计
 - 新增《UI 自动化操作引擎技术方案》，冻结零代码标注、Skill 包格式、A 层宿主 broker、目标窗口硬锁、序列级 Consent、OCR 定位缓存与私人分发边界。
 - 新增《1.5B 模型 Function Calling 方案》，定义双本地后端 GBNF 约束、A2 工具选择与执行前参数校验、单步单工具和可观测性边界。
