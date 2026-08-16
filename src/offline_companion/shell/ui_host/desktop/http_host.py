@@ -11,7 +11,7 @@ import time
 import traceback
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -89,6 +89,7 @@ from offline_companion.shell.ui_host.model_registry import (
     BUILTIN_MODELS,
     ModelDirectory,
     builtin_model_payload,
+    describe_model,
     discover_models,
     runtime_config_from_descriptor,
 )
@@ -220,6 +221,64 @@ def create_desktop_app(runtime: DesktopRuntime):
         """摘要：更新并持久化当前激活模型 ID。"""
         model_state["active"] = model_id
         update_settings(runtime.paths.root, {"active_model_id": model_id})
+
+    def append_model_event(event_type: str, payload: dict[str, Any]) -> None:
+        """摘要：记录模型生命周期事件，审计失败不影响模型切换。"""
+        manager = getattr(runtime, "event_stream_manager", None)
+        stream = manager.get(runtime.session_id) if manager is not None else None
+        if stream is None:
+            return
+        try:
+            stream.append(event_type, payload)
+        except Exception:
+            logger.warning("模型生命周期事件记录失败: %s", event_type, exc_info=True)
+
+    def activate_downloaded_model(model_id: str, path: Path) -> None:
+        """摘要：下载校验成功后替换本地推理后端并同步自动路由。"""
+        model = describe_model(model_id, data_root_override=runtime.paths.root)
+        model = replace(model, gguf_path=str(path), status="ready")
+        old_backend = runtime.orchestrator.backend
+        new_backend = _load_local_model_backend(runtime, model)
+        runtime.orchestrator.backend = new_backend
+        runtime.local_available = True
+        runtime.local_error = None
+        runtime.active_cloud_model_id = None
+        runtime.model_label = model.display_name or path.name
+        set_active_model(model_id)
+        sync_backend_mode()
+
+        auto_turn = runtime.auto_turn_orchestrator
+        auto_router = getattr(getattr(auto_turn, "auto_bridge", None), "auto_router", None)
+        if auto_router is not None:
+            auto_router.reload_model(model_id, path)
+        append_model_event("model/activated", {"model_id": model_id, "path": str(path)})
+        append_model_event(
+            "model/switched",
+            {"mode": "local", "model": model_id, "reason": "download_completed"},
+        )
+        stop = getattr(old_backend, "stop", None)
+        if callable(stop):
+            try:
+                stop()
+            except Exception:
+                logger.warning("旧模型后端停止失败", exc_info=True)
+
+    def run_model_download(model_id: str) -> Path:
+        """摘要：执行下载并在完成后尝试自动加载模型。"""
+        downloader = model_downloader()
+        path = downloader.download(model_id)
+        try:
+            activate_downloaded_model(model_id, path)
+        except Exception as exc:
+            runtime.local_error = str(exc)
+            runtime.local_available = False
+            sync_backend_mode()
+            append_model_event(
+                "model/degraded",
+                {"model_id": model_id, "reason": "activation_failed", "error": str(exc)},
+            )
+            logger.warning("下载完成但模型自动加载失败: %s", model_id, exc_info=True)
+        return path
 
     runtime.orchestrator.cloud_model_provider = current_cloud_model
     configured_cloud_model = current_cloud_model()
@@ -779,7 +838,7 @@ def create_desktop_app(runtime: DesktopRuntime):
         }:
             return _json_response(jsonify, _download_progress_payload(current))
         try:
-            future = download_executor.submit(downloader.download, model_id)
+            future = download_executor.submit(run_model_download, model_id)
         except RuntimeError:
             return _json_response(jsonify, {"error": "download_executor_unavailable"}, status=503)
         download_futures[model_id] = future

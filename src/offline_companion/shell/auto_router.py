@@ -143,6 +143,18 @@ class AutoRouter:
         self._complexity_threshold = complexity_threshold
         self._policy = policy or DefaultRoutingPolicy()
         self._advisor = advisor
+        self.active_model_id: str | None = None
+        self.active_model_path: str | None = None
+
+    def reload_model(self, model_id: str, path: str | Path) -> None:
+        """摘要：更新自动路由当前可用的本地模型元数据。
+
+        参数：
+            model_id: 已成功加载的模型 ID。
+            path: 已成功加载的 GGUF 文件路径。
+        """
+        self.active_model_id = model_id
+        self.active_model_path = str(path)
 
     def decide(self, context: RoutingContext) -> RoutingDecision:
         policy_decision = self._policy.decide(context)
