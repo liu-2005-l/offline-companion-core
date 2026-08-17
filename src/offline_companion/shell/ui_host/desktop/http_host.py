@@ -1353,6 +1353,31 @@ def create_desktop_app(runtime: DesktopRuntime):
         plan = save_plan(runtime.orchestrator.conn, plan)
         return _json_response(jsonify, {"ok": True, "plan": plan}, status=201)
 
+    @app.get("/api/plan/<plan_id>/status")
+    def plan_status(plan_id: str):
+        """摘要：返回任务步骤与可渲染的进度摘要。"""
+        plan = get_plan(runtime.orchestrator.conn, plan_id)
+        if plan is None:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        steps = list(plan.get("steps") or [])
+        completed = sum(1 for step in steps if step.get("status") in {"done", "completed", "skipped"})
+        current = next(
+            (step for step in steps if step.get("status") in {"running", "consent"}),
+            None,
+        )
+        return _json_response(
+            jsonify,
+            {
+                "plan_id": plan_id,
+                "status": plan.get("status", "pending"),
+                "steps": steps,
+                "current_step": current,
+                "completed_steps": completed,
+                "total_steps": len(steps),
+                "progress_percent": round(completed / len(steps) * 100) if steps else 0,
+            },
+        )
+
     @app.post("/api/plan/<plan_id>/execute")
     def execute_plan_step(plan_id: str):
         data = request.get_json(silent=True) or {}

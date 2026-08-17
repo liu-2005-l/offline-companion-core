@@ -1420,6 +1420,11 @@ async function _rejectConsent(planId, stepId) {
 
 let _autoPlanState = null;
 
+async function loadTaskProgress(planId) {
+  const data = await apiJson('/api/plan/' + encodeURIComponent(planId) + '/status');
+  return data;
+}
+
 function _renderAutoPlanCard(event, msgIdx) {
   const chat = document.getElementById('chatMessages');
   if (!chat) return;

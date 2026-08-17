@@ -439,6 +439,13 @@ def test_desktop_http_plan_decompose_and_execute(tmp_path) -> None:
     assert payload["step"]["expected_output"]
     assert payload["step"]["verification"]
 
+    progress = client.get(f"/api/plan/{plan['id']}/status")
+    assert progress.status_code == 200
+    progress_payload = progress.get_json()
+    assert progress_payload["completed_steps"] == 1
+    assert progress_payload["total_steps"] == len(plan["steps"])
+    assert progress_payload["progress_percent"] > 0
+
 
 def test_desktop_http_plan_requires_consent_and_resume(tmp_path) -> None:
     rt = _runtime(tmp_path)
