@@ -8,6 +8,8 @@ import threading
 import time
 import uuid
 from collections.abc import Callable
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any, Protocol
 
 from .registry import EventTypeRegistry
@@ -44,6 +46,9 @@ class EventStream:
         self._lock = threading.Lock()
         self._notification_state = threading.local()
         self._persistence = persistence
+        self._trace_context: ContextVar[str | None] = ContextVar(
+            f"event_stream_trace_{stream_id}", default=None
+        )
 
     @property
     def stream_id(self) -> str:
@@ -74,6 +79,9 @@ class EventStream:
         if getattr(self._notification_state, "active", False):
             raise RuntimeError("检测到事件流 append 重入")
 
+        trace_id = self._trace_context.get()
+        if trace_id and "trace_id" not in payload:
+            payload = {**payload, "trace_id": trace_id}
         try:
             serialized = json.dumps(payload, ensure_ascii=False)
             normalized_payload = json.loads(serialized)
@@ -110,6 +118,18 @@ class EventStream:
         finally:
             self._notification_state.active = False
         return event
+
+    @contextmanager
+    def trace_context(self, trace_id: str):
+        """摘要：在当前线程或异步任务中注入本轮 trace_id。"""
+        normalized = str(trace_id).strip()
+        if not normalized:
+            raise ValueError("trace_id 不能为空")
+        token = self._trace_context.set(normalized)
+        try:
+            yield normalized
+        finally:
+            self._trace_context.reset(token)
 
     def restore_events(self, events: list[DomainEvent]) -> None:
         """恢复连续事件到空流，不触发 observer 或再次持久化。"""

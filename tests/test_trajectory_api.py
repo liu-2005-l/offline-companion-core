@@ -22,6 +22,19 @@ def test_trajectory_endpoint_returns_projected_events(tmp_path) -> None:
     assert payload["summary"]["event_count"] == 2
 
 
+def test_trajectory_endpoint_filters_by_trace_id(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+    stream = EventStream("h1", build_default_registry())
+    stream.append("session/turn_start", {"trace_id": "trace-1"})
+    stream.append("session/turn_start", {"trace_id": "trace-2"})
+    runtime.event_stream_manager = type("Manager", (), {"get": lambda self, stream_id: stream})()
+    client = create_desktop_app(runtime).test_client()
+
+    response = client.get("/api/trajectory/h1?trace_id=trace-2")
+
+    assert response.get_json()["summary"]["event_count"] == 1
+
+
 def test_trajectory_endpoint_returns_empty_for_unknown_stream(tmp_path) -> None:
     runtime = _runtime(tmp_path)
     client = create_desktop_app(runtime).test_client()

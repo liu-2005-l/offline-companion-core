@@ -1334,7 +1334,8 @@ def create_desktop_app(runtime: DesktopRuntime):
         stream = manager.get(stream_id) if manager is not None else None
         if stream is None:
             return _json_response(jsonify, {"timeline": [], "summary": {"event_count": 0}})
-        return _json_response(jsonify, TRAJECTORY_PROJECTION.project(stream.get_events()))
+        trace_id = request.args.get("trace_id", type=str) or None
+        return _json_response(jsonify, TRAJECTORY_PROJECTION.project(stream.get_events(), trace_id))
 
     @app.post("/api/plan/decompose")
     def decompose_plan():

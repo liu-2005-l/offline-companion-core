@@ -54,3 +54,14 @@ def test_empty_trajectory_is_empty() -> None:
         "timeline": [],
         "summary": {"event_count": 0},
     }
+
+
+def test_trajectory_projection_filters_by_trace_id() -> None:
+    stream = EventStream("s", build_default_registry())
+    stream.append("session/turn_start", {"trace_id": "t1"})
+    stream.append("session/turn_start", {"trace_id": "t2"})
+
+    result = build_trajectory_projection().project(stream.get_events(), "t2")
+
+    assert result["summary"]["event_count"] == 1
+    assert result["timeline"][0]["trace_id"] == "t2"

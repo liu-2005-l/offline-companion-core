@@ -14,6 +14,27 @@ def make_stream() -> EventStream:
     return EventStream("test-stream", build_default_registry())
 
 
+def test_trace_context_injects_and_restores_trace_id() -> None:
+    stream = make_stream()
+    stream.append("session/message", {"role": "user"})
+    with stream.trace_context("trace-1"):
+        stream.append("session/message", {"role": "assistant"})
+    stream.append("session/message", {"role": "user"})
+
+    events = stream.get_events()
+    assert events[0].payload.get("trace_id") is None
+    assert events[1].payload["trace_id"] == "trace-1"
+    assert events[2].payload.get("trace_id") is None
+
+
+def test_trace_context_does_not_overwrite_explicit_trace_id() -> None:
+    stream = make_stream()
+    with stream.trace_context("outer"):
+        stream.append("session/message", {"role": "user", "trace_id": "explicit"})
+
+    assert stream.get_event(0).payload["trace_id"] == "explicit"
+
+
 def test_append_assigns_contiguous_sequences() -> None:
     stream = make_stream()
 

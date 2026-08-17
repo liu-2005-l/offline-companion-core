@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Callable, Iterator
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
@@ -941,15 +942,17 @@ class ConversationOrchestrator:
     def run_turn(self, user_text: str, *, memory_on: bool) -> TurnResult:
         trace_id = self._begin_turn(user_text)
         status = "completed"
-        try:
-            return self._run_turn_impl(user_text, memory_on=memory_on)
-        except Exception:
-            status = "error"
-            raise
-        else:
-            status = "completed"
-        finally:
-            self._end_turn(trace_id, status=status)
+        trace_scope = self.event_stream.trace_context(trace_id) if self.event_stream else nullcontext()
+        with trace_scope:
+            try:
+                return self._run_turn_impl(user_text, memory_on=memory_on)
+            except Exception:
+                status = "error"
+                raise
+            else:
+                status = "completed"
+            finally:
+                self._end_turn(trace_id, status=status)
 
     def _run_turn_impl(self, user_text: str, *, memory_on: bool) -> TurnResult:
         safety_result = self._safety_result(user_text, memory_on=memory_on)
@@ -987,18 +990,20 @@ class ConversationOrchestrator:
     def run_turn_stream(self, user_text: str, *, memory_on: bool) -> Iterator[dict[str, Any]]:
         trace_id = self._begin_turn(user_text)
         status = "completed"
-        try:
-            yield from self._run_turn_stream_impl(user_text, memory_on=memory_on)
-        except GeneratorExit:
-            status = "interrupted"
-            raise
-        except Exception:
-            status = "error"
-            raise
-        else:
-            status = "completed"
-        finally:
-            self._end_turn(trace_id, status=status)
+        trace_scope = self.event_stream.trace_context(trace_id) if self.event_stream else nullcontext()
+        with trace_scope:
+            try:
+                yield from self._run_turn_stream_impl(user_text, memory_on=memory_on)
+            except GeneratorExit:
+                status = "interrupted"
+                raise
+            except Exception:
+                status = "error"
+                raise
+            else:
+                status = "completed"
+            finally:
+                self._end_turn(trace_id, status=status)
 
     def _run_turn_stream_impl(self, user_text: str, *, memory_on: bool) -> Iterator[dict[str, Any]]:
         """摘要：流式执行单轮对话；当前仅本地模型逐 token，云端/同意路径退化为单个 done。"""

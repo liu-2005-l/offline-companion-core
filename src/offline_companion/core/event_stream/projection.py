@@ -26,10 +26,19 @@ class Projection:
 
         return decorator
 
-    def project(self, events: Iterable[DomainEvent]) -> dict[str, Any]:
+    def project(
+        self,
+        events: Iterable[DomainEvent],
+        trace_id: str | None = None,
+    ) -> dict[str, Any]:
         """按 seq 顺序将事件投影为时间线与汇总。"""
         state: dict[str, Any] = {"timeline": [], "summary": {}}
-        for event in sorted(events, key=lambda item: item.seq):
+        selected = (
+            event
+            for event in events
+            if trace_id is None or event.payload.get("trace_id") == trace_id
+        )
+        for event in sorted(selected, key=lambda item: item.seq):
             for handler in self._handlers.get(event.event_type, ()):
                 handler(event, state)
         state["summary"]["event_count"] = len(state["timeline"])
