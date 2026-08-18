@@ -215,6 +215,57 @@ async function loadSettings() {
   }
 }
 
+function renderHealthStatus(data) {
+  const overall = document.getElementById('healthOverall');
+  const components = document.getElementById('healthComponents');
+  if (!overall || !components) return;
+  const labels = { healthy: '正常', degraded: '降级', unhealthy: '异常', unknown: '未知' };
+  overall.textContent = '整体：' + (labels[data.overall] || data.overall || '未知');
+  components.textContent = Object.keys(data.components || {}).map(function(name) {
+    const item = data.components[name] || {};
+    return name + '：' + (labels[item.status] || item.status || '未知');
+  }).join(' · ') || '暂无检查项';
+}
+
+async function loadHealthStatus(force) {
+  try {
+    const data = await apiJson(force ? '/api/health/run' : '/api/health');
+    renderHealthStatus(data);
+    return data;
+  } catch (error) {
+    renderHealthStatus({ overall: 'unknown', components: {} });
+    showToast('系统诊断失败：' + error.message);
+    return null;
+  }
+}
+
+async function exportDiagnosticsReport() {
+  try {
+    const data = await apiJson('/api/diagnostics/report');
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'offline-companion-diagnostics.json';
+    link.click();
+    URL.revokeObjectURL(link.href);
+    showToast('诊断报告已导出');
+  } catch (error) {
+    showToast('诊断报告导出失败：' + error.message);
+  }
+}
+
+async function startUiAnnotation() {
+  try {
+    const result = await apiJson('/api/ui_annotation/screenshot', { method: 'POST' });
+    if (result && result.data) {
+      window._annotationScreenshot = result.data;
+      showToast('截图已准备，可以开始标注');
+    }
+  } catch (error) {
+    showToast('无法开始标注：' + error.message);
+  }
+}
+
 async function saveSetting(key, value) {
   const payload = {};
   payload[key] = value;
@@ -230,6 +281,10 @@ async function saveSetting(key, value) {
 window.applySettings = applySettings;
 window.loadSettings = loadSettings;
 window.saveSetting = saveSetting;
+window.loadHealthStatus = loadHealthStatus;
+window.renderHealthStatus = renderHealthStatus;
+window.startUiAnnotation = startUiAnnotation;
+window.exportDiagnosticsReport = exportDiagnosticsReport;
 window.collectSettingsDomSnapshot = collectSettingsDomSnapshot;
 window.postSettingsDomSnapshot = postSettingsDomSnapshot;
 
@@ -1284,6 +1339,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   loadModels();
   loadExtensions();
   loadRuntimeStatus();
+  loadHealthStatus(false);
   loadPendingCrashReport();
   loadAuthStatus();
   loadImprovePlan();

@@ -16,6 +16,7 @@ DEFAULT_EVENT_TYPES = (
     "goal/deactivated",
     "tool/call",
     "tool/result",
+    "ui/action_executed",
     "consent/asked",
     "consent/decided",
     "model/switched",

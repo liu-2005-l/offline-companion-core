@@ -180,7 +180,7 @@ def _build_step_list(args: argparse.Namespace) -> tuple[list[StepDef], list[Skip
         ),
         StepDef(
             name="ruff 代码检查",
-            cmd=[PY, "-m", "ruff", "check", "src", "tests", "scripts"],
+            cmd=[PY, "-m", "ruff", "check", "--no-cache", "src", "tests", "scripts"],
             is_gate=True,
             skip=args.skip_lint,
         ),

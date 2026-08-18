@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import secrets
+import shutil
 import socket
 import threading
 import time
@@ -18,6 +20,7 @@ from typing import Any
 
 import offline_companion.shell.ui_host.desktop as _desktop_pkg
 from offline_companion import __version__
+from offline_companion.core.diagnostics import HealthChecker, HealthCheckResult, HealthStatus
 from offline_companion.core.event_stream import TRAJECTORY_PROJECTION
 from offline_companion.core.hard_gate import HardGate
 from offline_companion.core.memory_lifecycle.fts_ops import (
@@ -44,6 +47,7 @@ from offline_companion.core.plan_orchestrator import StepStatus as CoreStepStatu
 from offline_companion.core.skill_execution_tracker import SkillExecutionTracker
 from offline_companion.core.state_manager import StateManager
 from offline_companion.core.subagent_scheduler import SubagentScheduler
+from offline_companion.core.ui_annotation import AnnotationError, AnnotationSession
 from offline_companion.runtime.inference_backend import create_llama_backend
 from offline_companion.runtime.storage_index.engine import (
     append_message,
@@ -148,6 +152,59 @@ def _pick_port() -> int:
     port = int(sock.getsockname()[1])
     sock.close()
     return port
+
+
+def _health_checker_for(runtime: DesktopRuntime) -> HealthChecker:
+    """摘要：构造并缓存桌面运行时的基础健康检查。"""
+    checker = getattr(runtime, "_health_checker", None)
+    if checker is not None:
+        return checker
+    checker = HealthChecker()
+
+    def model_backend() -> HealthCheckResult:
+        backend = getattr(runtime.orchestrator, "backend", None)
+        report = backend.health_check() if callable(getattr(backend, "health_check", None)) else None
+        if report is None:
+            return HealthCheckResult("model_backend", HealthStatus.UNKNOWN, "后端未提供健康检查")
+        status = HealthStatus.HEALTHY if report.ok else HealthStatus.UNHEALTHY
+        return HealthCheckResult("model_backend", status, report.message, {"backend": report.backend})
+
+    def model_file() -> HealthCheckResult:
+        if runtime.local_available:
+            return HealthCheckResult("model_file", HealthStatus.HEALTHY, "本地模型可用")
+        return HealthCheckResult("model_file", HealthStatus.DEGRADED, runtime.local_error or "本地模型不可用")
+
+    def event_stream() -> HealthCheckResult:
+        available = getattr(runtime, "event_stream_manager", None) is not None
+        return HealthCheckResult("event_stream", HealthStatus.HEALTHY if available else HealthStatus.DEGRADED, "事件流已接线" if available else "事件流未初始化")
+
+    def memory_db() -> HealthCheckResult:
+        runtime.orchestrator.conn.execute("SELECT 1").fetchone()
+        return HealthCheckResult("memory_db", HealthStatus.HEALTHY, "SQLite 可读")
+
+    def plugin_fibers() -> HealthCheckResult:
+        loader = getattr(runtime, "plugin_loader", None)
+        fibers = getattr(loader, "fibers", {}) if loader is not None else {}
+        states = [str(getattr(fiber, "state", "")) for fiber in fibers.values()]
+        if any("FAILED" in state for state in states):
+            return HealthCheckResult("plugin_fibers", HealthStatus.DEGRADED, "存在失败插件", {"count": len(states)})
+        return HealthCheckResult("plugin_fibers", HealthStatus.HEALTHY, "插件生命周期正常", {"count": len(states)})
+
+    def disk_space() -> HealthCheckResult:
+        free = shutil.disk_usage(runtime.paths.root).free
+        status = HealthStatus.HEALTHY if free >= 1024**3 else HealthStatus.DEGRADED if free >= 500 * 1024**2 else HealthStatus.UNHEALTHY
+        return HealthCheckResult("disk_space", status, f"剩余空间 {free // 1024**2} MB", {"free_bytes": free})
+
+    def consent_store() -> HealthCheckResult:
+        pending = getattr(getattr(runtime.orchestrator, "consent_gateway", None), "pending", {})
+        count = len(pending)
+        status = HealthStatus.DEGRADED if count > 10 else HealthStatus.HEALTHY
+        return HealthCheckResult("consent_pending", status, f"待处理同意请求 {count} 个", {"count": count})
+
+    for name, check in (("model_backend", model_backend), ("model_file", model_file), ("event_stream", event_stream), ("memory_db", memory_db), ("plugin_fibers", plugin_fibers), ("disk_space", disk_space), ("consent_pending", consent_store)):
+        checker.register(name, check)
+    runtime._health_checker = checker
+    return checker
 
 
 @dataclass
@@ -456,6 +513,64 @@ def create_desktop_app(runtime: DesktopRuntime):
                 "architecture": "PyInstaller + llama-server sidecar",
                 "license": "BSD-2-Clause",
                 "repository": "offline-companion-core",
+            },
+        )
+
+    @app.get("/api/health")
+    def health():
+        """摘要：返回桌面运行时的聚合健康状态。"""
+        return _json_response(jsonify, _health_checker_for(runtime).run_all())
+
+    @app.get("/api/health/<component>")
+    def health_component(component: str):
+        """摘要：返回指定组件的健康状态。"""
+        result = _health_checker_for(runtime).component(component)
+        if result is None:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        return _json_response(jsonify, result)
+
+    @app.post("/api/health/run")
+    def run_health():
+        """摘要：强制刷新并返回全部健康检查。"""
+        return _json_response(jsonify, _health_checker_for(runtime).run_all(force=True))
+
+    @app.get("/api/diagnostics/benchmarks")
+    def diagnostics_benchmarks():
+        """摘要：返回最近一次性能基准报告，不在桌面请求中执行基准。"""
+        path = runtime.paths.root / "benchmark_results.json"
+        if not path.is_file():
+            return _json_response(jsonify, {"available": False, "results": {}, "path": str(path)})
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return _json_response(jsonify, {"available": False, "results": {}, "error": "invalid_report"})
+        return _json_response(jsonify, {"available": True, "results": payload, "path": str(path)})
+
+    @app.get("/api/diagnostics/report")
+    def diagnostics_report():
+        """摘要：导出不含密钥和提示词原文的本地诊断 JSON。"""
+        health_payload = _health_checker_for(runtime).run_all()
+        benchmark_path = runtime.paths.root / "benchmark_results.json"
+        benchmark_payload: dict[str, Any] = {}
+        if benchmark_path.is_file():
+            try:
+                benchmark_payload = json.loads(benchmark_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                benchmark_payload = {"error": "invalid_report"}
+        return _json_response(
+            jsonify,
+            {
+                "format": "offline-companion-diagnostics",
+                "version": 1,
+                "status": {
+                    "app_version": __version__,
+                    "backend_mode": runtime.backend_mode,
+                    "privacy_mode": runtime.privacy_mode.value,
+                    "local_available": runtime.local_available,
+                    "cloud_available": runtime.cloud_available,
+                },
+                "health": health_payload,
+                "benchmarks": benchmark_payload,
             },
         )
 
@@ -1096,6 +1211,81 @@ def create_desktop_app(runtime: DesktopRuntime):
     @app.get("/api/plugins")
     def plugins():
         return _json_response(jsonify, {"items": plugin_gateway.list_plugins()})
+
+    def annotation_session() -> AnnotationSession:
+        """摘要：获取当前桌面进程内的临时标注会话。"""
+        session = getattr(runtime, "_annotation_session", None)
+        if session is None:
+            session = AnnotationSession()
+            runtime._annotation_session = session
+        return session
+
+    @app.post("/api/ui_annotation/screenshot")
+    def annotation_screenshot():
+        """摘要：截取本地屏幕并以 base64 返回，不写入持久化存储。"""
+        try:
+            import mss
+            import mss.tools
+        except ImportError:
+            return _json_response(jsonify, {"error": "screenshot_dependency_unavailable"}, status=503)
+        try:
+            with mss.mss() as capture:
+                monitor = capture.monitors[1]
+                image = capture.grab(monitor)
+                content = mss.tools.to_png(image.rgb, image.size)
+        except (OSError, IndexError) as exc:
+            return _json_response(jsonify, {"error": "screenshot_failed", "detail": str(exc)}, status=503)
+        return _json_response(jsonify, {"content_type": "image/png", "data": base64.b64encode(content).decode("ascii")})
+
+    @app.post("/api/ui_annotation/page")
+    def annotation_page():
+        data = request.get_json(silent=True) or {}
+        try:
+            page = annotation_session().add_page(str(data.get("name") or "页面"), data.get("page_id"))
+        except AnnotationError as exc:
+            return _json_response(jsonify, {"error": str(exc)}, status=400)
+        return _json_response(jsonify, {"ok": True, "page": page}, status=201)
+
+    @app.post("/api/ui_annotation/element")
+    def annotation_element():
+        data = request.get_json(silent=True) or {}
+        try:
+            element = annotation_session().add_element(
+                str(data.get("page_id") or ""),
+                data.get("region") or [],
+                str(data.get("target_text") or ""),
+                str(data.get("type") or "display"),
+                data.get("element_id"),
+            )
+        except (AnnotationError, TypeError, ValueError) as exc:
+            return _json_response(jsonify, {"error": str(exc)}, status=400)
+        return _json_response(jsonify, {"ok": True, "element": element}, status=201)
+
+    @app.post("/api/ui_annotation/transition")
+    def annotation_transition():
+        data = request.get_json(silent=True) or {}
+        try:
+            transition = annotation_session().add_transition(
+                str(data.get("from_page") or ""), str(data.get("to_page") or ""), str(data.get("trigger_element_id") or "")
+            )
+        except AnnotationError as exc:
+            return _json_response(jsonify, {"error": str(exc)}, status=400)
+        return _json_response(jsonify, {"ok": True, "transition": transition})
+
+    @app.post("/api/ui_annotation/generate_features")
+    def annotation_generate_features():
+        data = request.get_json(silent=True) or {}
+        annotation_session().generate_features(data.get("page_texts") or {})
+        return _json_response(jsonify, {"ok": True, "pages": annotation_session().pages})
+
+    @app.post("/api/ui_annotation/export")
+    def annotation_export():
+        data = request.get_json(silent=True) or {}
+        try:
+            target = annotation_session().export(runtime.paths.root, data.get("skill_name", ""), data.get("app_name", ""))
+        except (AnnotationError, OSError) as exc:
+            return _json_response(jsonify, {"error": str(exc)}, status=400)
+        return _json_response(jsonify, {"ok": True, "path": str(target)})
 
     @app.get("/api/plugins/config")
     def plugin_config():

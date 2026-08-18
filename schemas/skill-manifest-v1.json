@@ -102,6 +102,22 @@
       "additionalProperties": {
         "type": "string"
       }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "app_target": {
+      "type": "object",
+      "required": ["name", "platform"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1}
+      }
     }
   },
   "allOf": [

@@ -1295,7 +1295,23 @@ A2 Skill / Plugin / Tool
           ▼
    ProviderRegistry → AutoRouter → local/cloud Provider
           │
-          └─ GuardChain → Consent Audit Pair → A3 出站闸门
+  └─ GuardChain → Consent Audit Pair → A3 出站闸门
 ```
+
+## 12. Phase 5 可观测性与 UI 自动化
+
+### 12.1 可观测性
+
+一次用户交互使用 `trace_id` 串联 `session/turn_start`、模型、工具、Consent、计划和 `session/turn_end` 事件。开发模式的 Trajectory Projection 按 `trace_id` 展示时间线；健康检查通过 `/api/health` 聚合模型后端、模型文件、事件流、SQLite、插件、磁盘和待处理 Consent 状态。`/api/diagnostics/report` 仅导出运行状态、健康结果和基准结果，不包含 API Key 或提示词原文。
+
+### 12.2 质量保障
+
+CI 使用 `pytest-cov` 生成覆盖率报告，并由 `scripts/check_coverage.py` 执行分层门禁；`benchmark` 测试标记用于独立运行性能回归基准。覆盖率门禁和性能基准是质量信号，不替代安全测试与人工桌面验收。
+
+### 12.3 UI 自动化边界
+
+UI 自动化由 A 层宿主执行。`PageLocator` 使用 OCR 在百分比区域内定位元素，缓存只保存运行时像素坐标，并在再次使用前进行 crop OCR 复核；`PageIdentifier` 使用页面特征集合和最低命中率识别页面。OCR、截图和输入注入依赖属于独立可选安装项。
+
+一次操作意图只申请一次序列级 Consent；包含 hard danger 的序列需要额外确认，soft danger 只增加审计标记。每一步动作写入 `ui/action_executed`，定位失败、动作失败、前台页面不符或用户中断均 fail-closed。生成的 `ui_map.yaml` 与 `manifest.json` 是私人 Skill 资产，能力声明不等于权限授权；真实桌面操作还必须经过目标窗口校验和 A3 审计链。
 
 

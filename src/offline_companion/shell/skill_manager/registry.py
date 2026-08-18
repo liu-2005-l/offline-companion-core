@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from offline_companion.core.ui_annotation import capability_warnings
 from offline_companion.shared.errors import SkillManifestError
 from offline_companion.shared.runtime_paths import dev_repo_root
 
@@ -17,6 +19,7 @@ if TYPE_CHECKING:
 MANIFEST_TYPE_SKILL = "skill"
 MANIFEST_TYPE_PLUGIN = "plugin"
 MANIFEST_TYPE_TOOL = "tool"
+logger = logging.getLogger(__name__)
 
 _KNOWN_PERMISSIONS = frozenset(
     {"cloud_inference", "network_egress", "read_session_context"},
@@ -127,6 +130,8 @@ def validate_manifest_dict(data: dict, *, source: str | None = None) -> SkillMan
         first = errors[0]
         field = ".".join(str(p) for p in first.path) or "(root)"
         raise SkillManifestError(_format_schema_error(source, field, first.message))
+    for warning in capability_warnings(data):
+        logger.warning("Skill %s: %s", data.get("name", "unknown"), warning)
 
     mtype = manifest_type_from_dict(data)
     if mtype != MANIFEST_TYPE_SKILL:

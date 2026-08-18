@@ -6,6 +6,11 @@
 
 ## 未发布 · 2026-08-13
 
+### Phase 5 可观测性与 UI 自动化
+- 新增 trace/Trajectory、健康检查、诊断报告、覆盖率门禁和性能基准能力。
+- 新增 UI 标注会话、`ui_map.yaml` / `manifest.json` 私人 Skill 导出、PageLocator、PageIdentifier 和可注入式 UI 操作安全执行器。
+- UI 自动化支持序列级 Consent、hard danger 二次确认、中断 fail-closed 和 `ui/action_executed` 审计事件；真实桌面 Actor 与 PluginFiber provider 接线仍按技术债跟踪。
+
 ### Phase 4 插件架构
 - 统一扩展生命周期：`PluginFiber` 状态机、`EffectScope` 资源托管、声明式 YAML 拓扑加载和确定性卸载。
 - 新增 `ProviderRegistry` 与 `ModelProvider` 抽象；请求开始捕获 Provider 快照，支持 HMR 且不影响在途请求。

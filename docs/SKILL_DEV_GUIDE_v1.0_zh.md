@@ -8,6 +8,8 @@ Skill 扩展 **Agent 能力**（能做什么），以 **独立进程 + localhost
 
 清单文件为 **`manifest.json`**（Plugin 使用 **`plugin.json`**，见 PLUGIN_DEV_GUIDE）。
 
+UI 自动化 Skill 可声明 `capabilities: ["ui_automation"]` 和 `app_target`。该声明只描述运行依赖，不授予屏幕读取或输入注入权限；宿主仍须执行能力检查、序列级 Consent、目标窗口校验和动作审计。
+
 ---
 
 ## 一、与 Plugin / Tool 的边界
