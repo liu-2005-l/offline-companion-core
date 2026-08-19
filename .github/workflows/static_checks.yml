@@ -17,6 +17,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+      - name: Install prompt scan dependencies
+        run: python -m pip install -q "pyyaml>=6.0"
       - name: Legacy companion import scan
         run: python scripts/ci/check_legacy_companion.py
       - name: Architecture import scan
