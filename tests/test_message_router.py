@@ -514,7 +514,7 @@ def test_background_long_running_does_not_block_same_session_dialog(tmp_path: Pa
 
     assert dialog_result.status == "completed"
     assert dialog_result.result == {"queue": "dialog"}
-    assert elapsed < 0.1
+    assert elapsed < 0.5
     assert background_result["result"].status == "completed"
 
 

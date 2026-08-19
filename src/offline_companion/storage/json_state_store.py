@@ -91,10 +91,21 @@ class JsonStateStore:
     def _rotate_backup(self, path: Path, data: Any) -> None:
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         backups = self._backup_paths(path)
+        backup_order = self._next_backup_order(path, backups)
         while len(backups) >= self.max_backups:
             backups.pop(0).unlink(missing_ok=True)
-        backup_path = self.backup_dir / f"{path.name}.bak.{time.time_ns()}-{uuid.uuid4().hex}"
+        backup_path = self.backup_dir / f"{path.name}.bak.{backup_order}-{uuid.uuid4().hex}"
         self._atomic_write(backup_path, data)
+
+    @staticmethod
+    def _next_backup_order(path: Path, backups: list[Path]) -> int:
+        prefix = f"{path.name}.bak."
+        orders: list[int] = []
+        for backup_path in backups:
+            raw_order = backup_path.name.removeprefix(prefix).split("-", 1)[0]
+            if raw_order.isdigit():
+                orders.append(int(raw_order))
+        return max(time.time_ns(), max(orders, default=0) + 1)
 
     def _load_from_backup(self, path: Path, default: Any) -> JsonLoadResult:
         for backup_path in reversed(self._backup_paths(path)):

@@ -47,6 +47,22 @@ def test_backup_rotation_keeps_latest_three_versions(tmp_path: Path) -> None:
     assert [json.loads(path.read_text(encoding="utf-8"))["version"] for path in backups] == [1, 2, 3]
 
 
+def test_backup_rotation_preserves_order_when_clock_does_not_advance(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    store = JsonStateStore(tmp_path, max_backups=3)
+    path = tmp_path / "settings.json"
+    monkeypatch.setattr("offline_companion.storage.json_state_store.time.time_ns", lambda: 1)
+
+    for version in range(5):
+        store.save(path, {"version": version})
+
+    backups = sorted((tmp_path / "backups").glob("settings.json.bak.*"))
+    versions = [json.loads(item.read_text(encoding="utf-8"))["version"] for item in backups]
+    assert versions == [1, 2, 3]
+
+
 def test_corrupt_file_without_backup_returns_default(tmp_path: Path) -> None:
     store = JsonStateStore(tmp_path)
     path = tmp_path / "settings.json"
