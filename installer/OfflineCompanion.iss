@@ -1,5 +1,5 @@
 #define AppName "Offline Companion"
-#define AppVersion "1.2.1"
+#define AppVersion "1.6.0"
 #define AppPublisher "Liujiarong"
 #define AppExeName "OfflineCompanion.exe"
 #define SourcePath ".."

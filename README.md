@@ -15,7 +15,7 @@ Offline Companion 是一款隐私优先、本地默认的离线陪伴助手核�
 推荐使用发布安装器：
 
 ```powershell
-installer\output\OfflineCompanion-Setup-1.2.1.exe
+installer\output\OfflineCompanion-Setup-1.6.0.exe
 ```
 
 安装路径为：
