@@ -7,7 +7,7 @@ Offline Companion 是一款隐私优先、本地默认的离线陪伴助手核�
 - 本地对话：默认模型为 `Qwen2.5-1.5B-Instruct-Q4_K_M.gguf`，冻结版通过独立 `llama-server.exe` sidecar 推理。
 - 可控记忆：支持身份偏好、用户偏好和长期记忆写入、召回、失效、恢复与删除。
 - 隐私策略：默认 `LOCAL_ONLY`，出站能力必须经过策略门闸和 Consent 流程。
-- 桌面体验：PyInstaller 打包、Inno Setup 安装器、托盘驻留、单实例唤醒、可选内置模型。
+- 桌面体验：PyInstaller 打包、Inno Setup 安装器、托盘驻留、单实例唤醒、首次引导按需下载模型。
 - 扩展边界：Skill / Plugin / Tool 与主对话路径隔离，第三方能力不进入核心信任边界。
 
 ## 安装方式

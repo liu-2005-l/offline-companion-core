@@ -3,7 +3,6 @@
 #define AppPublisher "Liujiarong"
 #define AppExeName "OfflineCompanion.exe"
 #define SourcePath ".."
-#define ModelFileName "Qwen2.5-1.5B-Instruct-Q4_K_M.gguf"
 
 [Setup]
 AppId={{668E6BB9-D70D-40C1-964B-52D2DF88A59A}
@@ -36,22 +35,12 @@ ChangesAssociations=no
 Name: "chinesesimplified"; MessagesFile: "ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
-[Types]
-Name: "full"; Description: "完整安装（包含内置模型）"
-Name: "compact"; Description: "精简安装（不包含模型）"
-Name: "custom"; Description: "自定义安装"; Flags: iscustom
-
-[Components]
-Name: "core"; Description: "Offline Companion 主程序"; Types: full compact custom; Flags: fixed
-Name: "model"; Description: "Qwen2.5 1.5B 内置模型（约 1.1 GB）"; Types: full
-
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加任务："; Flags: unchecked
 
 [Files]
 Source: "{#SourcePath}\dist\OfflineCompanion\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#SourcePath}\README.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#SourcePath}\models\{#ModelFileName}"; DestDir: "{app}\models"; Components: model; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Parameters: "desktop --memory 1"; WorkingDir: "{app}"

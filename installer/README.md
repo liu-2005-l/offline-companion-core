@@ -2,7 +2,7 @@
 
 ## 摘要
 
-本目录只负责打包主仓库的 PyInstaller 产物和可选内置模型。安装器不包含下载器仓库、Skill 仓库、Plugin 包或 Tool 包。
+本目录只负责打包主仓库的 PyInstaller 产物。安装器不内置模型，也不包含 Skill 仓库、Plugin 包或 Tool 包；模型由首次引导按用户选择下载。
 
 ## 构建
 
@@ -22,7 +22,7 @@ iscc.exe OfflineCompanion.iss
 输出文件：
 
 ```text
-installer/output/OfflineCompanion-Setup-1.0.0.exe
+installer/output/OfflineCompanion-Setup-1.6.0.exe
 ```
 
 ## 数据边界

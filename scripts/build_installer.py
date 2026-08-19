@@ -12,7 +12,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ISS_PATH = ROOT / "installer" / "OfflineCompanion.iss"
 DIST_DIR = ROOT / "dist" / "OfflineCompanion"
-MODEL_PATH = ROOT / "models" / "Qwen2.5-1.5B-Instruct-Q4_K_M.gguf"
 PYPROJECT_PATH = ROOT / "pyproject.toml"
 
 
@@ -47,7 +46,6 @@ def validate_inputs() -> None:
         / "static"
         / "index.html",
         ROOT / "README.md",
-        MODEL_PATH,
         ISS_PATH,
     )
     missing = [str(path) for path in required if not path.exists()]
