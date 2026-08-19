@@ -36,6 +36,7 @@ class IdleThinkCoordinator:
         attention_context_provider: Callable[[], AttentionContext] | None = None,
         settings_provider: Callable[[], dict[str, Any]] | None = None,
         plan_orchestrator: PlanOrchestrator | None = None,
+        memory_maintenance: Callable[[float], list[str]] | None = None,
         max_steps_per_idle: int = 10,
     ) -> None:
         """摘要：初始化 IdleThink 协调器。
@@ -53,6 +54,7 @@ class IdleThinkCoordinator:
         self._attention_context_provider = attention_context_provider or (lambda: AttentionContext())
         self._settings_provider = settings_provider or dict
         self._plan_orchestrator = plan_orchestrator
+        self._memory_maintenance = memory_maintenance
         self._max_steps_per_idle = max(1, int(max_steps_per_idle))
         self._current_plan_id: str | None = None
         self._interrupted = False
@@ -62,6 +64,8 @@ class IdleThinkCoordinator:
         """摘要：处理一次空闲信号，写入评估快照但不执行计划。"""
         logger.info("IdleThinkCoordinator.on_idle triggered")
         try:
+            if self._memory_maintenance is not None:
+                self._memory_maintenance(300.0)
             if self._resume_paused_plan_if_any():
                 return
             context = self._build_attention_context()

@@ -159,6 +159,9 @@ def test_desktop_http_release_metadata(tmp_path) -> None:
     api_script = client.get("/shell_api.js")
     assert api_script.status_code == 200
     assert "async function sendMessage" in api_script.text
+    assert "_chatRequestActive" in api_script.text
+    assert "function stopMessageGeneration" in api_script.text
+    assert "停止思考" in api_script.text
     assert "function _handleAutoPlanEvent" in api_script.text
     assert "function _resumeAutoPlan" in api_script.text
     assert "model.type === 'cloud' && model.enabled" in api_script.text

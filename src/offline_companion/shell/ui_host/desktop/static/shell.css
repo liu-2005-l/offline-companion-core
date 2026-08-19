@@ -762,6 +762,9 @@ body {
 }
 .send-btn.active:hover { background: var(--accent-hover); transform: scale(1.05); }
 .send-btn.active:active { transform: scale(0.95); }
+.send-btn.stop { background: var(--danger, #ef4444); color: #fff; cursor: pointer; }
+.send-btn.stop:hover { background: #dc2626; transform: scale(1.05); }
+.send-btn.stop:active { transform: scale(0.95); }
 .send-btn svg { stroke: currentColor; fill: none; stroke-width: 2; }
  
 /* 任务拆解开关 */

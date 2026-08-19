@@ -18,6 +18,9 @@ from offline_companion.core.event_stream import (
 from offline_companion.core.fallback_controller import FallbackController
 from offline_companion.core.goal_manager import GoalEvaluator, GoalManager, GoalRepository
 from offline_companion.core.hard_gate import HardGate
+from offline_companion.core.memory_lifecycle.event_extractor import EventExtractor
+from offline_companion.core.memory_lifecycle.event_repository import EventRepository
+from offline_companion.core.memory_lifecycle.idle_hook import MemoryIdleHook
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
 from offline_companion.core.persona_session.persona_loader import (
     load_persona_file,
@@ -40,7 +43,8 @@ from offline_companion.runtime.inference_backend import (
     create_llama_backend,
     try_stderr_cuda_hint,
 )
-from offline_companion.runtime.storage_index.engine import connect, new_session
+from offline_companion.runtime.storage_index.engine import connect, new_session, recent_messages
+from offline_companion.shared.deterministic_embedding import embed_text
 from offline_companion.shared.errors import InferenceBackendError
 from offline_companion.shared.types import AppPaths, MessageRow, PrivacyMode
 from offline_companion.shell.auto_router import AutoRouter, RoutingContext
@@ -340,6 +344,15 @@ def bootstrap_ui_session(
         cloud_available=cloud_available,
         tool_invoker=tool_invoker,
         event_stream=event_stream,
+        event_extractor=(
+            EventExtractor(
+                EventRepository(conn),
+                backend,
+                lambda text: embed_text(text, dimensions=768),
+            )
+            if local_available
+            else None
+        ),
     )
 
     state_manager = StateManager(paths.db_path)
@@ -398,12 +411,37 @@ def bootstrap_ui_session(
         evaluator=GoalEvaluator(goal_repository),
         guard=AttentionGuard(),
     )
+    memory_idle_hook = None
+    if orchestrator.event_extractor is not None:
+        class _SessionWindow:
+            def get_pending_extraction(self):
+                current_row = conn.execute(
+                    "SELECT COUNT(*) AS count FROM messages WHERE session_id = ? AND role = 'user'",
+                    (session_id,),
+                ).fetchone()
+                current_turn = int(current_row["count"]) if current_row is not None else 0
+                last_turn = orchestrator.event_extractor.last_extracted_turn
+                if current_turn <= last_turn:
+                    return None
+                messages = recent_messages(conn, session_id, limit=20)
+                return (
+                    session_id,
+                    [{"role": item.role, "content": item.content} for item in messages],
+                    (max(1, last_turn + 1), current_turn),
+                )
+
+        memory_idle_hook = MemoryIdleHook(
+            orchestrator.event_extractor,
+            EventRepository(conn),
+            _SessionWindow(),
+        )
     idle_coordinator = IdleThinkCoordinator(
         goal_manager=goal_manager,
         state_manager=state_manager,
         attention_context_provider=lambda: AttentionContext(is_idle=True),
         settings_provider=lambda: load_settings(paths.root),
         plan_orchestrator=plan_orchestrator,
+        memory_maintenance=memory_idle_hook.on_idle if memory_idle_hook is not None else None,
     )
     idle_detector = IdleDetector(
         threshold_seconds=float(settings_state.get("idle_threshold_seconds", 300)),

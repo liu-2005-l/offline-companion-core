@@ -69,7 +69,7 @@ def test_engine_migrates_v6_to_current_schema(tmp_path: Path) -> None:
 
     conn = connect(db_path)
     version = conn.execute("SELECT value FROM meta WHERE key = 'schema_version';").fetchone()[0]
-    assert int(version) == 11
+    assert int(version) == 12
 
     table_names = {
         row[0]

@@ -10,7 +10,7 @@ from typing import Any
 
 from offline_companion.shared.types import MessageRow
 
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 12
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -71,6 +71,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if version < 11:
         _init_v11(conn)
         version = 11
+    if version < 12:
+        _init_v12(conn)
+        version = 12
     conn.execute(
         "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
@@ -146,6 +149,36 @@ def _init_v1(conn: sqlite3.Connection) -> None:
             artifact_json TEXT NOT NULL,
             created_at REAL NOT NULL
         );
+        """
+    )
+
+
+def _init_v12(conn: sqlite3.Connection) -> None:
+    """摘要：创建并索引独立的语义事件表，不改写旧 memory_chunks。"""
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS semantic_events (
+            event_id TEXT PRIMARY KEY,
+            event_type TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            content TEXT NOT NULL,
+            content_embedding BLOB,
+            emotional_valence REAL NOT NULL DEFAULT 0.0,
+            emotional_arousal REAL NOT NULL DEFAULT 0.0,
+            importance REAL NOT NULL DEFAULT 1.0,
+            temporal_marker TEXT NOT NULL DEFAULT '',
+            source_turns TEXT NOT NULL DEFAULT '[]',
+            related_events TEXT NOT NULL DEFAULT '[]',
+            superseded_by TEXT,
+            created_at REAL NOT NULL,
+            last_recalled_at REAL NOT NULL DEFAULT 0.0,
+            recall_count INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'active'
+        );
+        CREATE INDEX IF NOT EXISTS idx_semantic_events_type ON semantic_events(event_type);
+        CREATE INDEX IF NOT EXISTS idx_semantic_events_status ON semantic_events(status);
+        CREATE INDEX IF NOT EXISTS idx_semantic_events_importance ON semantic_events(importance DESC);
+        CREATE INDEX IF NOT EXISTS idx_semantic_events_created ON semantic_events(created_at DESC);
         """
     )
 

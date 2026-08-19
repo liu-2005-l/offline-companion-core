@@ -38,6 +38,20 @@ _ALLOWED_HOST = "127.0.0.1"
 _DEFAULT_WINDOW_BOUNDS = {"width": 960, "height": 640}
 
 
+def _windows_work_area() -> tuple[int, int, int, int] | None:
+    """摘要：读取 Windows 工作区边界，最大化无边框窗口时保留任务栏区域。"""
+    if os.name != "nt":
+        return None
+
+    class Rect(ctypes.Structure):
+        _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long), ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+
+    work_area = Rect()
+    if not ctypes.windll.user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(work_area), 0):
+        return None
+    return work_area.left, work_area.top, work_area.right, work_area.bottom
+
+
 class _DeferredTimerRegistry:
     """摘要：登记桌面退出阶段的短延时 Timer，并提供统一取消路径。"""
 
@@ -84,6 +98,8 @@ class WindowAPI:
         self._window_holder = window_holder
         self._close_callback = close_callback
         self._maximized = False
+        self._work_area_maximized = False
+        self._restore_bounds: tuple[int, int, int, int] | None = None
 
     def minimize(self) -> dict[str, bool]:
         """摘要：最小化当前桌面窗口。"""
@@ -98,10 +114,30 @@ class WindowAPI:
         if window is None:
             return {"ok": False, "maximized": self._maximized}
         if self._maximized:
-            window.restore()
+            if self._work_area_maximized and self._restore_bounds is not None:
+                x, y, width, height = self._restore_bounds
+                window.move(x, y)
+                window.resize(width, height)
+            else:
+                window.restore()
             self._maximized = False
+            self._work_area_maximized = False
         else:
-            window.maximize()
+            self._restore_bounds = (
+                int(getattr(window, "x", 0) or 0),
+                int(getattr(window, "y", 0) or 0),
+                int(getattr(window, "width", 960) or 960),
+                int(getattr(window, "height", 640) or 640),
+            )
+            work_area = _windows_work_area()
+            is_pywebview_window = type(window).__module__.startswith("webview")
+            if work_area is not None and is_pywebview_window:
+                left, top, right, bottom = work_area
+                window.move(left, top)
+                window.resize(right - left, bottom - top)
+                self._work_area_maximized = True
+            else:
+                window.maximize()
             self._maximized = True
         return {"ok": True, "maximized": self._maximized}
 
@@ -119,6 +155,8 @@ class WindowAPI:
         window.move(int(x), int(y))
         window.resize(safe_width, safe_height)
         self._maximized = False
+        self._work_area_maximized = False
+        self._restore_bounds = None
         return {"ok": True, "x": int(x), "y": int(y), "width": safe_width, "height": safe_height}
 
     def get_bounds(self) -> dict[str, bool | int]:

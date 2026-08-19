@@ -48,9 +48,12 @@ def test_onboarding_ui_contains_three_steps_and_model_fallback_actions() -> None
     assert "loadOnboardingState" in source
     assert "downloadOnboardingModel" in source
     assert "skipOnboardingModel" in source
+    assert "async function skipOnboardingModel()" in source
+    assert "await skipOnboarding();" in source
     assert "saveOnboardingPreferences" in source
     assert "校验中" in source
     assert "id=\"onboardingOverlay\"" in html
+    assert 'id="toast"' in html and "z-index:1200" in html
 
 
 def test_onboarding_step_is_restored_after_restart(tmp_path) -> None:

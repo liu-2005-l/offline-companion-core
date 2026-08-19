@@ -16,6 +16,7 @@ from offline_companion.core.local_reformatter.rule_reformatter import (
     reformat_cloud_reply,
     reformat_local_reply,
 )
+from offline_companion.core.memory_lifecycle.event_extractor import EventExtractor
 from offline_companion.core.memory_lifecycle.explanation import get_memory_explanation
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
 from offline_companion.core.memory_lifecycle.memory_store import MemoryStoreController
@@ -101,6 +102,7 @@ class ConversationOrchestrator:
     skill_decision_engine: SkillDecisionEngine | None = None
     tool_invoker: ToolInvoker | None = None
     event_stream: EventStream | None = None
+    event_extractor: EventExtractor | None = None
     _active_trace_id: str | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -347,8 +349,34 @@ class ConversationOrchestrator:
     def _end_turn(self, trace_id: str, *, status: str) -> None:
         """记录 turn_end 并清理本轮 trace 上下文。"""
         self._active_trace_id = trace_id
+        self._maybe_extract_semantic_events()
         self._append_domain_event("session/turn_end", {"trace_id": trace_id, "status": status})
         self._active_trace_id = None
+
+    def _maybe_extract_semantic_events(self) -> None:
+        """摘要：在周期边界从当前会话消息中提取语义事件。"""
+        if self.event_extractor is None:
+            return
+        row = self.conn.execute(
+            "SELECT COUNT(*) AS count FROM messages WHERE session_id = ? AND role = 'user'",
+            (self.session_id,),
+        ).fetchone()
+        turn_count = int(row["count"]) if row is not None else 0
+        if not self.event_extractor.should_extract(turn_count):
+            return
+        start_turn = max(1, turn_count - 9)
+        messages = recent_messages(self.conn, self.session_id, limit=20)
+        window = [{"role": message.role, "content": message.content} for message in messages]
+        try:
+            events = self.event_extractor.extract(window, self.session_id, (start_turn, turn_count))
+        except (OSError, RuntimeError, TypeError, ValueError, sqlite3.Error):
+            return
+        self.event_extractor.mark_extracted(turn_count)
+        if events:
+            self._append_domain_event(
+                "memory/semantic_extracted",
+                {"count": len(events), "turn_range": [start_turn, turn_count]},
+            )
 
     def _routing_meta(self, decision: ModelRoutingDecision, route_mode: str) -> dict[str, Any]:
         return {

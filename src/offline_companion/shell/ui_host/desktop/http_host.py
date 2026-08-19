@@ -23,6 +23,8 @@ from offline_companion import __version__
 from offline_companion.core.diagnostics import HealthChecker, HealthCheckResult, HealthStatus
 from offline_companion.core.event_stream import TRAJECTORY_PROJECTION
 from offline_companion.core.hard_gate import HardGate
+from offline_companion.core.memory_lifecycle.event_repository import EventRepository
+from offline_companion.core.memory_lifecycle.event_types import SemanticEvent
 from offline_companion.core.memory_lifecycle.fts_ops import (
     count_memory_rows,
     invalidate_memory_chunk,
@@ -56,6 +58,7 @@ from offline_companion.runtime.storage_index.engine import (
     latest_stream_event_seq,
     stream_events_after,
 )
+from offline_companion.shared.deterministic_embedding import embed_text
 from offline_companion.shared.errors import (
     InferenceBackendError,
     SkillInvocationError,
@@ -135,7 +138,13 @@ from offline_companion.storage.persona_repo import (
     update_persona as update_persisted_persona,
 )
 from offline_companion.storage.plan_repo import delete_plan, get_plan, save_plan, update_plan
-from offline_companion.storage.settings_store import load_settings, update_settings
+from offline_companion.storage.settings_store import (
+    get_all,
+    get_module,
+    load_settings,
+    patch_module,
+    update_settings,
+)
 
 _ALLOWED_HOST = "127.0.0.1"
 logger = logging.getLogger(__name__)
@@ -335,6 +344,8 @@ def create_desktop_app(runtime: DesktopRuntime):
                 {"model_id": model_id, "reason": "activation_failed", "error": str(exc)},
             )
             logger.warning("下载完成但模型自动加载失败: %s", model_id, exc_info=True)
+        finally:
+            download_activation_pending.discard(model_id)
         return path
 
     runtime.orchestrator.cloud_model_provider = current_cloud_model
@@ -348,6 +359,7 @@ def create_desktop_app(runtime: DesktopRuntime):
     model_lock = threading.Lock()
     download_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="model-download")
     download_futures: dict[str, object] = {}
+    download_activation_pending: set[str] = set()
     extension_state: dict[str, bool] = init_extension_status(runtime.paths.root, runtime.paths.db_path)
     persisted_persona = active_persona(runtime.orchestrator.conn)
     if persisted_persona is not None:
@@ -609,14 +621,36 @@ def create_desktop_app(runtime: DesktopRuntime):
 
     @app.get("/api/settings")
     def settings():
+        canonical = get_all(runtime.paths.root)
         return _json_response(
             jsonify,
             {
                 "settings": load_settings(runtime.paths.root),
+                "data": canonical,
                 "data_root": str(runtime.paths.root),
                 "settings_path": str(runtime.paths.root / "settings.json"),
             },
         )
+
+    @app.get("/api/settings/<module>")
+    def settings_module(module: str):
+        value = get_module(runtime.paths.root, module)
+        if value is None:
+            return _json_response(jsonify, {"error": "unknown_settings_module"}, status=404)
+        return _json_response(jsonify, {"ok": True, "data": value})
+
+    @app.patch("/api/settings/<module>")
+    def patch_settings_module(module: str):
+        data = request.get_json(silent=True)
+        if data is None or not isinstance(data, dict):
+            return _json_response(jsonify, {"error": "invalid_settings_patch"}, status=400)
+        try:
+            value = patch_module(runtime.paths.root, module, data)
+        except KeyError:
+            return _json_response(jsonify, {"error": "unknown_settings_module"}, status=404)
+        except (TypeError, ValueError) as exc:
+            return _json_response(jsonify, {"error": str(exc)}, status=400)
+        return _json_response(jsonify, {"ok": True, "data": value})
 
     @app.post("/api/settings")
     def set_settings():
@@ -647,6 +681,7 @@ def create_desktop_app(runtime: DesktopRuntime):
             {
                 "ok": True,
                 "settings": saved,
+                "data": get_all(runtime.paths.root),
                 "data_root": str(runtime.paths.root),
                 "settings_path": str(runtime.paths.root / "settings.json"),
             },
@@ -663,6 +698,13 @@ def create_desktop_app(runtime: DesktopRuntime):
             has_onboarding_state = isinstance(raw_settings, dict) and "onboarding" in raw_settings
         except (OSError, TypeError, ValueError):
             pass
+        backup_path = runtime.paths.root / "settings.v1.bak.json"
+        if has_onboarding_state and backup_path.exists():
+            try:
+                legacy_settings = json.loads(backup_path.read_text(encoding="utf-8"))
+                has_onboarding_state = isinstance(legacy_settings, dict) and "onboarding" in legacy_settings
+            except (OSError, TypeError, ValueError):
+                pass
         legacy_model_active = bool(str(settings.get("active_model_id") or "").strip())
         try:
             step = int(onboarding.get("step", 0) or 0)
@@ -960,9 +1002,11 @@ def create_desktop_app(runtime: DesktopRuntime):
             DownloadState.VERIFYING,
         }:
             return _json_response(jsonify, _download_progress_payload(current))
+        download_activation_pending.add(model_id)
         try:
             future = download_executor.submit(run_model_download, model_id)
         except RuntimeError:
+            download_activation_pending.discard(model_id)
             return _json_response(jsonify, {"error": "download_executor_unavailable"}, status=503)
         download_futures[model_id] = future
         return _json_response(
@@ -998,6 +1042,9 @@ def create_desktop_app(runtime: DesktopRuntime):
             for entry in BUILTIN_MODELS
             if (progress := downloader.get_progress(entry.model_id)) is not None
         ]
+        for item in items:
+            if item["model_id"] in download_activation_pending and item["state"] == DownloadState.COMPLETED.value:
+                item["state"] = DownloadState.VERIFYING.value
         return _json_response(jsonify, {"items": items, "total": len(items)})
 
     @app.get("/api/models/download/events")
@@ -1444,6 +1491,64 @@ def create_desktop_app(runtime: DesktopRuntime):
     def delete_memory(memory_id: int):
         ok = MemoryLifecycleManager.delete_memory_chunk(runtime.orchestrator.conn, memory_id)
         return _json_response(jsonify, {"ok": ok})
+
+    @app.get("/api/memory/events")
+    def semantic_events():
+        """摘要：列出可由用户管理的 active 语义事件。"""
+        repo = EventRepository(runtime.orchestrator.conn)
+        event_type = request.args.get("type", "").strip()
+        events = repo.get_by_type(event_type, limit=200) if event_type else repo.get_active(limit=200)
+        return _json_response(jsonify, [_semantic_event_row(event) for event in events])
+
+    @app.post("/api/memory/events")
+    def create_semantic_event():
+        """摘要：手动创建一条语义事件并生成内容向量。"""
+        data = request.get_json(silent=True) or {}
+        content = str(data.get("content") or "").strip()
+        if not content:
+            return _json_response(jsonify, {"error": "missing content"}, status=400)
+        event = SemanticEvent(
+            event_id=uuid.uuid4().hex,
+            event_type=str(data.get("event_type") or "fact"),
+            subject=str(data.get("subject") or "user"),
+            content=content,
+            content_embedding=embed_text(content, dimensions=768),
+            emotional_valence=float(data.get("emotional_valence", 0.0)),
+            emotional_arousal=float(data.get("emotional_arousal", 0.0)),
+            importance=float(data.get("importance", 2.0)),
+            temporal_marker="manual",
+            created_at=time.time(),
+        )
+        try:
+            repo = EventRepository(runtime.orchestrator.conn)
+            repo.store(event)
+        except (TypeError, ValueError) as exc:
+            return _json_response(jsonify, {"error": str(exc)}, status=400)
+        return _json_response(jsonify, _semantic_event_row(event), status=201)
+
+    @app.patch("/api/memory/events/<event_id>")
+    def patch_semantic_event(event_id: str):
+        """摘要：更新用户可编辑的语义事件字段。"""
+        data = request.get_json(silent=True) or {}
+        repo = EventRepository(runtime.orchestrator.conn)
+        try:
+            changed = repo.update_fields(event_id, data)
+        except (TypeError, ValueError) as exc:
+            return _json_response(jsonify, {"error": str(exc)}, status=400)
+        event = repo.get(event_id)
+        if event is None:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        return _json_response(jsonify, {"ok": changed, "item": _semantic_event_row(event)})
+
+    @app.delete("/api/memory/events/<event_id>")
+    def delete_semantic_event(event_id: str):
+        """摘要：软删除语义事件，保留事件审计记录。"""
+        repo = EventRepository(runtime.orchestrator.conn)
+        event = repo.get(event_id)
+        if event is None:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        repo.mark_dormant(event_id)
+        return _json_response(jsonify, {"ok": True})
 
     @app.get("/api/sessions")
     def sessions():
@@ -2009,6 +2114,27 @@ def _steps_to_legacy_plan(
             }
             for idx, step in enumerate(steps)
         ],
+    }
+
+
+def _semantic_event_row(event: SemanticEvent) -> dict[str, Any]:
+    """摘要：将语义事件转换为记忆管理 API 的 JSON 记录。"""
+    return {
+        "event_id": event.event_id,
+        "event_type": event.event_type,
+        "subject": event.subject,
+        "content": event.content,
+        "emotional_valence": event.emotional_valence,
+        "emotional_arousal": event.emotional_arousal,
+        "importance": event.importance,
+        "temporal_marker": event.temporal_marker,
+        "source_turns": event.source_turns,
+        "related_events": event.related_events,
+        "superseded_by": event.superseded_by,
+        "created_at": event.created_at,
+        "last_recalled_at": event.last_recalled_at,
+        "recall_count": event.recall_count,
+        "status": event.status,
     }
 
 

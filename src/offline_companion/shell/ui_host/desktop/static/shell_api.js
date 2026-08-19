@@ -3,6 +3,9 @@ var _currentSessionId = null;
 var _windowDragState = null;
 var _windowResizeState = null;
 var _windowBoundsThrottle = null;
+var _chatRequestActive = false;
+var _chatAbortController = null;
+var _chatStopRequested = false;
 // 与 Python 侧 offline_companion.core.plan_enums.PlanEventName 保持同步。
 const PLAN_EVENTS = {
   ERROR: 'error',
@@ -139,6 +142,32 @@ function applySettings(settings) {
   postSettingsApplyTrace();
 }
 
+function applyAllSettings(settings) {
+  settings = settings || {};
+  var appearance = settings.appearance || {};
+  var model = settings.model || {};
+  var privacy = settings.privacy || {};
+  var behavior = settings.behavior || {};
+  var session = settings.session || {};
+  var windowSettings = settings.window || {};
+  applySettings(Object.assign({}, settings, {
+    theme: appearance.theme,
+    privacy_mode: privacy.privacy_mode,
+    auto_router_enabled: model.auto_router_enabled,
+    active_persona_id: model.active_persona_id,
+    improve_plan_enabled: behavior.improve_plan_enabled,
+    idle_think_enabled: behavior.idle_think_enabled,
+    last_view: session.last_view,
+    active_session_id: session.active_session_id,
+    window_bounds: windowSettings.bounds,
+    shell_custom: {
+      accent: appearance.accent,
+      radius: appearance.corner_radius,
+      sidebarWidth: appearance.sidebar_width
+    }
+  }));
+}
+
 function postSettingsApplyTrace() {
   try {
     const trace = window.__settingsApplyTrace || {};
@@ -202,17 +231,34 @@ function postSettingsDomSnapshot(label) {
 }
 
 async function loadSettings() {
+  return loadAllSettings();
+}
+
+async function loadAllSettings() {
   try {
     const data = await apiJson('/api/settings');
-    const settings = (data && data.settings) || {};
-    applySettings(settings);
-    setTimeout(function() { applySettings(settings); }, 0);
-    setTimeout(function() { applySettings(settings); }, 100);
-    return data.settings || {};
+    const settings = (data && data.data) || {};
+    window.__SETTINGS = settings;
+    applyAllSettings(settings);
+    return settings;
   } catch (error) {
     showToast('Failed to load settings: ' + error.message);
     return {};
   }
+}
+
+async function patchSettings(module, patch) {
+  const data = await apiJson('/api/settings/' + encodeURIComponent(module), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch || {})
+  });
+  if (data && data.ok) {
+    window.__SETTINGS = window.__SETTINGS || {};
+    window.__SETTINGS[module] = data.data;
+    applyAllSettings(window.__SETTINGS);
+  }
+  return data && data.data;
 }
 
 function renderHealthStatus(data) {
@@ -267,19 +313,30 @@ async function startUiAnnotation() {
 }
 
 async function saveSetting(key, value) {
-  const payload = {};
-  payload[key] = value;
-  const data = await apiJson('/api/settings', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  applySettings((data && data.settings) || {});
-  return data.settings || {};
+  const mapping = {
+    theme: ['appearance', 'theme'],
+    privacy_mode: ['privacy', 'privacy_mode'],
+    improve_plan_enabled: ['behavior', 'improve_plan_enabled'],
+    auto_router_enabled: ['model', 'auto_router_enabled'],
+    active_persona_id: ['model', 'active_persona_id'],
+    active_model_id: ['model', 'local_model_id'],
+    active_session_id: ['session', 'active_session_id'],
+    last_view: ['session', 'last_view'],
+    window_bounds: ['window', 'bounds'],
+    idle_think_enabled: ['behavior', 'idle_think_enabled']
+  };
+  const target = mapping[key];
+  if (target) return patchSettings(target[0], { [target[1]]: value });
+  const data = await apiJson('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [key]: value }) });
+  applyAllSettings((data && data.data) || {});
+  return data.data || {};
 }
 
 window.applySettings = applySettings;
+window.applyAllSettings = applyAllSettings;
 window.loadSettings = loadSettings;
+window.loadAllSettings = loadAllSettings;
+window.patchSettings = patchSettings;
 window.saveSetting = saveSetting;
 window.loadHealthStatus = loadHealthStatus;
 window.renderHealthStatus = renderHealthStatus;
@@ -721,6 +778,30 @@ function apiAppendConsentDeclined(message) {
   if (chat) chat.scrollTop = chat.scrollHeight;
 }
 
+function setChatRequestActive(active) {
+  _chatRequestActive = !!active;
+  const button = document.getElementById('sendBtn');
+  if (!button) return;
+  button.classList.toggle('active', !_chatRequestActive && !!(document.getElementById('chatInput') || {}).value.trim());
+  button.classList.toggle('stop', _chatRequestActive);
+  button.onclick = _chatRequestActive ? stopMessageGeneration : sendMessage;
+  button.title = _chatRequestActive ? '停止思考' : '发送';
+  button.setAttribute('aria-label', _chatRequestActive ? '停止思考' : '发送');
+  button.innerHTML = _chatRequestActive
+    ? '<svg viewBox="0 0 24 24" width="16" height="16"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>'
+    : '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>';
+}
+
+function stopMessageGeneration() {
+  if (!_chatRequestActive) return;
+  _chatStopRequested = true;
+  if (_chatAbortController) _chatAbortController.abort();
+  _chatAbortController = null;
+  setChatRequestActive(false);
+  hideTyping();
+  showToast('已停止思考');
+}
+
 function apiCreateStreamingMessage(msgIdx) {
   apiAppendMessage('assistant', '', msgIdx, Date.now() / 1000);
   const chat = document.getElementById('chatMessages');
@@ -779,8 +860,9 @@ async function apiReadSseStream(resp, onEvent, options) {
 
 const SSE_MAX_RECONNECT = 3;
 
-async function apiRepairSseGap(sessionId, fromSeq, onEvent) {
+async function apiRepairSseGap(sessionId, fromSeq, onEvent, untilSeq) {
   let latestSeq = Number(fromSeq) || 0;
+  const upperBound = Number.isFinite(Number(untilSeq)) ? Number(untilSeq) : null;
   for (let attempt = 1; attempt <= SSE_MAX_RECONNECT; attempt++) {
     const data = await apiJson(
       '/api/sessions/' + encodeURIComponent(sessionId) + '/events?from_seq=' + latestSeq
@@ -790,12 +872,15 @@ async function apiRepairSseGap(sessionId, fromSeq, onEvent) {
     (data.events || []).forEach(function(event) {
       const eventSeq = Number(event.seq);
       if (!Number.isFinite(eventSeq) || eventSeq <= latestSeq) return;
-      if (eventSeq > latestSeq + 1) return;
+      if (upperBound !== null && eventSeq > upperBound) return;
       latestSeq = eventSeq;
       progressed = true;
       if (event.done) done = true;
       onEvent(event);
     });
+    if (upperBound !== null) {
+      return { done: done, latestSeq: Math.max(latestSeq, upperBound) };
+    }
     if (done) return { done: true, latestSeq: latestSeq };
     if (!progressed && (data.events || []).length > 0) break;
     if (attempt < SSE_MAX_RECONNECT) {
@@ -805,10 +890,21 @@ async function apiRepairSseGap(sessionId, fromSeq, onEvent) {
   return { done: false, latestSeq: latestSeq };
 }
 
+async function apiLatestSseSeq(sessionId) {
+  const data = await apiJson(
+    '/api/sessions/' + encodeURIComponent(sessionId) + '/events?from_seq=' + Number.MAX_SAFE_INTEGER
+  );
+  return Number(data.latest_seq) || 0;
+}
+
 async function sendMessage() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text) return;
+  if (_chatRequestActive) return;
+  _chatStopRequested = false;
+  _chatAbortController = new AbortController();
+  setChatRequestActive(true);
   fetch('/api/idle/touch', { method: 'POST' }).catch(() => {});
   const chat = document.getElementById('chatMessages');
   const nextIdx = apiNextMsgIdx();
@@ -841,15 +937,19 @@ async function sendMessage() {
       hideTyping();
       showToast('任务拆解失败：' + error.message);
     }
+    setChatRequestActive(false);
+    _chatAbortController = null;
     return;
   }
 
   showTyping();
   try {
+    let lastStreamSeq = await apiLatestSseSeq(_currentSessionId);
     const resp = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, session_id: _currentSessionId, quote: quote, stream: true })
+      body: JSON.stringify({ message: text, session_id: _currentSessionId, quote: quote, stream: true }),
+      signal: _chatAbortController.signal
     });
     if (!resp.ok) {
       const data = await resp.json().catch(() => ({}));
@@ -868,7 +968,6 @@ async function sendMessage() {
     const bubble = window._autoRouterEnabled ? null : apiCreateStreamingMessage(nextIdx + 1);
     let finalData = null;
     let streamedText = '';
-    let lastStreamSeq = 0;
     const handleStreamEvent = function(event) {
       if (event.seq) lastStreamSeq = Math.max(lastStreamSeq, Number(event.seq) || 0);
       if (_handleAutoPlanEvent(event, nextIdx + 1)) {
@@ -884,8 +983,8 @@ async function sendMessage() {
       }
       if (event.done) finalData = event;
     };
-    const repairGap = function(fromSeq) {
-      return apiRepairSseGap(_currentSessionId, fromSeq, handleStreamEvent);
+    const repairGap = function(fromSeq, untilSeq) {
+      return apiRepairSseGap(_currentSessionId, fromSeq, handleStreamEvent, untilSeq);
     };
     let streamState;
     try {
@@ -895,6 +994,7 @@ async function sendMessage() {
       });
       lastStreamSeq = Math.max(lastStreamSeq, streamState.latestSeq || 0);
     } catch (streamError) {
+      if (_chatStopRequested) return;
       const repaired = await apiRepairSseGap(_currentSessionId, lastStreamSeq, handleStreamEvent);
       if (!repaired.done) throw streamError;
       streamState = repaired;
@@ -921,8 +1021,12 @@ async function sendMessage() {
     chat.scrollTop = chat.scrollHeight;
     if (finalData && finalData.memory_saved && finalData.memory_saved.length) loadMemories();
   } catch (error) {
+    if (_chatStopRequested) return;
     hideTyping();
     showToast('消息发送失败：' + error.message);
+  } finally {
+    setChatRequestActive(false);
+    _chatAbortController = null;
   }
 }
 
@@ -1127,6 +1231,24 @@ async function loadMemories() {
   }
 }
 
+async function loadSemanticEvents(type) {
+  try {
+    var url = type ? '/api/memory/events?type=' + encodeURIComponent(type) : '/api/memory/events';
+    var events = await apiJson(url);
+    window._semanticEvents = events || [];
+    return window._semanticEvents;
+  } catch (error) {
+    showToast('语义事件加载失败：' + error.message);
+    return [];
+  }
+}
+
+async function deleteSemanticEvent(eventId) {
+  await apiJson('/api/memory/events/' + encodeURIComponent(eventId), { method: 'DELETE' });
+  await loadSemanticEvents();
+  showToast('语义事件已删除');
+}
+
 async function ctxSaveMemory() {
   document.getElementById('msgContextMenu').style.display = 'none';
   if (!window._ctxTargetMsg) return;
@@ -1232,7 +1354,7 @@ function renderOnboarding() {
       return '<label class="onboarding-model"><input type="radio" name="onboardingModel" value="' + apiEscapeHtml(model.model_id) + '" ' + (model.recommended || index === 0 ? 'checked' : '') + '><span class="onboarding-model-name">' + apiEscapeHtml(model.display_name) + '</span><div class="onboarding-model-meta">约 ' + Math.round(Number(model.size_bytes || 0) / 1048576) + ' MB · 最低内存 ' + model.min_ram_mb + ' MB</div></label>';
     }).join('');
     content.innerHTML = '<h2 class="onboarding-title">选择本地模型</h2><p class="onboarding-desc">推荐模型会下载到本地，下载完成后即可开始对话。</p><div class="onboarding-models">' + modelHtml + '</div><div id="onboardingDownloadProgress"></div>';
-    actions.innerHTML = '<button class="onboarding-secondary" onclick="skipOnboardingModel()">跳过，使用云端模式</button><button class="onboarding-primary" onclick="downloadOnboardingModel()">下载模型</button>';
+    actions.innerHTML = '<button class="onboarding-secondary" onclick="skipOnboardingModel()">跳过引导</button><button class="onboarding-primary" onclick="downloadOnboardingModel()">下载模型</button>';
     if (!_onboardingModelsLoaded) loadOnboardingModels();
   } else if (_onboardingStep === 2) {
     content.innerHTML = '<h2 class="onboarding-title">设置你的偏好</h2><p class="onboarding-desc">这些偏好只保存在本地，用来让后续对话更自然。</p><input class="onboarding-field" id="onboardingName" placeholder="你想让我怎么称呼你？" maxlength="40"><label class="setting-row"><span><span class="setting-label">允许联网搜索</span><br><span class="setting-desc">默认关闭，之后可在设置中修改</span></span><input type="checkbox" id="onboardingWebSearch"></label>';
@@ -1258,10 +1380,7 @@ function startOnboarding() { _onboardingStep = 1; renderOnboarding(); }
 function previousOnboardingStep() { _onboardingStep = Math.max(1, _onboardingStep - 1); renderOnboarding(); }
 
 async function skipOnboardingModel() {
-  if (!_onboardingState.has_cloud) return showToast('未配置云端模型，请下载本地模型或先配置 API Key');
-  _onboardingState.skipped_model = true;
-  _onboardingStep = 2;
-  renderOnboarding();
+  await skipOnboarding();
 }
 
 async function downloadOnboardingModel() {

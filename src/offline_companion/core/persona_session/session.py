@@ -13,9 +13,15 @@ from typing import Any, Protocol, runtime_checkable
 import yaml
 
 from offline_companion.core.emotion_analyzer.context import EmotionContext
+from offline_companion.core.memory_lifecycle.event_recaller import (
+    EventRecaller,
+    format_event_narrative,
+)
+from offline_companion.core.memory_lifecycle.event_repository import EventRepository
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
 from offline_companion.core.memory_lifecycle.recall import format_recall_prompt_block, recall
 from offline_companion.core.persona_session.persona_loader import resolved_companion_display_name
+from offline_companion.shared.deterministic_embedding import embed_text
 from offline_companion.shared.runtime_paths import configs_dir, dev_repo_root
 from offline_companion.shared.types import (
     CapabilityProfile,
@@ -206,8 +212,8 @@ class PersonaSessionCore:
         display = self._resolved_companion_display_name(conn)
         prefix = (
             f"【当前自称】{display}\n"
-            "你必须始终使用上述自称；不要把它变形成语法变化后的名字。\n"
-            "若输出中出现名字变体，优先修正为标准自称。\n\n"
+            "只有用户主动询问你的名字或身份，或当前语境确实需要时，才提及自称；普通寒暄不要主动自我介绍。\n"
+            "需要提及名字时必须使用上述标准自称，不要使用名字变体。\n\n"
         )
         return prefix + self.persona.system_prompt
 
@@ -327,6 +333,13 @@ class PersonaSessionCore:
             recall_limit = 8 if profile.max_context >= 4096 else 4
             recalls = recall(conn, user_message, limit=recall_limit, emotion=emotion_label)
             memory_block = format_recall_prompt_block(recalls)
+            semantic_events = EventRecaller(
+                EventRepository(conn),
+                embed_func=lambda text: embed_text(text, dimensions=768),
+            ).recall(user_message, top_k=min(5, recall_limit))
+            event_block = format_event_narrative(semantic_events)
+            if event_block:
+                memory_block = "\n\n".join(part for part in (memory_block, event_block) if part.strip())
         profile_block = self._profile_memory_block(conn) if memory_enabled else ""
         combined_memory_block = "\n\n".join(part for part in (profile_block, memory_block) if part.strip())
         tone_instruction = _build_tone_instruction(self.persona.ocean)

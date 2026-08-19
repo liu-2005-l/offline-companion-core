@@ -153,6 +153,7 @@ def test_companion_display_name_override() -> None:
     assert resolved_companion_display_name(custom) == "阿青"
     core = PersonaSessionCore(custom)
     assert "【当前自称】阿青" in core.system_prompt_locked
+    assert "普通寒暄不要主动自我介绍" in core.system_prompt_locked
 
 
 def test_assemble_reply_injects_memory_when_enabled(tmp_path) -> None:

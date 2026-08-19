@@ -78,6 +78,7 @@ function autoResize(el) {
 function updateSendBtn() {
   const input = document.getElementById('chatInput');
   const btn = document.getElementById('sendBtn');
+  if (typeof _chatRequestActive !== 'undefined' && _chatRequestActive) return;
   if (input.value.trim()) { btn.classList.add('active'); }
   else { btn.classList.remove('active'); }
 }
