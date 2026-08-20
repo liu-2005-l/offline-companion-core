@@ -8,7 +8,7 @@ Offline Companion 是一款默认在本机运行的桌面陪伴助手。对话�
 
 ## 2. 安装
 
-1. 双击 `OfflineCompanion-Setup-1.6.0.exe`。
+1. 双击 `OfflineCompanion-Setup-1.6.1.exe`。
 2. 可选勾选“创建桌面快捷方式”。
 3. 安装完成后启动程序，在首次引导中选择需要的本地模型并按需下载；也可以跳过下载后配置云端模型。
 

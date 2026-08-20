@@ -211,7 +211,7 @@ function windowClose() {
 
 // ── 拖拽缩放 ──
 var _resizeState = null;
-var MIN_W = 600, MIN_H = 420;
+var MIN_W = 720, MIN_H = 480;
 
 function initResizeHandles() {
   document.querySelectorAll('.resize-handle').forEach(function(h) {
@@ -282,7 +282,14 @@ function _resizeEnd() {
   document.removeEventListener('mouseup', _resizeEnd);
 }
 
-document.addEventListener('DOMContentLoaded', initResizeHandles);
+function registerProtoWindowChrome() {
+  initResizeHandles();
+}
+
+window.addEventListener('load', function() {
+  if (window.__shellApiActive) return;
+  registerProtoWindowChrome();
+});
 
 function togglePlanMode() {
   _planMode = !_planMode;
@@ -903,23 +910,44 @@ var _memFilter = '全部';
 var _memSearch = '';
 var _memDateFrom = '';
 var _memDateTo = '';
+var _memDateCustomized = false;
+var _memDefaultDateKey = '';
 
-// set default dates: left = 1 year ago, right = today
-(function() {
-  var now = new Date();
-  var oneYearAgo = new Date(now);
-  oneYearAgo.setFullYear(now.getFullYear() - 1);
-  function fmt(d) { return d.toISOString().slice(0, 10); }
-  _memDateFrom = fmt(oneYearAgo);
-  _memDateTo = fmt(now);
-  document.addEventListener('DOMContentLoaded', function() {
-    var from = document.getElementById('dateFrom');
-    var to = document.getElementById('dateTo');
-    if (from) { from.value = _memDateFrom; }
-    if (to) { to.value = _memDateTo; }
-    updateDateTexts();
-  });
-})();
+function formatLocalDate(date) {
+  function pad(value) { return String(value).padStart(2, '0'); }
+  return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
+}
+
+function defaultMemoryDateRange(referenceDate) {
+  var year = referenceDate.getFullYear() - 1;
+  var month = referenceDate.getMonth();
+  var day = Math.min(referenceDate.getDate(), new Date(year, month + 1, 0).getDate());
+  return {
+    from: formatLocalDate(new Date(year, month, day)),
+    to: formatLocalDate(referenceDate)
+  };
+}
+
+function refreshDefaultMemoryDateRange() {
+  if (_memDateCustomized) return;
+  var range = defaultMemoryDateRange(new Date());
+  var key = range.from + ':' + range.to;
+  if (_memDefaultDateKey === key) return;
+  _memDefaultDateKey = key;
+  _memDateFrom = range.from;
+  _memDateTo = range.to;
+  var from = document.getElementById('dateFrom');
+  var to = document.getElementById('dateTo');
+  if (from) from.value = _memDateFrom;
+  if (to) to.value = _memDateTo;
+  updateDateTexts();
+  var clear = document.getElementById('dateClear');
+  if (clear) clear.style.display = 'flex';
+  applyMemoryFilter();
+}
+
+document.addEventListener('DOMContentLoaded', refreshDefaultMemoryDateRange);
+window.addEventListener('focus', refreshDefaultMemoryDateRange);
 
 function updateDateTexts() {
   var from = document.getElementById('dateFrom');
@@ -969,6 +997,7 @@ function filterMemoryType(el, type) {
 }
 
 function onDateChange() {
+  _memDateCustomized = true;
   _memDateFrom = document.getElementById('dateFrom').value || '';
   _memDateTo = document.getElementById('dateTo').value || '';
   updateDateTexts();
@@ -977,6 +1006,7 @@ function onDateChange() {
 }
 
 function clearDateRange() {
+  _memDateCustomized = true;
   document.getElementById('dateFrom').value = '';
   document.getElementById('dateTo').value = '';
   _memDateFrom = '';

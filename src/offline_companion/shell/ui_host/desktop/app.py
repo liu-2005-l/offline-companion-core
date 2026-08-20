@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import logging
 import os
 import sys
 import threading
 import time
 from collections.abc import Callable
+from ctypes import wintypes
 
 from offline_companion import __version__
 from offline_companion.shared.types import PrivacyMode
@@ -36,17 +38,96 @@ _WINDOW_TITLE = "Offline Companion"
 _TRAY_TITLE = "Offline Companion"
 _ALLOWED_HOST = "127.0.0.1"
 _DEFAULT_WINDOW_BOUNDS = {"width": 960, "height": 640}
+_MONITOR_DEFAULTTONEAREST = 2
+_SWP_NOZORDER = 0x0004
+_SWP_NOACTIVATE = 0x0010
+logger = logging.getLogger(__name__)
+
+
+class _Rect(ctypes.Structure):
+    _fields_ = [
+        ("left", wintypes.LONG),
+        ("top", wintypes.LONG),
+        ("right", wintypes.LONG),
+        ("bottom", wintypes.LONG),
+    ]
+
+
+class _MonitorInfo(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", wintypes.DWORD),
+        ("rcMonitor", _Rect),
+        ("rcWork", _Rect),
+        ("dwFlags", wintypes.DWORD),
+    ]
+
+
+class _Point(ctypes.Structure):
+    _fields_ = [("x", wintypes.LONG), ("y", wintypes.LONG)]
+
+
+def _ensure_dpi_awareness() -> None:
+    """摘要：在创建桌面窗口前声明 Windows Per-Monitor DPI 感知。"""
+    if os.name != "nt":
+        return
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        return
+    except (AttributeError, OSError):
+        pass
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except (AttributeError, OSError):
+        pass
+
+
+def _monitor_info_work_area(monitor: int) -> tuple[int, int, int, int] | None:
+    """摘要：读取指定显示器扣除任务栏后的物理工作区。"""
+    if os.name != "nt":
+        return None
+    info = _MonitorInfo(cbSize=ctypes.sizeof(_MonitorInfo))
+    if not ctypes.windll.user32.GetMonitorInfoW(monitor, ctypes.byref(info)):
+        return None
+    work_area = info.rcWork
+    return work_area.left, work_area.top, work_area.right, work_area.bottom
+
+
+def _monitor_work_area(hwnd: int) -> tuple[int, int, int, int] | None:
+    """摘要：按窗口所在显示器读取物理工作区。"""
+    if os.name != "nt" or not hwnd:
+        return None
+    monitor_from_window = ctypes.windll.user32.MonitorFromWindow
+    try:
+        monitor_from_window.restype = ctypes.c_void_p
+    except (AttributeError, TypeError):
+        pass
+    monitor = monitor_from_window(ctypes.c_void_p(hwnd), _MONITOR_DEFAULTTONEAREST)
+    if not monitor:
+        return None
+    return _monitor_info_work_area(monitor)
+
+
+def _point_work_area(x: int, y: int) -> tuple[int, int, int, int] | None:
+    """摘要：按物理坐标所在或最近显示器读取工作区。"""
+    if os.name != "nt":
+        return None
+    monitor_from_point = ctypes.windll.user32.MonitorFromPoint
+    try:
+        monitor_from_point.restype = ctypes.c_void_p
+    except (AttributeError, TypeError):
+        pass
+    monitor = monitor_from_point(_Point(int(x), int(y)), _MONITOR_DEFAULTTONEAREST)
+    if not monitor:
+        return None
+    return _monitor_info_work_area(monitor)
 
 
 def _windows_work_area() -> tuple[int, int, int, int] | None:
-    """摘要：读取 Windows 工作区边界，最大化无边框窗口时保留任务栏区域。"""
+    """摘要：读取主显示器工作区，供无 HWND 或选屏失败时降级。"""
     if os.name != "nt":
         return None
 
-    class Rect(ctypes.Structure):
-        _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long), ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
-
-    work_area = Rect()
+    work_area = _Rect()
     if not ctypes.windll.user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(work_area), 0):
         return None
     return work_area.left, work_area.top, work_area.right, work_area.bottom
@@ -97,9 +178,10 @@ class WindowAPI:
     def __init__(self, window_holder: dict[str, object | None], close_callback) -> None:
         self._window_holder = window_holder
         self._close_callback = close_callback
+        self._hwnd: int | None = None
+        self._hwnd_degrade_logged = False
         self._maximized = False
-        self._work_area_maximized = False
-        self._restore_bounds: tuple[int, int, int, int] | None = None
+        self._saved_rect: tuple[int, int, int, int] | None = None
 
     def minimize(self) -> dict[str, bool]:
         """摘要：最小化当前桌面窗口。"""
@@ -113,33 +195,18 @@ class WindowAPI:
         window = self._window()
         if window is None:
             return {"ok": False, "maximized": self._maximized}
-        if self._maximized:
-            if self._work_area_maximized and self._restore_bounds is not None:
-                x, y, width, height = self._restore_bounds
-                window.move(x, y)
-                window.resize(width, height)
-            else:
+        if os.name != "nt":
+            if self._maximized:
                 window.restore()
-            self._maximized = False
-            self._work_area_maximized = False
-        else:
-            self._restore_bounds = (
-                int(getattr(window, "x", 0) or 0),
-                int(getattr(window, "y", 0) or 0),
-                int(getattr(window, "width", 960) or 960),
-                int(getattr(window, "height", 640) or 640),
-            )
-            work_area = _windows_work_area()
-            is_pywebview_window = type(window).__module__.startswith("webview")
-            if work_area is not None and is_pywebview_window:
-                left, top, right, bottom = work_area
-                window.move(left, top)
-                window.resize(right - left, bottom - top)
-                self._work_area_maximized = True
             else:
                 window.maximize()
-            self._maximized = True
-        return {"ok": True, "maximized": self._maximized}
+            self._maximized = not self._maximized
+            return {"ok": True, "maximized": self._maximized}
+        if self._maximized:
+            ok = self._restore_window()
+        else:
+            ok = self._maximize_window()
+        return {"ok": ok, "maximized": self._maximized}
 
     def close(self) -> dict[str, bool]:
         """摘要：请求关闭桌面窗口，按用户设置选择缩到托盘或退出。"""
@@ -155,8 +222,7 @@ class WindowAPI:
         window.move(int(x), int(y))
         window.resize(safe_width, safe_height)
         self._maximized = False
-        self._work_area_maximized = False
-        self._restore_bounds = None
+        self._saved_rect = None
         return {"ok": True, "x": int(x), "y": int(y), "width": safe_width, "height": safe_height}
 
     def get_bounds(self) -> dict[str, bool | int]:
@@ -176,6 +242,161 @@ class WindowAPI:
     def is_maximized(self) -> dict[str, bool]:
         """摘要：返回 bridge 维护的最大化状态。"""
         return {"ok": True, "maximized": self._maximized}
+
+    def _acquire_hwnd(self) -> bool:
+        """摘要：在原生窗口显示后获取并缓存 WinForms HWND。"""
+        if self._hwnd:
+            return True
+        window = self._window()
+        handle = getattr(getattr(window, "native", None), "Handle", None)
+        try:
+            hwnd = int(handle.ToInt64()) if hasattr(handle, "ToInt64") else int(handle or 0)
+        except (TypeError, ValueError, OverflowError):
+            hwnd = 0
+        if hwnd:
+            self._hwnd = hwnd
+            return True
+        if not self._hwnd_degrade_logged:
+            logger.warning("native.Handle 不可用，窗口控制降级到 pywebview move/resize")
+            self._hwnd_degrade_logged = True
+        return False
+
+    def _maximize_window(self) -> bool:
+        """摘要：将 Windows 无边框窗口铺满当前显示器物理工作区。"""
+        if not self._acquire_hwnd():
+            work_area = _windows_work_area()
+            if work_area is None:
+                return False
+            self._saved_rect = self._fallback_window_rect()
+            self._move_resize_raw(self._work_area_window_rect(work_area))
+            self._maximized = True
+            return True
+        work_area = _monitor_work_area(self._hwnd) or _windows_work_area()
+        if work_area is None:
+            return False
+        saved_rect = self._get_window_rect()
+        if saved_rect is None or not self._set_window_rect(self._work_area_window_rect(work_area)):
+            return False
+        self._saved_rect = saved_rect
+        self._maximized = True
+        self._verify_maximized_work_area()
+        return True
+
+    def _verify_maximized_work_area(self) -> None:
+        """摘要：最大化后立即校验一次工作区，并在竞态变化时重贴。"""
+        if not self._hwnd:
+            return
+        work_area = _monitor_work_area(self._hwnd)
+        if work_area is None:
+            return
+        expected = self._work_area_window_rect(work_area)
+        if self._get_window_rect() != expected:
+            self._set_window_rect(expected)
+
+    def _restore_window(self) -> bool:
+        """摘要：恢复并夹取窗口，使其完整落在仍存在的显示器工作区。"""
+        work_area = self._restore_work_area()
+        if work_area is None:
+            return False
+        target = self._clamp_restore_rect(self._saved_rect, work_area)
+        if self._hwnd:
+            if not self._set_window_rect(target):
+                return False
+        else:
+            self._move_resize_raw(target)
+        self._maximized = False
+        return True
+
+    def _restore_work_area(self) -> tuple[int, int, int, int] | None:
+        if self._saved_rect is not None:
+            x, y, width, height = self._saved_rect
+            work_area = _point_work_area(x + width // 2, y + height // 2)
+            if work_area is not None:
+                return work_area
+        if self._hwnd:
+            work_area = _monitor_work_area(self._hwnd)
+            if work_area is not None:
+                return work_area
+        return _windows_work_area()
+
+    @staticmethod
+    def _work_area_window_rect(
+        work_area: tuple[int, int, int, int],
+    ) -> tuple[int, int, int, int]:
+        left, top, right, bottom = work_area
+        return left, top, right - left, bottom - top
+
+    @staticmethod
+    def _clamp_restore_rect(
+        saved_rect: tuple[int, int, int, int] | None,
+        work_area: tuple[int, int, int, int],
+    ) -> tuple[int, int, int, int]:
+        left, top, right, bottom = work_area
+        work_width = right - left
+        work_height = bottom - top
+        if saved_rect is None or saved_rect[2] <= 0 or saved_rect[3] <= 0:
+            width = int(work_width * 0.8)
+            height = int(work_height * 0.8)
+            return (
+                left + (work_width - width) // 2,
+                top + (work_height - height) // 2,
+                width,
+                height,
+            )
+        x, y, width, height = saved_rect
+        width = min(width, work_width)
+        height = min(height, work_height)
+        x = max(left, min(x, right - width))
+        y = max(top, min(y, bottom - height))
+        return x, y, width, height
+
+    def _get_window_rect(self) -> tuple[int, int, int, int] | None:
+        if not self._hwnd:
+            return None
+        rect = _Rect()
+        try:
+            ok = ctypes.windll.user32.GetWindowRect(ctypes.c_void_p(self._hwnd), ctypes.byref(rect))
+        except (AttributeError, OSError):
+            return None
+        if not ok:
+            return None
+        return rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top
+
+    def _set_window_rect(self, rect: tuple[int, int, int, int]) -> bool:
+        if not self._hwnd:
+            return False
+        x, y, width, height = rect
+        try:
+            return bool(
+                ctypes.windll.user32.SetWindowPos(
+                    ctypes.c_void_p(self._hwnd),
+                    None,
+                    int(x),
+                    int(y),
+                    int(width),
+                    int(height),
+                    _SWP_NOZORDER | _SWP_NOACTIVATE,
+                )
+            )
+        except (AttributeError, OSError):
+            return False
+
+    def _fallback_window_rect(self) -> tuple[int, int, int, int]:
+        window = self._window()
+        return (
+            int(getattr(window, "x", 0) or 0),
+            int(getattr(window, "y", 0) or 0),
+            int(getattr(window, "width", _DEFAULT_WINDOW_BOUNDS["width"]) or _DEFAULT_WINDOW_BOUNDS["width"]),
+            int(getattr(window, "height", _DEFAULT_WINDOW_BOUNDS["height"]) or _DEFAULT_WINDOW_BOUNDS["height"]),
+        )
+
+    def _move_resize_raw(self, rect: tuple[int, int, int, int]) -> None:
+        window = self._window()
+        if window is None:
+            return
+        x, y, width, height = rect
+        window.move(x, y)
+        window.resize(width, height)
 
     def _window(self):
         return self._window_holder.get("window")
@@ -243,6 +464,7 @@ def run_desktop(args: argparse.Namespace) -> int:
     返回值：
         进程退出码。
     """
+    _ensure_dpi_awareness()
     _require_desktop_deps()
     import webview
 
@@ -430,16 +652,18 @@ def run_desktop(args: argparse.Namespace) -> int:
         return False
 
     window_bounds = _initial_window_bounds(paths.root)
+    window_api = WindowAPI(window_holder, request_window_close)
     window = webview.create_window(
         _WINDOW_TITLE,
         url=load_url,
-        js_api=WindowAPI(window_holder, request_window_close),
+        js_api=window_api,
         **window_bounds,
         min_size=(720, 480),
         frameless=True,
         easy_drag=False,
     )
     window_holder["window"] = window
+    window.events.shown += window_api._acquire_hwnd
     window.events.closing += on_closing
 
     start_tray()

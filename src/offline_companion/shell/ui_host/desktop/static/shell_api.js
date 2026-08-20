@@ -1,4 +1,5 @@
 // 概要：后端第 1 批接线层，覆盖原型中的 mock 会话、聊天与记忆函数。
+window.__shellApiActive = true;
 var _currentSessionId = null;
 var _windowDragState = null;
 var _windowResizeState = null;
@@ -6,6 +7,7 @@ var _windowBoundsThrottle = null;
 var _chatRequestActive = false;
 var _chatAbortController = null;
 var _chatStopRequested = false;
+var _layoutRafPending = false;
 // 与 Python 侧 offline_companion.core.plan_enums.PlanEventName 保持同步。
 const PLAN_EVENTS = {
   ERROR: 'error',
@@ -533,6 +535,35 @@ async function syncWindowMaximizedState() {
   }
 }
 
+function registerWindowChrome() {
+  const titleBar = document.querySelector('.title-bar');
+  if (titleBar) titleBar.addEventListener('mousedown', beginWindowDrag, true);
+  document.querySelectorAll('.resize-handle').forEach(function(handle) {
+    handle.addEventListener('pointerdown', beginWindowResize, true);
+  });
+}
+
+function resolveLayout(width, height) {
+  if (width < 900 || height < 600) return 'compact';
+  if (width >= 1600 && height >= 900) return 'wide';
+  return 'standard';
+}
+
+function applyAdaptiveLayout() {
+  if (_layoutRafPending) return;
+  _layoutRafPending = true;
+  window.requestAnimationFrame(function() {
+    _layoutRafPending = false;
+    var layout = resolveLayout(Math.round(window.innerWidth), Math.round(window.innerHeight));
+    if (document.documentElement.dataset.layout !== layout) {
+      document.documentElement.dataset.layout = layout;
+    }
+  });
+}
+
+window.addEventListener('resize', applyAdaptiveLayout);
+applyAdaptiveLayout();
+
 async function windowClose() {
   const api = desktopWindowApi();
   if (!api || !api.close) {
@@ -625,23 +656,32 @@ function endWindowDrag(event) {
 async function beginWindowResize(event) {
   const api = desktopWindowApi();
   if (!api || !api.get_bounds || event.button !== 0) return;
-  const handle = event.target.closest('.resize-handle');
+  const handle = event.currentTarget;
   if (!handle) return;
   event.preventDefault();
   event.stopPropagation();
-  const bounds = await api.get_bounds();
+  const direction = handle.dataset.dir || '';
+  if (handle.setPointerCapture) handle.setPointerCapture(event.pointerId);
   _windowResizeState = {
-    dir: handle.dataset.dir || '',
+    dir: direction,
     startX: event.screenX,
     startY: event.screenY,
-    bounds: bounds
+    bounds: null,
+    handle: handle,
+    pointerId: event.pointerId
   };
-  document.addEventListener('mousemove', moveWindowResize, true);
-  document.addEventListener('mouseup', endWindowResize, true);
+  document.addEventListener('pointermove', moveWindowResize, true);
+  document.addEventListener('pointerup', endWindowResize, true);
+  try {
+    const bounds = await api.get_bounds();
+    if (_windowResizeState) _windowResizeState.bounds = bounds;
+  } catch (_error) {
+    endWindowResize(event);
+  }
 }
 
 function moveWindowResize(event) {
-  if (!_windowResizeState) return;
+  if (!_windowResizeState || !_windowResizeState.bounds) return;
   event.preventDefault();
   event.stopPropagation();
   const state = _windowResizeState;
@@ -674,29 +714,35 @@ function endWindowResize(event) {
   let fallbackBounds = null;
   if (_windowResizeState) {
     const state = _windowResizeState;
-    const dx = event ? event.screenX - state.startX : 0;
-    const dy = event ? event.screenY - state.startY : 0;
-    fallbackBounds = {
-      x: state.bounds.x || 0,
-      y: state.bounds.y || 0,
-      width: state.bounds.width || 960,
-      height: state.bounds.height || 640
-    };
-    if (state.dir.includes('e')) fallbackBounds.width += dx;
-    if (state.dir.includes('s')) fallbackBounds.height += dy;
-    if (state.dir.includes('w')) {
-      fallbackBounds.x += dx;
-      fallbackBounds.width -= dx;
+    if (state.handle && state.handle.releasePointerCapture && state.handle.hasPointerCapture &&
+        state.handle.hasPointerCapture(state.pointerId)) {
+      state.handle.releasePointerCapture(state.pointerId);
     }
-    if (state.dir.includes('n')) {
-      fallbackBounds.y += dy;
-      fallbackBounds.height -= dy;
+    if (state.bounds) {
+      const dx = event ? event.screenX - state.startX : 0;
+      const dy = event ? event.screenY - state.startY : 0;
+      fallbackBounds = {
+        x: state.bounds.x || 0,
+        y: state.bounds.y || 0,
+        width: state.bounds.width || 960,
+        height: state.bounds.height || 640
+      };
+      if (state.dir.includes('e')) fallbackBounds.width += dx;
+      if (state.dir.includes('s')) fallbackBounds.height += dy;
+      if (state.dir.includes('w')) {
+        fallbackBounds.x += dx;
+        fallbackBounds.width -= dx;
+      }
+      if (state.dir.includes('n')) {
+        fallbackBounds.y += dy;
+        fallbackBounds.height -= dy;
+      }
+      fallbackBounds = clampWindowBounds(fallbackBounds);
     }
-    fallbackBounds = clampWindowBounds(fallbackBounds);
   }
   _windowResizeState = null;
-  document.removeEventListener('mousemove', moveWindowResize, true);
-  document.removeEventListener('mouseup', endWindowResize, true);
+  document.removeEventListener('pointermove', moveWindowResize, true);
+  document.removeEventListener('pointerup', endWindowResize, true);
   persistCurrentWindowBounds(fallbackBounds);
 }
 
@@ -1446,11 +1492,7 @@ async function skipOnboarding() {
 document.addEventListener('DOMContentLoaded', async function() {
   apiEnsureTypingNode();
   syncWindowMaximizedState();
-  const titleBar = document.querySelector('.title-bar');
-  if (titleBar) titleBar.addEventListener('mousedown', beginWindowDrag, true);
-  document.querySelectorAll('.resize-handle').forEach(function(handle) {
-    handle.addEventListener('mousedown', beginWindowResize, true);
-  });
+  registerWindowChrome();
   await loadSettings();
   loadSessions();
   loadMemories();
