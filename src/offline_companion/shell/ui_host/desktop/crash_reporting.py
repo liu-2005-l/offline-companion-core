@@ -154,12 +154,12 @@ def check_previous_crash(data_root: Path) -> PendingCrashReport | None:
     if not sentinel.is_file():
         return None
     try:
-        started_at = float(sentinel.read_text(encoding="utf-8").strip())
-    except (OSError, ValueError):
-        started_at = sentinel.stat().st_mtime
+        started_at_ns = sentinel.stat().st_mtime_ns
+    except OSError:
+        return None
     crash_dir = data_root / "crashes"
-    crashes = sorted(crash_dir.glob("crash_*.log"), key=lambda path: path.stat().st_mtime)
-    eligible = [path for path in crashes if path.stat().st_mtime >= started_at]
+    crashes = sorted(crash_dir.glob("crash_*.log"), key=lambda path: path.stat().st_mtime_ns)
+    eligible = [path for path in crashes if path.stat().st_mtime_ns >= started_at_ns]
     if not eligible:
         return None
     latest = eligible[-1]

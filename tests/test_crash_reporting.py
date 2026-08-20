@@ -64,6 +64,17 @@ def test_detect_previous_crash_requires_running_sentinel(tmp_path: Path) -> None
     assert "模拟崩溃" in pending.content
 
 
+def test_detect_previous_crash_uses_filesystem_timestamps(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("offline_companion.shell.ui_host.desktop.crash_reporting.time.time", lambda: 9e9)
+    mark_app_started(tmp_path)
+    crash_path = _write_test_crash(tmp_path)
+
+    pending = check_previous_crash(tmp_path)
+
+    assert pending is not None
+    assert pending.path == crash_path
+
+
 def test_normal_exit_clears_sentinel_and_prevents_report(tmp_path: Path) -> None:
     mark_app_started(tmp_path)
     _write_test_crash(tmp_path)
