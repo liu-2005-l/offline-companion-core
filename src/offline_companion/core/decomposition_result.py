@@ -13,6 +13,10 @@ class NotDecomposableResult:
     参数：
         reason: 不可拆解原因。
         original_input: 用户提交的原始输入。
+        status: 固定的语义状态标识。
+        fallback_notice: 降级普通对话前需要向用户展示的确定性提示。
+        status: 固定的语义状态标识。
+        fallback_notice: 降级普通对话前需要向用户展示的确定性提示。
     """
 
     reason: Literal[
@@ -23,6 +27,9 @@ class NotDecomposableResult:
         "meta_template",
         "explanation",
         "no_rule_match",
+        "method_constraint_lost",
+        "zero_value_plan",
     ]
     original_input: str
     status: Literal["not_decomposable"] = "not_decomposable"
+    fallback_notice: str | None = None

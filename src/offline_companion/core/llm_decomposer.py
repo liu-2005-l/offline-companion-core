@@ -94,6 +94,7 @@ def decompose_with_llm(
     skill_stages: Sequence[str] | None = None,
     skill_name: str | None = None,
     shots: Sequence[object] | None = None,
+    retry_feedback: str | None = None,
 ) -> list[dict[str, Any]] | NotDecomposableResult | None:
     """摘要：用 LLM 拆解任务，失败时返回 None 交由调用方 fallback。
 
@@ -103,6 +104,7 @@ def decompose_with_llm(
         skill_stages: 匹配到的 Skill 阶段序列。
         skill_name: 匹配到的 Skill 名称。
         shots: 仅供本次任务拆解使用的本地 few-shot 范例。
+        retry_feedback: 上次拆解失败后的定向修正要求。
 
     返回值：
         通过 schema 校验的 step 字典列表；调用失败、解析失败或校验失败时返回 None。
@@ -119,6 +121,8 @@ def decompose_with_llm(
             "每个步骤必须对应其中一个阶段，按顺序排列。"
         )
     user_prompt = f"用户请求：{user_input}{stage_hint}\n\n请拆解为具体步骤，返回 JSON 数组。"
+    if retry_feedback:
+        user_prompt = f"{user_prompt}\n\n上次拆解未通过校验：{retry_feedback}"
     system_prompt = DECOMPOSE_SYSTEM_PROMPT
     if shots:
         system_prompt = f"{DECOMPOSE_SYSTEM_PROMPT}\n\n{_format_shots(shots, user_input)}"
@@ -134,6 +138,7 @@ def decompose_with_llm(
         return None
 
     normalized_response = str(response).strip()
+    logger.debug("LLM decompose 原始输出: %s", normalized_response)
     if normalized_response.lower() == "none":
         return NotDecomposableResult(reason="model_none", original_input=user_input)
     steps = _parse_json(normalized_response)

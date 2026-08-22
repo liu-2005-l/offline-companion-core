@@ -176,6 +176,7 @@ class AutoTurnOrchestrator:
                     "type": PlanEventName.NOT_DECOMPOSABLE.value,
                     "status": steps.status,
                     "reason": steps.reason,
+                    "fallback_notice": steps.fallback_notice,
                     "done": True,
                 }
                 return

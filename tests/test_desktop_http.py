@@ -15,6 +15,7 @@ import pytest
 
 import offline_companion
 import offline_companion.shell.ui_host.desktop.http_host as desktop_http
+from offline_companion.core.decomposition_result import NotDecomposableResult
 from offline_companion.core.decomposition_sample_library import (
     SampleLifecycleManager,
     SampleRepository,
@@ -426,6 +427,45 @@ def test_desktop_http_stream_replaces_wrong_arithmetic_with_audited_reply(tmp_pa
     assert assistant.content == "重新核算后，7×3=21。"
 
 
+def test_desktop_http_no_cloud_method_fallback_reaches_arithmetic_audit(tmp_path) -> None:
+    """摘要：无云默认路径从约束丢失拒拆降级到本地回答，并由算术审计自愈。"""
+
+    runtime = _runtime(tmp_path)
+    conversation_backend = _ArithmeticStreamBackend()
+    runtime.orchestrator.backend = conversation_backend
+    decomposition_backend = MagicMock()
+    decomposition_backend.chat.return_value = """[{
+        "title":"计算7乘3",
+        "description":"计算乘法结果",
+        "expected_output":"乘法结果",
+        "verification":"核对乘法结果",
+        "completion_criteria":"得到正确结果"
+    }]"""
+    runtime.plan_orchestrator = PlanOrchestrator(
+        InMemoryPlanStore(),
+        llm_backend=decomposition_backend,
+    )
+    client = create_desktop_app(runtime).test_client()
+
+    decompose = client.post(
+        "/api/plan/decompose",
+        json={"goal": "按Booth算法计算7乘3"},
+    )
+    chat = client.post(
+        "/api/chat",
+        json={"message": "按Booth算法计算7乘3", "stream": True},
+    )
+    events = _sse_payloads(chat.text)
+
+    assert runtime.privacy_mode is PrivacyMode.LOCAL_ONLY
+    assert decompose.get_json()["reason"] == "method_constraint_lost"
+    assert decompose.get_json()["fallback_notice"]
+    assert decomposition_backend.chat.call_count == 2
+    assert events[-1]["reply"] == "重新核算后，7×3=21。"
+    assert "正确值 21" in conversation_backend.system_prompts[-1]
+    assert "配置云端" not in events[-1]["reply"]
+
+
 def test_desktop_http_stream_disconnect_persists_partial_and_replays_events(tmp_path) -> None:
     rt = _runtime(tmp_path)
     rt.orchestrator.backend = _SplitStreamBackend("split")
@@ -581,6 +621,27 @@ def test_desktop_http_plan_decompose_non_task_returns_chat_fallback_contract(tmp
     }
     assert runtime.orchestrator.conn.execute("SELECT COUNT(*) FROM plans").fetchone()[0] == 0
     assert runtime.sample_repository.list_samples() == []
+
+
+def test_desktop_http_plan_decompose_returns_visible_fallback_notice(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+    runtime.plan_orchestrator = PlanOrchestrator(InMemoryPlanStore())
+    runtime.plan_orchestrator.decide = lambda _goal: NotDecomposableResult(
+        reason="method_constraint_lost",
+        original_input="按Booth算法计算7乘3",
+        fallback_notice="无法按指定方法分步执行，已转为直接回答。",
+    )
+    client = create_desktop_app(runtime).test_client()
+
+    response = client.post("/api/plan/decompose", json={"goal": "按Booth算法计算7乘3"})
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "ok": True,
+        "status": "not_decomposable",
+        "reason": "method_constraint_lost",
+        "fallback_notice": "无法按指定方法分步执行，已转为直接回答。",
+    }
 
 
 def test_desktop_http_plan_decompose_explanation_returns_chat_fallback_contract(tmp_path) -> None:
@@ -2029,6 +2090,38 @@ def test_desktop_http_auto_non_task_falls_back_without_plan_or_duplicate_user_me
         (runtime.session_id,),
     ).fetchone()[0]
     assert user_count == 1
+
+
+def test_desktop_http_auto_method_fallback_prefixes_local_reply_without_cloud_prompt(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+
+    class StubAutoTurn:
+        def execute_turn_stream(self, _message, user_input, **_kwargs):
+            assert user_input == "按Booth算法计算7乘3"
+            yield {
+                "type": "not_decomposable",
+                "reason": "method_constraint_lost",
+                "fallback_notice": "无法按指定方法分步执行，已转为直接回答。",
+                "done": True,
+            }
+
+    runtime.auto_turn_orchestrator = StubAutoTurn()
+    client = create_desktop_app(runtime).test_client()
+    client.post("/api/models/auto", json={"enabled": True})
+
+    response = client.post(
+        "/api/chat",
+        json={"message": "按Booth算法计算7乘3", "stream": True},
+    )
+    events = _sse_payloads(response.text)
+
+    assert len(events) == 1
+    assert events[0]["type"] == "chat_fallback"
+    assert events[0]["fallback_notice"] == "无法按指定方法分步执行，已转为直接回答。"
+    assert events[0]["reply"].startswith(
+        "无法按指定方法分步执行，已转为直接回答。\n\n"
+    )
+    assert "配置云端" not in events[0]["reply"]
 
 
 def test_desktop_http_auto_consent_resumes_persisted_plan(tmp_path) -> None:

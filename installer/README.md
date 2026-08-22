@@ -22,7 +22,7 @@ iscc.exe OfflineCompanion.iss
 输出文件：
 
 ```text
-installer/output/OfflineCompanion-Setup-1.6.0.exe
+installer/output/OfflineCompanion-Setup-1.7.0.exe
 ```
 
 ## 数据边界

@@ -11,8 +11,10 @@ from offline_companion.core.llm_decomposer import DECOMPOSE_SYSTEM_PROMPT
 from offline_companion.core.plan_decomposer import (
     PlanDecomposer,
     _detect_echo,
+    _extract_method_constraints,
     _is_explanation_request,
     _rule_step,
+    _zero_value_plan_score,
     raw_to_plan_step,
     rule_decompose,
 )
@@ -104,7 +106,12 @@ def test_non_task_gate_does_not_use_contains_or_length_rules() -> None:
     short_task = decomposer.decide("修下bug")
 
     assert isinstance(contained, list)
-    assert isinstance(short_task, list)
+    assert short_task == NotDecomposableResult(
+        reason="zero_value_plan",
+        original_input="修下bug",
+        fallback_notice="该计划没有增加可执行步骤，已转为直接回答。",
+    )
+    assert backend.chat.call_count == 2
 
 
 def test_low_relevance_steps_are_rejected_before_candidate_archive() -> None:
@@ -123,6 +130,137 @@ def test_low_relevance_steps_are_rejected_before_candidate_archive() -> None:
 
     assert result == NotDecomposableResult(reason="low_relevance", original_input="今天心情怎么样")
     lifecycle.create_candidate.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("按booth算法计算7乘3", ("booth算法",)),
+        ("按照快速排序算法整理数据", ("快速排序算法",)),
+        ("使用 UTF-8 格式保存文件", ("utf8格式",)),
+        ("用HTTP协议发送请求", ("http协议",)),
+    ],
+)
+def test_extract_method_constraints(text: str, expected: tuple[str, ...]) -> None:
+    assert _extract_method_constraints(text) == expected
+
+
+def test_method_constraint_loss_retries_once_and_preserves_constraint() -> None:
+    backend = MagicMock()
+    backend.chat.side_effect = [
+        """[{
+            "title":"计算7乘3",
+            "description":"计算乘法结果",
+            "expected_output":"乘法结果",
+            "verification":"核对乘法结果",
+            "completion_criteria":"得到正确结果"
+        }]""",
+        """[
+        {
+            "title":"使用Booth算法展开7乘3",
+            "description":"按Booth算法生成编码与部分积",
+            "expected_output":"Booth算法中间状态",
+            "verification":"核对编码与部分积",
+            "completion_criteria":"中间状态完整"
+        },
+        {
+            "title":"核对Booth算法计算结果",
+            "description":"根据中间状态核对最终乘积",
+            "expected_output":"经核对的乘法结果",
+            "verification":"复算最终乘积",
+            "completion_criteria":"算法步骤与结果一致"
+        }
+        ]""",
+    ]
+    decomposer = PlanDecomposer(llm_router=backend)
+
+    result = decomposer.decide("按Booth算法计算7乘3")
+
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert "Booth算法" in result[0].title
+    assert backend.chat.call_count == 2
+    assert "必须在至少一个步骤中明确保留这些方法约束：booth算法" in (
+        backend.chat.call_args.kwargs["user_prompt"]
+    )
+
+
+def test_method_constraint_loss_falls_back_without_candidate_archive() -> None:
+    backend = MagicMock()
+    backend.chat.return_value = """[{
+        "title":"计算7乘3",
+        "description":"计算乘法结果",
+        "expected_output":"乘法结果",
+        "verification":"核对乘法结果",
+        "completion_criteria":"得到正确结果"
+    }]"""
+    lifecycle = MagicMock()
+    decomposer = PlanDecomposer(llm_router=backend, sample_lifecycle=lifecycle)
+
+    result = decomposer.decide("按Booth算法计算7乘3")
+
+    assert result == NotDecomposableResult(
+        reason="method_constraint_lost",
+        original_input="按Booth算法计算7乘3",
+        fallback_notice="无法按指定方法分步执行，已转为直接回答；本地模型可能无法严格复现该方法。",
+    )
+    assert backend.chat.call_count == 2
+    lifecycle.create_candidate.assert_not_called()
+
+
+def test_zero_value_single_chat_plan_falls_back_without_candidate_archive() -> None:
+    backend = MagicMock()
+    backend.chat.return_value = """[{
+        "title":"计算7乘3",
+        "description":"计算7乘3并返回结果",
+        "expected_output":"乘法结果",
+        "verification":"核对乘法结果",
+        "completion_criteria":"得到正确结果"
+    }]"""
+    lifecycle = MagicMock()
+    decomposer = PlanDecomposer(llm_router=backend, sample_lifecycle=lifecycle)
+
+    result = decomposer.decide("请帮我算一下7乘3")
+
+    assert result == NotDecomposableResult(
+        reason="zero_value_plan",
+        original_input="请帮我算一下7乘3",
+        fallback_notice="该计划没有增加可执行步骤，已转为直接回答。",
+    )
+    lifecycle.create_candidate.assert_not_called()
+
+
+def test_method_preserved_zero_value_plan_uses_method_limitation_notice() -> None:
+    backend = MagicMock()
+    backend.chat.return_value = """[{
+        "title":"使用Booth算法计算7乘3",
+        "description":"使用Booth算法计算7乘3",
+        "expected_output":"Booth算法计算结果",
+        "verification":"核对Booth算法结果",
+        "completion_criteria":"得到结果"
+    }]"""
+    decomposer = PlanDecomposer(llm_router=backend)
+
+    result = decomposer.decide("按Booth算法计算7乘3")
+
+    assert result == NotDecomposableResult(
+        reason="zero_value_plan",
+        original_input="按Booth算法计算7乘3",
+        fallback_notice="无法按指定方法分步执行，已转为直接回答；本地模型可能无法严格复现该方法。",
+    )
+
+
+def test_zero_value_check_ignores_multi_step_and_non_chat_plans() -> None:
+    chat_step = raw_to_plan_step(_valid_raw_step(), "写排序算法", 0)
+    second_step = raw_to_plan_step(_valid_raw_step(), "写排序算法", 1)
+    tool_step = raw_to_plan_step(
+        {**_valid_raw_step(), "skill_id": "calculator", "title": "计算7乘3"},
+        "计算7乘3",
+        0,
+    )
+
+    assert _zero_value_plan_score("创建 sort.py", [chat_step, second_step]) is None
+    assert _zero_value_plan_score("计算7乘3", [tool_step]) is None
 
 
 def test_unrelated_generated_steps_fall_back_to_chat() -> None:

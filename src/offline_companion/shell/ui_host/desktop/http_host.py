@@ -1788,9 +1788,12 @@ def create_desktop_app(runtime: DesktopRuntime):
         plan_orchestrator = runtime.plan_orchestrator or _fallback_plan_orchestrator(runtime)
         steps = plan_orchestrator.decide(goal)
         if isinstance(steps, NotDecomposableResult):
+            payload = {"ok": True, "status": steps.status, "reason": steps.reason}
+            if steps.fallback_notice:
+                payload["fallback_notice"] = steps.fallback_notice
             return _json_response(
                 jsonify,
-                {"ok": True, "status": steps.status, "reason": steps.reason},
+                payload,
             )
         plan = _steps_to_legacy_plan(
             goal,
@@ -2064,10 +2067,14 @@ def create_desktop_app(runtime: DesktopRuntime):
                     first_event = next(events, None)
                     if first_event and first_event.get("type") == PlanEventName.NOT_DECOMPOSABLE.value:
                         payload = process_chat_message(runtime, message)
+                        fallback_notice = str(first_event.get("fallback_notice") or "").strip()
+                        if fallback_notice and payload.get("reply"):
+                            payload["reply"] = f"{fallback_notice}\n\n{payload['reply']}"
                         yield _sse_event(
                             {
                                 "type": "chat_fallback",
                                 "reason": first_event.get("reason"),
+                                "fallback_notice": fallback_notice or None,
                                 **payload,
                                 "done": True,
                             }

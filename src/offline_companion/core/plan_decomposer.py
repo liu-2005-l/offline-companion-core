@@ -6,6 +6,7 @@ import logging
 import re
 import unicodedata
 from collections.abc import Callable, Mapping
+from difflib import SequenceMatcher
 from typing import TYPE_CHECKING, Any
 
 from offline_companion.core import plan_snapshot
@@ -62,6 +63,15 @@ _NON_TASK_INPUTS = frozenset(
     }
 )
 _MIN_STEP_RELEVANCE = 0.05
+_METHOD_CONSTRAINT_PATTERN = re.compile(
+    r"(?:按照|按|使用|用)\s*"
+    r"([a-zA-Z0-9_+#.\-\u4e00-\u9fff]{1,40})\s*(算法|协议|格式)",
+    re.IGNORECASE,
+)
+_METHOD_CONSTRAINT_NOTICE = (
+    "无法按指定方法分步执行，已转为直接回答；本地模型可能无法严格复现该方法。"
+)
+_ZERO_VALUE_NOTICE = "该计划没有增加可执行步骤，已转为直接回答。"
 _EXPLANATION_INTENT_PATTERN = re.compile(
     r"(?:^(?:(?:请|请给我|给我|帮我|替我|为我|麻烦)\s*)?"
     r"(?:讲讲|解释(?:一下)?|说说|谈谈|介绍(?:一下)?|科普(?:一下)?|什么是|什么叫).+)"
@@ -153,10 +163,13 @@ class PlanDecomposer:
         if not goal:
             self.skill_name = None
             self.skill_stages = []
+            logger.info("拆解决策: action=skip reason=empty_input")
             return []
         if _normalize_non_task_input(goal) in _NON_TASK_INPUTS:
+            logger.info("拆解决策: action=fallback reason=greeting")
             return NotDecomposableResult(reason="greeting", original_input=user_input)
         if _is_explanation_request(goal):
+            logger.info("拆解决策: action=fallback reason=explanation")
             return NotDecomposableResult(reason="explanation", original_input=user_input)
         self._resolve_skill(goal)
         learning_enabled = self._learning_enabled()
@@ -184,9 +197,42 @@ class PlanDecomposer:
                 shots=shots or None,
             )
             if isinstance(raw_steps, NotDecomposableResult):
+                logger.info("拆解决策: action=fallback reason=%s", raw_steps.reason)
                 return raw_steps
             if raw_steps is not None:
                 source = "llm"
+                missing_constraints = _missing_method_constraints(goal, raw_steps)
+                if missing_constraints:
+                    logger.info(
+                        "任务拆解丢失方法约束，执行一次定向重拆 constraints=%s",
+                        missing_constraints,
+                    )
+                    raw_steps = decompose_with_llm(
+                        goal,
+                        self._router,
+                        skill_stages=self.skill_stages or None,
+                        skill_name=self.skill_name,
+                        shots=shots or None,
+                        retry_feedback=(
+                            "必须在至少一个步骤中明确保留这些方法约束："
+                            + "、".join(missing_constraints)
+                            + "。不得改写或省略指定算法、协议或格式。"
+                        ),
+                    )
+                    if (
+                        isinstance(raw_steps, NotDecomposableResult)
+                        or raw_steps is None
+                        or _missing_method_constraints(goal, raw_steps)
+                    ):
+                        logger.warning(
+                            "任务拆解重试后仍丢失方法约束，降级为普通对话 constraints=%s",
+                            missing_constraints,
+                        )
+                        return NotDecomposableResult(
+                            reason="method_constraint_lost",
+                            original_input=user_input,
+                            fallback_notice=_METHOD_CONSTRAINT_NOTICE,
+                        )
         if raw_steps is None:
             raw_steps = rule_decompose(goal)
             if raw_steps is None:
@@ -199,6 +245,7 @@ class PlanDecomposer:
             raw_to_plan_step(step, goal, idx)
             for idx, step in enumerate(raw_steps)
         ]
+        logger.info("拆解决策: action=validate source=%s steps=%d", source, len(steps))
         if source == "llm" and _contains_generic_scaffold(steps):
             logger.warning("任务拆解命中通用脚手架闭集，降级为普通对话")
             return NotDecomposableResult(reason="meta_template", original_input=user_input)
@@ -213,7 +260,28 @@ class PlanDecomposer:
         if relevance < _MIN_STEP_RELEVANCE:
             logger.warning("任务拆解相关性过低，降级为普通对话: relevance=%.4f", relevance)
             return NotDecomposableResult(reason="low_relevance", original_input=user_input)
+        zero_value_score = _zero_value_plan_score(goal, steps)
+        if zero_value_score is not None and zero_value_score >= 0.8:
+            logger.info(
+                "任务拆解未增加可执行信息，降级为普通对话: score=%.4f",
+                zero_value_score,
+            )
+            return NotDecomposableResult(
+                reason="zero_value_plan",
+                original_input=user_input,
+                fallback_notice=(
+                    _METHOD_CONSTRAINT_NOTICE
+                    if _extract_method_constraints(goal)
+                    else _ZERO_VALUE_NOTICE
+                ),
+            )
         self.last_source = source
+        logger.info(
+            "拆解决策: action=accept source=%s steps=%d relevance=%.4f",
+            source,
+            len(steps),
+            relevance,
+        )
         if self._sample_lifecycle is not None:
             try:
                 candidate = self._sample_lifecycle.create_candidate(
@@ -318,6 +386,96 @@ def _step_relevance(original_input: str, steps: list[PlanStep]) -> float:
     if not input_tokens or not step_tokens:
         return 0.0
     return len(input_tokens & step_tokens) / (len(input_tokens) * len(step_tokens)) ** 0.5
+
+
+def _extract_method_constraints(text: str) -> tuple[str, ...]:
+    """摘要：提取用户显式指定的算法、协议或格式约束。"""
+
+    constraints = []
+    for match in _METHOD_CONSTRAINT_PATTERN.finditer(str(text)):
+        entity = f"{match.group(1)}{match.group(2)}"
+        normalized = _normalize_constraint_text(entity)
+        if normalized and normalized not in constraints:
+            constraints.append(normalized)
+    return tuple(constraints)
+
+
+def _missing_method_constraints(
+    original_input: str,
+    raw_steps: list[dict[str, Any]],
+) -> tuple[str, ...]:
+    """摘要：返回未被任何拆解步骤保留的方法约束。"""
+
+    constraints = _extract_method_constraints(original_input)
+    if not constraints:
+        return ()
+    step_text = _normalize_constraint_text(
+        "\n".join(
+            str(value)
+            for step in raw_steps
+            for value in step.values()
+            if isinstance(value, (str, int, float))
+        )
+    )
+    return tuple(constraint for constraint in constraints if constraint not in step_text)
+
+
+def _normalize_constraint_text(text: str) -> str:
+    """摘要：统一约束文本的大小写、标点与空白。"""
+
+    return "".join(
+        char
+        for char in str(text).strip().lower()
+        if not char.isspace() and not unicodedata.category(char).startswith("P")
+    )
+
+
+def _zero_value_plan_score(original_input: str, steps: list[PlanStep]) -> float | None:
+    """摘要：评估低风险单步对话计划是否只是复述原任务。"""
+
+    if len(steps) != 1:
+        return None
+    step = steps[0]
+    if step.skill_id != "chat" or str(step.payload.get("risk") or "low") != "low":
+        return None
+    constraints = _extract_method_constraints(original_input)
+    normalized_input = _normalize_zero_value_text(_METHOD_CONSTRAINT_PATTERN.sub("", original_input))
+    normalized_title = _normalize_zero_value_text(step.title)
+    for constraint in constraints:
+        normalized_title = normalized_title.replace(constraint, "")
+    if not normalized_input or not normalized_title:
+        return None
+    return SequenceMatcher(None, normalized_input, normalized_title).ratio()
+
+
+def _normalize_zero_value_text(text: str) -> str:
+    """摘要：移除礼貌包装并统一常见计算措辞，供零增值检测使用。"""
+
+    normalized = _normalize_echo_text(text)
+    for prefix in (
+        "你能不能",
+        "你可以",
+        "你能",
+        "能不能",
+        "可以",
+        "请帮我",
+        "麻烦帮我",
+        "帮我",
+        "给我",
+        "请",
+    ):
+        if normalized.startswith(prefix):
+            normalized = normalized[len(prefix) :]
+            break
+    for suffix in ("可以吗", "行不行", "好吗", "吗", "呢", "吧"):
+        if normalized.endswith(suffix):
+            normalized = normalized[: -len(suffix)]
+            break
+    return (
+        normalized.replace("计算一下", "计算")
+        .replace("算一下", "计算")
+        .replace("算一算", "计算")
+    )
 
 
 def _detect_echo(input_text: str, goal_text: str, step_texts: list[str]) -> bool:

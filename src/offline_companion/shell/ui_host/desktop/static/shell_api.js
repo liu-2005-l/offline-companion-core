@@ -966,6 +966,7 @@ async function sendMessage() {
   updateSendBtn();
   chat.scrollTop = chat.scrollHeight;
 
+  let fallbackNotice = '';
   if (window._planMode && !window._autoRouterEnabled) {
     showTyping();
     const decompStartedAt = performance.now();
@@ -979,6 +980,7 @@ async function sendMessage() {
       hideTyping();
       if (data.status === 'not_decomposable') {
         fallbackToChat = true;
+        fallbackNotice = String(data.fallback_notice || '').trim();
       } else {
       const plan = data.plan;
       plan._decompMs = performance.now() - decompStartedAt;
@@ -1016,7 +1018,9 @@ async function sendMessage() {
     if (!resp.body) {
       const data = await resp.json();
       hideTyping();
-      apiAppendMessage(data.blocked ? 'system' : 'assistant', data.reply || data.error || '', nextIdx + 1, Date.now() / 1000);
+      const replyText = data.reply || data.error || '';
+      const displayedReply = fallbackNotice ? fallbackNotice + '\n\n' + replyText : replyText;
+      apiAppendMessage(data.blocked ? 'system' : 'assistant', displayedReply, nextIdx + 1, Date.now() / 1000);
       apiSetRenderedMessageId(nextIdx + 1, data.message_id);
       chat.scrollTop = chat.scrollHeight;
       if (data.memory_saved && data.memory_saved.length) loadMemories();
@@ -1075,7 +1079,9 @@ async function sendMessage() {
         msg.classList.add('msg-system');
       }
     }
-    if (finalData && finalData.reply && bubble && finalData.reply !== streamedText) {
+    if (bubble && fallbackNotice) {
+      bubble.textContent = fallbackNotice + '\n\n' + ((finalData && finalData.reply) || streamedText);
+    } else if (finalData && finalData.reply && bubble && finalData.reply !== streamedText) {
       bubble.textContent = finalData.reply;
     }
     if (finalData) apiSetRenderedMessageId(nextIdx + 1, finalData.message_id);

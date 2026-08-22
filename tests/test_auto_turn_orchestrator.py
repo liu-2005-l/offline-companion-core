@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 
+from offline_companion.core.decomposition_result import NotDecomposableResult
 from offline_companion.core.hard_gate import HardGate
 from offline_companion.core.plan_orchestrator import (
     A3ConsentAdapter,
@@ -173,6 +174,32 @@ def test_auto_turn_stream_emits_step_sequence() -> None:
     first_complete = next(event for event in events if event["type"] == "step_complete")
     assert first_complete["status"] == "completed"
     assert first_complete["evidence"]
+
+
+def test_auto_turn_not_decomposable_event_keeps_fallback_notice() -> None:
+    auto_turn = _streaming_auto_turn()
+    auto_turn.plan_orchestrator.decide = lambda _text: NotDecomposableResult(
+        reason="method_constraint_lost",
+        original_input="按Booth算法计算7乘3",
+        fallback_notice="无法按指定方法分步执行，已转为直接回答。",
+    )
+
+    events = list(
+        auto_turn.execute_turn_stream(
+            BaseMessage(message_id="m-fallback", topic="chat.auto", source="shell"),
+            "按Booth算法计算7乘3",
+        )
+    )
+
+    assert events == [
+        {
+            "type": "not_decomposable",
+            "status": "not_decomposable",
+            "reason": "method_constraint_lost",
+            "fallback_notice": "无法按指定方法分步执行，已转为直接回答。",
+            "done": True,
+        }
+    ]
 
 
 def test_auto_turn_stream_uses_shared_final_reply_summarizer() -> None:
