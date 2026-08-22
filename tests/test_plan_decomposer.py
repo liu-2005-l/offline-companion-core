@@ -199,6 +199,19 @@ def test_booth_method_uses_builtin_tool_plan_without_llm() -> None:
     backend.chat.assert_not_called()
 
 
+def test_calculator_method_uses_builtin_tool_plan_without_llm() -> None:
+    backend = MagicMock()
+    decomposer = PlanDecomposer(llm_router=backend)
+
+    result = decomposer.decide("请计算三乘七")
+
+    assert isinstance(result, list)
+    assert [step.skill_id for step in result] == ["calculator", "chat"]
+    assert result[0].payload["tool_args"] == {"left": "三", "operator": "乘", "right": "七"}
+    assert result[1].depends_on == ("calculator_tool",)
+    backend.chat.assert_not_called()
+
+
 def test_method_constraint_loss_falls_back_without_candidate_archive() -> None:
     backend = MagicMock()
     backend.chat.return_value = """[{
@@ -225,20 +238,20 @@ def test_method_constraint_loss_falls_back_without_candidate_archive() -> None:
 def test_zero_value_single_chat_plan_falls_back_without_candidate_archive() -> None:
     backend = MagicMock()
     backend.chat.return_value = """[{
-        "title":"计算7乘3",
-        "description":"计算7乘3并返回结果",
-        "expected_output":"乘法结果",
-        "verification":"核对乘法结果",
+        "title":"处理这个事情",
+        "description":"处理用户请求并返回结果",
+        "expected_output":"处理结果",
+        "verification":"核对处理结果",
         "completion_criteria":"得到正确结果"
     }]"""
     lifecycle = MagicMock()
     decomposer = PlanDecomposer(llm_router=backend, sample_lifecycle=lifecycle)
 
-    result = decomposer.decide("请帮我算一下7乘3")
+    result = decomposer.decide("请帮我处理一下这个事情")
 
     assert result == NotDecomposableResult(
         reason="zero_value_plan",
-        original_input="请帮我算一下7乘3",
+        original_input="请帮我处理一下这个事情",
         fallback_notice="该计划没有增加可执行步骤，已转为直接回答。",
     )
     lifecycle.create_candidate.assert_not_called()

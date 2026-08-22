@@ -10,6 +10,7 @@ from difflib import SequenceMatcher
 from typing import TYPE_CHECKING, Any
 
 from offline_companion.core import plan_snapshot
+from offline_companion.core.calculator import parse_calculation_request
 from offline_companion.core.decomposition_result import NotDecomposableResult
 from offline_companion.core.decomposition_templates import GENERIC_SCAFFOLD_TITLES
 from offline_companion.core.plan_enums import PlanStage
@@ -172,6 +173,8 @@ class PlanDecomposer:
             logger.info("拆解决策: action=fallback reason=explanation")
             return NotDecomposableResult(reason="explanation", original_input=user_input)
         raw_steps: list[dict[str, Any]] | NotDecomposableResult | None = _deterministic_algorithm_plan(goal)
+        if raw_steps is None:
+            raw_steps = _deterministic_calculator_plan(goal)
         source = "builtin_tool" if raw_steps is not None else "rule"
         shots: list[object] = []
         if raw_steps is None:
@@ -464,6 +467,39 @@ def _deterministic_algorithm_plan(goal: str) -> list[dict[str, Any]] | None:
             "verification": "转述中的最终数值与工具结果及算术审计一致。",
             "completion_criteria": "同时交付 Booth 方法过程和最终计算结果。",
             "depends_on": ["booth_tool"],
+            "estimated_minutes": 1,
+        },
+    ]
+
+
+def _deterministic_calculator_plan(goal: str) -> list[dict[str, Any]] | None:
+    """摘要：为可解析的基础算术请求生成本地 calculator 计划。"""
+    if not any(marker in goal for marker in ("计算", "算一下", "算算", "结果", "等于", "多少")):
+        return None
+    expression = parse_calculation_request(goal)
+    if expression is None:
+        return None
+    return [
+        {
+            "step_id": "calculator_tool",
+            "skill_id": "calculator",
+            "title": f"执行算术：{expression['left']} {expression['operator']} {expression['right']}",
+            "description": "调用本地 calculator 工具确定性计算结果，不让语言模型推理数值。",
+            "expected_output": "算术表达式的精确结果。",
+            "verification": "工具结果与最终回复中的算术断言一致。",
+            "completion_criteria": "返回表达式、中间审计信息和确定性结果。",
+            "tool_args": expression,
+            "estimated_minutes": 1,
+        },
+        {
+            "step_id": "calculator_transcribe",
+            "skill_id": "chat",
+            "title": "转述算术计算结果",
+            "description": "根据 calculator 工具结果生成自然语言说明，不重新计算或修改数值。",
+            "expected_output": "包含原表达式与确定性结果的简洁说明。",
+            "verification": "转述数值与 calculator 工具结果及算术审计一致。",
+            "completion_criteria": "交付算式和最终结果。",
+            "depends_on": ["calculator_tool"],
             "estimated_minutes": 1,
         },
     ]

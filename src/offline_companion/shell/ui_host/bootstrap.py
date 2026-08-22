@@ -45,6 +45,7 @@ from offline_companion.core.state_manager import StateManager
 from offline_companion.core.subagent_scheduler import RestrictedToolRegistry, SubagentScheduler
 from offline_companion.core.subagent_types import SubagentContext, SubagentRouterResponse
 from offline_companion.core.tools.booth_tool import booth_multiply_tool
+from offline_companion.core.tools.calculator_tool import calculator_tool
 from offline_companion.runtime.inference_backend import (
     EchoBackend,
     LlamaServerStartupError,
@@ -364,6 +365,31 @@ def bootstrap_ui_session(
             version="1.0.0",
         ),
         booth_multiply_tool,
+    )
+    tool_registry.register_builtin(
+        ToolManifest(
+            tool_id="calculator",
+            display_name="calculator",
+            description="本地确定性基础算术工具，支持四则与整数幂。",
+            tool_type="builtin",
+            permission="allow",
+            scope="local_computation",
+            params_schema={
+                "type": "object",
+                "required": ["left", "operator", "right"],
+                "properties": {
+                    "left": {"type": ["string", "integer"]},
+                    "operator": {"type": "string"},
+                    "right": {"type": ["string", "integer"]},
+                },
+            },
+            return_schema={"type": "object"},
+            handler_module="offline_companion.core.tools.calculator_tool",
+            handler_function="calculator_tool",
+            external_config=None,
+            version="1.0.0",
+        ),
+        calculator_tool,
     )
     tool_invoker = ToolInvoker(tool_registry, consent_gateway=consent_gateway)
     orchestrator = ConversationOrchestrator(

@@ -9,6 +9,7 @@ from typing import Any
 from uuid import uuid4
 
 from offline_companion.core.algorithm_tools import booth_multiply, format_booth_result
+from offline_companion.core.calculator import calculate_expression
 from offline_companion.core.decomposition_result import NotDecomposableResult
 from offline_companion.core.event_stream import EventStream
 from offline_companion.core.plan_enums import PlanErrorCode, PlanEventName
@@ -64,6 +65,31 @@ class ConversationPlanInvoker:
                 "result": formatted,
                 "tool_id": skill_id,
                 "algorithm_trace": trace,
+                "route_mode": "local",
+            }
+        if skill_id == "calculator":
+            raw_args = payload.get("tool_args")
+            if not isinstance(raw_args, dict):
+                raise ValueError("calculator requires tool_args")
+            tool_invoker = getattr(self.conversation_orchestrator, "tool_invoker", None)
+            if tool_invoker is not None:
+                tool_result = tool_invoker.execute(
+                    skill_id,
+                    raw_args,
+                    session_id=str(self.conversation_orchestrator.session_id),
+                    privacy_mode=self.conversation_orchestrator.privacy_mode,
+                )
+                if tool_result.status != "completed" or not tool_result.result:
+                    raise RuntimeError(str(tool_result.error or "calculator execution failed"))
+                result = tool_result.result
+            else:
+                result = calculate_expression(
+                    raw_args["left"], raw_args["operator"], raw_args["right"]
+                )
+            return {
+                "result": result["formatted"],
+                "tool_id": skill_id,
+                "calculation": result,
                 "route_mode": "local",
             }
         if skill_id != "chat":
