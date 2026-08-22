@@ -139,6 +139,7 @@ def test_low_relevance_steps_are_rejected_before_candidate_archive() -> None:
         ("按照快速排序算法整理数据", ("快速排序算法",)),
         ("使用 UTF-8 格式保存文件", ("utf8格式",)),
         ("用HTTP协议发送请求", ("http协议",)),
+        ("通过 CRC 协议校验数据", ("crc协议",)),
     ],
 )
 def test_extract_method_constraints(text: str, expected: tuple[str, ...]) -> None:

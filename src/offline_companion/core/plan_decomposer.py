@@ -64,7 +64,7 @@ _NON_TASK_INPUTS = frozenset(
 )
 _MIN_STEP_RELEVANCE = 0.05
 _METHOD_CONSTRAINT_PATTERN = re.compile(
-    r"(?:按照|按|使用|用)\s*"
+    r"(?:按照|按|使用|用|通过)\s*"
     r"([a-zA-Z0-9_+#.\-\u4e00-\u9fff]{1,40})\s*(算法|协议|格式)",
     re.IGNORECASE,
 )
