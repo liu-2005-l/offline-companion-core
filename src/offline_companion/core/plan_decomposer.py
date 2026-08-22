@@ -286,7 +286,7 @@ class PlanDecomposer:
             len(steps),
             relevance,
         )
-        if self._sample_lifecycle is not None:
+        if self._sample_lifecycle is not None and source != "builtin_tool":
             try:
                 candidate = self._sample_lifecycle.create_candidate(
                     goal,

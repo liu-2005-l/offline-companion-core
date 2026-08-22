@@ -212,6 +212,16 @@ def test_calculator_method_uses_builtin_tool_plan_without_llm() -> None:
     backend.chat.assert_not_called()
 
 
+def test_builtin_tool_plan_is_not_archived_as_sample() -> None:
+    lifecycle = MagicMock()
+    decomposer = PlanDecomposer(sample_lifecycle=lifecycle)
+
+    result = decomposer.decide("请计算三乘七")
+
+    assert isinstance(result, list)
+    lifecycle.create_candidate.assert_not_called()
+
+
 def test_method_constraint_loss_falls_back_without_candidate_archive() -> None:
     backend = MagicMock()
     backend.chat.return_value = """[{

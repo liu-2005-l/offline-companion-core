@@ -9,7 +9,6 @@ from typing import Any
 from uuid import uuid4
 
 from offline_companion.core.algorithm_tools import booth_multiply, format_booth_result
-from offline_companion.core.calculator import calculate_expression
 from offline_companion.core.decomposition_result import NotDecomposableResult
 from offline_companion.core.event_stream import EventStream
 from offline_companion.core.plan_enums import PlanErrorCode, PlanEventName
@@ -21,6 +20,7 @@ from offline_companion.core.plan_orchestrator import (
     PlanStep,
     StepStatus,
 )
+from offline_companion.core.tools.calculator_tool import calculator_tool
 from offline_companion.shared.errors import A2PlanValidationError
 from offline_companion.shared.messages import BaseMessage
 from offline_companion.shell.plan_auto_bridge import PlanAutoBridge
@@ -83,7 +83,7 @@ class ConversationPlanInvoker:
                     raise RuntimeError(str(tool_result.error or "calculator execution failed"))
                 result = tool_result.result
             else:
-                result = calculate_expression(
+                result = calculator_tool(
                     raw_args["left"], raw_args["operator"], raw_args["right"]
                 )
             return {
