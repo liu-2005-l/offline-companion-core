@@ -118,6 +118,24 @@ def test_conversation_plan_invoker_includes_stage_contract_and_retry_feedback() 
     assert "质量校验反馈：\n上一次缺少模块说明" in prompt
 
 
+def test_conversation_plan_invoker_executes_booth_tool_without_llm() -> None:
+    captured = {}
+    orchestrator = type(
+        "StubConversationOrchestrator",
+        (),
+        {"backend": object(), "session_core": object()},
+    )()
+
+    result = ConversationPlanInvoker(orchestrator).invoke(
+        "algorithm_booth",
+        {"tool_args": {"multiplicand": 7, "multiplier": 3}},
+    )
+
+    assert result["result"].startswith("Booth 算法：7 x 3 = 21")
+    assert result["algorithm_trace"]["result"] == 21
+    assert captured == {}
+
+
 def _streaming_auto_turn(*, gateway=None):
     plan_orchestrator = PlanOrchestrator(
         InMemoryPlanStore(),

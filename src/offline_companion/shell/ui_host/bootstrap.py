@@ -44,6 +44,7 @@ from offline_companion.core.skill_execution_tracker import SkillExecutionTracker
 from offline_companion.core.state_manager import StateManager
 from offline_companion.core.subagent_scheduler import RestrictedToolRegistry, SubagentScheduler
 from offline_companion.core.subagent_types import SubagentContext, SubagentRouterResponse
+from offline_companion.core.tools.booth_tool import booth_multiply_tool
 from offline_companion.runtime.inference_backend import (
     EchoBackend,
     LlamaServerStartupError,
@@ -53,7 +54,7 @@ from offline_companion.runtime.inference_backend import (
 from offline_companion.runtime.storage_index.engine import connect, new_session, recent_messages
 from offline_companion.shared.deterministic_embedding import embed_text
 from offline_companion.shared.errors import InferenceBackendError
-from offline_companion.shared.types import AppPaths, MessageRow, PrivacyMode
+from offline_companion.shared.types import AppPaths, MessageRow, PrivacyMode, ToolManifest
 from offline_companion.shell.auto_router import AutoRouter, RoutingContext
 from offline_companion.shell.auto_turn_orchestrator import (
     AutoTurnOrchestrator,
@@ -340,6 +341,30 @@ def bootstrap_ui_session(
     consent_gateway = UIHostConsentGateway(db_conn=conn, event_stream=event_stream)
     tool_registry = ToolRegistry()
     register_skill_advance_stage_tool(tool_registry, conn)
+    tool_registry.register_builtin(
+        ToolManifest(
+            tool_id="algorithm_booth",
+            display_name="Booth 算法",
+            description="本地确定性整数乘法，返回重编码、部分积和寄存器中间态。",
+            tool_type="builtin",
+            permission="allow",
+            scope="local_computation",
+            params_schema={
+                "type": "object",
+                "required": ["multiplicand", "multiplier"],
+                "properties": {
+                    "multiplicand": {"type": "integer"},
+                    "multiplier": {"type": "integer"},
+                },
+            },
+            return_schema={"type": "object"},
+            handler_module="offline_companion.core.tools.booth_tool",
+            handler_function="booth_multiply_tool",
+            external_config=None,
+            version="1.0.0",
+        ),
+        booth_multiply_tool,
+    )
     tool_invoker = ToolInvoker(tool_registry, consent_gateway=consent_gateway)
     orchestrator = ConversationOrchestrator(
         session_core=session_core,

@@ -185,9 +185,11 @@ def test_message_router_background_queue_allows_parallel(tmp_path: Path) -> None
     active = 0
     peak = 0
     guard = threading.Lock()
+    handler_barrier = threading.Barrier(2)
 
     def _handler(message: BaseMessage) -> object:
         nonlocal active, peak
+        handler_barrier.wait()
         with guard:
             active += 1
             peak = max(peak, active)

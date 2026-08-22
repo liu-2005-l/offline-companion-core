@@ -171,68 +171,69 @@ class PlanDecomposer:
         if _is_explanation_request(goal):
             logger.info("拆解决策: action=fallback reason=explanation")
             return NotDecomposableResult(reason="explanation", original_input=user_input)
-        self._resolve_skill(goal)
-        learning_enabled = self._learning_enabled()
+        raw_steps: list[dict[str, Any]] | NotDecomposableResult | None = _deterministic_algorithm_plan(goal)
+        source = "builtin_tool" if raw_steps is not None else "rule"
         shots: list[object] = []
-        if learning_enabled and self._sample_retriever is not None:
-            try:
-                shots = list(self._sample_retriever.retrieve(goal))
-            except Exception:
-                logger.exception("拆解样本检索失败，继续使用零样本拆解")
-        self.last_sample_ids = [
-            str(shot.sample_id)
-            for shot in shots
-            if getattr(shot, "sample_id", None) is not None
-        ]
-        raw_steps: list[dict[str, Any]] | NotDecomposableResult | None = None
-        source = "rule"
-        if self._router is not None:
-            from offline_companion.core.llm_decomposer import decompose_with_llm
+        if raw_steps is None:
+            self._resolve_skill(goal)
+            learning_enabled = self._learning_enabled()
+            if learning_enabled and self._sample_retriever is not None:
+                try:
+                    shots = list(self._sample_retriever.retrieve(goal))
+                except Exception:
+                    logger.exception("拆解样本检索失败，继续使用零样本拆解")
+            self.last_sample_ids = [
+                str(shot.sample_id)
+                for shot in shots
+                if getattr(shot, "sample_id", None) is not None
+            ]
+            if self._router is not None:
+                from offline_companion.core.llm_decomposer import decompose_with_llm
 
-            raw_steps = decompose_with_llm(
-                goal,
-                self._router,
-                skill_stages=self.skill_stages or None,
-                skill_name=self.skill_name,
-                shots=shots or None,
-            )
-            if isinstance(raw_steps, NotDecomposableResult):
-                logger.info("拆解决策: action=fallback reason=%s", raw_steps.reason)
-                return raw_steps
-            if raw_steps is not None:
-                source = "llm"
-                missing_constraints = _missing_method_constraints(goal, raw_steps)
-                if missing_constraints:
-                    logger.info(
-                        "任务拆解丢失方法约束，执行一次定向重拆 constraints=%s",
-                        missing_constraints,
-                    )
-                    raw_steps = decompose_with_llm(
-                        goal,
-                        self._router,
-                        skill_stages=self.skill_stages or None,
-                        skill_name=self.skill_name,
-                        shots=shots or None,
-                        retry_feedback=(
-                            "必须在至少一个步骤中明确保留这些方法约束："
-                            + "、".join(missing_constraints)
-                            + "。不得改写或省略指定算法、协议或格式。"
-                        ),
-                    )
-                    if (
-                        isinstance(raw_steps, NotDecomposableResult)
-                        or raw_steps is None
-                        or _missing_method_constraints(goal, raw_steps)
-                    ):
-                        logger.warning(
-                            "任务拆解重试后仍丢失方法约束，降级为普通对话 constraints=%s",
+                raw_steps = decompose_with_llm(
+                    goal,
+                    self._router,
+                    skill_stages=self.skill_stages or None,
+                    skill_name=self.skill_name,
+                    shots=shots or None,
+                )
+                if isinstance(raw_steps, NotDecomposableResult):
+                    logger.info("拆解决策: action=fallback reason=%s", raw_steps.reason)
+                    return raw_steps
+                if raw_steps is not None:
+                    source = "llm"
+                    missing_constraints = _missing_method_constraints(goal, raw_steps)
+                    if missing_constraints:
+                        logger.info(
+                            "任务拆解丢失方法约束，执行一次定向重拆 constraints=%s",
                             missing_constraints,
                         )
-                        return NotDecomposableResult(
-                            reason="method_constraint_lost",
-                            original_input=user_input,
-                            fallback_notice=_METHOD_CONSTRAINT_NOTICE,
+                        raw_steps = decompose_with_llm(
+                            goal,
+                            self._router,
+                            skill_stages=self.skill_stages or None,
+                            skill_name=self.skill_name,
+                            shots=shots or None,
+                            retry_feedback=(
+                                "必须在至少一个步骤中明确保留这些方法约束："
+                                + "、".join(missing_constraints)
+                                + "。不得改写或省略指定算法、协议或格式。"
+                            ),
                         )
+                        if (
+                            isinstance(raw_steps, NotDecomposableResult)
+                            or raw_steps is None
+                            or _missing_method_constraints(goal, raw_steps)
+                        ):
+                            logger.warning(
+                                "任务拆解重试后仍丢失方法约束，降级为普通对话 constraints=%s",
+                                missing_constraints,
+                            )
+                            return NotDecomposableResult(
+                                reason="method_constraint_lost",
+                                original_input=user_input,
+                                fallback_notice=_METHOD_CONSTRAINT_NOTICE,
+                            )
         if raw_steps is None:
             raw_steps = rule_decompose(goal)
             if raw_steps is None:
@@ -430,6 +431,44 @@ def _normalize_constraint_text(text: str) -> str:
     )
 
 
+def _deterministic_algorithm_plan(goal: str) -> list[dict[str, Any]] | None:
+    """摘要：为工具集内且参数可解析的算法请求生成本地执行计划。"""
+
+    constraints = _extract_method_constraints(goal)
+    if "booth算法" not in constraints:
+        return None
+    operands = re.search(r"(-?\d+)\s*(?:乘|×|\*|x|X)\s*(-?\d+)", goal)
+    if operands is None:
+        return None
+    multiplicand = int(operands.group(1))
+    multiplier = int(operands.group(2))
+    expected = multiplicand * multiplier
+    return [
+        {
+            "step_id": "booth_tool",
+            "skill_id": "algorithm_booth",
+            "title": f"执行 Booth 算法：{multiplicand} × {multiplier}",
+            "description": "调用本地确定性 Booth 工具，生成乘数重编码、部分积和移位累加中间态。",
+            "expected_output": "Booth 算法中间态与最终乘积。",
+            "verification": f"工具结果应为 {multiplicand} × {multiplier} = {expected}。",
+            "completion_criteria": "所有 Booth 轮次可追溯，最终结果与机械计算一致。",
+            "tool_args": {"multiplicand": multiplicand, "multiplier": multiplier},
+            "estimated_minutes": 1,
+        },
+        {
+            "step_id": "booth_transcribe",
+            "skill_id": "chat",
+            "title": "转述 Booth 算法执行结果",
+            "description": "根据 Booth 工具返回的中间态转述算法过程与最终结果，不重新推理或修改数值。",
+            "expected_output": "包含重编码、中间态和最终结果的自然语言说明。",
+            "verification": "转述中的最终数值与工具结果及算术审计一致。",
+            "completion_criteria": "同时交付 Booth 方法过程和最终计算结果。",
+            "depends_on": ["booth_tool"],
+            "estimated_minutes": 1,
+        },
+    ]
+
+
 def _zero_value_plan_score(original_input: str, steps: list[PlanStep]) -> float | None:
     """摘要：评估低风险单步对话计划是否只是复述原任务。"""
 
@@ -549,6 +588,20 @@ def raw_to_plan_step(raw: Mapping[str, Any], user_input: str, idx: int) -> PlanS
     completion_criteria = str(raw.get("completion_criteria") or "")
     estimated_minutes = plan_snapshot.safe_non_negative_int(raw.get("estimated_minutes"))
     files = tuple(str(path) for path in raw.get("files", ()) or ())
+    payload = {
+        "description": title,
+        "query": user_input,
+        "risk": risk,
+        "complexity": 7 if risk in {"medium", "high"} else 2,
+        "expected_output": expected_output,
+        "verification": verification,
+        "completion_criteria": completion_criteria,
+        "stage": raw.get("stage") or None,
+        "estimated_minutes": estimated_minutes,
+        "files": list(files),
+    }
+    if isinstance(raw.get("tool_args"), Mapping):
+        payload["tool_args"] = dict(raw["tool_args"])
     return PlanStep(
         step_id=step_id,
         skill_id=str(raw.get("skill_id") or "chat"),
@@ -557,18 +610,7 @@ def raw_to_plan_step(raw: Mapping[str, Any], user_input: str, idx: int) -> PlanS
         condition_key=str(raw["condition_key"]) if raw.get("condition_key") is not None else None,
         retry_max=plan_snapshot.safe_non_negative_int(raw.get("retry_max")),
         require_consent=bool(raw.get("require_consent", risk == "high")),
-        payload={
-            "description": title,
-            "query": user_input,
-            "risk": risk,
-            "complexity": 7 if risk in {"medium", "high"} else 2,
-            "expected_output": expected_output,
-            "verification": verification,
-            "completion_criteria": completion_criteria,
-            "stage": raw.get("stage") or None,
-            "estimated_minutes": estimated_minutes,
-            "files": list(files),
-        },
+        payload=payload,
         title=title,
         description=description,
         expected_output=expected_output,

@@ -49,9 +49,13 @@ from offline_companion.shared.types import (
     PrivacyMode,
 )
 from offline_companion.shell.auto_router import AutoRouter, RoutingContext
-from offline_companion.shell.auto_turn_orchestrator import AutoTurnOrchestrator
+from offline_companion.shell.auto_turn_orchestrator import (
+    AutoTurnOrchestrator,
+    ConversationPlanInvoker,
+)
 from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway
 from offline_companion.shell.plan_auto_bridge import PlanAutoBridge
+from offline_companion.shell.routed_plan_invoker import RoutedPlanInvoker
 from offline_companion.shell.ui_host.bootstrap import ECHO_NO_MODEL_LABEL
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
 from offline_companion.shell.ui_host.desktop.crash_reporting import (
@@ -427,23 +431,17 @@ def test_desktop_http_stream_replaces_wrong_arithmetic_with_audited_reply(tmp_pa
     assert assistant.content == "重新核算后，7×3=21。"
 
 
-def test_desktop_http_no_cloud_method_fallback_reaches_arithmetic_audit(tmp_path) -> None:
-    """摘要：无云默认路径从约束丢失拒拆降级到本地回答，并由算术审计自愈。"""
+def test_desktop_http_no_cloud_booth_request_uses_deterministic_tool(tmp_path) -> None:
+    """摘要：无云默认路径优先执行本地 Booth 工具并保留方法中间态。"""
 
     runtime = _runtime(tmp_path)
     conversation_backend = _ArithmeticStreamBackend()
     runtime.orchestrator.backend = conversation_backend
-    decomposition_backend = MagicMock()
-    decomposition_backend.chat.return_value = """[{
-        "title":"计算7乘3",
-        "description":"计算乘法结果",
-        "expected_output":"乘法结果",
-        "verification":"核对乘法结果",
-        "completion_criteria":"得到正确结果"
-    }]"""
     runtime.plan_orchestrator = PlanOrchestrator(
         InMemoryPlanStore(),
-        llm_backend=decomposition_backend,
+    )
+    runtime.plan_orchestrator.attach_routed_invoker(
+        RoutedPlanInvoker(local_invoker=ConversationPlanInvoker(runtime.orchestrator))
     )
     client = create_desktop_app(runtime).test_client()
 
@@ -451,19 +449,17 @@ def test_desktop_http_no_cloud_method_fallback_reaches_arithmetic_audit(tmp_path
         "/api/plan/decompose",
         json={"goal": "按Booth算法计算7乘3"},
     )
-    chat = client.post(
-        "/api/chat",
-        json={"message": "按Booth算法计算7乘3", "stream": True},
-    )
-    events = _sse_payloads(chat.text)
-
     assert runtime.privacy_mode is PrivacyMode.LOCAL_ONLY
-    assert decompose.get_json()["reason"] == "method_constraint_lost"
-    assert decompose.get_json()["fallback_notice"]
-    assert decomposition_backend.chat.call_count == 2
-    assert events[-1]["reply"] == "重新核算后，7×3=21。"
-    assert "正确值 21" in conversation_backend.system_prompts[-1]
-    assert "配置云端" not in events[-1]["reply"]
+    plan = decompose.get_json()["plan"]
+    assert len(plan["steps"]) == 2
+    assert "Booth" in plan["steps"][0]["title"]
+    first = client.post(
+        f"/api/plan/{plan['id']}/execute",
+        json={"step_id": plan["steps"][0]["id"], "timeout": 20},
+    )
+    result_text = first.get_json()["step"]["result"]
+    assert result_text.startswith("Booth 算法：7 x 3 = 21")
+    assert "部分积：28 - 7 = 21" in result_text
 
 
 def test_desktop_http_stream_disconnect_persists_partial_and_replays_events(tmp_path) -> None:

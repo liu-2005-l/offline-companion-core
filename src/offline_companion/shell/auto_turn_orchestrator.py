@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
+from offline_companion.core.algorithm_tools import booth_multiply, format_booth_result
 from offline_companion.core.decomposition_result import NotDecomposableResult
 from offline_companion.core.event_stream import EventStream
 from offline_companion.core.plan_enums import PlanErrorCode, PlanEventName
@@ -36,6 +37,35 @@ class ConversationPlanInvoker:
     def invoke(self, skill_id: str, payload: dict[str, Any], idempotency_key: str | None = None) -> Any:
         """摘要：执行通用对话步骤；非 chat 步骤由外层组合调用器处理。"""
         del idempotency_key
+        if skill_id == "algorithm_booth":
+            raw_args = payload.get("tool_args")
+            if not isinstance(raw_args, dict):
+                raise ValueError("algorithm_booth requires tool_args")
+            tool_invoker = getattr(self.conversation_orchestrator, "tool_invoker", None)
+            tool_result = None
+            if tool_invoker is not None:
+                tool_result = tool_invoker.execute(
+                    skill_id,
+                    raw_args,
+                    session_id=str(self.conversation_orchestrator.session_id),
+                    privacy_mode=self.conversation_orchestrator.privacy_mode,
+                )
+                if tool_result.status != "completed" or not tool_result.result:
+                    raise RuntimeError(str(tool_result.error or "algorithm tool execution failed"))
+                trace = tool_result.result["trace"]
+                formatted = tool_result.result["formatted"]
+            else:
+                trace = booth_multiply(
+                    int(raw_args["multiplicand"]),
+                    int(raw_args["multiplier"]),
+                )
+                formatted = format_booth_result(trace)
+            return {
+                "result": formatted,
+                "tool_id": skill_id,
+                "algorithm_trace": trace,
+                "route_mode": "local",
+            }
         if skill_id != "chat":
             raise KeyError(f"unsupported auto conversation skill: {skill_id}")
         goal = str(payload.get("query") or "").strip()

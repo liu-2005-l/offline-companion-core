@@ -149,59 +149,72 @@ def test_method_constraint_loss_retries_once_and_preserves_constraint() -> None:
     backend = MagicMock()
     backend.chat.side_effect = [
         """[{
-            "title":"计算7乘3",
-            "description":"计算乘法结果",
-            "expected_output":"乘法结果",
-            "verification":"核对乘法结果",
-            "completion_criteria":"得到正确结果"
+            "title":"排序数据",
+            "description":"执行排序",
+            "expected_output":"排序结果",
+            "verification":"核对排序结果",
+            "completion_criteria":"排序完成"
         }]""",
         """[
         {
-            "title":"使用Booth算法展开7乘3",
-            "description":"按Booth算法生成编码与部分积",
-            "expected_output":"Booth算法中间状态",
-            "verification":"核对编码与部分积",
-            "completion_criteria":"中间状态完整"
+            "title":"使用快速排序算法整理数据",
+            "description":"按快速排序算法执行分区和递归",
+            "expected_output":"快速排序算法中间状态",
+            "verification":"核对快速排序算法分区结果",
+            "completion_criteria":"排序步骤完整"
         },
         {
-            "title":"核对Booth算法计算结果",
-            "description":"根据中间状态核对最终乘积",
-            "expected_output":"经核对的乘法结果",
-            "verification":"复算最终乘积",
+            "title":"核对快速排序算法结果",
+            "description":"根据分区状态核对最终顺序",
+            "expected_output":"经核对的排序结果",
+            "verification":"复核最终顺序",
             "completion_criteria":"算法步骤与结果一致"
         }
         ]""",
     ]
     decomposer = PlanDecomposer(llm_router=backend)
 
-    result = decomposer.decide("按Booth算法计算7乘3")
+    result = decomposer.decide("按快速排序算法整理数据")
 
     assert isinstance(result, list)
     assert len(result) == 2
-    assert "Booth算法" in result[0].title
+    assert "快速排序算法" in result[0].title
     assert backend.chat.call_count == 2
-    assert "必须在至少一个步骤中明确保留这些方法约束：booth算法" in (
+    assert "必须在至少一个步骤中明确保留这些方法约束：快速排序算法" in (
         backend.chat.call_args.kwargs["user_prompt"]
     )
+
+
+def test_booth_method_uses_builtin_tool_plan_without_llm() -> None:
+    backend = MagicMock()
+    decomposer = PlanDecomposer(llm_router=backend)
+
+    result = decomposer.decide("按booth算法计算7乘3")
+
+    assert isinstance(result, list)
+    assert [step.skill_id for step in result] == ["algorithm_booth", "chat"]
+    assert result[0].payload["tool_args"] == {"multiplicand": 7, "multiplier": 3}
+    assert result[1].depends_on == ("booth_tool",)
+    backend.chat.assert_not_called()
 
 
 def test_method_constraint_loss_falls_back_without_candidate_archive() -> None:
     backend = MagicMock()
     backend.chat.return_value = """[{
-        "title":"计算7乘3",
-        "description":"计算乘法结果",
-        "expected_output":"乘法结果",
-        "verification":"核对乘法结果",
-        "completion_criteria":"得到正确结果"
+        "title":"排序数据",
+        "description":"执行排序",
+        "expected_output":"排序结果",
+        "verification":"核对排序结果",
+        "completion_criteria":"排序完成"
     }]"""
     lifecycle = MagicMock()
     decomposer = PlanDecomposer(llm_router=backend, sample_lifecycle=lifecycle)
 
-    result = decomposer.decide("按Booth算法计算7乘3")
+    result = decomposer.decide("按快速排序算法整理数据")
 
     assert result == NotDecomposableResult(
         reason="method_constraint_lost",
-        original_input="按Booth算法计算7乘3",
+        original_input="按快速排序算法整理数据",
         fallback_notice="无法按指定方法分步执行，已转为直接回答；本地模型可能无法严格复现该方法。",
     )
     assert backend.chat.call_count == 2
@@ -233,19 +246,19 @@ def test_zero_value_single_chat_plan_falls_back_without_candidate_archive() -> N
 def test_method_preserved_zero_value_plan_uses_method_limitation_notice() -> None:
     backend = MagicMock()
     backend.chat.return_value = """[{
-        "title":"使用Booth算法计算7乘3",
-        "description":"使用Booth算法计算7乘3",
-        "expected_output":"Booth算法计算结果",
-        "verification":"核对Booth算法结果",
+        "title":"使用快速排序算法整理数据",
+        "description":"使用快速排序算法整理数据",
+        "expected_output":"快速排序算法结果",
+        "verification":"核对快速排序算法结果",
         "completion_criteria":"得到结果"
     }]"""
     decomposer = PlanDecomposer(llm_router=backend)
 
-    result = decomposer.decide("按Booth算法计算7乘3")
+    result = decomposer.decide("按快速排序算法整理数据")
 
     assert result == NotDecomposableResult(
         reason="zero_value_plan",
-        original_input="按Booth算法计算7乘3",
+        original_input="按快速排序算法整理数据",
         fallback_notice="无法按指定方法分步执行，已转为直接回答；本地模型可能无法严格复现该方法。",
     )
 
