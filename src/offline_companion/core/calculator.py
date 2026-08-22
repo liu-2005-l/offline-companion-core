@@ -85,6 +85,14 @@ def parse_calculation_request(text: str) -> dict[str, str] | None:
     }
 
 
+def parse_integer(value: str | int) -> int:
+    """摘要：解析一个整数操作数，供确定性算法路由复用。"""
+    number = _to_decimal(value)
+    if number != number.to_integral_value():
+        raise ValueError(f"expected integer operand: {value}")
+    return int(number)
+
+
 def _to_decimal(value: str | int) -> Decimal:
     text = str(value).strip()
     if text and all(char in _DIGITS or char in _UNITS for char in text.lstrip("+-")):

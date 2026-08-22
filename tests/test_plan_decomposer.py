@@ -140,6 +140,8 @@ def test_low_relevance_steps_are_rejected_before_candidate_archive() -> None:
         ("使用 UTF-8 格式保存文件", ("utf8格式",)),
         ("用HTTP协议发送请求", ("http协议",)),
         ("通过 CRC 协议校验数据", ("crc协议",)),
+        ("按照 booth 计算一下三乘七", ("booth",)),
+        ("采用 RSA 加密数据", ("rsa",)),
     ],
 )
 def test_extract_method_constraints(text: str, expected: tuple[str, ...]) -> None:
@@ -197,6 +199,17 @@ def test_booth_method_uses_builtin_tool_plan_without_llm() -> None:
     assert result[0].payload["tool_args"] == {"multiplicand": 7, "multiplier": 3}
     assert result[1].depends_on == ("booth_tool",)
     backend.chat.assert_not_called()
+
+
+@pytest.mark.parametrize("text", ["按照booth计算一下三乘七", "按照booth算法计算一下三乘七"])
+def test_booth_named_entity_without_category_uses_builtin_tool_plan(text: str) -> None:
+    decomposer = PlanDecomposer(llm_router=MagicMock())
+
+    result = decomposer.decide(text)
+
+    assert isinstance(result, list)
+    assert [step.skill_id for step in result] == ["algorithm_booth", "chat"]
+    assert result[0].payload["tool_args"] == {"multiplicand": 3, "multiplier": 7}
 
 
 def test_calculator_method_uses_builtin_tool_plan_without_llm() -> None:

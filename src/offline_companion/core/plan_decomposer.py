@@ -10,7 +10,7 @@ from difflib import SequenceMatcher
 from typing import TYPE_CHECKING, Any
 
 from offline_companion.core import plan_snapshot
-from offline_companion.core.calculator import parse_calculation_request
+from offline_companion.core.calculator import parse_calculation_request, parse_integer
 from offline_companion.core.decomposition_result import NotDecomposableResult
 from offline_companion.core.decomposition_templates import GENERIC_SCAFFOLD_TITLES
 from offline_companion.core.plan_enums import PlanStage
@@ -65,8 +65,13 @@ _NON_TASK_INPUTS = frozenset(
 )
 _MIN_STEP_RELEVANCE = 0.05
 _METHOD_CONSTRAINT_PATTERN = re.compile(
-    r"(?:按照|按|使用|用|通过)\s*"
+    r"(?:按照|按|使用|用|通过|采用)\s*"
     r"([a-zA-Z0-9_+#.\-\u4e00-\u9fff]{1,40})\s*(算法|协议|格式)",
+    re.IGNORECASE,
+)
+_METHOD_ENTITY_NAMES = ("booth", "crc", "md5", "rsa", "utf-8", "utf8")
+_METHOD_ENTITY_PATTERN = re.compile(
+    r"(?:按照|按|使用|用|通过|采用)\s*(" + "|".join(_METHOD_ENTITY_NAMES) + r")(?![a-zA-Z0-9_])",
     re.IGNORECASE,
 )
 _METHOD_CONSTRAINT_NOTICE = (
@@ -399,7 +404,15 @@ def _extract_method_constraints(text: str) -> tuple[str, ...]:
     for match in _METHOD_CONSTRAINT_PATTERN.finditer(str(text)):
         entity = f"{match.group(1)}{match.group(2)}"
         normalized = _normalize_constraint_text(entity)
-        if normalized and normalized not in constraints:
+        if normalized and not any(
+            item == normalized or item.startswith(normalized) for item in constraints
+        ):
+            constraints.append(normalized)
+    for match in _METHOD_ENTITY_PATTERN.finditer(str(text)):
+        normalized = _normalize_constraint_text(match.group(1))
+        if normalized and not any(
+            item == normalized or item.startswith(normalized) for item in constraints
+        ):
             constraints.append(normalized)
     return tuple(constraints)
 
@@ -438,13 +451,16 @@ def _deterministic_algorithm_plan(goal: str) -> list[dict[str, Any]] | None:
     """摘要：为工具集内且参数可解析的算法请求生成本地执行计划。"""
 
     constraints = _extract_method_constraints(goal)
-    if "booth算法" not in constraints:
+    if not {"booth", "booth算法"}.intersection(constraints):
         return None
-    operands = re.search(r"(-?\d+)\s*(?:乘|×|\*|x|X)\s*(-?\d+)", goal)
-    if operands is None:
+    expression = parse_calculation_request(goal)
+    if expression is None or expression["operator"] not in {"乘", "乘以", "×", "*"}:
         return None
-    multiplicand = int(operands.group(1))
-    multiplier = int(operands.group(2))
+    try:
+        multiplicand = parse_integer(expression["left"])
+        multiplier = parse_integer(expression["right"])
+    except ValueError:
+        return None
     expected = multiplicand * multiplier
     return [
         {

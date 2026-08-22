@@ -3,7 +3,11 @@ from decimal import Decimal
 
 import pytest
 
-from offline_companion.core.calculator import calculate_expression, parse_calculation_request
+from offline_companion.core.calculator import (
+    calculate_expression,
+    parse_calculation_request,
+    parse_integer,
+)
 from offline_companion.core.tools.calculator_tool import calculator_tool
 
 
@@ -28,6 +32,11 @@ def test_calculate_chinese_multiplication_is_deterministic() -> None:
 def test_calculate_division_by_zero_is_rejected() -> None:
     with pytest.raises(ZeroDivisionError):
         calculate_expression(7, "除以", 0)
+
+
+def test_parse_integer_supports_chinese_numbers() -> None:
+    assert parse_integer("三") == 3
+    assert parse_integer("二十一") == 21
 
 
 def test_calculator_tool_returns_json_safe_values() -> None:
