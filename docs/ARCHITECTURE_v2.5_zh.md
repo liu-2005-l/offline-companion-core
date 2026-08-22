@@ -809,6 +809,8 @@ execute_turn_stream() 遇到需要 Consent 的 step
 
 确定性算法不交给 LLM 推理：当前工具集包含本地 `algorithm_booth` 与 `calculator`。Booth 请求识别后直接生成两步计划——先执行纯 Python Booth 算法并返回重编码、部分积和寄存器轮次，再由本地模型仅转述工具结果；基础算术请求则由 calculator 确定性执行四则或整数幂，并支持中文数字解析。工具步骤使用固定 `tool_args`，不经样本检索或模型拆解；最终正文仍经过统一算术审计。后续 CRC、排序和欧几里得工具沿用该“确定性执行 → 语言转述 → 审计对账”边界。
 
+B4 GBNF 仍处于实验阶段：`scripts/gbnf_experiment.py` 对本地 llama-server 发起固定 20 个样本，统计 JSON 结构合法率与 `none` 分支表现；当前生产 Backend 尚未透传 grammar，实验 blocked 不改变生产路由。
+
 #### 6.4.3 B3 安全模块
 
 - 系统硬边界，负责内容安全检测；配置位于 `configs/safety_replies/`，用户不可修改。
