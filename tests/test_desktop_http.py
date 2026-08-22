@@ -3,14 +3,22 @@
 from __future__ import annotations
 
 import json
+import re
 import socket
 import threading
+from dataclasses import replace
+from html.parser import HTMLParser
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
 import offline_companion
 import offline_companion.shell.ui_host.desktop.http_host as desktop_http
+from offline_companion.core.decomposition_sample_library import (
+    SampleLifecycleManager,
+    SampleRepository,
+)
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.core.persona_session.session import PersonaSessionCore
@@ -18,6 +26,9 @@ from offline_companion.core.plan_orchestrator import (
     A3ConsentAdapter,
     InMemoryPlanStore,
     PlanOrchestrator,
+    PlanStatus,
+    PlanStep,
+    StepStatus,
 )
 from offline_companion.core.safety_boundary.classifier import SafetyTier
 from offline_companion.runtime.inference_backend.mock import EchoBackend
@@ -75,6 +86,21 @@ class _SplitStreamBackend(EchoBackend):
         yield "B"
 
 
+class _ArithmeticStreamBackend(EchoBackend):
+    """摘要：先流出错误断言，再按系统反馈返回修正结果。"""
+
+    def __init__(self) -> None:
+        super().__init__("arithmetic-stream")
+        self.system_prompts: list[str] = []
+
+    def generate_stream(self, **_kwargs):
+        yield "按照 Booth 算法，7×3=77。"
+
+    def generate(self, **kwargs) -> str:
+        self.system_prompts.append(str(kwargs.get("system_prompt") or ""))
+        return "重新核算后，7×3=21。"
+
+
 def _sse_payloads(text: str) -> list[dict]:
     items: list[dict] = []
     for line in text.splitlines():
@@ -126,6 +152,20 @@ def _runtime(tmp_path) -> DesktopRuntime:
     )
 
 
+def _runtime_with_sample_library(tmp_path) -> DesktopRuntime:
+    """摘要：构造启用拆解样本库与内存计划存储的桌面运行时。"""
+    runtime = _runtime(tmp_path)
+    repository = SampleRepository(runtime.orchestrator.conn)
+    lifecycle = SampleLifecycleManager(repository)
+    runtime.sample_repository = repository
+    runtime.sample_lifecycle = lifecycle
+    runtime.plan_orchestrator = PlanOrchestrator(
+        InMemoryPlanStore(),
+        sample_lifecycle=lifecycle,
+    )
+    return runtime
+
+
 def _write_test_skill(path: Path, name: str) -> None:
     path.mkdir(parents=True, exist_ok=True)
     (path / "skill.py").write_text("print('ok')\n", encoding="utf-8")
@@ -175,6 +215,24 @@ def test_desktop_http_release_metadata(tmp_path) -> None:
     assert "function apiAppendConsentDeclined" in api_script.text
     assert "data.status === 'declined'" in api_script.text
     assert "showToast('已拒绝授权，计划已暂停')" not in api_script.text
+    assert "function loadDecompSamples" in api_script.text
+    assert "function apiTransitionDecompSample" in api_script.text
+    assert "function savePlanAsDecompSample" in api_script.text
+    assert "/api/decomp-samples/" in api_script.text
+    assert "/save-as-sample" in api_script.text
+
+    shell_script = client.get("/shell.js")
+    assert shell_script.status_code == 200
+    assert "function confirmRejectDecompSample" in shell_script.text
+    assert "丢弃任务拆解范例" in shell_script.text
+    assert "&quot;" in shell_script.text
+    assert "&#39;" in shell_script.text
+
+    shell_html = client.get("/")
+    assert shell_html.status_code == 200
+    assert 'data-view="samples"' in shell_html.text
+    assert "任务拆解范例库" in shell_html.text
+    assert "sampleStaleDot" in shell_html.text
 
     sse = client.get("/api/sse-test")
     assert sse.status_code == 200
@@ -194,6 +252,42 @@ def test_desktop_http_release_metadata(tmp_path) -> None:
     missing = client.get("/missing")
     assert missing.status_code == 404
     assert missing.get_json() == {"error": "not_found"}
+
+
+def test_shell_escape_html_prevents_attribute_escape(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+    source = create_desktop_app(runtime).test_client().get("/shell.js").text
+    function = re.search(r"function escapeHtml\(s\) \{(?P<body>.*?)\n\}", source, re.DOTALL)
+    assert function is not None
+    replacements = re.findall(
+        r"\.replace\(/(?P<char>.)/g, '(?P<replacement>[^']*)'\)",
+        function.group("body"),
+    )
+    payload = 'a" onmouseover="x\' autofocus=\'y'
+    escaped = payload
+    for character, replacement in replacements:
+        escaped = escaped.replace(character, replacement)
+
+    class _InputParser(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__()
+            self.attrs: list[tuple[str, str | None]] = []
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "input":
+                self.attrs = attrs
+
+    parser = _InputParser()
+    parser.feed(f'<input value="{escaped}">')
+
+    assert replacements == [
+        ("&", "&amp;"),
+        ("<", "&lt;"),
+        (">", "&gt;"),
+        ('"', "&quot;"),
+        ("'", "&#39;"),
+    ]
+    assert parser.attrs == [("value", payload)]
 
 
 def test_desktop_status_exposes_backend_runtime_state(tmp_path) -> None:
@@ -309,6 +403,27 @@ def test_desktop_http_chat_stream_returns_sse_events(tmp_path) -> None:
         "SELECT status FROM messages WHERE role = 'assistant' ORDER BY id DESC LIMIT 1;"
     ).fetchone()["status"]
     assert status == "completed"
+
+
+def test_desktop_http_stream_replaces_wrong_arithmetic_with_audited_reply(tmp_path) -> None:
+    """摘要：SSE 终态携带修正正文，数据库只持久化审计后的回复。"""
+
+    rt = _runtime(tmp_path)
+    backend = _ArithmeticStreamBackend()
+    rt.orchestrator.backend = backend
+    client = create_desktop_app(rt).test_client()
+
+    response = client.post(
+        "/api/chat",
+        json={"message": "按照 Booth 算法计算 7 乘 3", "stream": True},
+    )
+
+    events = _sse_payloads(response.text)
+    assert [event["token"] for event in events if "token" in event] == ["按照 Booth 算法，7×3=77。"]
+    assert events[-1]["reply"] == "重新核算后，7×3=21。"
+    assert "正确值 21" in backend.system_prompts[-1]
+    assistant = recent_messages(rt.orchestrator.conn, "h1", limit=1)[0]
+    assert assistant.content == "重新核算后，7×3=21。"
 
 
 def test_desktop_http_stream_disconnect_persists_partial_and_replays_events(tmp_path) -> None:
@@ -441,6 +556,8 @@ def test_desktop_http_plan_decompose_and_execute(tmp_path) -> None:
     assert payload["step"]["result"] != "步骤已完成"
     assert payload["step"]["expected_output"]
     assert payload["step"]["verification"]
+    if payload["plan"]["status"] != "done":
+        assert "final_reply" not in payload
 
     progress = client.get(f"/api/plan/{plan['id']}/status")
     assert progress.status_code == 200
@@ -448,6 +565,235 @@ def test_desktop_http_plan_decompose_and_execute(tmp_path) -> None:
     assert progress_payload["completed_steps"] == 1
     assert progress_payload["total_steps"] == len(plan["steps"])
     assert progress_payload["progress_percent"] > 0
+
+
+def test_desktop_http_plan_decompose_non_task_returns_chat_fallback_contract(tmp_path) -> None:
+    runtime = _runtime_with_sample_library(tmp_path)
+    client = create_desktop_app(runtime).test_client()
+
+    response = client.post("/api/plan/decompose", json={"goal": "你好！"})
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "ok": True,
+        "status": "not_decomposable",
+        "reason": "greeting",
+    }
+    assert runtime.orchestrator.conn.execute("SELECT COUNT(*) FROM plans").fetchone()[0] == 0
+    assert runtime.sample_repository.list_samples() == []
+
+
+def test_desktop_http_plan_decompose_explanation_returns_chat_fallback_contract(tmp_path) -> None:
+    runtime = _runtime_with_sample_library(tmp_path)
+    client = create_desktop_app(runtime).test_client()
+
+    response = client.post("/api/plan/decompose", json={"goal": "给我讲讲CRC码"})
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "ok": True,
+        "status": "not_decomposable",
+        "reason": "explanation",
+    }
+    assert runtime.orchestrator.conn.execute("SELECT COUNT(*) FROM plans").fetchone()[0] == 0
+    assert runtime.sample_repository.list_samples() == []
+
+
+def test_desktop_http_plan_decompose_unmatched_rule_returns_chat_fallback_contract(tmp_path) -> None:
+    runtime = _runtime_with_sample_library(tmp_path)
+    client = create_desktop_app(runtime).test_client()
+
+    response = client.post("/api/plan/decompose", json={"goal": "帮我处理这个事情"})
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "ok": True,
+        "status": "not_decomposable",
+        "reason": "no_rule_match",
+    }
+    assert runtime.orchestrator.conn.execute("SELECT COUNT(*) FROM plans").fetchone()[0] == 0
+    assert runtime.sample_repository.list_samples() == []
+
+
+def test_desktop_http_plan_decompose_returns_bound_candidate_id(tmp_path) -> None:
+    runtime = _runtime_with_sample_library(tmp_path)
+    client = create_desktop_app(runtime).test_client()
+
+    response = client.post("/api/plan/decompose", json={"goal": "实现本地排序脚本"})
+
+    assert response.status_code == 201
+    payload = response.get_json()
+    assert payload["plan"]["candidate_sample_id"]
+
+
+def test_desktop_http_low_relevance_plan_leaves_no_plan_or_candidate(tmp_path) -> None:
+    runtime = _runtime_with_sample_library(tmp_path)
+    backend = MagicMock()
+    backend.chat.return_value = """[{
+        "title":"在 src 下创建 utils.py",
+        "description":"创建 Python 工具文件",
+        "expected_output":"utils.py 文件",
+        "verification":"检查文件存在",
+        "completion_criteria":"文件可以导入"
+    }]"""
+    runtime.plan_orchestrator = PlanOrchestrator(
+        InMemoryPlanStore(),
+        llm_backend=backend,
+        sample_lifecycle=runtime.sample_lifecycle,
+    )
+    client = create_desktop_app(runtime).test_client()
+
+    response = client.post("/api/plan/decompose", json={"goal": "今天心情怎么样"})
+
+    assert response.status_code == 200
+    assert response.get_json()["reason"] == "low_relevance"
+    assert runtime.orchestrator.conn.execute("SELECT COUNT(*) FROM plans").fetchone()[0] == 0
+    assert runtime.sample_repository.list_samples() == []
+
+
+def test_desktop_http_manual_plan_terminal_response_includes_final_reply(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+    client = create_desktop_app(runtime).test_client()
+    plan = client.post("/api/plan/decompose", json={"goal": "梳理发布清单"}).get_json()["plan"]
+    final_payload = None
+
+    for step in plan["steps"]:
+        response = client.post(
+            f"/api/plan/{plan['id']}/execute",
+            json={"step_id": step["id"], "timeout": 20},
+        )
+        assert response.status_code == 200
+        final_payload = response.get_json()
+
+    assert final_payload is not None
+    assert final_payload["plan"]["status"] == "done"
+    assert final_payload["final_reply"]
+    messages = runtime.orchestrator.conn.execute(
+        "SELECT role, content, meta_json FROM messages ORDER BY id"
+    ).fetchall()
+    assert [row["role"] for row in messages] == ["user", "assistant"]
+    assert messages[0]["content"] == "梳理发布清单"
+    assert json.loads(messages[1]["meta_json"])["plan_id"] == plan["id"]
+
+    repeated = client.post(f"/api/plan/{plan['id']}/execute", json={"timeout": 20})
+
+    assert repeated.status_code == 200
+    assert repeated.get_json()["final_reply"] == final_payload["final_reply"]
+    assert runtime.orchestrator.conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 2
+
+
+def test_desktop_http_manual_plan_summary_failure_uses_deterministic_reply(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+
+    def fail_summary(_prompt):
+        raise RuntimeError("offline")
+
+    runtime.auto_turn_orchestrator = type(
+        "AutoTurn",
+        (),
+        {"final_reply_summarizer": staticmethod(fail_summary)},
+    )()
+    client = create_desktop_app(runtime).test_client()
+    plan = client.post("/api/plan/decompose", json={"goal": "梳理发布清单"}).get_json()["plan"]
+    final_payload = None
+
+    for step in plan["steps"]:
+        response = client.post(
+            f"/api/plan/{plan['id']}/execute",
+            json={"step_id": step["id"], "timeout": 20},
+        )
+        assert response.status_code == 200
+        final_payload = response.get_json()
+
+    assert final_payload is not None
+    assert "任务已完成" in final_payload["final_reply"]
+    assert "执行结果" in final_payload["final_reply"]
+
+
+def test_desktop_http_manual_plan_failed_response_includes_final_reply(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+    runtime.plan_orchestrator = PlanOrchestrator(InMemoryPlanStore())
+
+    class InvalidResultInvoker:
+        def invoke_step(self, _step, _context):
+            return "无阶段证据"
+
+    runtime.plan_orchestrator.attach_routed_invoker(InvalidResultInvoker())
+    client = create_desktop_app(runtime).test_client()
+    plan = client.post("/api/plan/decompose", json={"goal": "分析模块边界"}).get_json()["plan"]
+    context = runtime.plan_orchestrator.load_context(plan["id"])
+    assert context is not None
+    first_step_id = next(iter(context.steps))
+    context.steps[first_step_id] = replace(context.steps[first_step_id], stage="planning")
+    context.steps = {first_step_id: context.steps[first_step_id]}
+    context.step_status = {first_step_id: context.step_status[first_step_id]}
+    runtime.plan_orchestrator.save_context(context)
+
+    response = client.post(
+        f"/api/plan/{plan['id']}/execute",
+        json={"step_id": 0, "timeout": 20},
+    )
+
+    assert response.status_code == 500
+    payload = response.get_json()
+    assert payload["status"] == "failed"
+    assert payload["plan"]["status"] == "paused"
+    assert payload["final_reply"].startswith("任务执行失败")
+
+
+def test_desktop_http_plan_snapshot_is_source_of_legacy_projection(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    client = create_desktop_app(rt).test_client()
+    plan = client.post("/api/plan/decompose", json={"goal": "梳理事实源"}).get_json()["plan"]
+    snapshot_row = rt.orchestrator.conn.execute(
+        "SELECT value_json FROM state_store WHERE domain = 'task' AND key = ?;",
+        (f"plan.{plan['id']}.snapshot",),
+    ).fetchone()
+    assert snapshot_row is not None
+    snapshot = json.loads(snapshot_row["value_json"])
+    assert snapshot["status"] == "pending"
+
+    rt.orchestrator.conn.execute("UPDATE plans SET status = 'done' WHERE plan_id = ?;", (plan["id"],))
+    rt.orchestrator.conn.execute(
+        "UPDATE plan_steps SET status = 'done', result = '污染数据' WHERE plan_id = ?;",
+        (plan["id"],),
+    )
+    rt.orchestrator.conn.commit()
+
+    status = client.get(f"/api/plan/{plan['id']}/status")
+    assert status.status_code == 200
+    payload = status.get_json()
+    assert payload["status"] == "pending"
+    assert payload["completed_steps"] == 0
+    repaired = rt.orchestrator.conn.execute(
+        "SELECT status, result FROM plan_steps WHERE plan_id = ? ORDER BY step_id LIMIT 1;",
+        (plan["id"],),
+    ).fetchone()
+    assert repaired["status"] == "pending"
+    assert repaired["result"] is None
+
+
+def test_desktop_http_plan_execute_updates_existing_snapshot(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    client = create_desktop_app(rt).test_client()
+    plan = client.post("/api/plan/decompose", json={"goal": "分析快照连续性"}).get_json()["plan"]
+    key = f"plan.{plan['id']}.snapshot"
+    before_row = rt.orchestrator.conn.execute(
+        "SELECT value_json FROM state_store WHERE domain = 'task' AND key = ?;",
+        (key,),
+    ).fetchone()
+    before = json.loads(before_row["value_json"])
+
+    executed = client.post(f"/api/plan/{plan['id']}/execute", json={"step_id": 0, "timeout": 20})
+    assert executed.status_code == 200
+    after_row = rt.orchestrator.conn.execute(
+        "SELECT value_json FROM state_store WHERE domain = 'task' AND key = ?;",
+        (key,),
+    ).fetchone()
+    after = json.loads(after_row["value_json"])
+    first_step_id = next(iter(after["steps"]))
+    assert after["trace_id"] == before["trace_id"]
+    assert after["step_status"][first_step_id] == "done"
 
 
 def test_desktop_http_plan_requires_consent_and_resume(tmp_path) -> None:
@@ -473,6 +819,7 @@ def test_desktop_http_plan_requires_consent_and_resume(tmp_path) -> None:
     assert pending_payload["consent_request_id"]
     assert pending_payload["consent_payload"]["request_id"] == pending_payload["consent_request_id"]
     assert pending_payload["step"]["status"] == "consent"
+    assert "final_reply" not in pending_payload
 
     consent = client.post(
         "/api/consent",
@@ -558,6 +905,134 @@ def test_desktop_http_plan_execute_timeout(tmp_path) -> None:
     assert payload["error"] == "timeout"
     assert payload["status"] == "timeout"
     assert payload["step"]["status"] == "failed"
+
+
+def test_desktop_http_decomposition_sample_crud_and_transitions(tmp_path) -> None:
+    runtime = _runtime_with_sample_library(tmp_path)
+    lifecycle = runtime.sample_lifecycle
+    assert lifecycle is not None
+    first = lifecycle.create_candidate(
+        "整理项目发布清单",
+        [{"title": "检查版本", "description": "核对版本号与变更记录"}],
+        source="llm",
+        provenance_sample_ids=["7"],
+    )
+    lifecycle.mark_stale(
+        lifecycle.create_candidate(
+            "清理旧分支",
+            [{"title": "列出分支", "description": "确认已合并的旧分支"}],
+            source="rule",
+        ).sample_id,
+        reason="consecutive_failure",
+    )
+    client = create_desktop_app(runtime).test_client()
+
+    default_list = client.get("/api/decomp-samples")
+    assert default_list.status_code == 200
+    assert [item["id"] for item in default_list.get_json()["items"]] == [first.sample_id]
+
+    stale_list = client.get("/api/decomp-samples?state=stale&limit=10")
+    assert stale_list.status_code == 200
+    assert stale_list.get_json()["items"][0]["stale_reason"] == "consecutive_failure"
+
+    paged = client.get("/api/decomp-samples?state=all&limit=1&offset=1")
+    assert paged.status_code == 200
+    assert paged.get_json()["limit"] == 1
+    assert paged.get_json()["offset"] == 1
+    assert paged.get_json()["total"] == 2
+    assert paged.get_json()["has_more"] is False
+
+    detail = client.get(f"/api/decomp-samples/{first.sample_id}")
+    assert detail.status_code == 200
+    assert detail.get_json()["sample"]["provenance"] == {"sample_ids": ["7"]}
+
+    edited = client.put(
+        f"/api/decomp-samples/{first.sample_id}",
+        json={
+            "task_description": "整理正式发布清单",
+            "steps": [{"title": "核对版本", "description": "检查版本、标签与变更记录"}],
+        },
+    )
+    assert edited.status_code == 200
+    assert edited.get_json()["sample"]["verify_kind"] == "user"
+
+    rejected = client.post(f"/api/decomp-samples/{first.sample_id}/reject")
+    assert rejected.status_code == 200
+    duplicate_reject = client.post(f"/api/decomp-samples/{first.sample_id}/reject")
+    assert duplicate_reject.status_code == 409
+    assert duplicate_reject.get_json() == {"error": "invalid_transition"}
+    restored = client.post(f"/api/decomp-samples/{first.sample_id}/restore")
+    assert restored.status_code == 200
+    verified = client.post(f"/api/decomp-samples/{first.sample_id}/verify")
+    assert verified.status_code == 200
+    assert verified.get_json()["sample"]["verify_kind"] == "user"
+
+    deleted = client.delete(f"/api/decomp-samples/{first.sample_id}")
+    assert deleted.status_code == 200
+    assert deleted.get_json() == {"ok": True, "deleted_sample_id": first.sample_id}
+    assert client.get(f"/api/decomp-samples/{first.sample_id}").status_code == 404
+    assert client.delete(f"/api/decomp-samples/{first.sample_id}").status_code == 404
+
+
+def test_desktop_http_maps_invalid_sample_transition_to_conflict(tmp_path) -> None:
+    runtime = _runtime_with_sample_library(tmp_path)
+    lifecycle = runtime.sample_lifecycle
+    assert lifecycle is not None
+    sample = lifecycle.create_candidate(
+        "整理发布材料",
+        [{"title": "检查材料", "description": "核对发布说明和校验值"}],
+        source="llm",
+    )
+    client = create_desktop_app(runtime).test_client()
+
+    response = client.post(f"/api/decomp-samples/{sample.sample_id}/restore")
+
+    assert response.status_code == 409
+    assert response.get_json() == {"error": "invalid_transition"}
+
+
+def test_desktop_http_save_terminal_plan_as_sample_is_idempotent(tmp_path) -> None:
+    runtime = _runtime_with_sample_library(tmp_path)
+    orchestrator = runtime.plan_orchestrator
+    assert orchestrator is not None
+    context = orchestrator.create_plan(
+        "plan-save-sample",
+        [PlanStep("step-1", "chat", {"description": "生成发布说明"}, title="生成说明", description="生成发布说明")],
+    )
+    context.context_vars["manual_plan"] = {"goal": "准备版本发布"}
+    context.step_status["step-1"] = StepStatus.DONE
+    context.status = PlanStatus.DONE
+    orchestrator.save_context(context)
+    client = create_desktop_app(runtime).test_client()
+
+    created = client.post("/api/plans/plan-save-sample/save-as-sample")
+    assert created.status_code == 201
+    payload = created.get_json()
+    assert payload["created"] is True
+    assert payload["sample"]["state"] == "verified"
+    assert payload["sample"]["verify_kind"] == "user"
+    assert payload["sample"]["plan_id"] == "plan-save-sample"
+
+    repeated = client.post("/api/plans/plan-save-sample/save-as-sample")
+    assert repeated.status_code == 200
+    assert repeated.get_json()["created"] is False
+    assert repeated.get_json()["sample"]["id"] == payload["sample"]["id"]
+
+
+def test_desktop_http_rejects_non_terminal_plan_sample_save(tmp_path) -> None:
+    runtime = _runtime_with_sample_library(tmp_path)
+    orchestrator = runtime.plan_orchestrator
+    assert orchestrator is not None
+    orchestrator.create_plan(
+        "plan-running",
+        [PlanStep("step-1", "chat", {"description": "执行任务"}, title="执行任务", description="执行任务")],
+    )
+    client = create_desktop_app(runtime).test_client()
+
+    response = client.post("/api/plans/plan-running/save-as-sample")
+
+    assert response.status_code == 409
+    assert response.get_json() == {"error": "plan_not_terminal"}
 
 
 def test_desktop_http_personas_list_and_activate(tmp_path) -> None:
@@ -1064,7 +1539,7 @@ def test_desktop_http_plan_and_extension_state_survive_app_recreate(tmp_path) ->
     rt = _runtime(tmp_path)
     client = create_desktop_app(rt).test_client()
 
-    plan = client.post("/api/plan/decompose", json={"goal": "整理 release checklist"}).get_json()["plan"]
+    plan = client.post("/api/plan/decompose", json={"goal": "梳理 release checklist"}).get_json()["plan"]
     paused = client.post(f"/api/plan/{plan['id']}/pause")
     assert paused.status_code == 200
     extension_id = client.get("/api/extensions").get_json()["items"][0]["id"]
@@ -1088,17 +1563,24 @@ def test_desktop_http_plan_and_extension_state_survive_app_recreate(tmp_path) ->
 def test_desktop_http_plan_cancel_deletes_sqlite_row(tmp_path) -> None:
     rt = _runtime(tmp_path)
     client = create_desktop_app(rt).test_client()
-    plan = client.post("/api/plan/decompose", json={"goal": "整理临时计划"}).get_json()["plan"]
+    plan = client.post("/api/plan/decompose", json={"goal": "梳理临时计划"}).get_json()["plan"]
 
     cancelled = client.post(f"/api/plan/{plan['id']}/cancel")
 
     assert cancelled.status_code == 200
-    assert cancelled.get_json()["plan"]["status"] == "cancelled"
+    cancelled_payload = cancelled.get_json()
+    assert cancelled_payload["plan"]["status"] == "cancelled"
+    assert cancelled_payload["final_reply"].startswith("任务已取消，完成 0/")
     row = rt.orchestrator.conn.execute(
         "SELECT COUNT(*) AS c FROM plans WHERE plan_id = ?;",
         (plan["id"],),
     ).fetchone()
     assert int(row["c"]) == 0
+    snapshot_row = rt.orchestrator.conn.execute(
+        "SELECT value_json FROM state_store WHERE domain = 'task' AND key = ?;",
+        (f"plan.{plan['id']}.snapshot",),
+    ).fetchone()
+    assert json.loads(snapshot_row["value_json"])["status"] == "cancelled"
 
 
 def test_desktop_http_legacy_extension_json_migrates_to_sqlite(tmp_path) -> None:
@@ -1521,6 +2003,32 @@ def test_desktop_http_auto_toggle_routes_chat_to_auto_turn(tmp_path) -> None:
     assert events[-1]["done"] is True
     assert events[-1]["reply"] == "auto reply"
     assert second.status_code == 200
+
+
+def test_desktop_http_auto_non_task_falls_back_without_plan_or_duplicate_user_message(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+
+    class StubAutoTurn:
+        def execute_turn_stream(self, _message, user_input, **_kwargs):
+            assert user_input == "你好"
+            yield {"type": "not_decomposable", "reason": "greeting", "done": True}
+
+    runtime.auto_turn_orchestrator = StubAutoTurn()
+    client = create_desktop_app(runtime).test_client()
+    client.post("/api/models/auto", json={"enabled": True})
+
+    response = client.post("/api/chat", json={"message": "你好", "stream": True})
+    events = _sse_payloads(response.text)
+
+    assert len(events) == 1
+    assert events[0]["type"] == "chat_fallback"
+    assert events[0]["done"] is True
+    assert events[0]["reply"]
+    user_count = runtime.orchestrator.conn.execute(
+        "SELECT COUNT(*) FROM messages WHERE session_id = ? AND role = 'user'",
+        (runtime.session_id,),
+    ).fetchone()[0]
+    assert user_count == 1
 
 
 def test_desktop_http_auto_consent_resumes_persisted_plan(tmp_path) -> None:

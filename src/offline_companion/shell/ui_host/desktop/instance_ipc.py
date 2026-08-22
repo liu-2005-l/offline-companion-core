@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import ctypes
 import os
 import socket
 import threading
 from collections.abc import Callable
+from ctypes import wintypes
 from pathlib import Path
 
 _ACTIVATE_HOST = "127.0.0.1"
@@ -22,11 +24,29 @@ def _pid_alive(pid: int) -> bool:
     """摘要：检测 PID 是否仍存在（Windows / POSIX）。"""
     if pid <= 0:
         return False
+    if os.name == "nt":
+        return _windows_pid_alive(pid)
     try:
         os.kill(pid, 0)
-    except OSError:
+    except (OSError, SystemError):
         return False
     return True
+
+
+def _windows_pid_alive(pid: int) -> bool:
+    """摘要：通过 Windows 进程句柄检测 PID，避开 ``os.kill(pid, 0)`` 参数错误。"""
+    process_query_limited_information = 0x1000
+    error_access_denied = 5
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    handle = kernel32.OpenProcess(process_query_limited_information, False, pid)
+    if handle:
+        kernel32.CloseHandle(handle)
+        return True
+    return ctypes.get_last_error() == error_access_denied
 
 
 def clear_stale_pid_file(data_root: Path) -> None:

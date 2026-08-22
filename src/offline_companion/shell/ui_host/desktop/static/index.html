@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Offline Companion · 新 UI 原型</title>
-<link rel="stylesheet" href="/shell.css">
+  <link rel="stylesheet" href="/shell.css?v=20260822-arithmetic-audit-v1">
 </head>
 <body>
  
@@ -56,6 +56,9 @@
       </button>
       <button class="nav-btn" onclick="switchView('memory')" title="记忆">
         <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3 3 3 0 0 0-3 3 3 3 0 0 0 0 6 3 3 0 0 0 3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0 3-3 3 3 0 0 0 0-6 3 3 0 0 0-3-3 3 3 0 0 0-3-3z"/><path d="M12 8v8M9 12h6"/></svg>
+      </button>
+      <button class="nav-btn" onclick="switchView('samples')" title="任务拆解范例">
+        <svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
       </button>
       <button class="nav-btn" onclick="switchView('settings')" title="设置">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -397,6 +400,31 @@
       </div>
     </div>
  
+    <!-- ═══ 任务拆解范例视图 ═══ -->
+    <section class="view" data-view="samples">
+      <header class="view-header samples-header">
+        <div>
+          <span class="view-title">任务拆解范例</span>
+          <div class="setting-desc">范例仅保存在本机，可随时编辑、丢弃或恢复</div>
+        </div>
+        <button class="cloud-test-btn sample-refresh-btn" onclick="loadDecompSamples()">刷新</button>
+      </header>
+      <div class="sample-summary" id="sampleStaleSummary" hidden></div>
+      <div class="sample-tabs" id="sampleTabs">
+        <button class="sample-tab active" data-state="all" onclick="selectDecompSampleState('all')">全部</button>
+        <button class="sample-tab" data-state="" onclick="selectDecompSampleState('')">候选与已验证</button>
+        <button class="sample-tab" data-state="candidate" onclick="selectDecompSampleState('candidate')">候选</button>
+        <button class="sample-tab" data-state="verified" onclick="selectDecompSampleState('verified')">已验证</button>
+        <button class="sample-tab" data-state="stale" onclick="selectDecompSampleState('stale')">待复核</button>
+        <button class="sample-tab" data-state="rejected" onclick="selectDecompSampleState('rejected')">已丢弃</button>
+        <button class="sample-tab" data-state="archived" onclick="selectDecompSampleState('archived')">已归档</button>
+      </div>
+      <div class="sample-library-layout">
+        <div class="sample-list" id="decompSampleList"><div class="sample-empty">正在读取范例库…</div></div>
+        <div class="sample-detail" id="decompSampleDetail"><div class="sample-empty">选择一个范例查看详情</div></div>
+      </div>
+    </section>
+
     <!-- ═══ 设置视图 ═══ -->
     <section class="view" data-view="settings">
       <header class="view-header">
@@ -453,6 +481,16 @@
               <div class="setting-desc">开启后非紧急提醒会更倾向静默记录</div>
             </div>
             <div class="toggle-switch" id="focusModeToggle" onclick="toggleFocusMode(this)"></div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>任务拆解学习</h3>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">任务拆解范例库 <span class="sample-alert-dot" id="sampleStaleDot" hidden></span></div>
+              <div class="setting-desc" id="sampleLibrarySummary">管理本地留档的任务拆解范例</div>
+            </div>
+            <button class="cloud-test-btn" onclick="openDecompSampleLibrary()">管理范例</button>
           </div>
         </div>
         <div class="settings-section">
@@ -788,8 +826,8 @@
   </div>
 </div>
  
-<script src="/shell.js"></script>
-<script src="/shell_api.js"></script>
+  <script src="/shell.js?v=20260822-arithmetic-audit-v1"></script>
+  <script src="/shell_api.js?v=20260822-arithmetic-audit-v1"></script>
 </body>
 </html>
 

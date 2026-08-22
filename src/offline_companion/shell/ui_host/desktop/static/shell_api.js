@@ -968,6 +968,8 @@ async function sendMessage() {
 
   if (window._planMode && !window._autoRouterEnabled) {
     showTyping();
+    const decompStartedAt = performance.now();
+    let fallbackToChat = false;
     try {
       const data = await apiJson('/api/plan/decompose', {
         method: 'POST',
@@ -975,17 +977,27 @@ async function sendMessage() {
         body: JSON.stringify({ goal: text })
       });
       hideTyping();
+      if (data.status === 'not_decomposable') {
+        fallbackToChat = true;
+      } else {
       const plan = data.plan;
+      plan._decompMs = performance.now() - decompStartedAt;
       window._activePlans[plan.id] = plan;
       _renderPlanCard(plan, new Date().toTimeString().slice(0, 5));
       chat.scrollTop = chat.scrollHeight;
+      }
     } catch (error) {
       hideTyping();
       showToast('任务拆解失败：' + error.message);
+      setChatRequestActive(false);
+      _chatAbortController = null;
+      return;
     }
-    setChatRequestActive(false);
-    _chatAbortController = null;
-    return;
+    if (!fallbackToChat) {
+      setChatRequestActive(false);
+      _chatAbortController = null;
+      return;
+    }
   }
 
   showTyping();
@@ -1011,7 +1023,7 @@ async function sendMessage() {
       return;
     }
     hideTyping();
-    const bubble = window._autoRouterEnabled ? null : apiCreateStreamingMessage(nextIdx + 1);
+    let bubble = window._autoRouterEnabled ? null : apiCreateStreamingMessage(nextIdx + 1);
     let finalData = null;
     let streamedText = '';
     const handleStreamEvent = function(event) {
@@ -1020,6 +1032,7 @@ async function sendMessage() {
         if (event.done) finalData = event;
         return;
       }
+      if (event.type === 'chat_fallback' && !bubble) bubble = apiCreateStreamingMessage(nextIdx + 1);
       if (event.error) throw new Error(event.error);
       if (event.recall != null && event.recall > 0) showToast('召回 ' + event.recall + ' 条记忆');
       if (event.token) {
@@ -1062,7 +1075,9 @@ async function sendMessage() {
         msg.classList.add('msg-system');
       }
     }
-    if (finalData && finalData.reply && !streamedText && bubble) bubble.textContent = finalData.reply;
+    if (finalData && finalData.reply && bubble && finalData.reply !== streamedText) {
+      bubble.textContent = finalData.reply;
+    }
     if (finalData) apiSetRenderedMessageId(nextIdx + 1, finalData.message_id);
     chat.scrollTop = chat.scrollHeight;
     if (finalData && finalData.memory_saved && finalData.memory_saved.length) loadMemories();
@@ -1489,6 +1504,153 @@ async function skipOnboarding() {
   }
 }
 
+async function loadDecompSamples(state, append) {
+  if (typeof state === 'string') _decompSampleState = state;
+  var offset = append ? _decompSampleOffset : 0;
+  var query = _decompSampleState ? '?state=' + encodeURIComponent(_decompSampleState) : '?';
+  query += (query === '?' ? '' : '&') + 'limit=100&offset=' + offset;
+  try {
+    var data = await apiJson('/api/decomp-samples' + query);
+    var incoming = data.items || [];
+    var items = append ? _decompSamples.concat(incoming) : incoming;
+    _decompSampleOffset = offset + incoming.length;
+    _decompSampleHasMore = !!data.has_more;
+    renderDecompSamples(items);
+  } catch (error) {
+    showToast('读取任务拆解范例失败：' + error.message);
+  }
+}
+
+function loadMoreDecompSamples() {
+  return loadDecompSamples(_decompSampleState, true);
+}
+
+async function focusDecompSample(sampleId) {
+  try {
+    var data = await apiJson('/api/decomp-samples/' + encodeURIComponent(sampleId));
+    var sample = data.sample;
+    var state = 'all';
+    _decompSampleState = state;
+    document.querySelectorAll('.sample-tab').forEach(function(button) {
+      button.classList.toggle('active', button.dataset.state === state);
+    });
+    await loadDecompSamples(state);
+  } catch (error) {
+    showToast('定位任务拆解范例失败：' + error.message);
+    await loadDecompSamples();
+  }
+}
+
+async function loadDecompSampleSummary() {
+  try {
+    var data = await apiJson('/api/decomp-samples?state=stale&limit=500');
+    var count = Number(data.total || 0);
+    var dot = document.getElementById('sampleStaleDot');
+    var summary = document.getElementById('sampleLibrarySummary');
+    var banner = document.getElementById('sampleStaleSummary');
+    if (dot) dot.hidden = count === 0;
+    if (summary) summary.textContent = count ? count + ' 个范例需要复核' : '管理本地留档的任务拆解范例';
+    if (banner) {
+      banner.hidden = count === 0;
+      banner.textContent = count ? count + ' 个范例因连续失败被标记为待复核，请确认、编辑或丢弃。' : '';
+    }
+  } catch (error) {
+    console.warn('[samples] summary load failed', error);
+  }
+}
+
+function _replaceDecompSample(updated) {
+  var index = _decompSamples.findIndex(function(item) { return item.id === updated.id; });
+  if (index >= 0) _decompSamples[index] = updated;
+  else _decompSamples.unshift(updated);
+  renderDecompSamples(_decompSamples);
+}
+
+async function apiTransitionDecompSample(sampleId, action) {
+  var optimistic = action === 'verify' ? { state: 'verified', verify_kind: 'user', stale_reason: null } :
+    action === 'reject' ? { state: 'rejected', verify_kind: null, stale_reason: null } :
+    { state: 'candidate', verify_kind: null, stale_reason: null };
+  var previous = applyOptimisticDecompSample(sampleId, optimistic);
+  try {
+    var data = await apiJson('/api/decomp-samples/' + encodeURIComponent(sampleId) + '/' + action, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    _replaceDecompSample(data.sample);
+    await loadDecompSampleSummary();
+    showToast(action === 'verify' ? '已确认为用户范例' : action === 'reject' ? '已丢弃范例' : '已恢复为候选范例');
+  } catch (error) {
+    rollbackOptimisticDecompSample(previous);
+    showToast(error.message === 'invalid_transition' ? '当前状态不允许此操作' : '更新范例失败：' + error.message);
+  }
+}
+
+async function apiDeleteDecompSample(sampleId) {
+  try {
+    await apiJson('/api/decomp-samples/' + encodeURIComponent(sampleId), { method: 'DELETE' });
+    if (_selectedDecompSampleId === String(sampleId)) _selectedDecompSampleId = null;
+    await loadDecompSamples(_decompSampleState);
+    await loadDecompSampleSummary();
+    showToast('范例已永久删除');
+  } catch (error) {
+    showToast('删除范例失败：' + error.message);
+  }
+}
+
+async function apiEditDecompSample(sampleId) {
+  var taskInput = document.getElementById('sampleTaskDescription');
+  var titles = Array.from(document.querySelectorAll('[data-sample-step-title]'));
+  var descriptions = Array.from(document.querySelectorAll('[data-sample-step-description]'));
+  var taskDescription = taskInput ? taskInput.value.trim() : '';
+  var steps = titles.map(function(input, index) {
+    return { title: input.value.trim(), description: descriptions[index] ? descriptions[index].value.trim() : '' };
+  });
+  if (!taskDescription || steps.some(function(step) { return !step.title || !step.description; })) {
+    showToast('任务描述、步骤标题和步骤说明不能为空');
+    return;
+  }
+  var previous = applyOptimisticDecompSample(sampleId, {
+    task_description: taskDescription,
+    steps: steps,
+    state: 'verified',
+    verify_kind: 'user',
+    stale_reason: null
+  });
+  try {
+    var data = await apiJson('/api/decomp-samples/' + encodeURIComponent(sampleId), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_description: taskDescription, steps: steps })
+    });
+    _replaceDecompSample(data.sample);
+    await loadDecompSampleSummary();
+    showToast('范例已保存并确认为用户范例');
+  } catch (error) {
+    rollbackOptimisticDecompSample(previous);
+    showToast('保存范例失败：' + error.message);
+  }
+}
+
+async function savePlanAsDecompSample(planId) {
+  try {
+    var data = await apiJson('/api/plans/' + encodeURIComponent(planId) + '/save-as-sample', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    var plan = window._activePlans[planId];
+    if (plan) {
+      plan.candidate_sample_id = data.sample.id;
+      _updatePlanCard(plan);
+    }
+    showToast(data.created ? '计划已保存为用户范例' : '该计划已有范例');
+    openDecompSampleLibrary(data.sample.id);
+  } catch (error) {
+    showToast('保存计划范例失败：' + error.message);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
   apiEnsureTypingNode();
   syncWindowMaximizedState();
@@ -1505,6 +1667,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   loadAuthStatus();
   loadImprovePlan();
   loadOnboardingState();
+  loadDecompSampleSummary();
   startIdlePolling();
   setTimeout(function() { postSettingsDomSnapshot('after-startup-loads'); }, 300);
   setTimeout(function() { postSettingsDomSnapshot('after-startup-settle'); }, 1200);
@@ -1521,9 +1684,18 @@ async function _executeNextStep(planId) {
   });
   if (!step) {
     if ((plan.steps || []).every(item => item.status === 'done')) {
-      plan.status = 'done';
-      _updatePlanCard(plan);
-      showToast('任务计划已完成');
+      try {
+        const data = await apiJson('/api/plan/' + encodeURIComponent(planId) + '/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ timeout: 20 })
+        });
+        window._activePlans[planId] = data.plan;
+        _updatePlanCard(data.plan);
+        _renderPlanFinalReply(planId, data.final_reply);
+      } catch (error) {
+        showToast('获取任务结果失败：' + error.message);
+      }
     }
     return;
   }
@@ -1537,8 +1709,8 @@ async function _executeNextStep(planId) {
     });
     window._activePlans[planId] = data.plan;
     _updatePlanCard(data.plan);
+    _renderPlanFinalReply(planId, data.final_reply);
     if (data.plan.status === 'running') _executeNextStep(planId);
-    if (data.plan.status === 'done') showToast('任务计划已完成');
   } catch (error) {
     if (error.message === 'requires_consent' || error.message === 'HTTP 409') {
       const data = error.data || {};
@@ -1559,6 +1731,13 @@ async function _executeNextStep(planId) {
       plan.status = 'paused';
       _updatePlanCard(plan);
       showToast('步骤超时，可重试或跳过');
+      return;
+    }
+    if (error.data && error.data.plan) {
+      window._activePlans[planId] = error.data.plan;
+      _updatePlanCard(error.data.plan);
+      _renderPlanFinalReply(planId, error.data.final_reply);
+      showToast('步骤执行失败：' + error.message);
       return;
     }
     step.status = 'failed';
@@ -1595,6 +1774,7 @@ async function _approveConsent(planId, stepId) {
     });
     window._activePlans[planId] = data.plan;
     _updatePlanCard(data.plan);
+    _renderPlanFinalReply(planId, data.final_reply);
     showToast('已授权，继续执行');
     if (data.plan.status === 'running') _executeNextStep(planId);
   } catch (error) {
@@ -1637,6 +1817,49 @@ async function _rejectConsent(planId, stepId) {
 
 let _autoPlanState = null;
 
+function _ensureAutoPlanViewState(message) {
+  if (!message._autoPlanViewState) {
+    message._autoPlanViewState = { collapsed: false, userTouched: false, autoCollapsed: false };
+  }
+  return message._autoPlanViewState;
+}
+
+function _applyAutoPlanViewState(message) {
+  if (!message) return;
+  const state = _ensureAutoPlanViewState(message);
+  const card = message.querySelector('.auto-plan-card');
+  if (!card) return;
+  card.classList.toggle('collapsed', state.collapsed);
+  const header = card.querySelector('.auto-plan-header');
+  if (header) header.setAttribute('aria-expanded', state.collapsed ? 'false' : 'true');
+}
+
+function _setAutoPlanCollapsed(message, collapsed, userTouched) {
+  if (!message) return;
+  const state = _ensureAutoPlanViewState(message);
+  if (userTouched) state.userTouched = true;
+  if (!userTouched && state.userTouched) return;
+  state.collapsed = collapsed;
+  if (!userTouched && collapsed) state.autoCollapsed = true;
+  _applyAutoPlanViewState(message);
+}
+
+function _toggleAutoPlanCollapse(planId) {
+  const chat = document.getElementById('chatMessages');
+  if (!chat) return;
+  const message = Array.from(chat.querySelectorAll('.auto-plan-msg')).find(function(item) {
+    return item.dataset.planId === String(planId);
+  });
+  if (!message) return;
+  const state = _ensureAutoPlanViewState(message);
+  _setAutoPlanCollapsed(message, !state.collapsed, true);
+}
+
+function _setAutoPlanSummary(message, label) {
+  const summary = message && message.querySelector('.auto-plan-progress');
+  if (summary) summary.textContent = label;
+}
+
 async function loadTaskProgress(planId) {
   const data = await apiJson('/api/plan/' + encodeURIComponent(planId) + '/status');
   return data;
@@ -1656,16 +1879,25 @@ function _renderAutoPlanCard(event, msgIdx) {
       '<div class="auto-step-status">待执行</div></div>';
   }).join('');
   const html = '<div class="msg msg-bot auto-plan-msg" data-msg-idx="' + msgIdx + '" data-plan-id="' + apiEscapeHtml(event.plan_id) + '">' +
-    '<div class="msg-avatar">伴</div><div class="msg-bubble"><div class="auto-plan-card">' +
-    '<div class="auto-plan-header"><span class="auto-plan-title">任务计划</span><span class="auto-plan-progress">0/' + steps.length + '</span></div>' +
-    '<div class="auto-plan-steps">' + stepsHtml + '</div><div class="auto-plan-reply" hidden></div>' +
-    '<div class="auto-plan-consent" hidden></div></div></div></div>';
+    '<div class="msg-avatar">伴</div><div class="auto-plan-message-content"><div class="msg-bubble auto-plan-bubble"><div class="auto-plan-card">' +
+    '<button type="button" class="auto-plan-header" onclick="_toggleAutoPlanCollapse(\'' + apiEscapeHtml(event.plan_id) + '\')" aria-expanded="true">' +
+    '<span class="auto-plan-title">任务拆解 · ' + steps.length + ' 步</span><span class="auto-plan-progress">执行中 · 0/' + steps.length + '</span>' +
+    '<span class="auto-plan-collapse"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></button>' +
+    '<div class="auto-plan-body"><div class="auto-plan-steps">' + stepsHtml + '</div></div>' +
+    '<div class="auto-plan-consent" hidden></div></div></div><div class="auto-plan-reply msg-text" hidden></div></div></div>';
   const typing = document.getElementById('typingMsg');
   if (typing) typing.insertAdjacentHTML('beforebegin', html);
   else chat.insertAdjacentHTML('beforeend', html);
   _autoPlanState.cardEl = Array.from(chat.querySelectorAll('[data-plan-id]')).find(function(card) {
     return card.dataset.planId === String(event.plan_id);
   }) || null;
+  const message = _autoPlanState.cardEl;
+  if (message) {
+    _ensureAutoPlanViewState(message);
+    requestAnimationFrame(function() {
+      _setAutoPlanCollapsed(message, true, false);
+    });
+  }
   chat.scrollTop = chat.scrollHeight;
 }
 
@@ -1687,10 +1919,9 @@ function _updateAutoStep(event, status, result) {
   if (icon && status === 'running') icon.innerHTML = '<span class="auto-step-spinner"></span>';
   if (icon && status === 'done') icon.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
   if (icon && status === 'failed') icon.innerHTML = '<svg viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></svg>';
-  const complete = _autoPlanState.cardEl.querySelectorAll('.auto-step.done, .auto-step.skipped').length;
+  const complete = _autoPlanState.cardEl.querySelectorAll('.auto-step.done, .auto-step.failed, .auto-step.skipped').length;
   const total = _autoPlanState.cardEl.querySelectorAll('.auto-step').length;
-  const progress = _autoPlanState.cardEl.querySelector('.auto-plan-progress');
-  if (progress) progress.textContent = complete + '/' + total;
+  _setAutoPlanSummary(_autoPlanState.cardEl, '执行中 · ' + complete + '/' + total);
 }
 
 function _showAutoConsent(event) {
@@ -1776,35 +2007,51 @@ function _finishAutoPlan(event, stateClass, message) {
   if (!_autoPlanState || !_autoPlanState.cardEl) return;
   const card = _autoPlanState.cardEl;
   card.classList.add(stateClass);
-  const reply = card.querySelector('.auto-plan-reply');
+  const stateLabels = {
+    'auto-plan-done': '已完成',
+    'auto-plan-failed': '执行失败',
+    'auto-plan-cancelled': '已取消'
+  };
+  _setAutoPlanSummary(card, stateLabels[stateClass] || '计划已结束');
+  const reply = card.parentElement && card.parentElement.querySelector('.auto-plan-reply');
   if (reply) {
     reply.hidden = false;
     reply.textContent = message;
+    requestAnimationFrame(function() {
+      const chat = document.getElementById('chatMessages');
+      if (chat) chat.scrollTop = chat.scrollHeight;
+    });
   }
   if (event && event.message_id) apiSetRenderedMessageId(Number(card.closest('.msg').dataset.msgIdx), event.message_id);
   _autoPlanState = null;
 }
 
 function _finalizeAutoPlan(event) { _finishAutoPlan(event, 'auto-plan-done', event.reply || '计划已完成'); }
-function _failAutoPlan(event) { _finishAutoPlan(event, 'auto-plan-failed', '计划执行失败：' + (event.error || '未知错误')); }
-function _cancelAutoPlan(event) { _finishAutoPlan(event, 'auto-plan-cancelled', '计划已取消'); }
+function _failAutoPlan(event) { _finishAutoPlan(event, 'auto-plan-failed', event.reply || ('计划执行失败：' + (event.error || '未知错误'))); }
+function _cancelAutoPlan(event) { _finishAutoPlan(event, 'auto-plan-cancelled', event.reply || '计划已取消'); }
 
 function _showAutoPlanBlocked(event) {
   if (!_autoPlanState || !_autoPlanState.cardEl) return;
   if (event.blocked_step_id) _updateAutoStep({ step_id: event.blocked_step_id }, 'failed', event.message);
   const card = _autoPlanState.cardEl;
   card.classList.add('auto-plan-failed');
-  const reply = card.querySelector('.auto-plan-reply');
+  _setAutoPlanSummary(card, '执行失败');
+  const reply = card.parentElement && card.parentElement.querySelector('.auto-plan-reply');
   if (reply) {
     reply.hidden = false;
     const missing = (event.missing_stages || []).join(' → ');
     reply.textContent = (event.message || '计划被硬门禁阻断') + (missing ? '（缺失阶段：' + missing + '）' : '');
+    requestAnimationFrame(function() {
+      const chat = document.getElementById('chatMessages');
+      if (chat) chat.scrollTop = chat.scrollHeight;
+    });
   }
   _autoPlanState = null;
 }
 
 window._approveAutoConsent = _approveAutoConsent;
 window._rejectAutoConsent = _rejectAutoConsent;
+window._toggleAutoPlanCollapse = _toggleAutoPlanCollapse;
 
 async function _pausePlan(planId) {
   const plan = window._activePlans[planId];
@@ -1842,7 +2089,7 @@ async function _cancelPlan(planId) {
     const data = await apiJson('/api/plan/' + encodeURIComponent(planId) + '/cancel', { method: 'POST' });
     window._activePlans[planId] = data.plan;
     _updatePlanCard(data.plan);
-    showToast('计划已取消');
+    _renderPlanFinalReply(planId, data.final_reply);
   } catch (error) {
     plan.status = 'cancelled';
     _updatePlanCard(plan);

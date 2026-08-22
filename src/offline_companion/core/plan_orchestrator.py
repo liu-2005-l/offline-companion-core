@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 import json
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from time import sleep, time
-from typing import Any, ClassVar, Protocol
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 from uuid import uuid4
 
 from offline_companion.core import plan_snapshot
+from offline_companion.core.decomposition_result import NotDecomposableResult
 from offline_companion.core.event_stream import EventStream
 from offline_companion.core.plan_dag_engine import PlanDAGEngine
 from offline_companion.core.plan_decomposer import PlanDecomposer
@@ -28,6 +30,14 @@ from offline_companion.shared.errors import (
     A2PlanValidationError,
 )
 from offline_companion.shared.types import PurposeType
+
+if TYPE_CHECKING:
+    from offline_companion.core.decomposition_sample_library import (
+        SampleLifecycleManager,
+        SampleRetriever,
+    )
+
+logger = logging.getLogger(__name__)
 
 
 class StepStatus(Enum):
@@ -521,6 +531,9 @@ class PlanOrchestrator:
         hard_gate: Any | None = None,
         skill_tracker: Any | None = None,
         skill_resolver: Callable[[str], tuple[str | None, list[str]]] | None = None,
+        sample_retriever: SampleRetriever | None = None,
+        sample_lifecycle: SampleLifecycleManager | None = None,
+        learning_enabled_provider: Callable[[], bool] | None = None,
         subagent_scheduler: SubagentScheduler | None = None,
         privacy_mode: str = "local_only",
     ) -> None:
@@ -542,7 +555,14 @@ class PlanOrchestrator:
             skill_tracker=skill_tracker,
         )
         self.consent_gateway = consent_gateway
-        self._decomposer = PlanDecomposer(llm_router=llm_backend, skill_resolver=skill_resolver)
+        self._sample_lifecycle = sample_lifecycle
+        self._decomposer = PlanDecomposer(
+            llm_router=llm_backend,
+            skill_resolver=skill_resolver,
+            sample_retriever=sample_retriever,
+            sample_lifecycle=sample_lifecycle,
+            learning_enabled_provider=learning_enabled_provider,
+        )
         self._subagent_dispatch = PlanSubagentDispatch(scheduler=subagent_scheduler)
         self._privacy_mode = privacy_mode
         self._skill_name: str | None = None
@@ -561,7 +581,9 @@ class PlanOrchestrator:
         return CallableSkillInvokerAdapter(skill_invoker)
 
     def create_context(self, plan_id: str) -> PlanContext:
-        return PlanContext(plan_id=plan_id)
+        context = PlanContext(plan_id=plan_id)
+        self._attach_decomposition_metadata(context)
+        return context
 
     def _default_step_status(self, step_id: str) -> StepStatus:
         return StepStatus.PENDING
@@ -572,7 +594,7 @@ class PlanOrchestrator:
     def attach_routed_invoker(self, routed_invoker: Any) -> None:
         self._routed_invoker = routed_invoker
 
-    def decide(self, user_input: str) -> list[PlanStep]:
+    def decide(self, user_input: str) -> list[PlanStep] | NotDecomposableResult:
         """摘要：委托 PlanDecomposer 将用户目标拆解为可执行计划步骤。
 
         参数：
@@ -615,6 +637,7 @@ class PlanOrchestrator:
             steps=step_map,
             step_status={step.step_id: StepStatus.PENDING for step in steps},
         )
+        self._attach_decomposition_metadata(context)
         context.touch()
         self._store.save(plan_id, context)
         self._event_publisher.publish("task.plan_created", context)
@@ -628,10 +651,29 @@ class PlanOrchestrator:
             steps=step_map,
             step_status={step.step_id: StepStatus.PENDING for step in steps},
         )
+        self._attach_decomposition_metadata(context)
         context.touch()
         self._store.save(plan_id, context)
         self._event_publisher.publish("task.plan_started", context)
         return self._run(context)
+
+    def _attach_decomposition_metadata(self, context: TaskContext) -> None:
+        """摘要：把本次拆解来源和样本血缘绑定到计划快照。"""
+        source = self._decomposer.last_source
+        sample_ids = list(self._decomposer.last_sample_ids)
+        candidate_sample_id = self._decomposer.last_candidate_sample_id
+        if source is None and not sample_ids and candidate_sample_id is None:
+            return
+        context.context_vars["decomposition"] = {
+            "source": source,
+            "sample_ids": sample_ids,
+            "candidate_sample_id": candidate_sample_id,
+        }
+        if candidate_sample_id is not None:
+            self._decomposer.bind_candidate_plan(context.plan_id)
+        self._decomposer.last_source = None
+        self._decomposer.last_sample_ids = []
+        self._decomposer.last_candidate_sample_id = None
 
     def resume(self, plan_id: str, *, consent_granted: bool | None = None) -> TaskContext:
         context = self._store.load(plan_id)
@@ -654,6 +696,7 @@ class PlanOrchestrator:
                 context.mark_processed(paused_step_id)
                 context.status = PlanStatus.CANCELLED
                 context.mark_terminal()
+                self._apply_sample_terminal_feedback(context)
                 self._store.save(plan_id, context)
                 self._event_publisher.publish("task.plan_cancelled", context, current_step=paused_step_id)
                 return context
@@ -670,6 +713,11 @@ class PlanOrchestrator:
         if isinstance(context, PlanContext):
             return context
         return PlanContext.from_snapshot(context.to_snapshot())
+
+    def save_context(self, context: PlanContext) -> None:
+        """摘要：保存调用方已更新的计划上下文快照。"""
+        context.touch()
+        self._store.save(context.plan_id, context)
 
     def pause(self, plan_id: str, *, reason: str = "user_input") -> PlanContext | None:
         """摘要：协作式暂停非终态计划并持久化。
@@ -705,6 +753,7 @@ class PlanOrchestrator:
                 context.mark_step_completed(step_id)
                 context.mark_processed(step_id)
         context.mark_terminal()
+        self._apply_sample_terminal_feedback(context)
         self._store.save(plan_id, context)
         self._event_publisher.publish("task.plan_cancelled", context)
 
@@ -742,6 +791,7 @@ class PlanOrchestrator:
             context.status = PlanStatus.DONE
             context.mark_started()
             context.mark_terminal()
+            self._apply_sample_terminal_feedback(context)
             self._store.save(context.plan_id, context)
             return context
 
@@ -787,6 +837,7 @@ class PlanOrchestrator:
             context.touch()
         if context.status is PlanStatus.PAUSED and context.paused_reason == PlanErrorCode.WAITING_CONSENT.value:
             consent_prepared = self._gateway.prepare_consent_pause(context)
+        self._apply_sample_terminal_feedback(context)
         # 状态是唯一真值源：先落盘，再发通知；避免下游收到事件后快照仍是旧值。
         self._store.save(context.plan_id, context)
         for event_name, step_id in step_events:
@@ -810,10 +861,15 @@ class PlanOrchestrator:
                 raise A2PlanValidationError(f"plan {context!r} not found")
             context = loaded
         if context.plan_status in {"completed", "failed", "blocked"}:
+            if self._apply_sample_terminal_feedback(context):
+                self._store.save(context.plan_id, context)
             return context
         if context.status in {PlanStatus.DONE, PlanStatus.CANCELLED}:
+            if self._apply_sample_terminal_feedback(context):
+                self._store.save(context.plan_id, context)
             return context
         if context.status is PlanStatus.FAILED and self._finalize_plan_status(context) is not None:
+            self._apply_sample_terminal_feedback(context)
             self._store.save(context.plan_id, context)
             return context
         if context.status is PlanStatus.FAILED:
@@ -895,6 +951,7 @@ class PlanOrchestrator:
                 self._dag_engine.propagate_failure(context, failed_step_id)
         self._propagate_unblock_events(context, previous_statuses)
         self._finalize_plan_status(context)
+        self._apply_sample_terminal_feedback(context)
 
         if context.paused_reason == PlanErrorCode.WAITING_CONSENT.value and context.paused_step_id:
             consent_prepared = self._gateway.prepare_consent_pause(context)
@@ -910,6 +967,49 @@ class PlanOrchestrator:
         if consent_prepared:
             self._event_publisher.publish("task.consent_request", context, current_step=context.paused_step_id)
         return context
+
+    def _apply_sample_terminal_feedback(self, context: TaskContext) -> bool:
+        """摘要：在计划终态回写样本统计和自动状态，失败不阻塞主流程。"""
+        if self._sample_lifecycle is None or not context.is_terminal():
+            return False
+        if context.context_vars.get("_sample_feedback_applied") is True:
+            return False
+        if context.plan_status == "blocked":
+            return False
+        context.context_vars["_sample_feedback_applied"] = True
+        if context.status is PlanStatus.CANCELLED:
+            return True
+        decomposition = context.context_vars.get("decomposition")
+        if not isinstance(decomposition, Mapping):
+            return True
+        raw_sample_ids = decomposition.get("sample_ids")
+        sample_ids = (
+            list(dict.fromkeys(str(item) for item in raw_sample_ids if str(item).strip()))
+            if isinstance(raw_sample_ids, list)
+            else []
+        )
+        statuses = {_step_status_value(status) for status in context.step_status.values()}
+        all_green = (
+            context.status is PlanStatus.DONE
+            and bool(statuses)
+            and statuses == {StepStatus.DONE.value}
+            and not any(int(count or 0) > 0 for count in context.quality_retry_counts.values())
+        )
+        candidate_sample_id = str(decomposition.get("candidate_sample_id") or "").strip()
+        attributed_sample_ids = list(
+            dict.fromkeys([*sample_ids, *([candidate_sample_id] if candidate_sample_id else [])])
+        )
+        for sample_id in attributed_sample_ids:
+            try:
+                self._sample_lifecycle.record_plan_outcome(sample_id, completed=all_green)
+            except Exception:
+                logger.exception("样本 %s 终态统计回写失败，不阻塞计划终态", sample_id)
+        if all_green and candidate_sample_id:
+            try:
+                self._sample_lifecycle.auto_verify_candidate(candidate_sample_id)
+            except Exception:
+                logger.exception("候选样本 %s 自动验证失败，不阻塞计划终态", candidate_sample_id)
+        return True
 
     def apply_consent_decision(self, context: PlanContext, request_id: str) -> PlanContext:
         """摘要：委托 PlanGateway 验证 A3 审批结果并更新计划状态。"""

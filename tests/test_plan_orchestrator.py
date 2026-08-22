@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from offline_companion.core.decomposition_result import NotDecomposableResult
 from offline_companion.core.plan_orchestrator import (
     A2PlanValidationError,
     A3ConsentAdapter,
@@ -25,6 +26,25 @@ class RecordingPlanEventPublisher:
     def publish(self, event_name: str, context: TaskContext, *, current_step: str | None = None) -> None:
         del context
         self.events.append((event_name, current_step))
+
+
+class RecordingSampleLifecycle:
+    """摘要：记录终态样本回写调用，可选择模拟回写失败。"""
+
+    def __init__(self, *, fail: bool = False) -> None:
+        self.fail = fail
+        self.outcomes: list[tuple[str, bool]] = []
+        self.verified_candidates: list[str] = []
+
+    def record_plan_outcome(self, sample_id: str, *, completed: bool) -> None:
+        if self.fail:
+            raise RuntimeError("feedback unavailable")
+        self.outcomes.append((sample_id, completed))
+
+    def auto_verify_candidate(self, sample_id: str) -> None:
+        if self.fail:
+            raise RuntimeError("feedback unavailable")
+        self.verified_candidates.append(sample_id)
 
 
 def test_task_context_from_v1_snapshot_keeps_old_data() -> None:
@@ -90,6 +110,181 @@ def test_plan_timestamps_refresh_on_start_and_completion() -> None:
     assert context.completed_at is not None
     assert context.step_started_at["a"] <= context.step_completed_at["a"]
     assert context.completed_at >= context.started_at
+
+
+def test_terminal_feedback_updates_provenance_and_auto_verifies_candidate_once() -> None:
+    store = InMemoryPlanStore()
+    lifecycle = RecordingSampleLifecycle()
+    orchestrator = PlanOrchestrator(store, sample_lifecycle=lifecycle)
+    step = PlanStep(step_id="a", skill_id="chat", result_key="result_a")
+    context = PlanContext(
+        plan_id="plan-feedback-green",
+        status=PlanStatus.DONE,
+        steps={"a": step},
+        step_status={"a": StepStatus.DONE},
+        context_vars={
+            "decomposition": {
+                "sample_ids": ["10", "10", "11", "12"],
+                "candidate_sample_id": "12",
+            }
+        },
+    )
+
+    first = orchestrator.execute_next(context)
+    second = orchestrator.execute_next(first)
+
+    assert lifecycle.outcomes == [("10", True), ("11", True), ("12", True)]
+    assert lifecycle.verified_candidates == ["12"]
+    assert second.context_vars["_sample_feedback_applied"] is True
+
+
+def test_terminal_feedback_treats_quality_retry_as_failure() -> None:
+    lifecycle = RecordingSampleLifecycle()
+    orchestrator = PlanOrchestrator(InMemoryPlanStore(), sample_lifecycle=lifecycle)
+    step = PlanStep(step_id="a", skill_id="chat", result_key="result_a")
+    context = PlanContext(
+        plan_id="plan-feedback-retry",
+        status=PlanStatus.DONE,
+        steps={"a": step},
+        step_status={"a": StepStatus.DONE},
+        quality_retry_counts={"a": 1},
+        context_vars={
+            "decomposition": {
+                "sample_ids": ["20"],
+                "candidate_sample_id": "21",
+            }
+        },
+    )
+
+    orchestrator.execute_next(context)
+
+    assert lifecycle.outcomes == [("20", False), ("21", False)]
+    assert lifecycle.verified_candidates == []
+
+
+@pytest.mark.parametrize(
+    ("plan_status", "status", "step_status"),
+    [
+        ("failed", PlanStatus.FAILED, StepStatus.DEGRADED),
+    ],
+)
+def test_terminal_feedback_non_green_states_count_as_failure(
+    plan_status,
+    status,
+    step_status,
+) -> None:
+    lifecycle = RecordingSampleLifecycle()
+    orchestrator = PlanOrchestrator(InMemoryPlanStore(), sample_lifecycle=lifecycle)
+    step = PlanStep(step_id="a", skill_id="chat", result_key="result_a")
+    context = PlanContext(
+        plan_id=f"plan-feedback-{step_status.value}",
+        status=status,
+        plan_status=plan_status,
+        steps={"a": step},
+        step_status={"a": step_status},
+        context_vars={
+            "decomposition": {
+                "sample_ids": ["25"],
+                "candidate_sample_id": "26",
+            }
+        },
+    )
+
+    orchestrator.execute_next(context)
+
+    assert lifecycle.outcomes == [("25", False), ("26", False)]
+    assert lifecycle.verified_candidates == []
+
+
+def test_blocked_plan_waits_for_recovery_before_terminal_feedback() -> None:
+    lifecycle = RecordingSampleLifecycle()
+    orchestrator = PlanOrchestrator(InMemoryPlanStore(), sample_lifecycle=lifecycle)
+    step = PlanStep(step_id="a", skill_id="chat", result_key="result_a")
+    context = PlanContext(
+        plan_id="plan-feedback-blocked-recovery",
+        status=PlanStatus.FAILED,
+        plan_status="blocked",
+        steps={"a": step},
+        step_status={"a": StepStatus.BLOCKED},
+        context_vars={
+            "decomposition": {
+                "sample_ids": ["27"],
+                "candidate_sample_id": "28",
+            }
+        },
+    )
+
+    blocked = orchestrator.execute_next(context)
+    assert lifecycle.outcomes == []
+    assert "_sample_feedback_applied" not in blocked.context_vars
+
+    blocked.plan_status = None
+    blocked.status = PlanStatus.RUNNING
+    blocked.step_status["a"] = StepStatus.READY
+    recovered = orchestrator.execute_next(
+        blocked,
+        invoke_skill=lambda current_step, current_context: "完成",
+    )
+
+    assert recovered.status is PlanStatus.DONE
+    assert lifecycle.outcomes == [("27", True), ("28", True)]
+    assert lifecycle.verified_candidates == ["28"]
+
+
+def test_cancelled_plan_does_not_count_as_sample_failure() -> None:
+    lifecycle = RecordingSampleLifecycle()
+    orchestrator = PlanOrchestrator(InMemoryPlanStore(), sample_lifecycle=lifecycle)
+    step = PlanStep(step_id="a", skill_id="chat", result_key="result_a")
+    context = PlanContext(
+        plan_id="plan-feedback-cancelled",
+        status=PlanStatus.CANCELLED,
+        steps={"a": step},
+        step_status={"a": StepStatus.CANCELLED},
+        context_vars={
+            "decomposition": {
+                "sample_ids": ["29"],
+                "candidate_sample_id": "30",
+            }
+        },
+    )
+
+    cancelled = orchestrator.execute_next(context)
+
+    assert cancelled.context_vars["_sample_feedback_applied"] is True
+    assert lifecycle.outcomes == []
+    assert lifecycle.verified_candidates == []
+
+
+def test_terminal_feedback_empty_provenance_is_noop_and_failure_is_contained() -> None:
+    empty_lifecycle = RecordingSampleLifecycle()
+    empty_orchestrator = PlanOrchestrator(InMemoryPlanStore(), sample_lifecycle=empty_lifecycle)
+    failed_step = PlanStep(step_id="a", skill_id="chat", result_key="result_a")
+    empty = PlanContext(
+        plan_id="plan-feedback-empty",
+        status=PlanStatus.FAILED,
+        plan_status="failed",
+        steps={"a": failed_step},
+        step_status={"a": StepStatus.FAILED},
+        context_vars={"decomposition": {"sample_ids": [], "candidate_sample_id": None}},
+    )
+    assert empty_orchestrator.execute_next(empty).status is PlanStatus.FAILED
+    assert empty_lifecycle.outcomes == []
+
+    failing_lifecycle = RecordingSampleLifecycle(fail=True)
+    failing_orchestrator = PlanOrchestrator(InMemoryPlanStore(), sample_lifecycle=failing_lifecycle)
+    failed = PlanContext(
+        plan_id="plan-feedback-contained",
+        status=PlanStatus.FAILED,
+        plan_status="failed",
+        steps={"a": failed_step},
+        step_status={"a": StepStatus.FAILED},
+        context_vars={"decomposition": {"sample_ids": ["30"], "candidate_sample_id": None}},
+    )
+
+    result = failing_orchestrator.execute_next(failed)
+
+    assert result.status is PlanStatus.FAILED
+    assert result.context_vars["_sample_feedback_applied"] is True
 
 
 def test_resume_with_denied_consent_marks_cancelled_and_timestamps() -> None:
@@ -245,19 +440,15 @@ def test_plan_orchestrator_decide_marks_high_risk_step() -> None:
     assert orchestrator.decide("  ") == []
 
 
-def test_plan_orchestrator_decide_default_steps_are_structured() -> None:
+def test_plan_orchestrator_decide_unmatched_goal_returns_chat_fallback() -> None:
     orchestrator = PlanOrchestrator(InMemoryPlanStore())
 
-    steps = orchestrator.decide("帮我处理这个事情")
-    combined = "\n".join(
-        f"{step.title}\n{step.description}\n{step.expected_output}\n{step.verification}\n{step.completion_criteria}"
-        for step in steps
-    )
+    result = orchestrator.decide("帮我处理这个事情")
 
-    assert len(steps) == 4
-    assert "执行核心步骤" not in combined
-    assert "验证与收尾" not in combined
-    assert all(step.expected_output and step.verification and step.completion_criteria for step in steps)
+    assert result == NotDecomposableResult(
+        reason="no_rule_match",
+        original_input="帮我处理这个事情",
+    )
 
 
 def test_task_context_snapshot_preserves_plan_step_metadata() -> None:
@@ -365,6 +556,40 @@ def test_execute_next_post_verification_retry_succeeds() -> None:
     assert completed.quality_retry_counts["planning"] == 1
     assert "planning" not in completed.feedback_overrides
     assert completed.get_step_result("planning") == "模块 plan_dag_engine，数据流 A 到 B，测试策略覆盖。"
+
+
+def test_execute_next_routed_retry_receives_quality_feedback() -> None:
+    """摘要：routed 真执行链在质量重试时能读取本轮校验反馈。"""
+
+    class RetryAwareRoutedInvoker:
+        def __init__(self) -> None:
+            self.feedback: list[str | None] = []
+
+        def invoke_step(self, _step: PlanStep, context: TaskContext) -> str:
+            feedback = context.context_vars.get("_quality_retry_feedback")
+            self.feedback.append(str(feedback) if feedback else None)
+            if feedback:
+                return "模块 plan_dag_engine，数据流 A 到 B，测试策略覆盖。"
+            return "已完成当前步骤。"
+
+    routed_invoker = RetryAwareRoutedInvoker()
+    orchestrator = PlanOrchestrator(InMemoryPlanStore())
+    orchestrator.attach_routed_invoker(routed_invoker)
+    context = orchestrator.create_context("routed-post-verification")
+    step = PlanStep(
+        step_id="planning",
+        skill_id="chat",
+        result_key="result",
+        stage="planning",
+    )
+    context.steps = {step.step_id: step}
+    context.step_status = {step.step_id: StepStatus.PENDING}
+
+    completed = orchestrator.execute_next(context)
+
+    assert completed.status is PlanStatus.DONE
+    assert routed_invoker.feedback[0] is None
+    assert "planning_stage_missing_module_description" in routed_invoker.feedback[1]
 
 
 def test_execute_next_post_verification_retry_failure_marks_failed() -> None:

@@ -12,6 +12,7 @@ from typing import Any, Protocol, runtime_checkable
 
 import yaml
 
+from offline_companion.core.arithmetic_verifier import audit_arithmetic_reply
 from offline_companion.core.emotion_analyzer.context import EmotionContext
 from offline_companion.core.memory_lifecycle.event_recaller import (
     EventRecaller,
@@ -239,6 +240,7 @@ class PersonaSessionCore:
         emotion_context: EmotionContext | None = None,
         capability_profile: CapabilityProfile | None = None,
         skill_prompt: str = "",
+        audit_arithmetic: bool = True,
     ) -> AssembleReplyResult:
         """摘要：装配 prompt、注入记忆召回与情绪/语气策略并调用推理后端。"""
         recalls, combined_memory_block, system_prompt, identity_reply = self._assemble_context(
@@ -264,8 +266,22 @@ class PersonaSessionCore:
             memory_block=combined_memory_block,
             max_tokens=max_tokens,
         )
+        audit = (
+            audit_arithmetic_reply(
+                reply,
+                retry=lambda feedback: backend.generate(
+                    system_prompt=f"{system_prompt}\n\n【算术校验反馈】\n{feedback}",
+                    history=history,
+                    user_message=user_message,
+                    memory_block=combined_memory_block,
+                    max_tokens=max_tokens,
+                ),
+            )
+            if audit_arithmetic
+            else None
+        )
         return AssembleReplyResult(
-            reply=reply,
+            reply=audit.reply if audit is not None else reply,
             memory_recalls=recalls,
             memory_block=combined_memory_block,
         )
@@ -309,7 +325,18 @@ class PersonaSessionCore:
         ):
             chunks.append(token)
             yield {"token": token}
-        yield {"done": True, "reply": "".join(chunks), "memory_recalls": recalls}
+        raw_reply = "".join(chunks)
+        audit = audit_arithmetic_reply(
+            raw_reply,
+            retry=lambda feedback: backend.generate(
+                system_prompt=f"{system_prompt}\n\n【算术校验反馈】\n{feedback}",
+                history=history,
+                user_message=user_message,
+                memory_block=combined_memory_block,
+                max_tokens=max_tokens,
+            ),
+        )
+        yield {"done": True, "reply": audit.reply, "memory_recalls": recalls}
 
     def _assemble_context(
         self,
@@ -349,7 +376,11 @@ class PersonaSessionCore:
         format_hint = ""
         if profile.instruction_following < 0.4:
             format_hint = "\n【输出要求】请用简洁自然的中文回答，不要重复用户的话。\n"
-        prompt_parts = [self._system_prompt_locked(conn), SKILL_BOOTSTRAP_PROMPT]
+        prompt_parts = [
+            self._system_prompt_locked(conn),
+            "涉及数值计算时，给出结果前先做量级估算复核。",
+            SKILL_BOOTSTRAP_PROMPT,
+        ]
         if skill_prompt.strip():
             prompt_parts.append(skill_prompt.strip())
         system_prompt = "\n\n".join(prompt_parts) + (tone_instruction + emotion_instruction + format_hint)

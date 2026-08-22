@@ -15,11 +15,18 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from datetime import datetime
+from itertools import chain
 from pathlib import Path
 from typing import Any
 
 import offline_companion.shell.ui_host.desktop as _desktop_pkg
 from offline_companion import __version__
+from offline_companion.core.decomposition_result import NotDecomposableResult
+from offline_companion.core.decomposition_sample_library import (
+    DecompositionSample,
+    InvalidSampleTransitionError,
+    SampleState,
+)
 from offline_companion.core.diagnostics import HealthChecker, HealthCheckResult, HealthStatus
 from offline_companion.core.event_stream import TRAJECTORY_PROJECTION
 from offline_companion.core.hard_gate import HardGate
@@ -67,6 +74,7 @@ from offline_companion.shared.errors import (
 )
 from offline_companion.shared.messages import BaseMessage
 from offline_companion.shared.types import ModelDescriptor, PrivacyMode, PurposeType
+from offline_companion.shell.plan_final_reply import build_final_reply
 from offline_companion.shell.skill_manager.extension_manager import (
     ExtensionAlreadyInstalledError,
     ExtensionNotInstalledError,
@@ -1632,6 +1640,145 @@ def create_desktop_app(runtime: DesktopRuntime):
         trace_id = request.args.get("trace_id", type=str) or None
         return _json_response(jsonify, TRAJECTORY_PROJECTION.project(stream.get_events(), trace_id))
 
+    @app.get("/api/decomp-samples")
+    def list_decomposition_samples():
+        """摘要：列出本地任务拆解范例，默认仅展示候选与已验证样本。"""
+        repository = runtime.sample_repository
+        if repository is None:
+            return _json_response(
+                jsonify,
+                {"items": [], "total": 0, "limit": 100, "offset": 0, "has_more": False},
+            )
+        state = str(request.args.get("state") or "").strip()
+        try:
+            limit = max(1, min(int(request.args.get("limit", 100)), 500))
+            offset = max(0, int(request.args.get("offset", 0)))
+        except (TypeError, ValueError):
+            return _json_response(jsonify, {"error": "invalid_pagination"}, status=400)
+        try:
+            if state and state != "all":
+                states = (state,)
+            else:
+                states = () if state == "all" else (
+                    SampleState.CANDIDATE.value,
+                    SampleState.VERIFIED.value,
+                )
+            samples = repository.list_samples(sample_states=states, limit=limit, offset=offset)
+            total = repository.count_samples(sample_states=states)
+        except ValueError:
+            return _json_response(jsonify, {"error": "invalid_state"}, status=400)
+        items = [_decomposition_sample_payload(sample) for sample in samples]
+        return _json_response(
+            jsonify,
+            {
+                "items": items,
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "has_more": offset + len(items) < total,
+            },
+        )
+
+    @app.get("/api/decomp-samples/<sample_id>")
+    def get_decomposition_sample(sample_id: str):
+        """摘要：返回单条任务拆解范例详情。"""
+        sample = _find_decomposition_sample(runtime, sample_id)
+        if sample is None:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        return _json_response(jsonify, {"sample": _decomposition_sample_payload(sample)})
+
+    @app.put("/api/decomp-samples/<sample_id>")
+    def edit_decomposition_sample(sample_id: str):
+        """摘要：编辑任务描述与步骤，并将结果确认为用户范例。"""
+        lifecycle = runtime.sample_lifecycle
+        if lifecycle is None or _find_decomposition_sample(runtime, sample_id) is None:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        data = request.get_json(silent=True) or {}
+        try:
+            sample = lifecycle.edit(
+                sample_id,
+                task_description=str(data.get("task_description") or ""),
+                steps=data.get("steps") if isinstance(data.get("steps"), list) else [],
+            )
+        except ValueError as exc:
+            return _json_response(jsonify, {"error": "invalid_sample", "detail": str(exc)}, status=400)
+        return _json_response(jsonify, {"ok": True, "sample": _decomposition_sample_payload(sample)})
+
+    @app.delete("/api/decomp-samples/<sample_id>")
+    def delete_decomposition_sample(sample_id: str):
+        """摘要：永久删除任务拆解范例，不保留软删除记录。"""
+        repository = runtime.sample_repository
+        if repository is None:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        try:
+            deleted = repository.delete(sample_id)
+        except ValueError:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        if not deleted:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        return _json_response(jsonify, {"ok": True, "deleted_sample_id": str(sample_id)})
+
+    @app.post("/api/decomp-samples/<sample_id>/verify")
+    def verify_decomposition_sample(sample_id: str):
+        """摘要：把样本确认为用户权威范例。"""
+        return _transition_decomposition_sample(runtime, jsonify, sample_id, "verify")
+
+    @app.post("/api/decomp-samples/<sample_id>/reject")
+    def reject_decomposition_sample(sample_id: str):
+        """摘要：由用户丢弃样本。"""
+        return _transition_decomposition_sample(runtime, jsonify, sample_id, "reject")
+
+    @app.post("/api/decomp-samples/<sample_id>/restore")
+    def restore_decomposition_sample(sample_id: str):
+        """摘要：由用户恢复已丢弃、陈旧或归档样本。"""
+        return _transition_decomposition_sample(runtime, jsonify, sample_id, "restore")
+
+    @app.post("/api/plans/<plan_id>/save-as-sample")
+    def save_plan_as_decomposition_sample(plan_id: str):
+        """摘要：将终态计划按计划快照幂等保存为用户权威范例。"""
+        plan_orchestrator = runtime.plan_orchestrator or _fallback_plan_orchestrator(runtime)
+        context = plan_orchestrator.load_context(plan_id)
+        lifecycle = runtime.sample_lifecycle
+        if context is None:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        if lifecycle is None:
+            return _json_response(jsonify, {"error": "sample_library_unavailable"}, status=503)
+        if not context.is_terminal():
+            return _json_response(jsonify, {"error": "plan_not_terminal"}, status=409)
+        decomposition = context.context_vars.get("decomposition")
+        if not isinstance(decomposition, dict):
+            decomposition = {}
+            context.context_vars["decomposition"] = decomposition
+        candidate_sample_id = str(decomposition.get("candidate_sample_id") or "").strip()
+        existing = _find_decomposition_sample(runtime, candidate_sample_id) if candidate_sample_id else None
+        if existing is not None:
+            return _json_response(
+                jsonify,
+                {"ok": True, "created": False, "sample": _decomposition_sample_payload(existing)},
+            )
+        manual_plan = context.context_vars.get("manual_plan")
+        goal = str(manual_plan.get("goal") or "").strip() if isinstance(manual_plan, dict) else ""
+        if not goal:
+            goal = str(context.context_vars.get("goal") or context.context_vars.get("user_input") or "").strip()
+        if not goal:
+            return _json_response(jsonify, {"error": "missing_goal"}, status=409)
+        provenance_ids = decomposition.get("sample_ids")
+        sample = lifecycle.create_candidate(
+            goal,
+            context.steps.values(),
+            source="user_edit",
+            plan_id=context.plan_id,
+            provenance_sample_ids=provenance_ids if isinstance(provenance_ids, list) else (),
+        )
+        sample = lifecycle.confirm(sample.sample_id)
+        decomposition["candidate_sample_id"] = sample.sample_id
+        plan_orchestrator.save_context(context)
+        return _json_response(
+            jsonify,
+            {"ok": True, "created": True, "sample": _decomposition_sample_payload(sample)},
+            status=201,
+        )
+
     @app.post("/api/plan/decompose")
     def decompose_plan():
         data = request.get_json(silent=True) or {}
@@ -1639,21 +1786,54 @@ def create_desktop_app(runtime: DesktopRuntime):
         if not goal:
             return _json_response(jsonify, {"error": "missing goal"}, status=400)
         plan_orchestrator = runtime.plan_orchestrator or _fallback_plan_orchestrator(runtime)
+        steps = plan_orchestrator.decide(goal)
+        if isinstance(steps, NotDecomposableResult):
+            return _json_response(
+                jsonify,
+                {"ok": True, "status": steps.status, "reason": steps.reason},
+            )
         plan = _steps_to_legacy_plan(
             goal,
-            plan_orchestrator.decide(goal),
+            steps,
             skill_name=plan_orchestrator._skill_name,
             skill_stages=plan_orchestrator._skill_stages,
         )
-        plan = save_plan(runtime.orchestrator.conn, plan)
+        context = plan_orchestrator.create_plan(str(plan["id"]), steps)
+        context.context_vars["manual_plan"] = {
+            "goal": goal,
+            "skill_name": plan_orchestrator._skill_name,
+            "skill_stages": list(plan_orchestrator._skill_stages),
+            "created_at": plan["created_at"],
+        }
+        context.context_vars["session_id"] = runtime.session_id
+        context.context_vars["original_input"] = goal
+        if plan_orchestrator._skill_name:
+            context.context_vars["skill_name"] = plan_orchestrator._skill_name
+            context.context_vars["skill_stages"] = list(plan_orchestrator._skill_stages)
+        plan_orchestrator.save_context(context)
+        plan = _manual_plan_projection(context)
+        plan = _save_manual_plan(runtime.orchestrator.conn, plan)
+        user_message_id = append_message(
+            runtime.orchestrator.conn,
+            runtime.session_id,
+            "user",
+            goal,
+            meta={"channel": "manual_plan", "plan_id": context.plan_id},
+        )
+        context.context_vars["manual_plan_user_message_id"] = user_message_id
+        plan_orchestrator.save_context(context)
         return _json_response(jsonify, {"ok": True, "plan": plan}, status=201)
 
     @app.get("/api/plan/<plan_id>/status")
     def plan_status(plan_id: str):
         """摘要：返回任务步骤与可渲染的进度摘要。"""
-        plan = get_plan(runtime.orchestrator.conn, plan_id)
+        plan_orchestrator = runtime.plan_orchestrator or _fallback_plan_orchestrator(runtime)
+        context = plan_orchestrator.load_context(plan_id)
+        plan = _manual_plan_projection(context) if context is not None else get_plan(runtime.orchestrator.conn, plan_id)
         if plan is None:
             return _json_response(jsonify, {"error": "not_found"}, status=404)
+        if context is not None:
+            plan = _save_manual_plan(runtime.orchestrator.conn, plan)
         steps = list(plan.get("steps") or [])
         completed = sum(1 for step in steps if step.get("status") in {"done", "completed", "skipped"})
         current = next(
@@ -1678,21 +1858,34 @@ def create_desktop_app(runtime: DesktopRuntime):
         data = request.get_json(silent=True) or {}
         timeout_seconds = _coerce_timeout(data.get("timeout"), default=20.0)
         step_id = data.get("step_id")
-        plan = get_plan(runtime.orchestrator.conn, plan_id)
-        if plan is None:
+        plan_orchestrator = runtime.plan_orchestrator or _fallback_plan_orchestrator(runtime)
+        context = plan_orchestrator.load_context(plan_id)
+        if context is None:
             return _json_response(jsonify, {"error": "not_found"}, status=404)
+        plan = _manual_plan_projection(context)
         step = _next_executable_step(plan) if step_id is None else _find_plan_step(plan, int(step_id))
         if step is None:
             plan["status"] = "done" if all(s["status"] == "done" for s in plan["steps"]) else plan["status"]
-            plan = update_plan(runtime.orchestrator.conn, plan)
-            return _json_response(jsonify, {"ok": True, "status": plan["status"], "plan": plan})
+            plan = _update_manual_plan(runtime.orchestrator.conn, plan)
+            payload = {"ok": True, "status": plan["status"], "plan": plan}
+            final_reply = _manual_plan_final_reply(runtime, context, plan_orchestrator)
+            if final_reply is not None:
+                payload["final_reply"] = final_reply
+            return _json_response(jsonify, payload)
         consent_request_id = str(data.get("consent_request_id") or "").strip()
+        context_step_id = _manual_context_step_id(context, int(step["id"]))
         if consent_request_id:
             if not _is_plan_consent_allowed(runtime, consent_request_id):
-                step["status"] = "skipped"
-                step["error"] = None
-                plan["status"] = "paused"
-                plan = update_plan(runtime.orchestrator.conn, plan)
+                context.step_status[context_step_id] = CoreStepStatus.SKIPPED
+                context.step_errors.pop(context_step_id, None)
+                context.mark_dependency_satisfied(context_step_id)
+                context.mark_processed(context_step_id)
+                context.status = CorePlanStatus.PAUSED
+                context.paused_reason = "consent_declined"
+                context.paused_step_id = context_step_id
+                plan_orchestrator.save_context(context)
+                plan = _manual_plan_projection(context)
+                plan = _update_manual_plan(runtime.orchestrator.conn, plan)
                 step = _find_plan_step(plan, int(step["id"])) or step
                 return _json_response(
                     jsonify,
@@ -1704,14 +1897,22 @@ def create_desktop_app(runtime: DesktopRuntime):
                         "step": step,
                     },
                 )
-            step["status"] = "pending"
-            step["consent_request_id"] = consent_request_id
-            plan["status"] = "running"
+            context.step_status[context_step_id] = CoreStepStatus.READY
+            context.status = CorePlanStatus.RUNNING
+            context.paused_reason = None
+            context.paused_step_id = None
+            context.context_vars["requires_consent"] = False
         elif step.get("requires_auth") and not bool(data.get("consent_granted", False)):
-            step["status"] = "consent"
-            plan["status"] = "paused"
-            step["consent_request_id"] = _submit_plan_consent(runtime, plan, step)
-            plan = update_plan(runtime.orchestrator.conn, plan)
+            request_id = _submit_plan_consent(runtime, plan, step)
+            context.step_status[context_step_id] = CoreStepStatus.BLOCKED
+            context.status = CorePlanStatus.PAUSED
+            context.paused_reason = PlanErrorCode.WAITING_CONSENT.value
+            context.paused_step_id = context_step_id
+            context.set_step_consent_request(context_step_id, {"request_id": request_id})
+            context.context_vars["requires_consent"] = True
+            plan_orchestrator.save_context(context)
+            plan = _manual_plan_projection(context)
+            plan = _update_manual_plan(runtime.orchestrator.conn, plan)
             step = _find_plan_step(plan, int(step["id"])) or step
             return _json_response(
                 jsonify,
@@ -1727,26 +1928,26 @@ def create_desktop_app(runtime: DesktopRuntime):
                 status=409,
             )
         if timeout_seconds <= 0:
-            step["status"] = "failed"
-            step["error"] = "步骤超时，可重试或跳过。"
-            plan["status"] = "paused"
-            plan = update_plan(runtime.orchestrator.conn, plan)
+            context.step_status[context_step_id] = CoreStepStatus.FAILED
+            context.step_errors[context_step_id] = "步骤超时，可重试或跳过。"
+            context.status = CorePlanStatus.PAUSED
+            context.paused_reason = "timeout"
+            context.paused_step_id = context_step_id
+            plan_orchestrator.save_context(context)
+            plan = _manual_plan_projection(context)
+            plan = _update_manual_plan(runtime.orchestrator.conn, plan)
             step = _find_plan_step(plan, int(step["id"])) or step
             return _json_response(
                 jsonify,
                 {"ok": False, "error": "timeout", "status": "timeout", "plan": plan, "step": step},
                 status=408,
             )
-        plan_orchestrator = runtime.plan_orchestrator or _fallback_plan_orchestrator(runtime)
-        context = _legacy_plan_to_context(plan, session_id=str(data.get("session_id") or runtime.session_id))
-        if consent_request_id:
-            context.step_status[f"step_{int(step['id'])}"] = CoreStepStatus.READY
-            context.context_vars["requires_consent"] = False
         context = plan_orchestrator.execute_next(context, invoke_skill=_legacy_plan_step_invoker)
-        plan = _sync_legacy_plan_from_context(plan, context)
-        plan = update_plan(runtime.orchestrator.conn, plan)
+        plan = _manual_plan_projection(context)
+        plan = _update_manual_plan(runtime.orchestrator.conn, plan)
         if context.paused_reason == PlanErrorCode.HARD_GATE_BLOCKED.value:
-            step = _find_plan_step(plan, int(context.paused_step_id.removeprefix("step_"))) if context.paused_step_id else step
+            blocked_step_id = list(context.steps).index(context.paused_step_id) if context.paused_step_id else None
+            step = _find_plan_step(plan, blocked_step_id) if blocked_step_id is not None else step
             return _json_response(
                 jsonify,
                 {
@@ -1761,43 +1962,66 @@ def create_desktop_app(runtime: DesktopRuntime):
                 status=409,
             )
         step = _find_plan_step(plan, int(step["id"])) or step
+        final_reply = _manual_plan_final_reply(runtime, context, plan_orchestrator)
         if context.status is CorePlanStatus.FAILED:
+            payload = {
+                "ok": False,
+                "error": context.error or "step_failed",
+                "status": "failed",
+                "plan": plan,
+                "step": step,
+            }
+            if final_reply is not None:
+                payload["final_reply"] = final_reply
             return _json_response(
                 jsonify,
-                {"ok": False, "error": context.error or "step_failed", "status": "failed", "plan": plan, "step": step},
+                payload,
                 status=500,
             )
-        return _json_response(jsonify, {"ok": True, "status": step["status"], "plan": plan, "step": step})
+        payload = {"ok": True, "status": step["status"], "plan": plan, "step": step}
+        if final_reply is not None:
+            payload["final_reply"] = final_reply
+        return _json_response(jsonify, payload)
 
     @app.post("/api/plan/<plan_id>/pause")
     def pause_plan(plan_id: str):
-        plan = get_plan(runtime.orchestrator.conn, plan_id)
-        if plan is None:
+        plan_orchestrator = runtime.plan_orchestrator or _fallback_plan_orchestrator(runtime)
+        context = plan_orchestrator.pause(plan_id, reason="manual_pause")
+        if context is None:
             return _json_response(jsonify, {"error": "not_found"}, status=404)
-        plan["status"] = "paused"
-        plan["updated_at"] = time.time()
-        plan = update_plan(runtime.orchestrator.conn, plan)
+        plan = _manual_plan_projection(context)
+        plan = _update_manual_plan(runtime.orchestrator.conn, plan)
         return _json_response(jsonify, {"ok": True, "plan": plan})
 
     @app.post("/api/plan/<plan_id>/resume")
     def resume_plan(plan_id: str):
-        plan = get_plan(runtime.orchestrator.conn, plan_id)
-        if plan is None:
+        plan_orchestrator = runtime.plan_orchestrator or _fallback_plan_orchestrator(runtime)
+        context = plan_orchestrator.load_context(plan_id)
+        if context is None:
             return _json_response(jsonify, {"error": "not_found"}, status=404)
-        plan["status"] = "running"
-        plan["updated_at"] = time.time()
-        plan = update_plan(runtime.orchestrator.conn, plan)
+        if not context.is_terminal():
+            context.status = CorePlanStatus.RUNNING
+            context.paused_reason = None
+            context.paused_step_id = None
+            plan_orchestrator.save_context(context)
+        plan = _manual_plan_projection(context)
+        plan = _update_manual_plan(runtime.orchestrator.conn, plan)
         return _json_response(jsonify, {"ok": True, "plan": plan})
 
     @app.post("/api/plan/<plan_id>/cancel")
     def cancel_plan(plan_id: str):
-        plan = get_plan(runtime.orchestrator.conn, plan_id)
-        if plan is None:
+        plan_orchestrator = runtime.plan_orchestrator or _fallback_plan_orchestrator(runtime)
+        context = plan_orchestrator.load_context(plan_id)
+        if context is None:
             return _json_response(jsonify, {"error": "not_found"}, status=404)
-        plan["status"] = "cancelled"
-        plan["updated_at"] = time.time()
+        plan_orchestrator.cancel(plan_id)
+        context = plan_orchestrator.load_context(plan_id)
+        if context is None:
+            return _json_response(jsonify, {"error": "not_found"}, status=404)
+        plan = _manual_plan_projection(context)
+        final_reply = _manual_plan_final_reply(runtime, context, plan_orchestrator)
         delete_plan(runtime.orchestrator.conn, plan_id)
-        return _json_response(jsonify, {"ok": True, "plan": plan})
+        return _json_response(jsonify, {"ok": True, "plan": plan, "final_reply": final_reply})
 
     @app.post("/api/chat")
     def chat():
@@ -1830,6 +2054,25 @@ def create_desktop_app(runtime: DesktopRuntime):
                             return
                     if runtime.auto_turn_orchestrator is None:
                         raise RuntimeError("auto_turn_orchestrator_unavailable")
+                    events = iter(runtime.auto_turn_orchestrator.execute_turn_stream(
+                        base_message,
+                        message,
+                        plan_id=plan_id,
+                        resume=resume,
+                        consent_request_id=consent_request_id,
+                    ))
+                    first_event = next(events, None)
+                    if first_event and first_event.get("type") == PlanEventName.NOT_DECOMPOSABLE.value:
+                        payload = process_chat_message(runtime, message)
+                        yield _sse_event(
+                            {
+                                "type": "chat_fallback",
+                                "reason": first_event.get("reason"),
+                                **payload,
+                                "done": True,
+                            }
+                        )
+                        return
                     if not resume:
                         user_message_id = append_message(
                             runtime.orchestrator.conn,
@@ -1838,16 +2081,15 @@ def create_desktop_app(runtime: DesktopRuntime):
                             message,
                             meta={"channel": "auto"},
                         )
-                    for event in runtime.auto_turn_orchestrator.execute_turn_stream(
-                        base_message,
-                        message,
-                        plan_id=plan_id,
-                        resume=resume,
-                        consent_request_id=consent_request_id,
-                    ):
+                    pending_events = ([first_event] if first_event is not None else [])
+                    for event in chain(pending_events, events):
                         if user_message_id is not None:
                             event.setdefault("user_message_id", user_message_id)
-                        if event.get("type") == PlanEventName.PLAN_COMPLETE.value and event.get("reply"):
+                        if event.get("type") in {
+                            PlanEventName.PLAN_COMPLETE.value,
+                            PlanEventName.PLAN_FAILED.value,
+                            PlanEventName.PLAN_CANCELLED.value,
+                        } and event.get("reply"):
                             event["message_id"] = append_message(
                                 runtime.orchestrator.conn,
                                 runtime.session_id,
@@ -1954,14 +2196,21 @@ def create_desktop_app(runtime: DesktopRuntime):
             }
             if not allowed:
                 consent_request = pending.consent_request
-                plan = get_plan(runtime.orchestrator.conn, consent_request.plan_id)
+                plan_orchestrator = runtime.plan_orchestrator or _fallback_plan_orchestrator(runtime)
+                context = plan_orchestrator.load_context(consent_request.plan_id)
                 step_id = str(consent_request.step_id).removeprefix("step_")
-                step = _find_plan_step(plan, int(step_id)) if plan is not None and step_id.isdigit() else None
-                if plan is not None and step is not None:
-                    step["status"] = "skipped"
-                    step["error"] = None
-                    plan["status"] = "paused"
-                    plan = update_plan(runtime.orchestrator.conn, plan)
+                if context is not None and step_id.isdigit():
+                    context_step_id = _manual_context_step_id(context, int(step_id))
+                    context.step_status[context_step_id] = CoreStepStatus.SKIPPED
+                    context.step_errors.pop(context_step_id, None)
+                    context.mark_dependency_satisfied(context_step_id)
+                    context.mark_processed(context_step_id)
+                    context.status = CorePlanStatus.PAUSED
+                    context.paused_reason = "consent_declined"
+                    context.paused_step_id = context_step_id
+                    plan_orchestrator.save_context(context)
+                    plan = _manual_plan_projection(context)
+                    plan = _update_manual_plan(runtime.orchestrator.conn, plan)
                     payload["plan"] = plan
                     payload["step"] = _find_plan_step(plan, int(step_id))
             return _json_response(jsonify, consent_decision_payload(payload, allowed=allowed))
@@ -2025,6 +2274,60 @@ def _json_response(jsonify, payload: Any, *, status: int = 200):
     return response if status == 200 else (response, status)
 
 
+def _decomposition_sample_payload(sample: DecompositionSample) -> dict[str, Any]:
+    """摘要：把拆解样本转换为稳定、可 JSON 序列化的桌面 API DTO。"""
+    return {
+        "id": sample.sample_id,
+        "task_description": sample.task_description,
+        "state": sample.sample_state,
+        "verify_kind": sample.verify_kind,
+        "steps": [dict(step) for step in sample.steps],
+        "source": sample.source,
+        "plan_id": sample.plan_id,
+        "provenance": {"sample_ids": list(sample.provenance_sample_ids)},
+        "usage": dict(sample.usage),
+        "tool_refs": list(sample.tool_refs),
+        "version": sample.version,
+        "created_at": sample.created_at,
+        "updated_at": sample.updated_at,
+        "last_hit_at": sample.usage.get("last_hit_at"),
+        "stale_reason": sample.stale_reason,
+    }
+
+
+def _find_decomposition_sample(runtime: DesktopRuntime, sample_id: str) -> DecompositionSample | None:
+    """摘要：安全查找单条拆解样本，非法 ID 与不存在统一视为未找到。"""
+    repository = runtime.sample_repository
+    if repository is None or not str(sample_id).strip():
+        return None
+    try:
+        return repository.get(sample_id)
+    except ValueError:
+        return None
+
+
+def _transition_decomposition_sample(
+    runtime: DesktopRuntime,
+    jsonify,
+    sample_id: str,
+    action: str,
+):
+    """摘要：执行用户样本迁移，并统一映射未找到与非法迁移响应。"""
+    lifecycle = runtime.sample_lifecycle
+    if lifecycle is None or _find_decomposition_sample(runtime, sample_id) is None:
+        return _json_response(jsonify, {"error": "not_found"}, status=404)
+    operation = {
+        "verify": lifecycle.confirm,
+        "reject": lifecycle.reject,
+        "restore": lifecycle.restore,
+    }[action]
+    try:
+        sample = operation(sample_id)
+    except InvalidSampleTransitionError:
+        return _json_response(jsonify, {"error": "invalid_transition"}, status=409)
+    return _json_response(jsonify, {"ok": True, "sample": _decomposition_sample_payload(sample)})
+
+
 def _sse_event(payload: Any) -> str:
     """摘要：把 JSON payload 包装为一条 SSE data 事件。"""
     return f"data: {json.dumps(_json_safe(payload), ensure_ascii=False)}\n\n"
@@ -2071,6 +2374,139 @@ def _memory_row(conn, memory_id: int) -> dict[str, Any] | None:
         "modified_at": row["modified_at"],
         "metadata": _loads_json(row["metadata"]),
         "meta": _loads_json(row["meta_json"]),
+    }
+
+
+def _manual_context_step_id(context: TaskContext, legacy_step_id: int) -> str:
+    """摘要：把前端数字步骤 ID 映射到计划快照中的真实步骤 ID。"""
+    step_ids = list(context.steps)
+    if legacy_step_id < 0 or legacy_step_id >= len(step_ids):
+        raise ValueError(f"unknown manual plan step: {legacy_step_id}")
+    return step_ids[legacy_step_id]
+
+
+def _save_manual_plan(conn: Any, plan: dict[str, Any]) -> dict[str, Any]:
+    """摘要：持久化手动计划并保留仅存在于运行时快照的展示字段。"""
+
+    return _restore_manual_plan_runtime_fields(save_plan(conn, plan), plan)
+
+
+def _update_manual_plan(conn: Any, plan: dict[str, Any]) -> dict[str, Any]:
+    """摘要：更新手动计划并保留仅存在于运行时快照的展示字段。"""
+
+    return _restore_manual_plan_runtime_fields(update_plan(conn, plan), plan)
+
+
+def _restore_manual_plan_runtime_fields(
+    persisted: dict[str, Any],
+    projection: dict[str, Any],
+) -> dict[str, Any]:
+    """摘要：把 SQLite 旧表未持久化的计划展示字段恢复到响应。"""
+
+    persisted["candidate_sample_id"] = projection.get("candidate_sample_id")
+    return persisted
+
+
+def _manual_plan_final_reply(
+    runtime: DesktopRuntime,
+    context: TaskContext,
+    plan_orchestrator: PlanOrchestrator,
+) -> str | None:
+    """摘要：使用与 Auto 链相同的生成器构造手动计划终态正文。"""
+    persisted = context.context_vars.get("manual_final_reply")
+    if isinstance(persisted, dict):
+        content = str(persisted.get("content") or "").strip()
+        if content:
+            return content
+    auto_turn = runtime.auto_turn_orchestrator
+    summarizer = getattr(auto_turn, "final_reply_summarizer", None) if auto_turn is not None else None
+    reply = build_final_reply(context, summarizer=summarizer)
+    if reply is None:
+        return None
+    message_id = append_message(
+        runtime.orchestrator.conn,
+        runtime.session_id,
+        "assistant",
+        reply,
+        meta={"channel": "manual_plan", "plan_id": context.plan_id},
+    )
+    context.context_vars["manual_final_reply"] = {
+        "content": reply,
+        "message_id": message_id,
+    }
+    plan_orchestrator.save_context(context)
+    return reply
+
+
+def _manual_plan_projection(context: TaskContext) -> dict[str, Any]:
+    """摘要：将唯一事实源计划快照投影为现有桌面 API 结构。"""
+    metadata = context.context_vars.get("manual_plan")
+    if not isinstance(metadata, dict):
+        metadata = {}
+    step_ids = list(context.steps)
+    step_indexes = {step_id: index for index, step_id in enumerate(step_ids)}
+    steps: list[dict[str, Any]] = []
+    for step_id in step_ids:
+        step = context.steps[step_id]
+        status = context.step_status.get(step_id, CoreStepStatus.PENDING)
+        status_value = status.value
+        if (
+            status is CoreStepStatus.BLOCKED
+            and context.paused_reason == PlanErrorCode.WAITING_CONSENT.value
+            and context.paused_step_id == step_id
+        ):
+            status_value = "consent"
+        elif status is CoreStepStatus.DEGRADED:
+            status_value = "done"
+        elif status is CoreStepStatus.CANCELLED:
+            status_value = "skipped"
+        result = context.get_step_result(step_id)
+        if isinstance(result, dict) and "result" in result:
+            result = result["result"]
+        elif result is not None and not isinstance(result, (str, int, float, bool)):
+            result = str(result)
+        consent_payload = context.get_step_consent_request(step_id) or {}
+        projected_step = {
+            "id": step_indexes[step_id],
+            "title": step.title or str(step.payload.get("description") or step.skill_id),
+            "description": step.description,
+            "expected_output": step.expected_output,
+            "verification": step.verification,
+            "completion_criteria": step.completion_criteria,
+            "stage": step.stage,
+            "estimated_minutes": step.estimated_minutes,
+            "files": list(step.files),
+            "deps": [step_indexes[dependency] for dependency in step.depends_on if dependency in step_indexes],
+            "risk": str(step.payload.get("risk") or ("high" if step.require_consent else "medium")),
+            "requires_auth": step.require_consent,
+            "status": status_value,
+            "result": result,
+            "error": context.step_errors.get(step_id),
+        }
+        if consent_payload.get("request_id"):
+            projected_step["consent_request_id"] = str(consent_payload["request_id"])
+        steps.append(projected_step)
+    status_value = context.status.value
+    if context.status is CorePlanStatus.FAILED:
+        status_value = "paused"
+    created_at = float(metadata.get("created_at") or context.started_at or context.updated_at or time.time())
+    decomposition = context.context_vars.get("decomposition")
+    candidate_sample_id = (
+        str(decomposition.get("candidate_sample_id") or "").strip()
+        if isinstance(decomposition, dict)
+        else ""
+    )
+    return {
+        "id": context.plan_id,
+        "goal": str(metadata.get("goal") or ""),
+        "status": status_value,
+        "skill_name": metadata.get("skill_name") or context.context_vars.get("skill_name"),
+        "skill_stages": list(metadata.get("skill_stages") or context.context_vars.get("skill_stages") or []),
+        "progress": context.progress,
+        "created_at": created_at,
+        "updated_at": float(context.updated_at or created_at),
+        "candidate_sample_id": candidate_sample_id or None,
+        "steps": steps,
     }
 
 
@@ -2136,100 +2572,6 @@ def _semantic_event_row(event: SemanticEvent) -> dict[str, Any]:
         "recall_count": event.recall_count,
         "status": event.status,
     }
-
-
-def _legacy_plan_to_context(plan: dict[str, Any], *, session_id: str) -> TaskContext:
-    """摘要：把 legacy plan_repo payload 转成核心 PlanContext。"""
-    steps = [_legacy_step_to_plan_step(step) for step in plan.get("steps", [])]
-    context = TaskContext(
-        plan_id=str(plan["id"]),
-        status=CorePlanStatus.RUNNING,
-        steps={step.step_id: step for step in steps},
-        step_status={
-            step.step_id: _legacy_status_to_core(_find_plan_step(plan, int(step.step_id.removeprefix("step_"))))
-            for step in steps
-        },
-    )
-    context.context_vars["session_id"] = session_id
-    if plan.get("skill_name"):
-        context.context_vars["skill_name"] = str(plan["skill_name"])
-    if plan.get("skill_stages"):
-        context.context_vars["skill_stages"] = [str(stage) for stage in plan.get("skill_stages") or []]
-    for step_id, status in context.step_status.items():
-        if status in {CoreStepStatus.DONE, CoreStepStatus.SKIPPED, CoreStepStatus.DEGRADED}:
-            context.mark_dependency_satisfied(step_id)
-    return context
-
-
-def _legacy_step_to_plan_step(step: dict[str, Any]) -> PlanStep:
-    """摘要：把 legacy step payload 转成核心计划步骤。"""
-    step_id = f"step_{int(step['id'])}"
-    title = str(step.get("title") or step_id)
-    verification = str(step.get("verification") or f"确认步骤「{title}」完成。")
-    expected_output = str(step.get("expected_output") or f"步骤「{title}」的执行结果。")
-    return PlanStep(
-        step_id=step_id,
-        skill_id="chat",
-        result_key=f"{step_id}_result",
-        depends_on=tuple(f"step_{int(dep)}" for dep in step.get("deps") or []),
-        require_consent=bool(step.get("requires_auth", False)),
-        payload={
-            "description": title,
-            "query": title,
-            "risk": str(step.get("risk") or "low"),
-            "expected_output": expected_output,
-            "verification": verification,
-            "completion_criteria": str(step.get("completion_criteria") or verification),
-        },
-        title=title,
-        description=str(step.get("description") or title),
-        expected_output=expected_output,
-        verification=verification,
-        completion_criteria=str(step.get("completion_criteria") or verification),
-        stage=str(step["stage"]) if step.get("stage") else None,
-        estimated_minutes=int(step.get("estimated_minutes") or 0),
-        files=tuple(str(path) for path in step.get("files") or []),
-    )
-
-
-def _legacy_status_to_core(step: dict[str, Any] | None) -> CoreStepStatus:
-    """摘要：映射 legacy 步骤状态到核心状态。"""
-    status = str((step or {}).get("status") or "pending")
-    return {
-        "done": CoreStepStatus.DONE,
-        "failed": CoreStepStatus.FAILED,
-        "skipped": CoreStepStatus.SKIPPED,
-        "consent": CoreStepStatus.BLOCKED,
-    }.get(status, CoreStepStatus.PENDING)
-
-
-def _sync_legacy_plan_from_context(plan: dict[str, Any], context: TaskContext) -> dict[str, Any]:
-    """摘要：把核心执行结果同步回 legacy plan payload。"""
-    for step in plan.get("steps", []):
-        step_id = f"step_{int(step['id'])}"
-        status = context.step_status.get(step_id, CoreStepStatus.PENDING)
-        step["status"] = {
-            CoreStepStatus.DONE: "done",
-            CoreStepStatus.FAILED: "failed",
-            CoreStepStatus.SKIPPED: "skipped",
-            CoreStepStatus.DEGRADED: "done",
-            CoreStepStatus.BLOCKED: "blocked",
-        }.get(status, "pending")
-        result = context.get_step_result(step_id)
-        if result is not None:
-            step["result"] = result.get("result") if isinstance(result, dict) and "result" in result else str(result)
-        if step_id in context.step_errors:
-            step["error"] = context.step_errors[step_id]
-    if context.paused_reason == PlanErrorCode.HARD_GATE_BLOCKED.value:
-        plan["status"] = "paused"
-    elif context.status is CorePlanStatus.DONE:
-        plan["status"] = "done"
-    elif context.status is CorePlanStatus.FAILED:
-        plan["status"] = "paused"
-    else:
-        plan["status"] = "running"
-    plan["updated_at"] = time.time()
-    return plan
 
 
 def _legacy_plan_step_invoker(step: PlanStep, _context: TaskContext) -> dict[str, str]:
@@ -2613,6 +2955,11 @@ def _fallback_plan_orchestrator(runtime: DesktopRuntime) -> PlanOrchestrator:
         skill_tracker=tracker,
         llm_backend=runtime.orchestrator.backend,
         skill_resolver=_resolve_prompt_skill,
+        sample_retriever=runtime.sample_retriever,
+        sample_lifecycle=runtime.sample_lifecycle,
+        learning_enabled_provider=lambda: bool(
+            load_settings(runtime.paths.root).get("decomp_learning_enabled", True)
+        ),
         subagent_scheduler=SubagentScheduler(),
         privacy_mode=runtime.privacy_mode.value,
     )

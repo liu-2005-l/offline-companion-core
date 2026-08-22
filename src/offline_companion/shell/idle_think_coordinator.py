@@ -7,10 +7,12 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import asdict, is_dataclass
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
 from offline_companion.core.attention_awareness import AttentionContext
+from offline_companion.core.decomposition_result import NotDecomposableResult
 from offline_companion.core.goal_manager.manager import GoalManager, ReminderDecision
 from offline_companion.core.plan_orchestrator import (
     PlanContext,
@@ -37,6 +39,7 @@ class IdleThinkCoordinator:
         settings_provider: Callable[[], dict[str, Any]] | None = None,
         plan_orchestrator: PlanOrchestrator | None = None,
         memory_maintenance: Callable[[float], list[str]] | None = None,
+        sample_maintenance: Callable[[float], list[str]] | None = None,
         max_steps_per_idle: int = 10,
     ) -> None:
         """摘要：初始化 IdleThink 协调器。
@@ -55,15 +58,18 @@ class IdleThinkCoordinator:
         self._settings_provider = settings_provider or dict
         self._plan_orchestrator = plan_orchestrator
         self._memory_maintenance = memory_maintenance
+        self._sample_maintenance = sample_maintenance
         self._max_steps_per_idle = max(1, int(max_steps_per_idle))
         self._current_plan_id: str | None = None
         self._interrupted = False
         self._lock = threading.Lock()
+        self._maintenance_lock = threading.Lock()
 
     def on_idle(self) -> None:
         """摘要：处理一次空闲信号，写入评估快照但不执行计划。"""
         logger.info("IdleThinkCoordinator.on_idle triggered")
         try:
+            self._run_sample_maintenance()
             if self._memory_maintenance is not None:
                 self._memory_maintenance(300.0)
             if self._resume_paused_plan_if_any():
@@ -83,6 +89,32 @@ class IdleThinkCoordinator:
             logger.exception("IdleThinkCoordinator.on_idle failed")
         finally:
             self._state_manager.set_system_state("idle_think_requested", False, actor="idle_think")
+
+    def _run_sample_maintenance(self) -> None:
+        """摘要：按本地日期幂等执行样本治理，失败不写成功收据并等待下次 idle 重试。"""
+        if self._sample_maintenance is None:
+            return
+        now = time.time()
+        date_key = datetime.fromtimestamp(now, tz=timezone.utc).astimezone().date().isoformat()
+        receipt_key = f"maintenance:decomp_samples:{date_key}"
+        with self._maintenance_lock:
+            receipt = self._state_manager.get_system_state(receipt_key)
+            if isinstance(receipt, dict) and receipt.get("executed") is True:
+                return
+            try:
+                actions = list(self._sample_maintenance(now))
+            except Exception:
+                logger.warning("拆解样本治理失败，将在下次 IdleThink 重试", exc_info=True)
+                return
+            self._state_manager.set_system_state(
+                receipt_key,
+                {
+                    "executed": True,
+                    "executed_at": now,
+                    "actions": actions,
+                },
+                actor="idle_think",
+            )
 
     def _build_attention_context(self) -> AttentionContext:
         """摘要：由 A 层 settings/state 填充 AttentionContext。"""
@@ -130,7 +162,7 @@ class IdleThinkCoordinator:
         goal_title = top_candidate.description.strip() or top_candidate.goal_id
         try:
             steps = self._plan_orchestrator.decide(goal_title)
-            if not steps:
+            if not steps or isinstance(steps, NotDecomposableResult):
                 return None
             plan_id = f"idle_{int(time.time())}_{uuid4().hex[:8]}"
             context = self._plan_orchestrator.create_plan(plan_id, steps)

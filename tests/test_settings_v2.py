@@ -40,3 +40,10 @@ def test_legacy_aliases_keep_existing_callers_working(tmp_path) -> None:
 
     assert settings["idle_think_enabled"] is False
     assert settings["behavior"]["idle_think_enabled"] is False
+
+
+def test_decomposition_learning_defaults_on_and_keeps_legacy_alias(tmp_path) -> None:
+    settings = load_settings(tmp_path)
+
+    assert settings["behavior"]["decomp_learning_enabled"] is True
+    assert settings["decomp_learning_enabled"] is True

@@ -9,6 +9,7 @@ class PlanEventName(str, Enum):
     """摘要：Auto/Plan SSE 对外事件名。"""
 
     ERROR = "error"
+    NOT_DECOMPOSABLE = "not_decomposable"
     PLAN_START = "plan_start"
     PLAN_COMPLETE = "plan_complete"
     PLAN_COMPLETED = "plan_completed"

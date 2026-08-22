@@ -8,8 +8,10 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
+from offline_companion.core.decomposition_result import NotDecomposableResult
 from offline_companion.core.event_stream import EventStream
 from offline_companion.core.plan_enums import PlanErrorCode, PlanEventName
+from offline_companion.core.plan_evidence_schema import STAGE_EVIDENCE_SCHEMA
 from offline_companion.core.plan_orchestrator import (
     PlanContext,
     PlanOrchestrator,
@@ -20,6 +22,7 @@ from offline_companion.core.plan_orchestrator import (
 from offline_companion.shared.errors import A2PlanValidationError
 from offline_companion.shared.messages import BaseMessage
 from offline_companion.shell.plan_auto_bridge import PlanAutoBridge
+from offline_companion.shell.plan_final_reply import FinalReplySummarizer, build_final_reply
 
 PlanStepInvoker = Callable[[PlanStep, PlanContext], Any]
 
@@ -38,10 +41,22 @@ class ConversationPlanInvoker:
         goal = str(payload.get("query") or "").strip()
         description = str(payload.get("description") or goal).strip()
         completed = payload.get("_step_results") or {}
+        stage = str(payload.get("stage") or "").strip()
+        required_fields = STAGE_EVIDENCE_SCHEMA.get(stage, [])
+        stage_requirement = ""
+        if required_fields:
+            stage_requirement = (
+                f"\n当前阶段：{stage}\n"
+                f"验收证据字段：{', '.join(required_fields)}\n"
+                "请在结果中逐项明确给出这些证据。"
+            )
+        quality_retry_feedback = str(payload.get("_quality_retry_feedback") or "").strip()
+        retry_requirement = f"\n质量校验反馈：\n{quality_retry_feedback}" if quality_retry_feedback else ""
         prompt = (
             f"用户目标：{goal}\n当前步骤：{description}\n"
             f"已完成步骤：{json.dumps(completed, ensure_ascii=False)}\n"
             "请只输出当前步骤的结果，并保持简洁。"
+            f"{stage_requirement}{retry_requirement}"
         )
         assembled = self.conversation_orchestrator.session_core.assemble_reply(
             self.conversation_orchestrator.backend,
@@ -51,8 +66,32 @@ class ConversationPlanInvoker:
             memory_enabled=False,
             max_tokens=self.conversation_orchestrator.max_tokens,
             capability_profile=self.conversation_orchestrator._local_capability_profile(),
+            audit_arithmetic=False,
         )
         return {"result": assembled.reply, "route_mode": "local"}
+
+    def summarize_final_reply(self, prompt: str) -> str:
+        """摘要：使用当前本地会话模型生成计划终态正文。
+
+        参数：
+            prompt: 已包含步骤终态的总结提示。
+
+        返回值：
+            本地模型生成的最终回复。
+        """
+        if getattr(self.conversation_orchestrator.backend, "label", None) == "local-unavailable":
+            raise RuntimeError("local model unavailable for final reply summary")
+        assembled = self.conversation_orchestrator.session_core.assemble_reply(
+            self.conversation_orchestrator.backend,
+            self.conversation_orchestrator.conn,
+            user_message=prompt,
+            history=[],
+            memory_enabled=False,
+            max_tokens=self.conversation_orchestrator.max_tokens,
+            capability_profile=self.conversation_orchestrator._local_capability_profile(),
+            audit_arithmetic=False,
+        )
+        return assembled.reply
 
 
 @dataclass
@@ -63,6 +102,7 @@ class AutoTurnOrchestrator:
     auto_bridge: PlanAutoBridge
     invoke_skill: PlanStepInvoker
     event_stream: EventStream | None = None
+    final_reply_summarizer: FinalReplySummarizer | None = None
 
     def execute_turn(
         self,
@@ -70,13 +110,16 @@ class AutoTurnOrchestrator:
         user_input: str,
         *,
         plan_id: str | None = None,
-    ) -> PlanContext:
+    ) -> PlanContext | NotDecomposableResult:
         """摘要：执行完整 Auto turn 并返回可持久化计划上下文。"""
         resolved_plan_id = plan_id or f"auto_{uuid4().hex}"
         steps = self.plan_orchestrator.decide(user_input)
+        if isinstance(steps, NotDecomposableResult):
+            return steps
         if not steps:
             raise ValueError("Auto 模式无法拆解空输入")
         context = self.plan_orchestrator.create_context(resolved_plan_id)
+        context.context_vars["original_input"] = user_input
         context.context_vars["session_id"] = message.session_id or resolved_plan_id
         context.steps = {step.step_id: step for step in steps}
         context.step_status = {
@@ -118,15 +161,29 @@ class AutoTurnOrchestrator:
                     yield {"type": PlanEventName.ERROR.value, "error": str(exc), "plan_id": context.plan_id}
                     return
                 if context.status is PlanStatus.CANCELLED:
-                    yield {"type": PlanEventName.PLAN_CANCELLED.value, "plan_id": context.plan_id, "done": True}
+                    yield {
+                        "type": PlanEventName.PLAN_CANCELLED.value,
+                        "plan_id": context.plan_id,
+                        "reply": build_final_reply(context, summarizer=self.final_reply_summarizer),
+                        "done": True,
+                    }
                     return
         else:
             resolved_plan_id = plan_id or f"auto_{uuid4().hex}"
             steps = self.plan_orchestrator.decide(user_input)
+            if isinstance(steps, NotDecomposableResult):
+                yield {
+                    "type": PlanEventName.NOT_DECOMPOSABLE.value,
+                    "status": steps.status,
+                    "reason": steps.reason,
+                    "done": True,
+                }
+                return
             if not steps:
                 yield {"type": PlanEventName.ERROR.value, "error": "Auto 模式无法拆解空输入"}
                 return
             context = self.plan_orchestrator.create_context(resolved_plan_id)
+            context.context_vars["original_input"] = user_input
             context.context_vars["session_id"] = message.session_id or resolved_plan_id
             context.steps = {step.step_id: step for step in steps}
             context.step_status = {
@@ -219,16 +276,27 @@ class AutoTurnOrchestrator:
                     }
 
         if context.status is PlanStatus.DONE:
-            yield {"type": PlanEventName.PLAN_COMPLETE.value, **auto_turn_to_payload(context), "done": True}
+            final_reply = build_final_reply(context, summarizer=self.final_reply_summarizer)
+            yield {
+                "type": PlanEventName.PLAN_COMPLETE.value,
+                **auto_turn_to_payload(context, final_reply=final_reply),
+                "done": True,
+            }
         elif context.status is PlanStatus.FAILED:
             yield {
                 "type": PlanEventName.PLAN_FAILED.value,
                 "error": context.error,
                 "plan_id": context.plan_id,
+                "reply": build_final_reply(context, summarizer=self.final_reply_summarizer),
                 "done": True,
             }
         elif context.status is PlanStatus.CANCELLED:
-            yield {"type": PlanEventName.PLAN_CANCELLED.value, "plan_id": context.plan_id, "done": True}
+            yield {
+                "type": PlanEventName.PLAN_CANCELLED.value,
+                "plan_id": context.plan_id,
+                "reply": build_final_reply(context, summarizer=self.final_reply_summarizer),
+                "done": True,
+            }
         else:
             yield {
                 "type": PlanEventName.ERROR.value,
@@ -296,16 +364,9 @@ class AutoTurnOrchestrator:
         }
 
 
-def auto_turn_to_payload(context: PlanContext) -> dict[str, Any]:
+def auto_turn_to_payload(context: PlanContext, *, final_reply: str | None = None) -> dict[str, Any]:
     """摘要：把 Auto 计划上下文转换为现有聊天 UI 可消费的最终 payload。"""
-    parts: list[str] = []
-    for step_id in context.steps:
-        result = context.get_step_result(step_id)
-        if isinstance(result, dict) and result.get("result") is not None:
-            parts.append(str(result["result"]))
-        elif result is not None:
-            parts.append(str(result))
-    reply = "\n\n".join(part for part in parts if part.strip())
+    reply = final_reply if final_reply is not None else build_final_reply(context)
     return {
         "reply": reply,
         "blocked": False,

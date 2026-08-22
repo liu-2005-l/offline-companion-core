@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from offline_companion.core.decomposition_sample_library import (
+    SampleLifecycleManager,
+    SampleRepository,
+    SampleRetriever,
+)
 from offline_companion.core.event_stream import EventPersistence, StreamManager
 from offline_companion.core.memory_lifecycle.triggers import TriggerRegistry
 from offline_companion.core.plan_orchestrator import PlanOrchestrator
@@ -44,6 +49,9 @@ class DesktopRuntime:
     event_stream_manager: StreamManager | None = None
     event_persistence: EventPersistence | None = None
     model_downloader: object | None = None
+    sample_repository: SampleRepository | None = None
+    sample_lifecycle: SampleLifecycleManager | None = None
+    sample_retriever: SampleRetriever | None = None
 
     @classmethod
     def from_bundle(cls, bundle: UISessionBundle) -> DesktopRuntime:
@@ -70,4 +78,7 @@ class DesktopRuntime:
             state_manager=bundle.state_manager,
             event_stream_manager=bundle.event_stream_manager,
             event_persistence=bundle.event_persistence,
+            sample_repository=bundle.sample_repository,
+            sample_lifecycle=bundle.sample_lifecycle,
+            sample_retriever=bundle.sample_retriever,
         )

@@ -17,6 +17,7 @@ def create_plugin(context: Any) -> IdleThinkCoordinator:
         attention_context_provider=context.services.get("attention-context-provider"),
         settings_provider=context.services.get("settings-provider"),
         plan_orchestrator=context.services.get("plan-orchestrator"),
+        sample_maintenance=context.services.get("sample-maintenance"),
     )
     listener = IdleThinkListener(state_manager, coordinator.on_idle)
     listener.arm()

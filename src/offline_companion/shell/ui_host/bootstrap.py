@@ -10,6 +10,12 @@ from pathlib import Path
 from typing import Any
 
 from offline_companion.core.attention_awareness import AttentionContext, AttentionGuard
+from offline_companion.core.decomposition_sample_library import (
+    SampleLifecycleManager,
+    SampleMaintenance,
+    SampleRepository,
+    SampleRetriever,
+)
 from offline_companion.core.event_stream import (
     EventPersistence,
     StreamManager,
@@ -31,6 +37,7 @@ from offline_companion.core.plan_orchestrator import (
     A3ConsentAdapter,
     EventStreamPlanEventPublisher,
     PlanOrchestrator,
+    PlanStatus,
     StateManagerPlanEventPublisher,
 )
 from offline_companion.core.skill_execution_tracker import SkillExecutionTracker
@@ -172,6 +179,9 @@ class UISessionBundle:
     idle_detector: IdleDetector
     idle_coordinator: IdleThinkCoordinator
     state_manager: StateManager
+    sample_repository: SampleRepository
+    sample_lifecycle: SampleLifecycleManager
+    sample_retriever: SampleRetriever
     event_stream_manager: StreamManager | None = None
     event_persistence: EventPersistence | None = None
 
@@ -273,6 +283,9 @@ def bootstrap_ui_session(
     event_stream_manager = StreamManager(build_default_registry(), event_persistence)
     event_stream_manager.restore_from_disk()
     event_stream = event_stream_manager.get_or_create(session_id)
+    sample_repository = SampleRepository(conn)
+    sample_lifecycle = SampleLifecycleManager(sample_repository, event_stream)
+    sample_retriever = SampleRetriever(conn, sample_repository, event_stream)
     row = conn.execute("SELECT id FROM sessions WHERE id = ?;", (session_id,)).fetchone()
     if not row:
         new_session(conn, session_id, persona.persona_id, title=session_title)
@@ -366,6 +379,11 @@ def bootstrap_ui_session(
         hard_gate=HardGate(skill_tracker),
         skill_tracker=skill_tracker,
         skill_resolver=_resolve_prompt_skill,
+        sample_retriever=sample_retriever,
+        sample_lifecycle=sample_lifecycle,
+        learning_enabled_provider=lambda: bool(
+            load_settings(paths.root).get("decomp_learning_enabled", True)
+        ),
         subagent_scheduler=SubagentScheduler(
             auto_router=_SubagentRouterAdapter(backend),
             consent_gateway=consent_gateway,
@@ -404,6 +422,7 @@ def bootstrap_ui_session(
         auto_bridge=auto_bridge,
         invoke_skill=routed_invoker.invoke_step,
         event_stream=event_stream,
+        final_reply_summarizer=conversation_plan_invoker.summarize_final_reply,
     )
     goal_repository = GoalRepository(conn)
     goal_manager = GoalManager(
@@ -435,6 +454,14 @@ def bootstrap_ui_session(
             EventRepository(conn),
             _SessionWindow(),
         )
+    sample_maintenance = SampleMaintenance(
+        sample_repository,
+        sample_lifecycle,
+        plan_failed_provider=lambda plan_id: (
+            (context := plan_orchestrator.load_context(plan_id)) is not None
+            and (context.status is PlanStatus.FAILED or context.plan_status == "failed")
+        ),
+    )
     idle_coordinator = IdleThinkCoordinator(
         goal_manager=goal_manager,
         state_manager=state_manager,
@@ -442,6 +469,7 @@ def bootstrap_ui_session(
         settings_provider=lambda: load_settings(paths.root),
         plan_orchestrator=plan_orchestrator,
         memory_maintenance=memory_idle_hook.on_idle if memory_idle_hook is not None else None,
+        sample_maintenance=sample_maintenance.run,
     )
     idle_detector = IdleDetector(
         threshold_seconds=float(settings_state.get("idle_threshold_seconds", 300)),
@@ -472,6 +500,9 @@ def bootstrap_ui_session(
         idle_detector=idle_detector,
         idle_coordinator=idle_coordinator,
         state_manager=state_manager,
+        sample_repository=sample_repository,
+        sample_lifecycle=sample_lifecycle,
+        sample_retriever=sample_retriever,
         event_stream_manager=event_stream_manager,
         event_persistence=event_persistence,
     )

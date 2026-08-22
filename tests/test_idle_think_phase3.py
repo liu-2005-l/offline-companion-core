@@ -201,6 +201,70 @@ def test_idle_think_coordinator_failure_still_clears_requested_flag() -> None:
     )
 
 
+def test_idle_think_sample_maintenance_runs_once_after_daily_success(monkeypatch) -> None:
+    monkeypatch.setattr("offline_companion.shell.idle_think_coordinator.time.time", lambda: 1_800_000_000.0)
+    state: dict[str, object] = {}
+    state_manager = MagicMock()
+    state_manager.get_system_state.side_effect = lambda key: state.get(key)
+
+    def save_state(key, value, **_kwargs):
+        state[key] = value
+
+    state_manager.set_system_state.side_effect = save_state
+    maintenance = MagicMock(return_value=["1:cold"])
+    goal_manager = MagicMock()
+    goal_manager.evaluate_reminders.return_value = ReminderDecision(
+        candidates_to_show=[],
+        candidates_silent=[],
+        context=AttentionContext(),
+    )
+    coordinator = IdleThinkCoordinator(
+        goal_manager=goal_manager,
+        state_manager=state_manager,
+        sample_maintenance=maintenance,
+    )
+
+    coordinator.on_idle()
+    coordinator.on_idle()
+
+    maintenance.assert_called_once_with(1_800_000_000.0)
+    receipt = state["maintenance:decomp_samples:2027-01-15"]
+    assert receipt["executed"] is True
+    assert receipt["actions"] == ["1:cold"]
+
+
+def test_idle_think_failed_sample_maintenance_retries_without_receipt(monkeypatch) -> None:
+    monkeypatch.setattr("offline_companion.shell.idle_think_coordinator.time.time", lambda: 1_800_000_000.0)
+    state: dict[str, object] = {}
+    state_manager = MagicMock()
+    state_manager.get_system_state.side_effect = lambda key: state.get(key)
+
+    def save_state(key, value, **_kwargs):
+        state[key] = value
+
+    state_manager.set_system_state.side_effect = save_state
+    maintenance = MagicMock(side_effect=[RuntimeError("temporary"), []])
+    goal_manager = MagicMock()
+    goal_manager.evaluate_reminders.return_value = ReminderDecision(
+        candidates_to_show=[],
+        candidates_silent=[],
+        context=AttentionContext(),
+    )
+    coordinator = IdleThinkCoordinator(
+        goal_manager=goal_manager,
+        state_manager=state_manager,
+        sample_maintenance=maintenance,
+    )
+
+    coordinator.on_idle()
+    receipt_key = "maintenance:decomp_samples:2027-01-15"
+    assert receipt_key not in state
+    coordinator.on_idle()
+
+    assert maintenance.call_count == 2
+    assert state[receipt_key]["executed"] is True
+
+
 def test_idle_think_candidates_trigger_plan_creation() -> None:
     candidate = ReminderCandidate(
         goal_id="goal-1",

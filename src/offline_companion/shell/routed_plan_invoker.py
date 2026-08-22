@@ -97,4 +97,9 @@ class RoutedPlanInvoker:
         payload["_fallback_chain"] = fallback_chain
         payload["_fallback_index"] = int(context.context_vars.get("fallback_index", 0) or 0)
         payload["_step_results"] = dict(context.step_results)
+        if step.stage:
+            payload.setdefault("stage", step.stage)
+        quality_retry_feedback = context.context_vars.get("_quality_retry_feedback")
+        if quality_retry_feedback:
+            payload["_quality_retry_feedback"] = str(quality_retry_feedback)
         return self.invoke(step.skill_id, payload, step.idempotency_key)

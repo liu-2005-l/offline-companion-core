@@ -2,15 +2,89 @@
 
 from __future__ import annotations
 
+import logging
+import re
+import unicodedata
 from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any
 
 from offline_companion.core import plan_snapshot
+from offline_companion.core.decomposition_result import NotDecomposableResult
+from offline_companion.core.decomposition_templates import GENERIC_SCAFFOLD_TITLES
 from offline_companion.core.plan_enums import PlanStage
+from offline_companion.shared.deterministic_embedding import tokenize_for_embedding
 from offline_companion.shared.errors import A2PlanValidationError
 
 if TYPE_CHECKING:
+    from offline_companion.core.decomposition_sample_library import (
+        SampleLifecycleManager,
+        SampleRetriever,
+    )
     from offline_companion.core.plan_orchestrator import PlanStep
+
+logger = logging.getLogger(__name__)
+
+_NON_TASK_INPUTS = frozenset(
+    {
+        "你好",
+        "您好",
+        "hi",
+        "hello",
+        "hey",
+        "嗨",
+        "早上好",
+        "中午好",
+        "晚上好",
+        "晚安",
+        "再见",
+        "拜拜",
+        "嗯",
+        "哦",
+        "好",
+        "好的",
+        "ok",
+        "okay",
+        "是的",
+        "对",
+        "没错",
+        "谢谢",
+        "不客气",
+        "你擅长什么",
+        "你能做什么",
+        "你会什么",
+        "你会做什么",
+        "你能干嘛",
+        "介绍一下你自己",
+        "介绍你自己",
+        "你叫什么",
+        "你叫什么名字",
+        "你是谁",
+    }
+)
+_MIN_STEP_RELEVANCE = 0.05
+_EXPLANATION_INTENT_PATTERN = re.compile(
+    r"(?:^(?:(?:请|请给我|给我|帮我|替我|为我|麻烦)\s*)?"
+    r"(?:讲讲|解释(?:一下)?|说说|谈谈|介绍(?:一下)?|科普(?:一下)?|什么是|什么叫).+)"
+    r"|(?:^(?:能|可以|能不能|可不可以)(?:详细)?(?:地)?(?:给我)?"
+    r"(?:讲讲|解释|说说|介绍)(?:一下)?(?:吗)?(?:[，,：:]?.*)$)"
+)
+_EXPLANATION_NOUN_PATTERN = re.compile(r"^.+(?:的)?原理(?:是什么|是啥)?$")
+_TASK_IMPERATIVE_PREFIXES = ("帮我", "给我", "替我", "为我", "请", "麻烦")
+_TASK_ACTION_PHRASES = (
+    "写一个",
+    "写个",
+    "做一个",
+    "做个",
+    "生成一份",
+    "生成一个",
+    "创建",
+    "新建",
+    "保存",
+    "导出",
+    "整理成",
+    "实现一个",
+    "开发一个",
+)
 
 _META_PATTERNS = (
     "执行核心步骤",
@@ -39,19 +113,31 @@ class PlanDecomposer:
         *,
         llm_router: object | None = None,
         skill_resolver: Callable[[str], tuple[str | None, list[str]]] | None = None,
+        sample_retriever: SampleRetriever | None = None,
+        sample_lifecycle: SampleLifecycleManager | None = None,
+        learning_enabled_provider: Callable[[], bool] | None = None,
     ) -> None:
         """摘要：初始化计划拆解器。
 
         参数：
             llm_router: 可选 LLM 后端，支持 ``chat`` 或 ``generate``。
             skill_resolver: 可选 Skill 解析函数，返回 Skill 名称与阶段序列。
+            sample_retriever: 可选本地拆解样本检索器。
+            sample_lifecycle: 可选拆解样本生命周期管理器。
+            learning_enabled_provider: 可选动态设置开关读取函数。
         """
         self._router = llm_router
         self._skill_resolver = skill_resolver
+        self._sample_retriever = sample_retriever
+        self._sample_lifecycle = sample_lifecycle
+        self._learning_enabled_provider = learning_enabled_provider
         self.skill_name: str | None = None
         self.skill_stages: list[str] = []
+        self.last_source: str | None = None
+        self.last_sample_ids: list[str] = []
+        self.last_candidate_sample_id: str | None = None
 
-    def decide(self, user_input: str) -> list[PlanStep]:
+    def decide(self, user_input: str) -> list[PlanStep] | NotDecomposableResult:
         """摘要：将用户目标拆成可执行、可验证的计划步骤。
 
         参数：
@@ -61,12 +147,32 @@ class PlanDecomposer:
             满足 DAG 依赖关系的 ``PlanStep`` 列表；空输入返回空列表。
         """
         goal = (user_input or "").strip()
+        self.last_source = None
+        self.last_sample_ids = []
+        self.last_candidate_sample_id = None
         if not goal:
             self.skill_name = None
             self.skill_stages = []
             return []
+        if _normalize_non_task_input(goal) in _NON_TASK_INPUTS:
+            return NotDecomposableResult(reason="greeting", original_input=user_input)
+        if _is_explanation_request(goal):
+            return NotDecomposableResult(reason="explanation", original_input=user_input)
         self._resolve_skill(goal)
-        raw_steps: list[dict[str, Any]] | None = None
+        learning_enabled = self._learning_enabled()
+        shots: list[object] = []
+        if learning_enabled and self._sample_retriever is not None:
+            try:
+                shots = list(self._sample_retriever.retrieve(goal))
+            except Exception:
+                logger.exception("拆解样本检索失败，继续使用零样本拆解")
+        self.last_sample_ids = [
+            str(shot.sample_id)
+            for shot in shots
+            if getattr(shot, "sample_id", None) is not None
+        ]
+        raw_steps: list[dict[str, Any]] | NotDecomposableResult | None = None
+        source = "rule"
         if self._router is not None:
             from offline_companion.core.llm_decomposer import decompose_with_llm
 
@@ -75,13 +181,73 @@ class PlanDecomposer:
                 self._router,
                 skill_stages=self.skill_stages or None,
                 skill_name=self.skill_name,
+                shots=shots or None,
             )
+            if isinstance(raw_steps, NotDecomposableResult):
+                return raw_steps
+            if raw_steps is not None:
+                source = "llm"
         if raw_steps is None:
             raw_steps = rule_decompose(goal)
-        return [
+            if raw_steps is None:
+                logger.info("任务未命中专用规则模板，降级为普通对话")
+                return NotDecomposableResult(
+                    reason="no_rule_match",
+                    original_input=user_input,
+                )
+        steps = [
             raw_to_plan_step(step, goal, idx)
             for idx, step in enumerate(raw_steps)
         ]
+        if source == "llm" and _contains_generic_scaffold(steps):
+            logger.warning("任务拆解命中通用脚手架闭集，降级为普通对话")
+            return NotDecomposableResult(reason="meta_template", original_input=user_input)
+        if source == "llm" and _detect_echo(
+            goal,
+            _raw_goal_text(raw_steps),
+            _plan_step_texts(steps),
+        ):
+            logger.warning("任务拆解复述原始输入，降级为普通对话")
+            return NotDecomposableResult(reason="echo", original_input=user_input)
+        relevance = _step_relevance(goal, steps)
+        if relevance < _MIN_STEP_RELEVANCE:
+            logger.warning("任务拆解相关性过低，降级为普通对话: relevance=%.4f", relevance)
+            return NotDecomposableResult(reason="low_relevance", original_input=user_input)
+        self.last_source = source
+        if self._sample_lifecycle is not None:
+            try:
+                candidate = self._sample_lifecycle.create_candidate(
+                    goal,
+                    steps,
+                    source=source,
+                    provenance_sample_ids=self.last_sample_ids,
+                )
+                self.last_candidate_sample_id = candidate.sample_id
+                if int(candidate.usage.get("similarity_count") or 0) > 0:
+                    self.last_sample_ids = list(
+                        dict.fromkeys([*self.last_sample_ids, candidate.sample_id])
+                    )
+            except Exception:
+                logger.exception("拆解候选样本留档失败，不阻塞计划生成")
+        return steps
+    def bind_candidate_plan(self, plan_id: str) -> None:
+        """摘要：计划 ID 分配后回填本次拆解候选样本。"""
+        if self._sample_lifecycle is None or self.last_candidate_sample_id is None:
+            return
+        try:
+            self._sample_lifecycle.assign_plan_id(self.last_candidate_sample_id, plan_id)
+        except Exception:
+            logger.exception("候选样本 plan_id 回填失败，不阻塞计划落库")
+
+    def _learning_enabled(self) -> bool:
+        """摘要：读取动态开关，读取失败时安全退回关闭。"""
+        if self._learning_enabled_provider is None:
+            return self._sample_retriever is not None or self._sample_lifecycle is not None
+        try:
+            return bool(self._learning_enabled_provider())
+        except (OSError, RuntimeError, TypeError, ValueError):
+            logger.warning("拆解学习开关读取失败，本次关闭样本学习")
+            return False
 
     def _resolve_skill(self, user_input: str) -> None:
         """摘要：解析当前计划匹配的 Prompt Skill 及阶段序列。"""
@@ -101,6 +267,114 @@ class PlanDecomposer:
             return
         self.skill_name = None
         self.skill_stages = []
+
+
+def _normalize_non_task_input(text: str) -> str:
+    """摘要：移除输入首尾空白和标点，保留中间内容用于精确匹配。"""
+
+    normalized = str(text).strip().lower()
+    start = 0
+    end = len(normalized)
+    while start < end and unicodedata.category(normalized[start]).startswith("P"):
+        start += 1
+    while end > start and unicodedata.category(normalized[end - 1]).startswith("P"):
+        end -= 1
+    return normalized[start:end].strip()
+
+
+def _is_explanation_request(text: str) -> bool:
+    """摘要：以讲解意图优先的两级规则识别对话型输入。"""
+
+    normalized = _normalize_non_task_input(text)
+    if _EXPLANATION_INTENT_PATTERN.fullmatch(normalized):
+        return True
+    if _EXPLANATION_NOUN_PATTERN.fullmatch(normalized):
+        return True
+    if normalized.startswith(_TASK_IMPERATIVE_PREFIXES):
+        return False
+    if any(marker in normalized for marker in _TASK_ACTION_PHRASES):
+        return False
+    return False
+
+
+def _step_relevance(original_input: str, steps: list[PlanStep]) -> float:
+    """摘要：计算原始输入与全部步骤文本的稀疏词袋余弦相似度。"""
+
+    step_text = "\n".join(
+        " ".join(
+            (
+                step.title,
+                step.description,
+                step.expected_output,
+                step.verification,
+                step.completion_criteria,
+                *step.files,
+            )
+        )
+        for step in steps
+    )
+    input_tokens = set(tokenize_for_embedding(original_input))
+    step_tokens = set(tokenize_for_embedding(step_text))
+    if not input_tokens or not step_tokens:
+        return 0.0
+    return len(input_tokens & step_tokens) / (len(input_tokens) * len(step_tokens)) ** 0.5
+
+
+def _detect_echo(input_text: str, goal_text: str, step_texts: list[str]) -> bool:
+    """摘要：检测模型目标或步骤是否连续复述用户整句输入。"""
+
+    normalized_input = _normalize_echo_text(input_text)
+    if len(normalized_input) < 4:
+        return False
+    return any(
+        normalized_input in _normalize_echo_text(text)
+        for text in (goal_text, *step_texts)
+    )
+
+
+def _contains_generic_scaffold(steps: list[PlanStep]) -> bool:
+    """摘要：两个及以上步骤标题命中通用脚手架闭集时判定为元模板复读。"""
+
+    matched_steps = sum(
+        1
+        for step in steps
+        if any(pattern in step.title for pattern in GENERIC_SCAFFOLD_TITLES)
+    )
+    return matched_steps >= 2
+
+
+def _normalize_echo_text(text: str) -> str:
+    """摘要：移除标点与空白并统一小写，供整句复述检测使用。"""
+
+    return "".join(
+        char
+        for char in str(text).strip().lower()
+        if not char.isspace() and not unicodedata.category(char).startswith("P")
+    )
+
+
+def _raw_goal_text(raw_steps: list[dict[str, Any]]) -> str:
+    """摘要：聚合模型步骤中可选的目标字段，兼容未来输出契约。"""
+
+    return "\n".join(str(step.get("goal") or "") for step in raw_steps)
+
+
+def _plan_step_texts(steps: list[PlanStep]) -> list[str]:
+    """摘要：展开步骤字段，避免跨字段拼接产生误判。"""
+
+    texts: list[str] = []
+    for step in steps:
+        texts.extend(
+            (
+                step.title,
+                step.description,
+                step.expected_output,
+                step.verification,
+                step.completion_criteria,
+                *step.files,
+            )
+        )
+    return texts
 
 
 def raw_to_plan_step(raw: Mapping[str, Any], user_input: str, idx: int) -> PlanStep:
@@ -161,8 +435,8 @@ def _validate_raw_step(raw: Mapping[str, Any], idx: int) -> None:
             raise A2PlanValidationError(f"step {idx} contains meta template: {pattern}")
 
 
-def rule_decompose(goal: str) -> list[dict[str, Any]]:
-    """摘要：按目标关键词生成 v1 串行步骤模板。"""
+def rule_decompose(goal: str) -> list[dict[str, Any]] | None:
+    """摘要：按目标关键词生成专用串行步骤模板，无匹配时返回 None。"""
     if any(keyword in goal for keyword in ("写", "制作", "实现", "开发", "代码")):
         return [
             _rule_step(
@@ -292,48 +566,7 @@ def rule_decompose(goal: str) -> list[dict[str, Any]]:
                 estimated_minutes=10,
             ),
         ]
-    return [
-        _rule_step(
-            title="确认任务边界：提取目标对象和约束",
-            description=f"从「{goal}」中提取目标对象、约束、风险和需要用户确认的空缺。",
-            expected_output="任务边界说明，包含目标对象、约束、风险和缺口。",
-            verification="检查边界说明是否能回答谁、做什么、做到什么程度。",
-            completion_criteria="目标对象明确，缺口不会阻止下一步最小推进。",
-            stage=PlanStage.BRAINSTORMING.value,
-            estimated_minutes=5,
-        ),
-        _rule_step(
-            title="拆出可执行动作：形成最小步骤清单",
-            description=f"将「{goal}」拆成可独立执行和验证的最小动作。",
-            expected_output="步骤清单，至少包含动作、产出物、验证方式和依赖关系。",
-            verification="检查每个步骤都有 expected_output、verification 和 completion_criteria。",
-            completion_criteria="步骤不是元模板描述，且依赖关系清楚。",
-            deps=(0,),
-            stage=PlanStage.PLANNING.value,
-            estimated_minutes=10,
-        ),
-        _rule_step(
-            title="完成首个可验证动作：产出最小结果",
-            description=f"执行「{goal}」中最小且可验证的核心动作。",
-            expected_output="首个可检查的任务结果或明确的阻断证据。",
-            verification="按步骤定义的验证方式检查产出是否存在且符合约束。",
-            completion_criteria="产出可被复查，失败时保留错误和下一步修复路径。",
-            deps=(1,),
-            risk="medium",
-            stage=PlanStage.TDD.value,
-            estimated_minutes=20,
-        ),
-        _rule_step(
-            title="核对结果：记录验证证据和剩余风险",
-            description=f"核对「{goal}」的执行结果，并记录验证证据、失败项和后续风险。",
-            expected_output="验证摘要，包含实际结果、证据和剩余风险。",
-            verification="确认验证摘要中包含真实检查结果，而不是主观判断。",
-            completion_criteria="证据可追溯，剩余风险已清楚列出。",
-            deps=(2,),
-            stage=PlanStage.FINALIZE.value,
-            estimated_minutes=5,
-        ),
-    ]
+    return None
 
 
 def _rule_step(

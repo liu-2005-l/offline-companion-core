@@ -68,6 +68,125 @@ function switchView(v, opts) {
   // 窗口按钮只在 chat 视图显示，其他视图隐藏
   var wc = document.getElementById('windowControls');
   if (wc) wc.classList.toggle('hidden', v !== 'chat');
+  if (v === 'samples' && !opts.skipSampleLoad && typeof loadDecompSamples === 'function') loadDecompSamples();
+}
+
+var _decompSamples = [];
+var _decompSampleState = 'all';
+var _selectedDecompSampleId = null;
+var _decompSampleHasMore = false;
+var _decompSampleOffset = 0;
+
+function openDecompSampleLibrary(sampleId) {
+  _selectedDecompSampleId = sampleId ? String(sampleId) : null;
+  switchView('samples', { skipSampleLoad: true });
+  if (_selectedDecompSampleId && typeof focusDecompSample === 'function') focusDecompSample(_selectedDecompSampleId);
+  else if (typeof loadDecompSamples === 'function') loadDecompSamples();
+}
+
+function selectDecompSampleState(state) {
+  _decompSampleState = state || '';
+  document.querySelectorAll('.sample-tab').forEach(function(button) {
+    button.classList.toggle('active', button.dataset.state === _decompSampleState);
+  });
+  if (typeof loadDecompSamples === 'function') loadDecompSamples(_decompSampleState);
+}
+
+function _decompSampleBadge(sample) {
+  if (sample.state === 'verified') return sample.verify_kind === 'user' ? '已验证 · 用户' : '已验证 · 自动';
+  return { candidate: '候选', stale: '待复核', rejected: '已丢弃', archived: '已归档' }[sample.state] || sample.state;
+}
+
+function renderDecompSamples(items) {
+  _decompSamples = Array.isArray(items) ? items : [];
+  var list = document.getElementById('decompSampleList');
+  if (!list) return;
+  if (!_decompSamples.length) {
+    list.innerHTML = '<div class="sample-empty">当前筛选下没有范例</div>';
+    renderDecompSampleDetail(null);
+    return;
+  }
+  if (!_selectedDecompSampleId || !_decompSamples.some(function(item) { return item.id === _selectedDecompSampleId; })) {
+    _selectedDecompSampleId = _decompSamples[0].id;
+  }
+  list.innerHTML = _decompSamples.map(function(sample) {
+    var usage = sample.usage || {};
+    var active = sample.id === _selectedDecompSampleId ? ' active' : '';
+    var lastHit = sample.last_hit_at ? formatApiDateTime(sample.last_hit_at) : '尚未命中';
+    return '<button class="sample-list-item' + active + '" onclick="selectDecompSample(\'' + sample.id + '\')">' +
+      '<div class="sample-list-top"><span class="sample-task">' + escapeHtml(sample.task_description) + '</span>' +
+      '<span class="sample-badge ' + sample.state + '">' + escapeHtml(_decompSampleBadge(sample)) + '</span></div>' +
+      '<div class="sample-meta">使用 ' + Number(usage.injected_count || 0) + ' · 成功 ' + Number(usage.plan_completed || 0) +
+      ' · ' + escapeHtml(lastHit) + '</div></button>';
+  }).join('') + (_decompSampleHasMore ?
+    '<button class="sample-load-more" onclick="loadMoreDecompSamples()">加载更多</button>' : '');
+  renderDecompSampleDetail(_decompSamples.find(function(item) { return item.id === _selectedDecompSampleId; }));
+}
+
+function selectDecompSample(sampleId) {
+  _selectedDecompSampleId = String(sampleId);
+  renderDecompSamples(_decompSamples);
+}
+
+function renderDecompSampleDetail(sample) {
+  var detail = document.getElementById('decompSampleDetail');
+  if (!detail) return;
+  if (!sample) {
+    detail.innerHTML = '<div class="sample-empty">选择一个范例查看详情</div>';
+    return;
+  }
+  var provenance = ((sample.provenance || {}).sample_ids || []);
+  var steps = (sample.steps || []).map(function(step, index) {
+    return '<div class="sample-step-edit"><span>' + (index + 1) + '</span><input value="' +
+      escapeHtml(step.title || '') + '" data-sample-step-title><textarea data-sample-step-description>' +
+      escapeHtml(step.description || '') + '</textarea></div>';
+  }).join('');
+  var actions = '<button class="cloud-save-btn" onclick="apiEditDecompSample(\'' + sample.id + '\')">保存编辑</button>';
+  if (!(sample.state === 'verified' && sample.verify_kind === 'user')) {
+    actions += '<button class="cloud-test-btn" onclick="apiTransitionDecompSample(\'' + sample.id + '\',\'verify\')">确认为范例</button>';
+  }
+  if (sample.state === 'rejected' || sample.state === 'archived' || sample.state === 'stale') {
+    actions += '<button class="cloud-test-btn" onclick="apiTransitionDecompSample(\'' + sample.id + '\',\'restore\')">恢复</button>';
+  } else {
+    actions += '<button class="cloud-test-btn danger" onclick="confirmRejectDecompSample(\'' + sample.id + '\')">丢弃</button>';
+  }
+  actions += '<button class="cloud-test-btn danger" onclick="confirmDeleteDecompSample(\'' + sample.id + '\')">永久删除</button>';
+  detail.innerHTML = '<div class="sample-detail-head"><span class="sample-badge ' + sample.state + '">' +
+    escapeHtml(_decompSampleBadge(sample)) + '</span><span>版本 ' + Number(sample.version || 1) + '</span></div>' +
+    '<label class="sample-field-label">任务描述</label><textarea id="sampleTaskDescription" class="sample-task-editor">' +
+    escapeHtml(sample.task_description) + '</textarea><label class="sample-field-label">拆解步骤</label>' + steps +
+    '<div class="sample-provenance">参考了 ' + provenance.length + ' 个历史范例' +
+    (provenance.length ? '：' + provenance.map(escapeHtml).join('、') : '') + '</div>' +
+    (sample.stale_reason ? '<div class="sample-stale-reason">待复核原因：' + escapeHtml(sample.stale_reason) + '</div>' : '') +
+    '<div class="sample-detail-actions">' + actions + '</div>';
+}
+
+function applyOptimisticDecompSample(sampleId, changes) {
+  var sample = _decompSamples.find(function(item) { return item.id === String(sampleId); });
+  if (!sample) return null;
+  var previous = JSON.parse(JSON.stringify(sample));
+  Object.assign(sample, changes || {});
+  renderDecompSamples(_decompSamples);
+  return previous;
+}
+
+function rollbackOptimisticDecompSample(previous) {
+  if (!previous) return;
+  var index = _decompSamples.findIndex(function(item) { return item.id === previous.id; });
+  if (index >= 0) _decompSamples[index] = previous;
+  renderDecompSamples(_decompSamples);
+}
+
+function confirmRejectDecompSample(sampleId) {
+  showConfirm('丢弃任务拆解范例', '确认丢弃这个范例吗？之后仍可在「已丢弃」中恢复。', function() {
+    apiTransitionDecompSample(sampleId, 'reject');
+  });
+}
+
+function confirmDeleteDecompSample(sampleId) {
+  showConfirm('永久删除任务拆解范例', '确定要永久删除这个范例吗？此操作不可撤销。', function() {
+    apiDeleteDecompSample(sampleId);
+  });
 }
 
 function autoResize(el) {
@@ -355,17 +474,116 @@ function sendMessage() {
 
 var _planIdCounter = 0;
 var _activePlans = {};
+var _planCardStates = {};
+
+function _ensurePlanCardState(plan) {
+  if (!_planCardStates[plan.id]) {
+    _planCardStates[plan.id] = {
+      phase: 'decomposing',
+      collapsed: false,
+      userTouched: false,
+      autoCollapsed: false,
+      startedAt: Date.now(),
+      decompMs: Number(plan._decompMs || 0)
+    };
+  }
+  return _planCardStates[plan.id];
+}
+
+function _planPhaseFromStatus(status) {
+  if (status === 'done') return 'done';
+  if (status === 'failed') return 'failed';
+  if (status === 'cancelled') return 'cancelled';
+  return 'executing';
+}
+
+function _setPlanCardPhase(planId, phase) {
+  var plan = _activePlans[planId];
+  if (!plan) return;
+  var state = _ensurePlanCardState(plan);
+  var previous = state.phase;
+  state.phase = phase;
+  if (previous === 'decomposing' && phase !== 'decomposing' && !state.userTouched && !state.autoCollapsed) {
+    state.collapsed = true;
+    state.autoCollapsed = true;
+  }
+  _renderPlanCardContents(plan);
+}
+
+function _applyPlanCardState(planId) {
+  var card = document.getElementById(planId);
+  var state = _planCardStates[planId];
+  if (!card || !state) return;
+  card.classList.toggle('collapsed', state.collapsed);
+  card.dataset.phase = state.phase;
+  var summary = card.querySelector('.plan-card-header');
+  if (summary) summary.setAttribute('aria-expanded', state.collapsed ? 'false' : 'true');
+}
+
+function _renderPlanCardContents(plan) {
+  var card = document.getElementById(plan.id);
+  if (!card) return;
+  card.innerHTML = _renderPlanCardInner(plan);
+  _applyPlanCardState(plan.id);
+}
+
+function _renderPlanFinalReply(planId, reply) {
+  var card = document.getElementById(planId);
+  var message = card && card.closest('.plan-message');
+  var output = message && message.querySelector('.plan-final-reply');
+  if (!output && message) {
+    var content = message.querySelector('.plan-message-content');
+    if (content) {
+      output = document.createElement('div');
+      output.className = 'plan-final-reply msg-text';
+      output.hidden = true;
+      content.appendChild(output);
+    }
+  }
+  if (!output) return;
+  var resolvedReply = String(reply || '').trim();
+  if (!resolvedReply) resolvedReply = _buildPlanFallbackReply(_activePlans[planId]);
+  if (!resolvedReply) return;
+  output.hidden = false;
+  output.textContent = resolvedReply;
+  requestAnimationFrame(function() {
+    var chat = document.getElementById('chatMessages');
+    if (chat) chat.scrollTop = chat.scrollHeight;
+  });
+}
+
+function _buildPlanFallbackReply(plan) {
+  if (!plan || !['done', 'failed', 'cancelled'].includes(plan.status)) return '';
+  var steps = Array.isArray(plan.steps) ? plan.steps : [];
+  var successful = steps.filter(function(step) {
+    return step.status === 'done' || step.status === 'degraded' || step.status === 'skipped';
+  }).length;
+  var label = plan.status === 'failed' ? '任务执行失败' :
+    (plan.status === 'cancelled' ? '任务已取消' : '任务已完成');
+  var titles = steps.map(function(step) { return '- ' + String(step.title || step.description || '未命名步骤'); });
+  return label + '，' + successful + '/' + steps.length + ' 步骤成功。' +
+    (titles.length ? '\n\n执行步骤：\n' + titles.join('\n') : '');
+}
 
 function _renderPlanCard(plan, time) {
   var chat = document.getElementById('chatMessages');
+  _ensurePlanCardState(plan);
   var html =
-    '<div class="msg msg-bot">' +
+    '<div class="msg msg-bot plan-message" data-manual-plan-id="' + escapeHtml(plan.id) + '">' +
       '<div class="msg-avatar">诺</div>' +
-      '<div class="plan-card" id="' + plan.id + '">' +
-        _renderPlanCardInner(plan) +
+      '<div class="plan-message-content">' +
+        '<div class="plan-card decomp-card" id="' + plan.id + '">' +
+          _renderPlanCardInner(plan) +
+        '</div>' +
+        '<div class="plan-final-reply msg-text" hidden></div>' +
       '</div>' +
     '</div>';
   chat.insertAdjacentHTML('beforeend', html);
+  _applyPlanCardState(plan.id);
+
+  requestAnimationFrame(function() {
+    _setPlanCardPhase(plan.id, 'executing');
+  });
 
   // auto-start execution after 1.5s review window
   // user can click "暂停审核" during this window to intervene
@@ -379,9 +597,12 @@ function _renderPlanCard(plan, time) {
 }
 
 function _renderPlanCardInner(plan) {
-  var done = plan.steps.filter(function(s) { return s.status === 'done'; }).length;
+  var processed = plan.steps.filter(function(s) {
+    return s.status === 'done' || s.status === 'failed' || s.status === 'skipped';
+  }).length;
   var total = plan.steps.length;
-  var pct = Math.round(done / total * 100);
+  var pct = total ? Math.round(processed / total * 100) : 0;
+  var state = _ensurePlanCardState(plan);
 
   var statusLabel = {
     pending: '即将执行',
@@ -391,22 +612,31 @@ function _renderPlanCardInner(plan) {
     cancelled: '已取消',
     failed: '执行失败'
   }[plan.status] || plan.status;
+  if (state.phase === 'decomposing') statusLabel = '拆解中…';
+  if (state.phase === 'executing' && plan.status !== 'paused') statusLabel = '执行中 · ' + processed + '/' + total;
+  var elapsedLabel = state.decompMs > 0 ? ' · 用时 ' + (state.decompMs / 1000).toFixed(1) + ' 秒' : '';
+  var iconHtml = state.phase === 'done' ?
+    '<svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>' :
+    state.phase === 'failed' ? '<svg viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></svg>' :
+    state.phase === 'cancelled' ? '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 8 8 8"/></svg>' :
+    '<span class="plan-card-spinner"></span>';
 
   var html =
-    '<div class="plan-card-header">' +
-      '<div class="plan-card-icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>' +
-      '<div style="flex:1;min-width:0;">' +
-        '<div class="plan-card-title">任务计划</div>' +
-        '<div class="plan-card-goal">' + escapeHtml(plan.goal) + '</div>' +
+    '<button type="button" class="plan-card-header" onclick="_togglePlanCollapse(\'' + plan.id + '\')" aria-expanded="true">' +
+      '<div class="plan-card-icon">' + iconHtml + '</div>' +
+      '<div class="plan-card-heading">' +
+        '<div class="plan-card-title">任务拆解 · ' + total + ' 步</div>' +
+        '<div class="plan-card-summary">' + statusLabel + elapsedLabel + '</div>' +
       '</div>' +
-      '<button class="plan-card-collapse" onclick="_togglePlanCollapse(\'' + plan.id + '\')">' +
+      '<span class="plan-card-collapse">' +
         '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>' +
-      '</button>' +
-    '</div>' +
+      '</span>' +
+    '</button>' +
     '<div class="plan-card-body">' +
+      '<div class="plan-card-goal">' + escapeHtml(plan.goal) + '</div>' +
       '<div class="plan-progress-wrap">' +
         '<div class="plan-progress-track"><div class="plan-progress-fill" style="width:' + pct + '%"></div></div>' +
-        '<span class="plan-progress-text">' + done + '/' + total + ' · ' + statusLabel + '</span>' +
+        '<span class="plan-progress-text">' + processed + '/' + total + ' · ' + statusLabel + '</span>' +
       '</div>' +
       '<div class="plan-steps">';
 
@@ -483,6 +713,11 @@ function _renderPlanCardInner(plan) {
     html += '<button class="plan-action-btn danger" onclick="_cancelPlan(\'' + plan.id + '\')">取消</button>';
   } else {
     html += '<span style="font-size:12px;color:var(--text-tertiary);padding:4px 0;">计划已结束</span>';
+    if (plan.candidate_sample_id) {
+      html += '<button class="plan-action-btn" onclick="openDecompSampleLibrary(\'' + plan.candidate_sample_id + '\')">查看范例</button>';
+    } else {
+      html += '<button class="plan-action-btn" onclick="savePlanAsDecompSample(\'' + plan.id + '\')">存为范例</button>';
+    }
   }
   html += '</div>';
 
@@ -490,13 +725,18 @@ function _renderPlanCardInner(plan) {
 }
 
 function _togglePlanCollapse(planId) {
-  var card = document.getElementById(planId);
-  if (card) card.classList.toggle('collapsed');
+  var plan = _activePlans[planId];
+  if (!plan) return;
+  var state = _ensurePlanCardState(plan);
+  state.userTouched = true;
+  state.collapsed = !state.collapsed;
+  _applyPlanCardState(planId);
 }
 
 function _updatePlanCard(plan) {
-  var card = document.getElementById(plan.id);
-  if (card) card.innerHTML = _renderPlanCardInner(plan);
+  var state = _ensurePlanCardState(plan);
+  state.phase = _planPhaseFromStatus(plan.status);
+  _renderPlanCardContents(plan);
   document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
 }
 
@@ -788,7 +1028,12 @@ function clearReplyPreview() {
 document.addEventListener('DOMContentLoaded', initContextMenu);
 
 function escapeHtml(s) {
-  const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // ════════════════════════════════════════════════════════════════

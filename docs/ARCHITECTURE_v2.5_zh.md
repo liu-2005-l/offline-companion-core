@@ -99,7 +99,7 @@ BaseMessage Schema 与消息总线抽象接口均放入 `shared/` 横切层，�
 
 ```text
 用户复杂目标 → A2 PlanOrchestrator
-  ├─ 任务分解：将目标拆解为有序步骤序列（Step 1 → Step 2 → Step 3）
+  ├─ 任务分解：从 B 层本地样本库检索至多 2 条 few-shot 范例，再拆解为有序步骤序列
   ├─ 依赖管理：声明步骤间的数据依赖（Step 2 需要 Step 1 的输出）
   ├─ 状态追踪：每个步骤的状态（pending / running / done / failed）
   ├─ 错误恢复：步骤失败时的重试策略或降级路径
@@ -107,6 +107,8 @@ BaseMessage Schema 与消息总线抽象接口均放入 `shared/` 横切层，�
 ```
 
 TaskContext：一个临时的、与任务绑定的数据空间，Skill 执行时读写此上下文，任务完成后可选择性地将关键结果写入 B2 记忆（`#remember`），其余丢弃。PlanOrchestrator 调用 Skill 时仍走 A3 Consent，Skill 仍运行在独立进程，B/C 层不感知计划的存在。
+
+拆解样本只进入单次 decomposer system prompt，不进入主对话 history、步骤执行、Function Calling 或 Consent。输入升级不改变既有防线：拆解结果仍必须通过 schema 校验、元模板拦截与 DAG 校验。
 
 ### Auto Turn 路径（Sprint 10）
 
@@ -648,6 +650,8 @@ A1 检测用户 N 分钟无交互
 - 底栏提供一键全局静默按钮，静默状态持久化。
 - 根据硬件能力自动降级驱动模式：显存 ≥8GB 用 LLM 驱动，4-6GB 用规则 + 轻量 LLM 混合，<4GB 纯规则引擎。
 
+每日空闲周期还负责本地拆解样本维护：同一本地日期只在成功后写入一次收据；verified 池执行 L2 容量上限治理，长期未注入或失败计划遗留 candidate 执行 L3 冷归档。维护失败不写成功收据，下次空闲自然重试。
+
 #### 6.2.16 AttentionAwareness（注意力感知 · S9B）
 
 与 GoalManager 并列的注意力感知模块，确保主动关心不侵扰用户。
@@ -776,6 +780,8 @@ execute_turn_stream() 遇到需要 Consent 的 step
 
 #### 6.4.1 B1 人格会话与上下文压缩（S8+）
 
+会话回复在模型生成后执行本地算术断言审计：仅提取十进制裸数字、四则/整数幂与 `=`、`等于`、`（的结果）是` 组成的可机械判定断言，使用 `Decimal` 精确验证。检测到错误时复用一次质量重试槽位并以系统提示尾注反馈正确值；重试不可用或仍失败时保留模型原文并追加确定性警示。流式路径保持 token 输出，终态事件携带审计后的完整正文，桌面端以终态正文替换未审计的临时流式文本；手动与 Auto 计划的 `final_reply` 复用同一审计器，且不回退计划状态机。审计器仅在 debug 级别记录提取数、失败数与重试状态，不记录回复原文。
+
 - 负责人格装配、prompt 组装，是陪伴人设的核心载体。
 - **上下文压缩**：token 超窗口 80% 触发，异步压缩至 60%；保留人设铁律 + 近 N 轮原文 + 本轮召回记忆块。
 - 压缩摘要入库 `memory_chunks`，`memory_type=context_summary`，用户可删除。
@@ -785,7 +791,7 @@ execute_turn_stream() 遇到需要 Consent 的 step
 | 项 | 共识 | 状态 |
 |----|------|------|
 | 唯一写入闸门 | 仅 `#remember` 触发写入；压缩摘要可删除 | ✅ 闸门 |
-| `memory_type` | `fact` / `habit` / `preference` / `context_summary` / `goal` | 🔲 待做 |
+| `memory_type` | `fact` / `habit` / `preference` / `context_summary` / `goal` / `decomposition_sample` | 🔶 部分完成 |
 | `status` | `active` / `cancelled`；召回仅返回 active 状态 | 🔲 待做 |
 | 习惯取消 | 冲突记忆标 cancelled，不新增条目 | 🔲 待做 |
 | 时间戳 | `memory_chunks`、`messages` 均带 `created_at` | 🔶 部分完成 |
@@ -796,6 +802,8 @@ execute_turn_stream() 遇到需要 Consent 的 step
 | 混合检索 | 向量语义 + BM25 + FTS5 三路召回融合排序，附带引用标记 | ✅ 已落地：RRF（k=60）+ 跨库 content-hash 去重 + Citation 结构化输出 |
 | 冷热分离 | 热数据常驻快速索引，冷数据归档磁盘，可配置阈值 | 📅 S9+ |
 | 基础骨架 | `#remember` 闸门 + FTS / 衰减 / 可编辑召回 | 🔶 部分完成 |
+
+任务拆解样本库属于 B 层本地资产，复用 `memory_chunks` 且不新增表。样本包含 candidate、verified、stale、rejected、archived 用户主权状态，检索与治理均为本地操作，不新增网络面。Plan Mode 的规则降级只保留代码、部署、分析三类专用模板；无领域匹配时返回普通对话，禁止生成通用脚手架计划。讲解型输入在模型调用前按意图优先规则降级，任务连接词不作为任务性证据。手动计划的用户输入与终态正文按 `plan_id` 写入消息历史，终态正文只持久化一次并与 REST 响应保持一致。
 
 #### 6.4.3 B3 安全模块
 

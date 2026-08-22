@@ -20,6 +20,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "privacy": {"privacy_mode": "LOCAL_ONLY"},
     "behavior": {
         "improve_plan_enabled": False,
+        "decomp_learning_enabled": True,
         "idle_think_enabled": True,
         "desktop_notification_enabled": True,
         "close_to_tray": True,
@@ -40,6 +41,7 @@ LEGACY_DEFAULT_SETTINGS: dict[str, Any] = {
     "shell_custom": {"accent": None, "radius": None, "sidebarWidth": None, "font": None},
     "custom_appearance": {},
     "improve_plan_enabled": False,
+    "decomp_learning_enabled": True,
     "auto_router_enabled": False,
     "active_model_id": None,
     "active_persona_id": None,
@@ -106,6 +108,7 @@ def migrate_v1_to_v2(raw: dict[str, Any]) -> dict[str, Any]:
         "privacy": {"privacy_mode": str(raw.get("privacy_mode", "LOCAL_ONLY")).upper()},
         "behavior": {
             "improve_plan_enabled": raw.get("improve_plan_enabled", False),
+            "decomp_learning_enabled": raw.get("decomp_learning_enabled", True),
             "idle_think_enabled": raw.get("idle_think_enabled", True),
             "desktop_notification_enabled": raw.get("desktop_notification_enabled", True),
             "close_to_tray": raw.get("close_to_tray", True),
@@ -147,6 +150,7 @@ def _legacy_aliases(settings: dict[str, Any]) -> dict[str, Any]:
         "last_view": settings["session"]["last_view"],
         "privacy_mode": str(settings["privacy"]["privacy_mode"]).lower(),
         "improve_plan_enabled": settings["behavior"]["improve_plan_enabled"],
+        "decomp_learning_enabled": settings["behavior"]["decomp_learning_enabled"],
         "auto_router_enabled": settings["model"]["auto_router_enabled"],
         "active_persona_id": settings["model"]["active_persona_id"],
         "active_model_id": settings["model"].get("local_model_id"),

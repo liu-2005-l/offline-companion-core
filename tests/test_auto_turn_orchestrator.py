@@ -8,6 +8,7 @@ from offline_companion.core.plan_orchestrator import (
     InMemoryPlanStore,
     PlanOrchestrator,
     PlanStatus,
+    PlanStep,
 )
 from offline_companion.core.skill_execution_tracker import SkillExecutionTracker
 from offline_companion.shared.messages import BaseMessage
@@ -23,6 +24,10 @@ from offline_companion.shell.plan_auto_bridge import PlanAutoBridge
 
 def test_auto_turn_executes_decided_steps() -> None:
     plan_orchestrator = PlanOrchestrator(InMemoryPlanStore())
+    plan_orchestrator.decide = lambda _text: [
+        PlanStep("read", "chat", "read_result", payload={"description": "读取配置"}),
+        PlanStep("report", "chat", "report_result", payload={"description": "生成报告"}),
+    ]
     bridge = PlanAutoBridge(
         AutoRouter(),
         plan_orchestrator,
@@ -41,9 +46,9 @@ def test_auto_turn_executes_decided_steps() -> None:
     payload = auto_turn_to_payload(context)
 
     assert context.status is PlanStatus.DONE
-    assert len(context.step_results) == 3
+    assert len(context.step_results) == 2
     assert payload["route_mode"] == "auto"
-    assert payload["reply"]
+    assert payload["reply"] == "读取配置\n\n生成报告"
 
 
 def test_conversation_plan_invoker_passes_local_profile() -> None:
@@ -74,6 +79,42 @@ def test_conversation_plan_invoker_passes_local_profile() -> None:
 
     assert result["result"] == "ok"
     assert captured["capability_profile"] is profile
+
+
+def test_conversation_plan_invoker_includes_stage_contract_and_retry_feedback() -> None:
+    captured = {}
+
+    class SessionCore:
+        def assemble_reply(self, *args, **kwargs):
+            captured.update(kwargs)
+            return type("Result", (), {"reply": "ok"})()
+
+    orchestrator = type(
+        "Orchestrator",
+        (),
+        {
+            "session_core": SessionCore(),
+            "backend": object(),
+            "conn": object(),
+            "max_tokens": 128,
+            "_local_capability_profile": lambda self: object(),
+        },
+    )()
+
+    ConversationPlanInvoker(orchestrator).invoke(
+        "chat",
+        {
+            "query": "整理模块",
+            "description": "形成规划方案",
+            "stage": "planning",
+            "_quality_retry_feedback": "上一次缺少模块说明",
+        },
+    )
+
+    prompt = captured["user_message"]
+    assert "当前阶段：planning" in prompt
+    assert "验收证据字段：modules, data_flow" in prompt
+    assert "质量校验反馈：\n上一次缺少模块说明" in prompt
 
 
 def _streaming_auto_turn(*, gateway=None):
@@ -134,6 +175,68 @@ def test_auto_turn_stream_emits_step_sequence() -> None:
     assert first_complete["evidence"]
 
 
+def test_auto_turn_stream_uses_shared_final_reply_summarizer() -> None:
+    auto_turn = _streaming_auto_turn()
+    prompts: list[str] = []
+    auto_turn.final_reply_summarizer = lambda prompt: prompts.append(prompt) or "统一终态总结"
+
+    events = list(
+        auto_turn.execute_turn_stream(
+            BaseMessage(message_id="m-summary", topic="chat.auto", source="shell"),
+            "分析当前模块",
+        )
+    )
+
+    assert events[-1]["type"] == "plan_complete"
+    assert events[-1]["reply"] == "统一终态总结"
+    assert len(prompts) == 1
+
+
+def test_auto_turn_summary_failure_uses_deterministic_reply() -> None:
+    auto_turn = _streaming_auto_turn()
+
+    def fail_summary(_prompt: str) -> str:
+        raise RuntimeError("local model unavailable")
+
+    auto_turn.final_reply_summarizer = fail_summary
+
+    events = list(
+        auto_turn.execute_turn_stream(
+            BaseMessage(message_id="m-summary-fallback", topic="chat.auto", source="shell"),
+            "分析当前模块",
+        )
+    )
+
+    assert events[-1]["type"] == "plan_complete"
+    assert events[-1]["reply"].startswith("任务已完成，完成 ")
+    assert "执行结果" in events[-1]["reply"]
+
+
+def test_auto_turn_failed_event_includes_final_reply() -> None:
+    auto_turn = _streaming_auto_turn()
+    auto_turn.plan_orchestrator.decide = lambda _text: [
+        PlanStep(
+            "planning",
+            "chat",
+            "planning_result",
+            payload={"description": "分析模块"},
+            title="分析模块",
+            stage="planning",
+        )
+    ]
+    auto_turn.invoke_skill = lambda _step, _context: "无阶段证据"
+
+    events = list(
+        auto_turn.execute_turn_stream(
+            BaseMessage(message_id="m-failed", topic="chat.auto", source="shell"),
+            "分析当前模块",
+        )
+    )
+
+    assert events[-1]["type"] == "plan_failed"
+    assert events[-1]["reply"].startswith("任务执行失败")
+
+
 def test_auto_turn_stream_consent_resume_and_deny() -> None:
     gateway = UIHostConsentGateway()
     auto_turn = _streaming_auto_turn(gateway=gateway)
@@ -171,6 +274,7 @@ def test_auto_turn_stream_consent_resume_and_deny() -> None:
         )
     )
     assert denied[-1]["type"] == "plan_cancelled"
+    assert denied[-1]["reply"].startswith("任务已取消")
 
 
 def test_auto_turn_stream_emits_plan_blocked_on_hard_gate(tmp_path) -> None:
@@ -179,7 +283,7 @@ def test_auto_turn_stream_emits_plan_blocked_on_hard_gate(tmp_path) -> None:
             return """[
                 {
                     "title": "拆解实现步骤",
-                    "description": "跳过 brainstorming 直接进入 planning。",
+                    "description": "为写代码任务跳过 brainstorming 直接进入 planning。",
                     "expected_output": "计划步骤清单。",
                     "verification": "检查步骤都有验证方式。",
                     "completion_criteria": "计划可执行。",
@@ -220,4 +324,5 @@ def test_auto_turn_stream_emits_plan_blocked_on_hard_gate(tmp_path) -> None:
     assert blocked[0]["missing_stages"] == ["brainstorming"]
     assert blocked[0]["blocked_step_id"] == "step_0"
     assert blocked[0]["done"] is True
+    assert "reply" not in blocked[0]
     assert all(event["type"] != "step_start" for event in events[events.index(blocked[0]) + 1 :])

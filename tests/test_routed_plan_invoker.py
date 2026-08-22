@@ -68,6 +68,29 @@ def test_routed_plan_invoker_prefers_step_route_decision() -> None:
     assert cloud.calls[0][1]["_fallback_chain"] == ["cloud", "local"]
 
 
+def test_routed_plan_invoker_forwards_stage_and_quality_retry_feedback() -> None:
+    local = StubInvoker([], "local")
+    invoker = RoutedPlanInvoker(local)
+    step = PlanStep(
+        step_id="a",
+        skill_id="chat",
+        result_key="res",
+        stage="planning",
+    )
+    context = TaskContext(
+        plan_id="p",
+        steps={"a": step},
+        step_status={"a": StepStatus.PENDING},
+        context_vars={"_quality_retry_feedback": "补充 modules 与 data_flow"},
+    )
+
+    invoker.invoke_step(step, context)
+
+    payload = local.calls[0][1]
+    assert payload["stage"] == "planning"
+    assert payload["_quality_retry_feedback"] == "补充 modules 与 data_flow"
+
+
 def test_cloud_route_invoker_uses_cloud_completion(monkeypatch) -> None:
     captured = {}
 

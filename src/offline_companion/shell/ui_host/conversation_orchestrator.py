@@ -533,6 +533,7 @@ class ConversationOrchestrator:
         history_for_model = history[:-1] if history and history[-1].role == "user" else history
         raw_parts: list[str] = []
         recalls: list[Any] = []
+        audited_reply: str | None = None
         assistant_persisted = False
         try:
             for event in self.session_core.assemble_reply_stream(
@@ -550,10 +551,11 @@ class ConversationOrchestrator:
                     raw_parts.append(str(event["token"]))
                 if event.get("done"):
                     recalls = list(event.get("memory_recalls") or [])
+                    audited_reply = str(event.get("reply") or "")
                     continue
                 yield event
             final_reply = reformat_local_reply(
-                "".join(raw_parts),
+                audited_reply if audited_reply is not None else "".join(raw_parts),
                 emotion_context=emotion.context,
                 capability_profile=self._local_capability_profile(),
             )
