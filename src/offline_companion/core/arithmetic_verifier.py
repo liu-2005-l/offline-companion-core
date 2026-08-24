@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 _NUMBER = r"[+\-−]?\d+(?:\.\d+)?"
 _OPERATOR = r"(?:除以|乘以|\*\*|[×xX*乘+加\-−减÷/^])"
-_EQUALITY = r"(?:=|等于|(?:的结果)?是)"
+_EQUALITY = r"(?:=|等于|(?:的结果|的答案|的积|的和)?是)"
 _OPERATOR_CHARACTERS = "×xX*乘+加-−减÷/^"
 _ASSERTION_PATTERN = re.compile(
     rf"(?<![\w.{re.escape(_OPERATOR_CHARACTERS)}])"

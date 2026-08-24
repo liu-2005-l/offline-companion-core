@@ -22,6 +22,9 @@ from offline_companion.core.arithmetic_verifier import (
         ("7乘以3=21", "21"),
         ("7乘3等于21", "21"),
         ("3乘7的结果是21", "21"),
+        ("3乘7的答案是21", "21"),
+        ("3乘7的积是21", "21"),
+        ("3加7的和是10", "10"),
         ("3乘7是21", "21"),
         ("0.1+0.2=0.3", "0.3"),
         ("3−7=−4", "-4"),
@@ -73,6 +76,9 @@ def test_extractor_skips_ambiguous_or_unsupported_context(text: str) -> None:
         ("10^20=100000000000000000000", False),
         ("7×3=77", True),
         ("3乘7的结果是14", True),
+        ("3乘7的答案是14", True),
+        ("3乘7的积是14", True),
+        ("3加7的和是14", True),
     ],
 )
 def test_validation_uses_integer_exactness_and_decimal_precision(expression: str, invalid: bool) -> None:
