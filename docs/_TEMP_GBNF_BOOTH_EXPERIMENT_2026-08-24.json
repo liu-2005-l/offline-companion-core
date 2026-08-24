@@ -1,0 +1,152 @@
+{
+  "experiment": "booth_gbnf_plan_as_reasoning",
+  "case_set": "distribution",
+  "samples": 20,
+  "temperature": 0.7,
+  "seed": 20260824,
+  "decision_metric": "full_success_rate",
+  "diagnostic_metrics": [
+    "result_rate",
+    "recoding_rate",
+    "partial_products_rate",
+    "rounds_rate"
+  ],
+  "cases": [
+    {
+      "label": "small_7x3",
+      "multiplicand": 7,
+      "multiplier": 3,
+      "prompt": "请严格按 Booth 乘法算法计算 7 乘 3。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "small_3x7",
+      "multiplicand": 3,
+      "multiplier": 7,
+      "prompt": "请严格按 Booth 乘法算法计算 3 乘 7。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "small_5x8",
+      "multiplicand": 5,
+      "multiplier": 8,
+      "prompt": "请严格按 Booth 乘法算法计算 5 乘 8。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "square_6x6",
+      "multiplicand": 6,
+      "multiplier": 6,
+      "prompt": "请严格按 Booth 乘法算法计算 6 乘 6。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "single_bit_9x4",
+      "multiplicand": 9,
+      "multiplier": 4,
+      "prompt": "请严格按 Booth 乘法算法计算 9 乘 4。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "teen_12x11",
+      "multiplicand": 12,
+      "multiplier": 11,
+      "prompt": "请严格按 Booth 乘法算法计算 12 乘 11。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "teen_15x3",
+      "multiplicand": 15,
+      "multiplier": 3,
+      "prompt": "请严格按 Booth 乘法算法计算 15 乘 3。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "zero_left",
+      "multiplicand": 0,
+      "multiplier": 9,
+      "prompt": "请严格按 Booth 乘法算法计算 0 乘 9。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "zero_right",
+      "multiplicand": 10,
+      "multiplier": 0,
+      "prompt": "请严格按 Booth 乘法算法计算 10 乘 0。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "negative_left",
+      "multiplicand": -3,
+      "multiplier": 7,
+      "prompt": "请严格按 Booth 乘法算法计算 -3 乘 7。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "negative_right",
+      "multiplicand": 7,
+      "multiplier": -3,
+      "prompt": "请严格按 Booth 乘法算法计算 7 乘 -3。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "negative_both",
+      "multiplicand": -4,
+      "multiplier": -5,
+      "prompt": "请严格按 Booth 乘法算法计算 -4 乘 -5。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "power_boundary",
+      "multiplicand": 16,
+      "multiplier": 7,
+      "prompt": "请严格按 Booth 乘法算法计算 16 乘 7。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "wide_31x2",
+      "multiplicand": 31,
+      "multiplier": 2,
+      "prompt": "请严格按 Booth 乘法算法计算 31 乘 2。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "mid_13x9",
+      "multiplicand": 13,
+      "multiplier": 9,
+      "prompt": "请严格按 Booth 乘法算法计算 13 乘 9。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "mid_21x5",
+      "multiplicand": 21,
+      "multiplier": 5,
+      "prompt": "请严格按 Booth 乘法算法计算 21 乘 5。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "mid_24x12",
+      "multiplicand": 24,
+      "multiplier": 12,
+      "prompt": "请严格按 Booth 乘法算法计算 24 乘 12。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "large_77x88",
+      "multiplicand": 77,
+      "multiplier": 88,
+      "prompt": "请严格按 Booth 乘法算法计算 77 乘 88。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "large_123x45",
+      "multiplicand": 123,
+      "multiplier": 45,
+      "prompt": "请严格按 Booth 乘法算法计算 123 乘 45。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "carry_63x15",
+      "multiplicand": 63,
+      "multiplier": 15,
+      "prompt": "请严格按 Booth 乘法算法计算 63 乘 15。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    }
+  ],
+  "preflight": {
+    "status": "blocked",
+    "error": "<urlopen error [WinError 10061] 由于目标计算机积极拒绝，无法连接。>"
+  },
+  "status": "blocked",
+  "decision": "blocked：pre-flight 未通过，未进入 Booth 采样",
+  "completed": 0,
+  "metrics": {
+    "input_rate": 0.0,
+    "result_rate": 0.0,
+    "recoding_rate": 0.0,
+    "partial_products_rate": 0.0,
+    "rounds_rate": 0.0,
+    "full_success_rate": 0.0
+  },
+  "results": []
+}
