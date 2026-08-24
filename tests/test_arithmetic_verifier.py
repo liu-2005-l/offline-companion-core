@@ -137,8 +137,17 @@ def test_audit_skips_retry_when_slot_is_unavailable() -> None:
 def test_audit_debug_log_records_extraction_count_without_reply_content(caplog) -> None:
     """摘要：调试日志记录提取计数，但不写入用户回复原文。"""
 
-    with caplog.at_level(logging.DEBUG, logger="offline_companion.core.arithmetic_verifier"):
+    with caplog.at_level(logging.INFO, logger="offline_companion.core.arithmetic_verifier"):
         audit_arithmetic_reply("3乘7的结果是14", retry_allowed=False)
 
-    assert "extracted=1 failures=1" in caplog.text
+    assert "extracted=1 failures=1 retry_allowed=False skipped=none" in caplog.text
     assert "3乘7的结果是14" not in caplog.text
+
+
+def test_audit_info_log_records_skip_reason(caplog) -> None:
+    """摘要：审计快路径跳过时记录可诊断原因。"""
+
+    with caplog.at_level(logging.INFO, logger="offline_companion.core.arithmetic_verifier"):
+        audit_arithmetic_reply("3乘7很简单", retry_allowed=False)
+
+    assert "extracted=0 failures=0 retry_allowed=False skipped=missing_equality" in caplog.text

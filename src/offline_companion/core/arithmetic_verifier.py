@@ -126,13 +126,16 @@ def audit_arithmetic_reply(
         最终展示正文、剩余失败断言与是否发生重试。
     """
     original = str(reply or "")
-    assertions = extract_arithmetic_assertions(original)
+    normalized = unicodedata.normalize("NFKC", original)
+    skip_reason = _arithmetic_candidate_skip_reason(normalized)
+    assertions = () if skip_reason is not None else extract_arithmetic_assertions(normalized)
     failures = _invalid_assertions(assertions)
-    logger.debug(
-        "算术断言审计完成: extracted=%d failures=%d retry_allowed=%s",
+    logger.info(
+        "算术断言审计完成: extracted=%d failures=%d retry_allowed=%s skipped=%s",
         len(assertions),
         len(failures),
         retry_allowed,
+        skip_reason or "none",
     )
     if not failures:
         return ArithmeticAuditResult(reply=original, failures=())
@@ -143,12 +146,19 @@ def audit_arithmetic_reply(
             logger.warning("算术断言修正重试失败，降级为确定性警示", exc_info=True)
             retried_reply = ""
         if retried_reply:
-            retry_assertions = extract_arithmetic_assertions(retried_reply)
+            normalized_retry = unicodedata.normalize("NFKC", retried_reply)
+            retry_skip_reason = _arithmetic_candidate_skip_reason(normalized_retry)
+            retry_assertions = (
+                ()
+                if retry_skip_reason is not None
+                else extract_arithmetic_assertions(normalized_retry)
+            )
             retry_failures = _invalid_assertions(retry_assertions)
-            logger.debug(
-                "算术断言重试审计完成: extracted=%d failures=%d",
+            logger.info(
+                "算术断言重试审计完成: extracted=%d failures=%d skipped=%s",
                 len(retry_assertions),
                 len(retry_failures),
+                retry_skip_reason or "none",
             )
             if not retry_failures:
                 return ArithmeticAuditResult(reply=retried_reply, failures=(), retried=True)
@@ -186,11 +196,18 @@ def _iter_assertion_matches(text: str):
 
 def _has_arithmetic_candidate(text: str) -> bool:
     """摘要：以低成本信号排除绝大多数普通中文回复。"""
+    return _arithmetic_candidate_skip_reason(text) is None
+
+
+def _arithmetic_candidate_skip_reason(text: str) -> str | None:
+    """摘要：返回算术审计快路径跳过原因，供诊断日志复用。"""
     if "=" not in text and "等于" not in text and "是" not in text:
-        return False
+        return "missing_equality"
     if not any(marker in text for marker in _OPERATOR_ALIASES):
-        return False
-    return len(_NUMBER_PATTERN.findall(text)) >= 3
+        return "missing_operator"
+    if len(_NUMBER_PATTERN.findall(text)) < 3:
+        return "insufficient_numbers"
+    return None
 
 
 def _build_assertion(match: re.Match[str]) -> ArithmeticAssertion | None:

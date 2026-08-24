@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -201,6 +202,18 @@ def test_booth_method_uses_builtin_tool_plan_without_llm() -> None:
     backend.chat.assert_not_called()
 
 
+def test_builtin_tool_decision_logs_method_constraints(caplog) -> None:
+    """摘要：builtin 工具路径记录 R3 放行、B4 约束与路由详情。"""
+    decomposer = PlanDecomposer(llm_router=MagicMock())
+
+    with caplog.at_level(logging.INFO, logger="offline_companion.core.plan_decomposer"):
+        result = decomposer.decide("按booth算法计算7乘3")
+
+    assert isinstance(result, list)
+    assert "gate=R3 action=continue method_constraints=('booth算法',)" in caplog.text
+    assert "source=builtin_tool route=algorithm constraints=('booth算法',) steps=2" in caplog.text
+
+
 @pytest.mark.parametrize("text", ["按照booth计算一下三乘七", "按照booth算法计算一下三乘七"])
 def test_booth_named_entity_without_category_uses_builtin_tool_plan(text: str) -> None:
     decomposer = PlanDecomposer(llm_router=MagicMock())
@@ -393,6 +406,25 @@ def test_multiple_scaffold_title_variants_are_rejected() -> None:
         original_input="规划支付模块重构",
     )
     lifecycle.create_candidate.assert_not_called()
+
+
+def test_b3_rejection_logs_gate_and_reason(caplog) -> None:
+    """摘要：B3 校验拦截时记录命中防线与具体原因。"""
+    backend = MagicMock()
+    backend.chat.return_value = """[
+      {"title":"确认任务边界：提取目标对象和约束","description":"梳理范围","expected_output":"边界","verification":"检查边界","completion_criteria":"边界明确"},
+      {"title":"拆出可执行动作：形成最小步骤清单","description":"列出动作","expected_output":"清单","verification":"检查清单","completion_criteria":"清单完整"}
+    ]"""
+    decomposer = PlanDecomposer(llm_router=backend)
+
+    with caplog.at_level(logging.INFO, logger="offline_companion.core.plan_decomposer"):
+        result = decomposer.decide("规划支付模块重构")
+
+    assert result == NotDecomposableResult(
+        reason="meta_template",
+        original_input="规划支付模块重构",
+    )
+    assert "gate=B3 reason=meta_template source=llm steps=2" in caplog.text
 
 
 def test_single_scaffold_title_match_does_not_block_real_task() -> None:

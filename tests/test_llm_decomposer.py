@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -118,6 +119,21 @@ def test_decompose_with_llm_success() -> None:
     assert result is not None
     assert result[0]["title"] == "创建 sort.py"
     assert result[0]["expected_output"] == "src/sort.py 文件存在且包含 quick_sort。"
+
+
+def test_decompose_with_llm_logs_raw_output_metadata(caplog) -> None:
+    """摘要：LLM 原始输出保留 debug 全文，同时 info 暴露可诊断元数据。"""
+    backend = MagicMock()
+    backend.chat.return_value = _valid_response()
+
+    with caplog.at_level(logging.DEBUG, logger="offline_companion.core.llm_decomposer"):
+        result = decompose_with_llm("写一个排序算法", backend)
+
+    assert result is not None
+    assert "LLM decompose 原始输出:" in caplog.text
+    assert "创建 sort.py" in caplog.text
+    assert "LLM decompose 原始输出已记录: chars=" in caplog.text
+    assert "retry=False shots=0" in caplog.text
 
 
 def test_decompose_with_llm_none_returns_semantic_result() -> None:

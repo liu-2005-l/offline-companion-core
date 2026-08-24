@@ -175,11 +175,31 @@ class PlanDecomposer:
             logger.info("拆解决策: action=fallback reason=greeting")
             return NotDecomposableResult(reason="greeting", original_input=user_input)
         if _is_explanation_request(goal):
-            logger.info("拆解决策: action=fallback reason=explanation")
+            logger.info(
+                "拆解决策: action=fallback gate=R3 reason=explanation matched=%s",
+                _explanation_request_reason(goal),
+            )
             return NotDecomposableResult(reason="explanation", original_input=user_input)
+        method_constraints = _extract_method_constraints(goal)
+        logger.info(
+            "拆解路径探测: gate=R3 action=continue method_constraints=%s",
+            method_constraints,
+        )
         raw_steps: list[dict[str, Any]] | NotDecomposableResult | None = _deterministic_algorithm_plan(goal)
+        if raw_steps is not None:
+            logger.info(
+                "拆解路径探测: source=builtin_tool route=algorithm constraints=%s steps=%d",
+                method_constraints,
+                len(raw_steps),
+            )
         if raw_steps is None:
             raw_steps = _deterministic_calculator_plan(goal)
+            if raw_steps is not None:
+                logger.info(
+                    "拆解路径探测: source=builtin_tool route=calculator constraints=%s steps=%d",
+                    method_constraints,
+                    len(raw_steps),
+                )
         source = "builtin_tool" if raw_steps is not None else "rule"
         shots: list[object] = []
         if raw_steps is None:
@@ -211,6 +231,11 @@ class PlanDecomposer:
                 if raw_steps is not None:
                     source = "llm"
                     missing_constraints = _missing_method_constraints(goal, raw_steps)
+                    logger.info(
+                        "拆解路径探测: gate=B4 source=llm constraints=%s missing=%s",
+                        method_constraints,
+                        missing_constraints,
+                    )
                     if missing_constraints:
                         logger.info(
                             "任务拆解丢失方法约束，执行一次定向重拆 constraints=%s",
@@ -245,35 +270,57 @@ class PlanDecomposer:
         if raw_steps is None:
             raw_steps = rule_decompose(goal)
             if raw_steps is None:
-                logger.info("任务未命中专用规则模板，降级为普通对话")
+                logger.info(
+                    "拆解决策: action=fallback source=rule reason=no_rule_match constraints=%s",
+                    method_constraints,
+                )
                 return NotDecomposableResult(
                     reason="no_rule_match",
                     original_input=user_input,
                 )
+            logger.info(
+                "拆解路径探测: source=rule route=specialized_template constraints=%s steps=%d",
+                method_constraints,
+                len(raw_steps),
+            )
         steps = [
             raw_to_plan_step(step, goal, idx)
             for idx, step in enumerate(raw_steps)
         ]
         logger.info("拆解决策: action=validate source=%s steps=%d", source, len(steps))
         if source == "llm" and _contains_generic_scaffold(steps):
-            logger.warning("任务拆解命中通用脚手架闭集，降级为普通对话")
+            logger.warning(
+                "拆解决策: action=fallback gate=B3 reason=meta_template source=%s steps=%d",
+                source,
+                len(steps),
+            )
             return NotDecomposableResult(reason="meta_template", original_input=user_input)
         if source == "llm" and _detect_echo(
             goal,
             _raw_goal_text(raw_steps),
             _plan_step_texts(steps),
         ):
-            logger.warning("任务拆解复述原始输入，降级为普通对话")
+            logger.warning(
+                "拆解决策: action=fallback gate=B3 reason=echo source=%s steps=%d",
+                source,
+                len(steps),
+            )
             return NotDecomposableResult(reason="echo", original_input=user_input)
         relevance = _step_relevance(goal, steps)
         if relevance < _MIN_STEP_RELEVANCE:
-            logger.warning("任务拆解相关性过低，降级为普通对话: relevance=%.4f", relevance)
+            logger.warning(
+                "拆解决策: action=fallback gate=B3 reason=low_relevance source=%s relevance=%.4f",
+                source,
+                relevance,
+            )
             return NotDecomposableResult(reason="low_relevance", original_input=user_input)
         zero_value_score = _zero_value_plan_score(goal, steps)
         if zero_value_score is not None and zero_value_score >= 0.8:
             logger.info(
-                "任务拆解未增加可执行信息，降级为普通对话: score=%.4f",
+                "拆解决策: action=fallback gate=B3 reason=zero_value_plan source=%s score=%.4f constraints=%s",
+                source,
                 zero_value_score,
+                method_constraints,
             )
             return NotDecomposableResult(
                 reason="zero_value_plan",
@@ -362,16 +409,24 @@ def _normalize_non_task_input(text: str) -> str:
 def _is_explanation_request(text: str) -> bool:
     """摘要：以讲解意图优先的两级规则识别对话型输入。"""
 
+    return _explanation_request_reason(text) in {
+        "intent_pattern",
+        "noun_pattern",
+    }
+
+
+def _explanation_request_reason(text: str) -> str:
+    """摘要：返回讲解型门控的判定来源，供拆解决策日志使用。"""
     normalized = _normalize_non_task_input(text)
     if _EXPLANATION_INTENT_PATTERN.fullmatch(normalized):
-        return True
+        return "intent_pattern"
     if _EXPLANATION_NOUN_PATTERN.fullmatch(normalized):
-        return True
+        return "noun_pattern"
     if normalized.startswith(_TASK_IMPERATIVE_PREFIXES):
-        return False
+        return "task_prefix"
     if any(marker in normalized for marker in _TASK_ACTION_PHRASES):
-        return False
-    return False
+        return "task_phrase"
+    return "default_dialogue"
 
 
 def _step_relevance(original_input: str, steps: list[PlanStep]) -> float:

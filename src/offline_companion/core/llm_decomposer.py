@@ -139,19 +139,37 @@ def decompose_with_llm(
 
     normalized_response = str(response).strip()
     logger.debug("LLM decompose 原始输出: %s", normalized_response)
+    logger.info(
+        "LLM decompose 原始输出已记录: chars=%d retry=%s shots=%d",
+        len(normalized_response),
+        bool(retry_feedback),
+        len(shots or ()),
+    )
     if normalized_response.lower() == "none":
+        logger.info("LLM decompose 结果: action=fallback reason=model_none")
         return NotDecomposableResult(reason="model_none", original_input=user_input)
     steps = _parse_json(normalized_response)
     if steps is None:
-        logger.warning("LLM decompose JSON 解析失败，fallback 到规则模板")
+        logger.warning(
+            "LLM decompose 结果: action=fallback reason=json_parse_failed chars=%d",
+            len(normalized_response),
+        )
         return None
     if not _validate_steps(steps, stages):
-        logger.warning("LLM decompose schema 校验失败，fallback 到规则模板")
+        logger.warning(
+            "LLM decompose 结果: action=fallback reason=schema_failed steps=%d",
+            len(steps),
+        )
         return None
     aligned = _align_stages(steps, stages)
     if aligned is None:
-        logger.warning("LLM decompose stage 对齐失败，fallback 到规则模板")
+        logger.warning(
+            "LLM decompose 结果: action=fallback reason=stage_alignment_failed steps=%d stages=%s",
+            len(steps),
+            stages,
+        )
         return None
+    logger.info("LLM decompose 结果: action=accept steps=%d", len(aligned))
     return aligned
 
 
