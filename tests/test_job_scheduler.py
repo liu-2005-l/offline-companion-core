@@ -163,7 +163,13 @@ def test_cron_task_triggers_when_due(tmp_path: Path) -> None:
         task = scheduler.register_task('mock-skill', 'cron', session_id='s-1', cron_expr='* * * * *')
         old_created = time.strftime('%Y-%m-%dT%H:%M:%S+00:00', time.gmtime(time.time() - 120))
         conn.execute('UPDATE job_tasks SET created_at = ? WHERE task_id = ?;', (old_created, task.task_id))
-        _wait_until(lambda: len(calls) >= 1)
+        _wait_until(
+            lambda: len(calls) >= 1
+            and conn.execute('SELECT status FROM job_tasks WHERE task_id = ?;', (task.task_id,)).fetchone()[
+                'status'
+            ]
+            == 'pending'
+        )
         row = conn.execute('SELECT status FROM job_tasks WHERE task_id = ?;', (task.task_id,)).fetchone()
         assert row['status'] == 'pending'
     finally:

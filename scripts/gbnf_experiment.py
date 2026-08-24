@@ -20,6 +20,7 @@ if SRC not in sys.path:
     sys.path.insert(0, SRC)
 
 from offline_companion.core.algorithm_tools import booth_multiply
+from offline_companion.runtime.inference_backend.llama_server_backend import LlamaServerBackend
 
 
 DEFAULT_TEMPERATURE = 0.7
@@ -87,6 +88,9 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--skip-preflight", action="store_true")
     parser.add_argument("--greedy-on-boundary", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--managed-sidecar", action="store_true")
+    parser.add_argument("--model-path", default=os.environ.get("OC_GBNF_MODEL_PATH", "models/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf"))
+    parser.add_argument("--startup-timeout", type=float, default=45.0)
     args = parser.parse_args()
 
     cases = select_cases(args.case_set, args.samples)
@@ -106,42 +110,65 @@ def main() -> int:
         _emit(protocol, args.output)
         return 0
 
-    if not args.skip_preflight:
-        preflight = _preflight(args.url)
-        if preflight["status"] != "completed":
-            report = _blocked_report(protocol, preflight)
+    backend: LlamaServerBackend | None = None
+    url = args.url
+    if args.managed_sidecar:
+        backend = LlamaServerBackend(
+            args.model_path,
+            n_ctx=4096,
+            n_gpu_layers=0,
+            startup_timeout=args.startup_timeout,
+        )
+        health = backend.health_check()
+        if not health.ok:
+            report = _blocked_report(
+                protocol,
+                {"status": "blocked", "error": health.message, "backend": health.backend},
+            )
             _emit(report, args.output)
             return 2
-    else:
-        preflight = {"status": "skipped"}
+        url = backend._base_url
 
-    results = [
-        sample_case(
-            args.url,
-            case,
-            grammar,
-            temperature=args.temperature,
-            seed=args.seed + index,
-        )
-        for index, case in enumerate(cases)
-    ]
-    report = build_report(protocol, preflight, results)
-    if args.greedy_on_boundary and report["status"] == "boundary":
-        greedy_case = cases[0]
-        greedy_result = sample_case(
-            args.url,
-            greedy_case,
-            grammar,
-            temperature=0.0,
-            seed=args.seed,
-        )
-        report["greedy_probe"] = {
-            "temperature": 0.0,
-            "case": greedy_case.__dict__ | {"prompt": greedy_case.prompt},
-            "result": greedy_result,
-        }
-    _emit(report, args.output)
-    return 0 if report["completed"] == report["samples"] else 2
+    try:
+        if not args.skip_preflight:
+            preflight = _preflight(url)
+            if preflight["status"] != "completed":
+                report = _blocked_report(protocol, preflight)
+                _emit(report, args.output)
+                return 2
+        else:
+            preflight = {"status": "skipped"}
+
+        results = [
+            sample_case(
+                url,
+                case,
+                grammar,
+                temperature=args.temperature,
+                seed=args.seed + index,
+            )
+            for index, case in enumerate(cases)
+        ]
+        report = build_report(protocol, preflight, results)
+        if args.greedy_on_boundary and report["status"] == "boundary":
+            greedy_case = cases[0]
+            greedy_result = sample_case(
+                url,
+                greedy_case,
+                grammar,
+                temperature=0.0,
+                seed=args.seed,
+            )
+            report["greedy_probe"] = {
+                "temperature": 0.0,
+                "case": greedy_case.__dict__ | {"prompt": greedy_case.prompt},
+                "result": greedy_result,
+            }
+        _emit(report, args.output)
+        return 0 if report["completed"] == report["samples"] else 2
+    finally:
+        if backend is not None:
+            backend.stop()
 
 
 def select_cases(case_set: str, samples: int) -> tuple[BoothCase, ...]:
@@ -191,18 +218,7 @@ def sample_case(
     }
     try:
         content = _post_chat_completion(url, payload, timeout=60)
-        parsed = json.loads(content)
-        validation = validate_booth_output(case, parsed)
-        return {
-            "case": case.__dict__ | {"prompt": case.prompt},
-            "status": "completed",
-            "temperature": temperature,
-            "seed": seed,
-            "content": content,
-            "output": parsed,
-            "validation": validation,
-        }
-    except (OSError, URLError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+    except (OSError, URLError, KeyError, TypeError, ValueError) as exc:
         return {
             "case": case.__dict__ | {"prompt": case.prompt},
             "status": "blocked",
@@ -211,6 +227,28 @@ def sample_case(
             "error": str(exc),
             "validation": _empty_validation(),
         }
+    try:
+        parsed = json.loads(content)
+    except json.JSONDecodeError as exc:
+        return {
+            "case": case.__dict__ | {"prompt": case.prompt},
+            "status": "completed",
+            "temperature": temperature,
+            "seed": seed,
+            "content": content,
+            "error": str(exc),
+            "validation": _empty_validation(),
+        }
+    validation = validate_booth_output(case, parsed)
+    return {
+        "case": case.__dict__ | {"prompt": case.prompt},
+        "status": "completed",
+        "temperature": temperature,
+        "seed": seed,
+        "content": content,
+        "output": parsed,
+        "validation": validation,
+    }
 
 
 def validate_booth_output(case: BoothCase, output: Any) -> dict[str, bool]:

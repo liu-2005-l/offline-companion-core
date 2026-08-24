@@ -37,6 +37,14 @@
 
 ---
 
+## 实验记录
+
+| 文件 | 用途 |
+|------|------|
+| [`gbnf-booth-experiment-2026-08-24.json`](./gbnf-booth-experiment-2026-08-24.json) | Batch C Booth GBNF 步骤生成实验记录；pre-flight 通过，20/20 完成，`full_success_rate=0.0` |
+
+---
+
 ## 临时文档
 
 | 文件 | 用途 |

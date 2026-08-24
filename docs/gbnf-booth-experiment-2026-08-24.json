@@ -1,0 +1,1184 @@
+{
+  "experiment": "booth_gbnf_plan_as_reasoning",
+  "case_set": "distribution",
+  "samples": 20,
+  "temperature": 0.7,
+  "seed": 20260824,
+  "decision_metric": "full_success_rate",
+  "diagnostic_metrics": [
+    "result_rate",
+    "recoding_rate",
+    "partial_products_rate",
+    "rounds_rate"
+  ],
+  "cases": [
+    {
+      "label": "small_7x3",
+      "multiplicand": 7,
+      "multiplier": 3,
+      "prompt": "请严格按 Booth 乘法算法计算 7 乘 3。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "small_3x7",
+      "multiplicand": 3,
+      "multiplier": 7,
+      "prompt": "请严格按 Booth 乘法算法计算 3 乘 7。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "small_5x8",
+      "multiplicand": 5,
+      "multiplier": 8,
+      "prompt": "请严格按 Booth 乘法算法计算 5 乘 8。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "square_6x6",
+      "multiplicand": 6,
+      "multiplier": 6,
+      "prompt": "请严格按 Booth 乘法算法计算 6 乘 6。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "single_bit_9x4",
+      "multiplicand": 9,
+      "multiplier": 4,
+      "prompt": "请严格按 Booth 乘法算法计算 9 乘 4。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "teen_12x11",
+      "multiplicand": 12,
+      "multiplier": 11,
+      "prompt": "请严格按 Booth 乘法算法计算 12 乘 11。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "teen_15x3",
+      "multiplicand": 15,
+      "multiplier": 3,
+      "prompt": "请严格按 Booth 乘法算法计算 15 乘 3。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "zero_left",
+      "multiplicand": 0,
+      "multiplier": 9,
+      "prompt": "请严格按 Booth 乘法算法计算 0 乘 9。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "zero_right",
+      "multiplicand": 10,
+      "multiplier": 0,
+      "prompt": "请严格按 Booth 乘法算法计算 10 乘 0。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "negative_left",
+      "multiplicand": -3,
+      "multiplier": 7,
+      "prompt": "请严格按 Booth 乘法算法计算 -3 乘 7。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "negative_right",
+      "multiplicand": 7,
+      "multiplier": -3,
+      "prompt": "请严格按 Booth 乘法算法计算 7 乘 -3。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "negative_both",
+      "multiplicand": -4,
+      "multiplier": -5,
+      "prompt": "请严格按 Booth 乘法算法计算 -4 乘 -5。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "power_boundary",
+      "multiplicand": 16,
+      "multiplier": 7,
+      "prompt": "请严格按 Booth 乘法算法计算 16 乘 7。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "wide_31x2",
+      "multiplicand": 31,
+      "multiplier": 2,
+      "prompt": "请严格按 Booth 乘法算法计算 31 乘 2。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "mid_13x9",
+      "multiplicand": 13,
+      "multiplier": 9,
+      "prompt": "请严格按 Booth 乘法算法计算 13 乘 9。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "mid_21x5",
+      "multiplicand": 21,
+      "multiplier": 5,
+      "prompt": "请严格按 Booth 乘法算法计算 21 乘 5。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "mid_24x12",
+      "multiplicand": 24,
+      "multiplier": 12,
+      "prompt": "请严格按 Booth 乘法算法计算 24 乘 12。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "large_77x88",
+      "multiplicand": 77,
+      "multiplier": 88,
+      "prompt": "请严格按 Booth 乘法算法计算 77 乘 88。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "large_123x45",
+      "multiplicand": 123,
+      "multiplier": 45,
+      "prompt": "请严格按 Booth 乘法算法计算 123 乘 45。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    },
+    {
+      "label": "carry_63x15",
+      "multiplicand": 63,
+      "multiplier": 15,
+      "prompt": "请严格按 Booth 乘法算法计算 63 乘 15。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+    }
+  ],
+  "preflight": {
+    "status": "completed",
+    "content": "OK",
+    "grammar_enforced": true
+  },
+  "status": "closed",
+  "decision": "关闭入档：结构约束下 Booth 全步骤正确率低于阈值",
+  "completed": 20,
+  "metrics": {
+    "input_rate": 0.95,
+    "result_rate": 0.8,
+    "recoding_rate": 0.0,
+    "partial_products_rate": 0.05,
+    "rounds_rate": 0.0,
+    "full_success_rate": 0.0
+  },
+  "results": [
+    {
+      "case": {
+        "label": "small_7x3",
+        "multiplicand": 7,
+        "multiplier": 3,
+        "prompt": "请严格按 Booth 乘法算法计算 7 乘 3。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260824,
+      "content": "{\n  \"multiplicand\": 7,\n  \"multiplier\": 3,\n  \"recoding\":   \"\",\n  \"partial_products\": [\n    21,\n    6\n  ],\n  \"rounds\": [\n    {\n      \"round\": 0,\n      \"pair\":     \"00\",\n      \"accumulator_after_shift\": 21,\n      \"multiplier_after_shift\": 1\n    },\n    {\n      \"round\": 1,\n      \"pair\":  \"01\",\n      \"accumulator_after_shift\": 42,\n      \"multiplier_after_shift\": 3\n    }\n  ],\n  \"result\": 21\n}",
+      "output": {
+        "multiplicand": 7,
+        "multiplier": 3,
+        "recoding": "",
+        "partial_products": [
+          21,
+          6
+        ],
+        "rounds": [
+          {
+            "round": 0,
+            "pair": "00",
+            "accumulator_after_shift": 21,
+            "multiplier_after_shift": 1
+          },
+          {
+            "round": 1,
+            "pair": "01",
+            "accumulator_after_shift": 42,
+            "multiplier_after_shift": 3
+          }
+        ],
+        "result": 21
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "small_3x7",
+        "multiplicand": 3,
+        "multiplier": 7,
+        "prompt": "请严格按 Booth 乘法算法计算 3 乘 7。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260825,
+      "content": "{\n  \"multiplicand\": 3,\n  \"multiplier\": 7,\n  \"recoding\":   \"\",\n  \"partial_products\": [\n    2,\n    6,\n    14\n  ],\n  \"rounds\": [\n    {\n      \"round\": 1,\n      \"pair\":   \"00\",\n      \"accumulator_after_shift\": 0,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 2,\n      \"pair\":  \"01\",\n      \"accumulator_after_shift\": 2,\n      \"multiplier_after_shift\": 1\n    }\n  ],\n  \"result\": 21\n}",
+      "output": {
+        "multiplicand": 3,
+        "multiplier": 7,
+        "recoding": "",
+        "partial_products": [
+          2,
+          6,
+          14
+        ],
+        "rounds": [
+          {
+            "round": 1,
+            "pair": "00",
+            "accumulator_after_shift": 0,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 2,
+            "pair": "01",
+            "accumulator_after_shift": 2,
+            "multiplier_after_shift": 1
+          }
+        ],
+        "result": 21
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "small_5x8",
+        "multiplicand": 5,
+        "multiplier": 8,
+        "prompt": "请严格按 Booth 乘法算法计算 5 乘 8。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260826,
+      "content": "{\n  \"multiplicand\": 5,\n  \"multiplier\": 8,\n  \"recoding\":   \"\",\n  \"partial_products\": [\n    4,\n    4,\n    4\n  ],\n  \"rounds\": [\n    {\n      \"round\": 1,\n      \"pair\":    \"00\",\n      \"accumulator_after_shift\":  4,\n      \"multiplier_after_shift\":  4\n    },\n    {\n      \"round\": 2,\n      \"pair\":   \"00\",\n      \"accumulator_after_shift\":  4,\n      \"multiplier_after_shift\":  4\n    },\n    {\n      \"round\": 3,\n      \"pair\":   \"00\",\n      \"accumulator_after_shift\":  4,\n      \"multiplier_after_shift\":  4\n    }\n  ],\n  \"result\": 40\n}",
+      "output": {
+        "multiplicand": 5,
+        "multiplier": 8,
+        "recoding": "",
+        "partial_products": [
+          4,
+          4,
+          4
+        ],
+        "rounds": [
+          {
+            "round": 1,
+            "pair": "00",
+            "accumulator_after_shift": 4,
+            "multiplier_after_shift": 4
+          },
+          {
+            "round": 2,
+            "pair": "00",
+            "accumulator_after_shift": 4,
+            "multiplier_after_shift": 4
+          },
+          {
+            "round": 3,
+            "pair": "00",
+            "accumulator_after_shift": 4,
+            "multiplier_after_shift": 4
+          }
+        ],
+        "result": 40
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "square_6x6",
+        "multiplicand": 6,
+        "multiplier": 6,
+        "prompt": "请严格按 Booth 乘法算法计算 6 乘 6。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260827,
+      "content": "{\n  \"multiplicand\": 6,\n  \"multiplier\": 6,\n  \"recoding\":   \"\",\n  \"partial_products\": [\n    3,\n    12,\n    18\n  ],\n  \"rounds\": [\n    {\n      \"round\": 1,\n      \"pair\":   \"00\",\n      \"accumulator_after_shift\":  3,\n      \"multiplier_after_shift\":  0\n    },\n    {\n      \"round\": 2,\n      \"pair\":   \"01\",\n      \"accumulator_after_shift\":  12,\n      \"multiplier_after_shift\":  1\n    },\n    {\n      \"round\": 3,\n      \"pair\":   \"10\",\n      \"accumulator_after_shift\":  18,\n      \"multiplier_after_shift\":  0\n    }\n  ],\n  \"result\": 36\n}",
+      "output": {
+        "multiplicand": 6,
+        "multiplier": 6,
+        "recoding": "",
+        "partial_products": [
+          3,
+          12,
+          18
+        ],
+        "rounds": [
+          {
+            "round": 1,
+            "pair": "00",
+            "accumulator_after_shift": 3,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 2,
+            "pair": "01",
+            "accumulator_after_shift": 12,
+            "multiplier_after_shift": 1
+          },
+          {
+            "round": 3,
+            "pair": "10",
+            "accumulator_after_shift": 18,
+            "multiplier_after_shift": 0
+          }
+        ],
+        "result": 36
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "single_bit_9x4",
+        "multiplicand": 9,
+        "multiplier": 4,
+        "prompt": "请严格按 Booth 乘法算法计算 9 乘 4。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260828,
+      "content": "{\n  \"multiplicand\": 9,\n  \"multiplier\": 4,\n  \"recoding\":  \"\",\n  \"partial_products\": [\n    36,\n    9\n  ],\n  \"rounds\": [\n    {\n      \"round\": 1,\n      \"pair\":   \"00\",\n      \"accumulator_after_shift\":  36,\n      \"multiplier_after_shift\":  9\n    }\n  ],\n  \"result\": 36\n}",
+      "output": {
+        "multiplicand": 9,
+        "multiplier": 4,
+        "recoding": "",
+        "partial_products": [
+          36,
+          9
+        ],
+        "rounds": [
+          {
+            "round": 1,
+            "pair": "00",
+            "accumulator_after_shift": 36,
+            "multiplier_after_shift": 9
+          }
+        ],
+        "result": 36
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "teen_12x11",
+        "multiplicand": 12,
+        "multiplier": 11,
+        "prompt": "请严格按 Booth 乘法算法计算 12 乘 11。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260829,
+      "content": "{\n  \"multiplicand\": 12,\n  \"multiplier\": 11,\n  \"recoding\":    \"01100000\",\n  \"partial_products\":    \t[\n      0,\n      12,\n      24,\n      36,\n      48,\n      60,\n      60,\n      60\n    ],\n  \"rounds\":  [\n      {\n        \"round\": 0,\n        \"pair\":   \"01\",\n        \"accumulator_after_shift\":  0,\n        \"multiplier_after_shift\":  0\n      },\n      {\n        \"round\": 1,\n        \"pair\":   \"11\",\n        \"accumulator_after_shift\":  1,\n        \"multiplier_after_shift\":  1\n      },\n      {\n        \"round\": 2,\n        \"pair\":   \"11\",\n        \"accumulator_after_shift\":  2,\n        \"multiplier_after_shift\":  2\n      },\n      {\n        \"round\": 3,\n        \"pair\":   \"01\",\n        \"accumulator_after_shift\":  3,\n        \"multiplier_after_shift\":  3\n      },\n      {\n        \"round\": 4,\n        \"pair\":   \"11\",\n        \"accumulator_after_shift\":  4,\n        \"multiplier_after_shift\":  4\n      },\n      {\n        \"round\": 5,\n        \"pair\":   \"01\",\n        \"accumulator_after_shift\":  5,\n        \"multiplier_after_shift\":  5\n      },\n      {\n        \"round\": 6,\n        \"pair\":   \"11\",\n        \"accumulator_after_shift\":  6,\n        \"multiplier_after_shift\":  6\n      },\n      {\n        \"round\": 7,\n        \"pair\":   \"01\",\n        \"accumulator_after_shift\":  7,\n        \"multiplier_after_shift\":  7\n      }\n    ],\n  \"result\":  72\n}",
+      "output": {
+        "multiplicand": 12,
+        "multiplier": 11,
+        "recoding": "01100000",
+        "partial_products": [
+          0,
+          12,
+          24,
+          36,
+          48,
+          60,
+          60,
+          60
+        ],
+        "rounds": [
+          {
+            "round": 0,
+            "pair": "01",
+            "accumulator_after_shift": 0,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 1,
+            "pair": "11",
+            "accumulator_after_shift": 1,
+            "multiplier_after_shift": 1
+          },
+          {
+            "round": 2,
+            "pair": "11",
+            "accumulator_after_shift": 2,
+            "multiplier_after_shift": 2
+          },
+          {
+            "round": 3,
+            "pair": "01",
+            "accumulator_after_shift": 3,
+            "multiplier_after_shift": 3
+          },
+          {
+            "round": 4,
+            "pair": "11",
+            "accumulator_after_shift": 4,
+            "multiplier_after_shift": 4
+          },
+          {
+            "round": 5,
+            "pair": "01",
+            "accumulator_after_shift": 5,
+            "multiplier_after_shift": 5
+          },
+          {
+            "round": 6,
+            "pair": "11",
+            "accumulator_after_shift": 6,
+            "multiplier_after_shift": 6
+          },
+          {
+            "round": 7,
+            "pair": "01",
+            "accumulator_after_shift": 7,
+            "multiplier_after_shift": 7
+          }
+        ],
+        "result": 72
+      },
+      "validation": {
+        "input": true,
+        "result": false,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "teen_15x3",
+        "multiplicand": 15,
+        "multiplier": 3,
+        "prompt": "请严格按 Booth 乘法算法计算 15 乘 3。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260830,
+      "content": "{\n  \"multiplicand\": 15,\n  \"multiplier\": 3,\n  \"recoding\":   \"\",\n  \"partial_products\": [\n    45,\n    135\n  ],\n  \"rounds\": [\n    {\n      \"round\": 1,\n      \"pair\":   \"10\",\n      \"accumulator_after_shift\":  10,\n      \"multiplier_after_shift\": 10\n    },\n    {\n      \"round\": 2,\n      \"pair\":  \"10\",\n      \"accumulator_after_shift\": 100,\n      \"multiplier_after_shift\": 100\n    }\n  ],\n  \"result\": 45\n}",
+      "output": {
+        "multiplicand": 15,
+        "multiplier": 3,
+        "recoding": "",
+        "partial_products": [
+          45,
+          135
+        ],
+        "rounds": [
+          {
+            "round": 1,
+            "pair": "10",
+            "accumulator_after_shift": 10,
+            "multiplier_after_shift": 10
+          },
+          {
+            "round": 2,
+            "pair": "10",
+            "accumulator_after_shift": 100,
+            "multiplier_after_shift": 100
+          }
+        ],
+        "result": 45
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "zero_left",
+        "multiplicand": 0,
+        "multiplier": 9,
+        "prompt": "请严格按 Booth 乘法算法计算 0 乘 9。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260831,
+      "content": "{\n  \"multiplicand\": 0,\n  \"multiplier\": 9,\n  \"recoding\":  \"\",\n  \"partial_products\": [],\n  \"rounds\": [\n    {\n      \"round\": 0,\n      \"pair\":    \"00\",\n      \"accumulator_after_shift\":   0,\n      \"multiplier_after_shift\":   0\n    },\n    {\n      \"round\": 1,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\":   0,\n      \"multiplier_after_shift\":   0\n    }\n  ],\n  \"result\": 0\n}",
+      "output": {
+        "multiplicand": 0,
+        "multiplier": 9,
+        "recoding": "",
+        "partial_products": [],
+        "rounds": [
+          {
+            "round": 0,
+            "pair": "00",
+            "accumulator_after_shift": 0,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 1,
+            "pair": "00",
+            "accumulator_after_shift": 0,
+            "multiplier_after_shift": 0
+          }
+        ],
+        "result": 0
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "zero_right",
+        "multiplicand": 10,
+        "multiplier": 0,
+        "prompt": "请严格按 Booth 乘法算法计算 10 乘 0。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260832,
+      "content": "{\n  \"multiplicand\": 10,\n  \"multiplier\": 0,\n  \"recoding\":  \"\",\n  \"partial_products\":   [],\n  \"rounds\": [\n    {\n      \"round\": 1,\n      \"pair\":  \"10\",\n      \"accumulator_after_shift\":  0,\n      \"multiplier_after_shift\":  0\n    },\n    {\n      \"round\": 2,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\":  0,\n      \"multiplier_after_shift\":  0\n    },\n    {\n      \"round\": 3,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\":  0,\n      \"multiplier_after_shift\":  0\n    }\n  ],\n  \"result\": 0\n}",
+      "output": {
+        "multiplicand": 10,
+        "multiplier": 0,
+        "recoding": "",
+        "partial_products": [],
+        "rounds": [
+          {
+            "round": 1,
+            "pair": "10",
+            "accumulator_after_shift": 0,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 2,
+            "pair": "00",
+            "accumulator_after_shift": 0,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 3,
+            "pair": "00",
+            "accumulator_after_shift": 0,
+            "multiplier_after_shift": 0
+          }
+        ],
+        "result": 0
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": true,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "negative_left",
+        "multiplicand": -3,
+        "multiplier": 7,
+        "prompt": "请严格按 Booth 乘法算法计算 -3 乘 7。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260833,
+      "content": "{\n  \"multiplicand\": -3,\n  \"multiplier\": 7,\n  \"recoding\": \"11011\",\n  \"partial_products\": [\n    0,\n    0,\n    0,\n    0,\n    0,\n    28\n  ],\n  \"rounds\": [\n    {\n      \"round\": 1,\n      \"pair\": \"11\",\n      \"accumulator_after_shift\": 1,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 2,\n      \"pair\": \"01\",\n      \"accumulator_after_shift\": 1,\n      \"multiplier_after_shift\": 1\n    },\n    {\n      \"round\": 3,\n      \"pair\": \"00\",\n      \"accumulator_after_shift\": 1,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 4,\n      \"pair\": \"00\",\n      \"accumulator_after_shift\": 1,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 5,\n      \"pair\": \"00\",\n      \"accumulator_after_shift\": 1,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 6,\n      \"pair\": \"00\",\n      \"accumulator_after_shift\": 1,\n      \"multiplier_after_shift\": 0\n    }\n  ],\n  \"result\": -21\n}",
+      "output": {
+        "multiplicand": -3,
+        "multiplier": 7,
+        "recoding": "11011",
+        "partial_products": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          28
+        ],
+        "rounds": [
+          {
+            "round": 1,
+            "pair": "11",
+            "accumulator_after_shift": 1,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 2,
+            "pair": "01",
+            "accumulator_after_shift": 1,
+            "multiplier_after_shift": 1
+          },
+          {
+            "round": 3,
+            "pair": "00",
+            "accumulator_after_shift": 1,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 4,
+            "pair": "00",
+            "accumulator_after_shift": 1,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 5,
+            "pair": "00",
+            "accumulator_after_shift": 1,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 6,
+            "pair": "00",
+            "accumulator_after_shift": 1,
+            "multiplier_after_shift": 0
+          }
+        ],
+        "result": -21
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "negative_right",
+        "multiplicand": 7,
+        "multiplier": -3,
+        "prompt": "请严格按 Booth 乘法算法计算 7 乘 -3。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260834,
+      "content": "{\n  \"multiplicand\": 7,\n  \"multiplier\": -3,\n  \"recoding\": \"11\",\n  \"partial_products\": [\n    21,\n    -63\n  ],\n  \"rounds\": [\n    {\n      \"round\": 1,\n      \"pair\": \"11\",\n      \"accumulator_after_shift\": 11,\n      \"multiplier_after_shift\": 11\n    },\n    {\n      \"round\": 2,\n      \"pair\": \"11\",\n      \"accumulator_after_shift\": 11,\n      \"multiplier_after_shift\": 11\n    }\n  ],\n  \"result\": -21\n}",
+      "output": {
+        "multiplicand": 7,
+        "multiplier": -3,
+        "recoding": "11",
+        "partial_products": [
+          21,
+          -63
+        ],
+        "rounds": [
+          {
+            "round": 1,
+            "pair": "11",
+            "accumulator_after_shift": 11,
+            "multiplier_after_shift": 11
+          },
+          {
+            "round": 2,
+            "pair": "11",
+            "accumulator_after_shift": 11,
+            "multiplier_after_shift": 11
+          }
+        ],
+        "result": -21
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "negative_both",
+        "multiplicand": -4,
+        "multiplier": -5,
+        "prompt": "请严格按 Booth 乘法算法计算 -4 乘 -5。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260835,
+      "content": "{\n  \"multiplicand\": -4,\n  \"multiplier\": -5,\n  \"recoding\":   \"\",\n  \"partial_products\": [\n    20,\n    -20\n  ],\n  \"rounds\": [\n    {\n      \"round\": 0,\n      \"pair\":   \"00\",\n      \"accumulator_after_shift\":  0,\n      \"multiplier_after_shift\":  0\n    },\n    {\n      \"round\": 1,\n      \"pair\":  \"10\",\n      \"accumulator_after_shift\":  5,\n      \"multiplier_after_shift\":  -4\n    }\n  ],\n  \"result\": -20\n}",
+      "output": {
+        "multiplicand": -4,
+        "multiplier": -5,
+        "recoding": "",
+        "partial_products": [
+          20,
+          -20
+        ],
+        "rounds": [
+          {
+            "round": 0,
+            "pair": "00",
+            "accumulator_after_shift": 0,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 1,
+            "pair": "10",
+            "accumulator_after_shift": 5,
+            "multiplier_after_shift": -4
+          }
+        ],
+        "result": -20
+      },
+      "validation": {
+        "input": true,
+        "result": false,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "power_boundary",
+        "multiplicand": 16,
+        "multiplier": 7,
+        "prompt": "请严格按 Booth 乘法算法计算 16 乘 7。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260836,
+      "content": "{\n  \"multiplicand\": 16,\n  \"multiplier\": 7,\n  \"recoding\":   \"\",\n  \"partial_products\": [\n    12,\n    14,\n    14,\n    14,\n    14,\n    14\n  ],\n  \"rounds\": [\n    {\n      \"round\": 0,\n      \"pair\":   \"10\",\n      \"accumulator_after_shift\": 12,\n      \"multiplier_after_shift\": 12\n    },\n    {\n      \"round\": 1,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\": 14,\n      \"multiplier_after_shift\": 14\n    },\n    {\n      \"round\": 2,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\": 14,\n      \"multiplier_after_shift\": 14\n    },\n    {\n      \"round\": 3,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\": 14,\n      \"multiplier_after_shift\": 14\n    },\n    {\n      \"round\": 4,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\": 14,\n      \"multiplier_after_shift\": 14\n    },\n    {\n      \"round\": 5,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\": 14,\n      \"multiplier_after_shift\": 14\n    }\n  ],\n  \"result\": 112\n}",
+      "output": {
+        "multiplicand": 16,
+        "multiplier": 7,
+        "recoding": "",
+        "partial_products": [
+          12,
+          14,
+          14,
+          14,
+          14,
+          14
+        ],
+        "rounds": [
+          {
+            "round": 0,
+            "pair": "10",
+            "accumulator_after_shift": 12,
+            "multiplier_after_shift": 12
+          },
+          {
+            "round": 1,
+            "pair": "11",
+            "accumulator_after_shift": 14,
+            "multiplier_after_shift": 14
+          },
+          {
+            "round": 2,
+            "pair": "11",
+            "accumulator_after_shift": 14,
+            "multiplier_after_shift": 14
+          },
+          {
+            "round": 3,
+            "pair": "11",
+            "accumulator_after_shift": 14,
+            "multiplier_after_shift": 14
+          },
+          {
+            "round": 4,
+            "pair": "11",
+            "accumulator_after_shift": 14,
+            "multiplier_after_shift": 14
+          },
+          {
+            "round": 5,
+            "pair": "11",
+            "accumulator_after_shift": 14,
+            "multiplier_after_shift": 14
+          }
+        ],
+        "result": 112
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "wide_31x2",
+        "multiplicand": 31,
+        "multiplier": 2,
+        "prompt": "请严格按 Booth 乘法算法计算 31 乘 2。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260837,
+      "content": "{\n  \"multiplicand\": 31,\n  \"multiplier\": 2,\n  \"recoding\":   \"\",\n  \"partial_products\": [\n    6,\n    6\n  ],\n  \"rounds\": [\n    {\n      \"round\": 0,\n      \"pair\":   \"10\",\n      \"accumulator_after_shift\": 6,\n      \"multiplier_after_shift\": 6\n    },\n    {\n      \"round\": 1,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\": 6,\n      \"multiplier_after_shift\": 6\n    }\n  ],\n  \"result\": 62\n}",
+      "output": {
+        "multiplicand": 31,
+        "multiplier": 2,
+        "recoding": "",
+        "partial_products": [
+          6,
+          6
+        ],
+        "rounds": [
+          {
+            "round": 0,
+            "pair": "10",
+            "accumulator_after_shift": 6,
+            "multiplier_after_shift": 6
+          },
+          {
+            "round": 1,
+            "pair": "11",
+            "accumulator_after_shift": 6,
+            "multiplier_after_shift": 6
+          }
+        ],
+        "result": 62
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "mid_13x9",
+        "multiplicand": 13,
+        "multiplier": 9,
+        "prompt": "请严格按 Booth 乘法算法计算 13 乘 9。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260838,
+      "content": "{\n  \"multiplicand\": 13,\n  \"multiplier\": 9,\n  \"recoding\":  \"100011\",\n  \"partial_products\": [\n    111111,\n    11111,\n    1111,\n    111,\n    11,\n    1\n  ],\n  \"rounds\": [\n    {\n      \"round\": 0,\n      \"pair\":  \"10\",\n      \"accumulator_after_shift\": 10,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 1,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\": 1,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 2,\n      \"pair\":  \"10\",\n      \"accumulator_after_shift\": 2,\n      \"multiplier_after_shift\": 1\n    },\n    {\n      \"round\": 3,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\": 3,\n      \"multiplier_after_shift\": 1\n    },\n    {\n      \"round\": 4,\n      \"pair\":  \"10\",\n      \"accumulator_after_shift\": 4,\n      \"multiplier_after_shift\": 1\n    },\n    {\n      \"round\": 5,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\": 5,\n      \"multiplier_after_shift\": 1\n    },\n    {\n      \"round\": 6,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\": 6,\n      \"multiplier_after_shift\": 1\n    }\n  ],\n  \"result\": 117\n}",
+      "output": {
+        "multiplicand": 13,
+        "multiplier": 9,
+        "recoding": "100011",
+        "partial_products": [
+          111111,
+          11111,
+          1111,
+          111,
+          11,
+          1
+        ],
+        "rounds": [
+          {
+            "round": 0,
+            "pair": "10",
+            "accumulator_after_shift": 10,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 1,
+            "pair": "11",
+            "accumulator_after_shift": 1,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 2,
+            "pair": "10",
+            "accumulator_after_shift": 2,
+            "multiplier_after_shift": 1
+          },
+          {
+            "round": 3,
+            "pair": "11",
+            "accumulator_after_shift": 3,
+            "multiplier_after_shift": 1
+          },
+          {
+            "round": 4,
+            "pair": "10",
+            "accumulator_after_shift": 4,
+            "multiplier_after_shift": 1
+          },
+          {
+            "round": 5,
+            "pair": "11",
+            "accumulator_after_shift": 5,
+            "multiplier_after_shift": 1
+          },
+          {
+            "round": 6,
+            "pair": "11",
+            "accumulator_after_shift": 6,
+            "multiplier_after_shift": 1
+          }
+        ],
+        "result": 117
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "mid_21x5",
+        "multiplicand": 21,
+        "multiplier": 5,
+        "prompt": "请严格按 Booth 乘法算法计算 21 乘 5。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260839,
+      "content": "{\n  \"multiplicand\": 21,\n  \"multiplier\": 5,\n  \"recoding\":   \"\",\n  \"partial_products\": [\n    105,\n    105\n  ],\n  \"rounds\": [\n    {\n      \"round\": 1,\n      \"pair\":   \"10\",\n      \"accumulator_after_shift\":  105,\n      \"multiplier_after_shift\":  5\n    },\n    {\n      \"round\": 2,\n      \"pair\":   \"01\",\n      \"accumulator_after_shift\":  110,\n      \"multiplier_after_shift\":  0\n    }\n  ],\n  \"result\": 105\n}",
+      "output": {
+        "multiplicand": 21,
+        "multiplier": 5,
+        "recoding": "",
+        "partial_products": [
+          105,
+          105
+        ],
+        "rounds": [
+          {
+            "round": 1,
+            "pair": "10",
+            "accumulator_after_shift": 105,
+            "multiplier_after_shift": 5
+          },
+          {
+            "round": 2,
+            "pair": "01",
+            "accumulator_after_shift": 110,
+            "multiplier_after_shift": 0
+          }
+        ],
+        "result": 105
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "mid_24x12",
+        "multiplicand": 24,
+        "multiplier": 12,
+        "prompt": "请严格按 Booth 乘法算法计算 24 乘 12。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260840,
+      "content": "{\n  \"multiplicand\": 24,\n  \"multiplier\": 12,\n  \"recoding\": \"\",\n  \"partial_products\": [\n    288,\n    336,\n    384\n  ],\n  \"rounds\": [\n    {\n      \"round\": 1,\n      \"pair\":   \"00\",\n      \"accumulator_after_shift\": 288,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 2,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\": 288,\n      \"multiplier_after_shift\": 336\n    },\n    {\n      \"round\": 3,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\": 288,\n      \"multiplier_after_shift\": 384\n    }\n  ],\n  \"result\": 288\n}",
+      "output": {
+        "multiplicand": 24,
+        "multiplier": 12,
+        "recoding": "",
+        "partial_products": [
+          288,
+          336,
+          384
+        ],
+        "rounds": [
+          {
+            "round": 1,
+            "pair": "00",
+            "accumulator_after_shift": 288,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 2,
+            "pair": "00",
+            "accumulator_after_shift": 288,
+            "multiplier_after_shift": 336
+          },
+          {
+            "round": 3,
+            "pair": "00",
+            "accumulator_after_shift": 288,
+            "multiplier_after_shift": 384
+          }
+        ],
+        "result": 288
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "large_77x88",
+        "multiplicand": 77,
+        "multiplier": 88,
+        "prompt": "请严格按 Booth 乘法算法计算 77 乘 88。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260841,
+      "content": "{\n  \"multiplicand\": 77,\n  \"multiplier\": 88,\n  \"recoding\":   \"\",\n  \"partial_products\": [\n    616,\n    560,\n    448,\n    352,\n    280,\n    112\n  ],\n  \"rounds\": [\n    {\n      \"round\": 0,\n      \"pair\":   \"11\",\n      \"accumulator_after_shift\":  616,\n      \"multiplier_after_shift\":  616\n    },\n    {\n      \"round\": 1,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\":  560,\n      \"multiplier_after_shift\":  560\n    },\n    {\n      \"round\": 2,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\":  448,\n      \"multiplier_after_shift\":  448\n    },\n    {\n      \"round\": 3,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\":  352,\n      \"multiplier_after_shift\":  352\n    },\n    {\n      \"round\": 4,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\":  280,\n      \"multiplier_after_shift\":  280\n    },\n    {\n      \"round\": 5,\n      \"pair\":  \"11\",\n      \"accumulator_after_shift\":  112,\n      \"multiplier_after_shift\":  112\n    }\n  ],\n  \"result\": 6756\n}",
+      "output": {
+        "multiplicand": 77,
+        "multiplier": 88,
+        "recoding": "",
+        "partial_products": [
+          616,
+          560,
+          448,
+          352,
+          280,
+          112
+        ],
+        "rounds": [
+          {
+            "round": 0,
+            "pair": "11",
+            "accumulator_after_shift": 616,
+            "multiplier_after_shift": 616
+          },
+          {
+            "round": 1,
+            "pair": "11",
+            "accumulator_after_shift": 560,
+            "multiplier_after_shift": 560
+          },
+          {
+            "round": 2,
+            "pair": "11",
+            "accumulator_after_shift": 448,
+            "multiplier_after_shift": 448
+          },
+          {
+            "round": 3,
+            "pair": "11",
+            "accumulator_after_shift": 352,
+            "multiplier_after_shift": 352
+          },
+          {
+            "round": 4,
+            "pair": "11",
+            "accumulator_after_shift": 280,
+            "multiplier_after_shift": 280
+          },
+          {
+            "round": 5,
+            "pair": "11",
+            "accumulator_after_shift": 112,
+            "multiplier_after_shift": 112
+          }
+        ],
+        "result": 6756
+      },
+      "validation": {
+        "input": true,
+        "result": false,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "large_123x45",
+        "multiplicand": 123,
+        "multiplier": 45,
+        "prompt": "请严格按 Booth 乘法算法计算 123 乘 45。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260842,
+      "content": "{\n  \"multiplicand\": 123,\n  \"multiplier\": 45,\n  \"recoding\":   \"\",\n  \"partial_products\":   [\n    0,\n    0,\n    0,\n    0,\n    0,\n    0,\n    0,\n    0,\n    0,\n    0,\n    0,\n    0,\n    0,\n    0,\n    0\n  ],\n  \"rounds\": [\n    {\n      \"round\": 0,\n      \"pair\":   \"00\",\n      \"accumulator_after_shift\":  0,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 1,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\":  0,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 2,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\":  0,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 3,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\":  0,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 4,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\":  0,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 5,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\":  0,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 6,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\":  0,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 7,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\":  0,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 8,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\":  0,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\": 9,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\":  0,\n      \"multiplier_after_shift\": 0\n    },\n    {\n      \"round\":",
+      "error": "Expecting value: line 84 column 15 (char 1465)",
+      "validation": {
+        "input": false,
+        "result": false,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    },
+    {
+      "case": {
+        "label": "carry_63x15",
+        "multiplicand": 63,
+        "multiplier": 15,
+        "prompt": "请严格按 Booth 乘法算法计算 63 乘 15。只输出 JSON，不要解释。JSON 字段必须是 multiplicand、multiplier、recoding、partial_products、rounds、result。rounds 每项只包含 round、pair、accumulator_after_shift、multiplier_after_shift。"
+      },
+      "status": "completed",
+      "temperature": 0.7,
+      "seed": 20260843,
+      "content": "{\n  \"multiplicand\": 63,\n  \"multiplier\": 15,\n  \"recoding\":   \"\",\n  \"partial_products\":   [],\n  \"rounds\":  [\n    {\n      \"round\": 0,\n      \"pair\":   \"00\",\n      \"accumulator_after_shift\":  63,\n      \"multiplier_after_shift\":  0\n    },\n    {\n      \"round\": 1,\n      \"pair\":  \"00\",\n      \"accumulator_after_shift\":  63,\n      \"multiplier_after_shift\":  15\n    }\n  ],\n  \"result\": 945\n}",
+      "output": {
+        "multiplicand": 63,
+        "multiplier": 15,
+        "recoding": "",
+        "partial_products": [],
+        "rounds": [
+          {
+            "round": 0,
+            "pair": "00",
+            "accumulator_after_shift": 63,
+            "multiplier_after_shift": 0
+          },
+          {
+            "round": 1,
+            "pair": "00",
+            "accumulator_after_shift": 63,
+            "multiplier_after_shift": 15
+          }
+        ],
+        "result": 945
+      },
+      "validation": {
+        "input": true,
+        "result": true,
+        "recoding": false,
+        "partial_products": false,
+        "rounds": false,
+        "full_success": false
+      }
+    }
+  ]
+}

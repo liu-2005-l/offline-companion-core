@@ -27,7 +27,7 @@
 - 修复确定性工具计划执行：builtin 工具不再误写入样本库，calculator 结果在计划快照中保持 JSON 可序列化。
 - 扩展方法约束双通道识别：算法专名（如 `booth`）可直接触发确定性工具，不再要求后缀必须出现“算法”。
 - 补齐拆解链路可观测性：算术审计 info 日志记录提取数、失败数与跳过原因；拆解决策日志记录 R3/B3/B4 命中详情；LLM 拆解原始输出保留 debug 全文并输出可检索元数据。
-- 升级 Batch C GBNF 实验 harness 为 Booth 步骤生成协议：默认 20 个不同乘法对、固定温度与 seed、全步骤正确率判定，并在 sidecar pre-flight 不通过时以 blocked 实验档收口。
+- 完成 Batch C Booth GBNF 实验判决：托管 sidecar pre-flight 确认 grammar 生效，20 个不同乘法对全量完成；`full_success_rate=0.0`，plan-as-reasoning 关闭入档，确定性算法继续走工具化路径。
 
 ## v1.6.1 · 2026-08-20（Windows 窗口适配修复）
 

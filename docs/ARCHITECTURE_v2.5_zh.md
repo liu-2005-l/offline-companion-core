@@ -811,7 +811,7 @@ execute_turn_stream() 遇到需要 Consent 的 step
 
 方法约束识别采用双通道：传统的“实体 + 算法/协议/格式”类别模式继续保留，同时受控算法专名（如 `booth`、`CRC`、`RSA`）在“按/用/通过/采用”后可直接命中，覆盖“按照 booth 计算”这类自然表达。
 
-B4 GBNF 仍处于实验阶段：`scripts/gbnf_experiment.py` 对本地 llama-server 发起 Booth 步骤 JSON 生成实验，默认使用 20 个不同乘法对、`temperature=0.7` 与固定 seed；主判据为结果、重编码、部分积和轮次全部正确的 `full_success_rate`，逐项正确率仅用于定位。实验前必须先用 trivial grammar 做 pre-flight；若 sidecar 不在线或 grammar 字段不可用，实验以 blocked 入档，不伪造 plan-as-reasoning 判决。当前生产 Backend 尚未透传 grammar，实验 blocked 不改变生产路由。
+B4 GBNF 实验已完成一轮 Booth 步骤 JSON 生成判决：`scripts/gbnf_experiment.py` 通过托管 sidecar 启动本地 llama-server，pre-flight 确认 grammar 字段生效后，使用 20 个不同乘法对、`temperature=0.7` 与固定 seed 采样。主判据为结果、重编码、部分积和轮次全部正确的 `full_success_rate`，逐项正确率仅用于定位。本轮 20/20 完成，`full_success_rate=0.0`，结果数值正确率为 0.8，但重编码、轮次全错，因此 plan-as-reasoning 关闭入档；确定性算法域继续以工具化为唯一路径。实验记录见 `docs/gbnf-booth-experiment-2026-08-24.json`。
 
 #### 6.4.3 B3 安全模块
 
