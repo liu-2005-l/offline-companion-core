@@ -468,7 +468,7 @@ def bootstrap_ui_session(
         ),
         quicksort_tool,
     )
-    tool_invoker = ToolInvoker(tool_registry, consent_gateway=consent_gateway)
+    tool_invoker = ToolInvoker(tool_registry, consent_gateway=consent_gateway, event_stream=event_stream)
     orchestrator = ConversationOrchestrator(
         session_core=session_core,
         backend=backend,

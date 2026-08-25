@@ -809,6 +809,8 @@ execute_turn_stream() 遇到需要 Consent 的 step
 
 确定性算法不交给 LLM 推理：当前工具集包含本地 `algorithm_booth`、`algorithm_crc32`、`algorithm_gcd`、`algorithm_quicksort` 与 `calculator`。算法请求识别后直接生成两步计划——先执行纯 Python 确定性工具并返回真实中间态，再由本地模型仅转述工具结果；基础算术请求则由 calculator 确定性执行四则或整数幂，并支持中文数字解析。CRC-32 工具固定 UTF-8 编码，自实现按位迭代并在工具本体内与 `zlib.crc32` 交叉验证，输入超过 64 个 UTF-8 字节时显式拒绝且不截断；欧几里得工具返回辗转相除余数序列，并锁定零值与负数绝对值语义；快速排序工具返回 Lomuto 分区快照。工具步骤使用固定 `tool_args`，不经样本检索或模型拆解；最终正文仍经过统一算术审计。
 
+Tool 执行会向事件流写入 `tool/call` 与 `tool/result`，payload 包含 `tool_id`、`session_id`、执行状态和可辨识参数；事件写入失败不阻断主执行，但会留下 debug 诊断日志。该事件层用于红队判例区分“路由未命中 / 工具执行失败 / 转述改写数值”。
+
 方法约束识别采用双通道：传统的“实体 + 算法/协议/格式”类别模式继续保留，同时受控算法专名在“按/用/通过/采用”后可直接命中，覆盖“按照 booth 计算”这类自然表达。受控专名不再由拆解器手写维护，而是在启动期从 `ToolRegistry` 中所有可用 `ToolManifest.algorithm_names` 生成；裸意图触发词独立声明在 `ToolManifest.trigger_keywords`，两类词汇分字段同源聚合，避免 CRC/MD5/RSA/SHA 等专名与实际工具集漂移。触发词匹配两侧统一走大小写和标点归一，覆盖“CRC 校验值”这类拉丁大小写变体；历史硬编码中的 `utf-8`/`utf8` 不再作为算法专名保留，带“编码/格式”的输入继续走类别通道，裸“按 UTF-8 处理”类输入视为工具词典外请求。
 
 B4 GBNF 实验已完成一轮 Booth 步骤 JSON 生成判决：`scripts/gbnf_experiment.py` 通过托管 sidecar 启动本地 llama-server，pre-flight 确认 grammar 字段生效后，使用 20 个不同乘法对、`temperature=0.7` 与固定 seed 采样。主判据为结果、重编码、部分积和轮次全部正确的 `full_success_rate`，逐项正确率仅用于定位。本轮 20/20 完成，`full_success_rate=0.0`，结果数值正确率为 0.8，但重编码、轮次全错，因此 plan-as-reasoning 关闭入档；确定性算法域继续以工具化为唯一路径。实验记录见 `docs/gbnf-booth-experiment-2026-08-24.json`。

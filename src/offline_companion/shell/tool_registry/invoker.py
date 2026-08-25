@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
+from typing import Any
 
 from offline_companion.core.plan_orchestrator import ConsentRequest
 from offline_companion.shared.types import PrivacyMode, PurposeType, ToolManifest, ToolResult
@@ -14,6 +16,8 @@ from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGat
 
 from .errors import ToolBlockedError
 from .registry import ToolRegistry
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -39,6 +43,7 @@ class ToolInvoker:
 
     registry: ToolRegistry
     consent_gateway: UIHostConsentGateway | None = None
+    event_stream: Any | None = None
     pending_actions: dict[str, _PendingToolAction] = field(default_factory=dict)
 
     def execute(
@@ -54,23 +59,28 @@ class ToolInvoker:
         try:
             manifest = self.registry.require_manifest(tool_id)
         except KeyError as exc:
-            return self._error_result(
+            result = self._error_result(
                 tool_id,
                 code="tool_not_found",
                 message=str(exc),
                 started_at=started_at,
                 session_id=session_id,
             )
+            self._append_tool_result(result, session_id=session_id)
+            return result
+        self._append_tool_call(manifest, params=params, session_id=session_id)
         permission = self.registry.resolve_permission(tool_id, privacy_mode=privacy_mode)
         if permission == "deny":
-            return self._denied_result(
+            result = self._denied_result(
                 manifest,
                 started_at=started_at,
                 reason="permission_denied",
                 session_id=session_id,
             )
+            self._append_tool_result(result, session_id=session_id)
+            return result
         if permission == "ask":
-            return self._request_consent(
+            result = self._request_consent(
                 action="execute",
                 manifest=manifest,
                 params=params,
@@ -79,7 +89,11 @@ class ToolInvoker:
                 started_at=started_at,
                 purpose_type=PurposeType.TOOL_USE,
             )
-        return self._execute_allowed(manifest, params=params, session_id=session_id, started_at=started_at)
+            self._append_tool_result(result, session_id=session_id)
+            return result
+        result = self._execute_allowed(manifest, params=params, session_id=session_id, started_at=started_at)
+        self._append_tool_result(result, session_id=session_id)
+        return result
 
     def enable_external(
         self,
@@ -341,6 +355,48 @@ class ToolInvoker:
         if not isinstance(parsed, dict):
             raise TypeError("external tool response must be a JSON object")
         return {str(key): value for key, value in parsed.items()}
+
+    def _append_tool_call(
+        self,
+        manifest: ToolManifest,
+        *,
+        params: dict[str, object],
+        session_id: str,
+    ) -> None:
+        """摘要：向事件流记录 Tool 调用请求，不阻塞主执行。"""
+        if self.event_stream is None:
+            return
+        try:
+            self.event_stream.append(
+                "tool/call",
+                {
+                    "tool_id": manifest.tool_id,
+                    "tool_type": manifest.tool_type,
+                    "scope": manifest.scope,
+                    "session_id": session_id,
+                    "params": dict(params),
+                },
+            )
+        except (RuntimeError, TypeError, ValueError):
+            logger.debug("Tool 调用事件写入失败，已保留主执行结果", exc_info=True)
+
+    def _append_tool_result(self, result: ToolResult, *, session_id: str) -> None:
+        """摘要：向事件流记录 Tool 执行结果，不阻塞主执行。"""
+        if self.event_stream is None:
+            return
+        try:
+            self.event_stream.append(
+                "tool/result",
+                {
+                    "tool_id": result.tool_id,
+                    "status": result.status,
+                    "session_id": session_id,
+                    "duration_ms": result.duration_ms,
+                    "error": result.error,
+                },
+            )
+        except (RuntimeError, TypeError, ValueError):
+            logger.debug("Tool 结果事件写入失败，已保留主执行结果", exc_info=True)
 
     def _completed_result(
         self,

@@ -32,6 +32,7 @@
 - 完成 Batch D-2 工具扩容：新增 `algorithm_crc32`、`algorithm_gcd`、`algorithm_quicksort` 三个本地确定性算法 Tool；CRC-32 在工具本体内执行按位迭代并与 `zlib.crc32` 交叉验证，欧几里得返回余数序列，快速排序返回 Lomuto 分区快照；拆解器按 manifest 映射消费 `trigger_keywords`，裸“最大公约数”和大写 `CRC` 输入可直接路由工具。
 - Batch D-2 验证基线：`pytest -q` 为 1071 passed、3 skipped；`scripts/full_acceptance.py --skip-gpu` 全部 10/10 通过。
 - 完成 Batch D-3 降级链与边界补账：CRC-32 输入在工具本体拒绝超过 64 个 UTF-8 字节且不截断，新增 `123456789 -> 0xCBF43926` 标准 check 值；欧几里得锁定 `gcd(0,n)=n`、`gcd(0,0)=0` 与负数绝对值语义；词典外 `MD5` 算法请求进入可见降级链；五判例 drill 路由、执行、转述计划三层全绿。
+- 补齐 Tool 事件层：`ToolInvoker` 执行时写入 `tool/call` 与 `tool/result`，payload 保留 `tool_id`、`session_id`、状态与可辨识参数，用于 Batch E 红队前置 drill 定位工具链路。
 - 已知债务：`PlanDecomposer` 的 `method_entity_names` / manifest 映射参数仍允许空值以兼容测试与冷路径构造；生产 bootstrap 已传入 callable，后续可将生产装配路径升级为缺失即 fail-fast。
 
 ## v1.6.1 · 2026-08-20（Windows 窗口适配修复）

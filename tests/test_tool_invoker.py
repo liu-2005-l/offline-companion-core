@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from offline_companion.core.event_stream import EventStream, build_default_registry
 from offline_companion.core.tools.datetime_tool import datetime_now
 from offline_companion.core.tools.file_read_tool import file_read
+from offline_companion.core.tools.gcd_tool import gcd_tool
 from offline_companion.runtime.storage_index.engine import connect, new_session
 from offline_companion.shared.types import PrivacyMode, ToolManifest
 from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway
@@ -190,3 +192,33 @@ def test_tool_execution_does_not_write_memory(tmp_path: Path) -> None:
     after = conn.execute("SELECT COUNT(*) AS c FROM memory_chunks;").fetchone()["c"]
     assert result.status == "completed"
     assert before == after
+
+
+def test_invoker_emits_tool_call_and_result_events() -> None:
+    """摘要：Tool 执行事件流记录工具名、参数与结果状态，供红队 drill 定位。"""
+    stream = EventStream("s1", build_default_registry())
+    registry = ToolRegistry()
+    registry.register_builtin(
+        _manifest(
+            tool_id="algorithm_gcd",
+            permission="allow",
+            scope="local_computation",
+            handler_function="gcd_tool",
+        ),
+        gcd_tool,
+    )
+    invoker = ToolInvoker(registry, event_stream=stream)
+
+    result = invoker.execute(
+        "algorithm_gcd",
+        {"left": 48, "right": 18},
+        session_id="s1",
+        privacy_mode=PrivacyMode.LOCAL_ONLY,
+    )
+
+    events = stream.get_events()
+    assert result.status == "completed"
+    assert [event.event_type for event in events] == ["tool/call", "tool/result"]
+    assert events[0].payload["tool_id"] == "algorithm_gcd"
+    assert events[0].payload["params"] == {"left": 48, "right": 18}
+    assert events[1].payload["status"] == "completed"
