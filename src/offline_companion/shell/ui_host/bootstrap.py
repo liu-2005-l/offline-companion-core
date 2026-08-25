@@ -46,6 +46,9 @@ from offline_companion.core.subagent_scheduler import RestrictedToolRegistry, Su
 from offline_companion.core.subagent_types import SubagentContext, SubagentRouterResponse
 from offline_companion.core.tools.booth_tool import booth_multiply_tool
 from offline_companion.core.tools.calculator_tool import calculator_tool
+from offline_companion.core.tools.crc32_tool import crc32_tool
+from offline_companion.core.tools.gcd_tool import gcd_tool
+from offline_companion.core.tools.quicksort_tool import quicksort_tool
 from offline_companion.runtime.inference_backend import (
     EchoBackend,
     LlamaServerStartupError,
@@ -393,6 +396,78 @@ def bootstrap_ui_session(
         ),
         calculator_tool,
     )
+    tool_registry.register_builtin(
+        ToolManifest(
+            tool_id="algorithm_crc32",
+            display_name="CRC-32 算法",
+            description="本地确定性 CRC-32 UTF-8 校验，返回按位迭代轨迹与校验值。",
+            tool_type="builtin",
+            permission="allow",
+            scope="local_computation",
+            params_schema={
+                "type": "object",
+                "required": ["text"],
+                "properties": {"text": {"type": "string"}},
+            },
+            return_schema={"type": "object"},
+            handler_module="offline_companion.core.tools.crc32_tool",
+            handler_function="crc32_tool",
+            external_config=None,
+            version="1.0.0",
+            algorithm_names=("crc", "crc32", "crc-32"),
+            trigger_keywords=("crc", "crc32", "crc-32"),
+        ),
+        crc32_tool,
+    )
+    tool_registry.register_builtin(
+        ToolManifest(
+            tool_id="algorithm_gcd",
+            display_name="欧几里得算法",
+            description="本地确定性最大公约数工具，返回辗转相除余数序列。",
+            tool_type="builtin",
+            permission="allow",
+            scope="local_computation",
+            params_schema={
+                "type": "object",
+                "required": ["left", "right"],
+                "properties": {
+                    "left": {"type": "integer"},
+                    "right": {"type": "integer"},
+                },
+            },
+            return_schema={"type": "object"},
+            handler_module="offline_companion.core.tools.gcd_tool",
+            handler_function="gcd_tool",
+            external_config=None,
+            version="1.0.0",
+            algorithm_names=("欧几里得", "gcd"),
+            trigger_keywords=("最大公约数", "gcd"),
+        ),
+        gcd_tool,
+    )
+    tool_registry.register_builtin(
+        ToolManifest(
+            tool_id="algorithm_quicksort",
+            display_name="快速排序算法",
+            description="本地确定性快速排序工具，返回每轮分区快照。",
+            tool_type="builtin",
+            permission="allow",
+            scope="local_computation",
+            params_schema={
+                "type": "object",
+                "required": ["values"],
+                "properties": {"values": {"type": "array", "items": {"type": "integer"}}},
+            },
+            return_schema={"type": "object"},
+            handler_module="offline_companion.core.tools.quicksort_tool",
+            handler_function="quicksort_tool",
+            external_config=None,
+            version="1.0.0",
+            algorithm_names=("快速排序", "quicksort"),
+            trigger_keywords=("快速排序", "quicksort"),
+        ),
+        quicksort_tool,
+    )
     tool_invoker = ToolInvoker(tool_registry, consent_gateway=consent_gateway)
     orchestrator = ConversationOrchestrator(
         session_core=session_core,
@@ -438,6 +513,8 @@ def bootstrap_ui_session(
             load_settings(paths.root).get("decomp_learning_enabled", True)
         ),
         method_entity_names=tool_registry.algorithm_names,
+        algorithm_name_map=tool_registry.algorithm_name_map,
+        trigger_keyword_map=tool_registry.trigger_keyword_map,
         subagent_scheduler=SubagentScheduler(
             auto_router=_SubagentRouterAdapter(backend),
             consent_gateway=consent_gateway,

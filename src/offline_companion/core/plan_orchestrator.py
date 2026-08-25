@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -535,6 +535,8 @@ class PlanOrchestrator:
         sample_lifecycle: SampleLifecycleManager | None = None,
         learning_enabled_provider: Callable[[], bool] | None = None,
         method_entity_names: Callable[[], object] | object | None = None,
+        algorithm_name_map: Callable[[], Mapping[str, Iterable[str]]] | Mapping[str, Iterable[str]] | None = None,
+        trigger_keyword_map: Callable[[], Mapping[str, Iterable[str]]] | Mapping[str, Iterable[str]] | None = None,
         subagent_scheduler: SubagentScheduler | None = None,
         privacy_mode: str = "local_only",
     ) -> None:
@@ -564,6 +566,8 @@ class PlanOrchestrator:
             sample_lifecycle=sample_lifecycle,
             learning_enabled_provider=learning_enabled_provider,
             method_entity_names=method_entity_names,
+            algorithm_name_map=algorithm_name_map,
+            trigger_keyword_map=trigger_keyword_map,
         )
         self._subagent_dispatch = PlanSubagentDispatch(scheduler=subagent_scheduler)
         self._privacy_mode = privacy_mode

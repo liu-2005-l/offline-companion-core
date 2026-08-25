@@ -12,7 +12,9 @@ from offline_companion.core.plan_orchestrator import (
     PlanStep,
 )
 from offline_companion.core.skill_execution_tracker import SkillExecutionTracker
+from offline_companion.core.tools.gcd_tool import gcd_tool
 from offline_companion.shared.messages import BaseMessage
+from offline_companion.shared.types import PrivacyMode, ToolManifest
 from offline_companion.shell.auto_router import AutoRouter, RoutingContext
 from offline_companion.shell.auto_turn_orchestrator import (
     AutoTurnOrchestrator,
@@ -21,6 +23,8 @@ from offline_companion.shell.auto_turn_orchestrator import (
 )
 from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGateway
 from offline_companion.shell.plan_auto_bridge import PlanAutoBridge
+from offline_companion.shell.tool_registry.invoker import ToolInvoker
+from offline_companion.shell.tool_registry.registry import ToolRegistry
 
 
 def test_auto_turn_executes_decided_steps() -> None:
@@ -134,6 +138,44 @@ def test_conversation_plan_invoker_executes_booth_tool_without_llm() -> None:
     assert result["result"].startswith("Booth 算法：7 x 3 = 21")
     assert result["algorithm_trace"]["result"] == 21
     assert captured == {}
+
+
+def test_conversation_plan_invoker_executes_generic_algorithm_tool() -> None:
+    registry = ToolRegistry()
+    registry.register_builtin(
+        ToolManifest(
+            tool_id="algorithm_gcd",
+            display_name="欧几里得算法",
+            description="test gcd",
+            tool_type="builtin",
+            permission="allow",
+            scope="local_computation",
+            params_schema={"type": "object"},
+            return_schema={"type": "object"},
+            handler_module="offline_companion.core.tools.gcd_tool",
+            handler_function="gcd_tool",
+            external_config=None,
+            version="1.0.0",
+        ),
+        gcd_tool,
+    )
+    orchestrator = type(
+        "O",
+        (),
+        {
+            "tool_invoker": ToolInvoker(registry),
+            "session_id": "s1",
+            "privacy_mode": PrivacyMode.LOCAL_ONLY,
+        },
+    )()
+
+    result = ConversationPlanInvoker(orchestrator).invoke(
+        "algorithm_gcd",
+        {"tool_args": {"left": 48, "right": 18}},
+    )
+
+    assert result["result"].startswith("欧几里得算法：gcd(48, 18) = 6")
+    assert result["algorithm_trace"]["result"] == 6
 
 
 def _streaming_auto_turn(*, gateway=None):

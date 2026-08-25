@@ -29,6 +29,8 @@
 - 补齐拆解链路可观测性：算术审计 info 日志记录提取数、失败数与跳过原因；拆解决策日志记录 R3/B3/B4 命中详情；LLM 拆解原始输出保留 debug 全文并输出可检索元数据。
 - 完成 Batch C Booth GBNF 实验判决：托管 sidecar pre-flight 确认 grammar 生效，20 个不同乘法对全量完成；`full_success_rate=0.0`，plan-as-reasoning 关闭入档，确定性算法继续走工具化路径。
 - 完成 Batch D-1 词典-工具同源收口：`ToolManifest` 新增 `algorithm_names` 与 `trigger_keywords` 分字段声明，B4 算法专名词典启动期从 `ToolRegistry` 可用工具并集注入，避免拆解器手写词表与工具集漂移；历史硬编码中的 `utf-8`/`utf8` 从算法专名通道移除，保留“编码/格式”类别通道。
+- 完成 Batch D-2 工具扩容：新增 `algorithm_crc32`、`algorithm_gcd`、`algorithm_quicksort` 三个本地确定性算法 Tool；CRC-32 在工具本体内执行按位迭代并与 `zlib.crc32` 交叉验证，欧几里得返回余数序列，快速排序返回 Lomuto 分区快照；拆解器按 manifest 映射消费 `trigger_keywords`，裸“最大公约数”和大写 `CRC` 输入可直接路由工具。
+- Batch D-2 验证基线：`pytest -q` 为 1071 passed、3 skipped；`scripts/full_acceptance.py --skip-gpu` 全部 10/10 通过。
 
 ## v1.6.1 · 2026-08-20（Windows 窗口适配修复）
 

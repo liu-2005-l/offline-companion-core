@@ -2974,6 +2974,16 @@ def _fallback_plan_orchestrator(runtime: DesktopRuntime) -> PlanOrchestrator:
             if tool_registry is not None and hasattr(tool_registry, "algorithm_names")
             else None
         ),
+        algorithm_name_map=(
+            tool_registry.algorithm_name_map
+            if tool_registry is not None and hasattr(tool_registry, "algorithm_name_map")
+            else None
+        ),
+        trigger_keyword_map=(
+            tool_registry.trigger_keyword_map
+            if tool_registry is not None and hasattr(tool_registry, "trigger_keyword_map")
+            else None
+        ),
         subagent_scheduler=SubagentScheduler(),
         privacy_mode=runtime.privacy_mode.value,
     )

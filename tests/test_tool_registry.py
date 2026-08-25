@@ -44,6 +44,8 @@ def test_registry_exposes_available_algorithm_and_trigger_unions() -> None:
     registry = ToolRegistry()
     registry.register_builtin(_builtin_manifest(), datetime_now)
 
+    assert registry.algorithm_name_map() == {"datetime_now": ("booth",)}
+    assert registry.trigger_keyword_map() == {"datetime_now": ("最大公约数",)}
     assert registry.algorithm_names() == frozenset({"booth"})
     assert registry.trigger_keywords() == frozenset({"最大公约数"})
 

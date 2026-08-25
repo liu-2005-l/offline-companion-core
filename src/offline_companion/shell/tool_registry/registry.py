@@ -135,8 +135,8 @@ class ToolRegistry:
         """摘要：返回可用 Tool 声明的算法专名并集，供拆解约束识别使用。"""
         return frozenset(
             name
-            for manifest in self.list_available()
-            for name in manifest.algorithm_names
+            for names in self.algorithm_name_map().values()
+            for name in names
             if name.strip()
         )
 
@@ -144,10 +144,26 @@ class ToolRegistry:
         """摘要：返回可用 Tool 声明的裸意图触发词并集。"""
         return frozenset(
             keyword
-            for manifest in self.list_available()
-            for keyword in manifest.trigger_keywords
+            for keywords in self.trigger_keyword_map().values()
+            for keyword in keywords
             if keyword.strip()
         )
+
+    def algorithm_name_map(self) -> dict[str, tuple[str, ...]]:
+        """摘要：返回可用 Tool 到算法专名的映射。"""
+        return {
+            manifest.tool_id: manifest.algorithm_names
+            for manifest in self.list_available()
+            if manifest.algorithm_names
+        }
+
+    def trigger_keyword_map(self) -> dict[str, tuple[str, ...]]:
+        """摘要：返回可用 Tool 到裸意图触发词的映射。"""
+        return {
+            manifest.tool_id: manifest.trigger_keywords
+            for manifest in self.list_available()
+            if manifest.trigger_keywords
+        }
 
     def get_manifest(self, tool_id: str) -> ToolManifest | None:
         """摘要：按 tool_id 获取清单。"""

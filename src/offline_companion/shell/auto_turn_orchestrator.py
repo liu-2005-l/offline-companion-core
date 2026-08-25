@@ -38,10 +38,10 @@ class ConversationPlanInvoker:
     def invoke(self, skill_id: str, payload: dict[str, Any], idempotency_key: str | None = None) -> Any:
         """摘要：执行通用对话步骤；非 chat 步骤由外层组合调用器处理。"""
         del idempotency_key
-        if skill_id == "algorithm_booth":
+        if skill_id.startswith("algorithm_"):
             raw_args = payload.get("tool_args")
             if not isinstance(raw_args, dict):
-                raise ValueError("algorithm_booth requires tool_args")
+                raise ValueError(f"{skill_id} requires tool_args")
             tool_invoker = getattr(self.conversation_orchestrator, "tool_invoker", None)
             tool_result = None
             if tool_invoker is not None:
@@ -55,12 +55,14 @@ class ConversationPlanInvoker:
                     raise RuntimeError(str(tool_result.error or "algorithm tool execution failed"))
                 trace = tool_result.result["trace"]
                 formatted = tool_result.result["formatted"]
-            else:
+            elif skill_id == "algorithm_booth":
                 trace = booth_multiply(
                     int(raw_args["multiplicand"]),
                     int(raw_args["multiplier"]),
                 )
                 formatted = format_booth_result(trace)
+            else:
+                raise KeyError(f"unsupported auto conversation skill without tool_invoker: {skill_id}")
             return {
                 "result": formatted,
                 "tool_id": skill_id,

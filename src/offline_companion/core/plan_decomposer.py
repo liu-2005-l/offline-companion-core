@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import unicodedata
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from difflib import SequenceMatcher
 from typing import TYPE_CHECKING, Any
 
@@ -114,6 +114,8 @@ _REQUIRED_FIELDS = (
     "verification",
     "completion_criteria",
 )
+_INTEGER_TOKEN_PATTERN = re.compile(r"[+-]?(?:\d+|[零一二两三四五六七八九十百千万亿]+)")
+_QUOTED_TEXT_PATTERN = re.compile(r"[\"“”']([^\"“”']+)[\"“”']")
 
 
 class PlanDecomposer:
@@ -128,6 +130,8 @@ class PlanDecomposer:
         sample_lifecycle: SampleLifecycleManager | None = None,
         learning_enabled_provider: Callable[[], bool] | None = None,
         method_entity_names: Callable[[], object] | object | None = None,
+        algorithm_name_map: Callable[[], Mapping[str, Iterable[str]]] | Mapping[str, Iterable[str]] | None = None,
+        trigger_keyword_map: Callable[[], Mapping[str, Iterable[str]]] | Mapping[str, Iterable[str]] | None = None,
     ) -> None:
         """摘要：初始化计划拆解器。
 
@@ -138,6 +142,8 @@ class PlanDecomposer:
             sample_lifecycle: 可选拆解样本生命周期管理器。
             learning_enabled_provider: 可选动态设置开关读取函数。
             method_entity_names: 可选算法专名词典或提供者，由 Tool 注册表注入。
+            algorithm_name_map: 可选 Tool 到算法专名的映射或提供者。
+            trigger_keyword_map: 可选 Tool 到裸意图触发词的映射或提供者。
         """
         self._router = llm_router
         self._skill_resolver = skill_resolver
@@ -146,6 +152,10 @@ class PlanDecomposer:
         self._learning_enabled_provider = learning_enabled_provider
         self._method_entity_names_provider = method_entity_names
         self._method_entity_names = _normalize_method_entity_names(method_entity_names)
+        self._algorithm_name_map_provider = algorithm_name_map
+        self._algorithm_name_map = _normalize_keyword_map(algorithm_name_map)
+        self._trigger_keyword_map_provider = trigger_keyword_map
+        self._trigger_keyword_map = _normalize_keyword_map(trigger_keyword_map)
         self.skill_name: str | None = None
         self.skill_stages: list[str] = []
         self.last_source: str | None = None
@@ -187,6 +197,8 @@ class PlanDecomposer:
         raw_steps: list[dict[str, Any]] | NotDecomposableResult | None = _deterministic_algorithm_plan(
             goal,
             method_entity_names=self._current_method_entity_names(),
+            algorithm_name_map=self._current_algorithm_name_map(),
+            trigger_keyword_map=self._current_trigger_keyword_map(),
         )
         if raw_steps is not None:
             logger.info(
@@ -386,6 +398,20 @@ class PlanDecomposer:
             return _normalize_method_entity_names(provider())
         return self._method_entity_names
 
+    def _current_algorithm_name_map(self) -> dict[str, frozenset[str]]:
+        """摘要：返回当前 Tool 到算法专名的规范化映射。"""
+        provider = self._algorithm_name_map_provider
+        if callable(provider):
+            return _normalize_keyword_map(provider())
+        return self._algorithm_name_map
+
+    def _current_trigger_keyword_map(self) -> dict[str, frozenset[str]]:
+        """摘要：返回当前 Tool 到裸意图触发词的规范化映射。"""
+        provider = self._trigger_keyword_map_provider
+        if callable(provider):
+            return _normalize_keyword_map(provider())
+        return self._trigger_keyword_map
+
     def _extract_method_constraints(self, text: str) -> tuple[str, ...]:
         """摘要：按当前算法专名词典提取显式方法约束。"""
         return _extract_method_constraints(
@@ -553,6 +579,31 @@ def _normalize_method_entity_names(value: object | None) -> frozenset[str]:
     )
 
 
+def _normalize_keyword_map(
+    value: Callable[[], Mapping[str, Iterable[str]]] | Mapping[str, Iterable[str]] | object | None,
+) -> dict[str, frozenset[str]]:
+    """摘要：规范化 Tool 到算法专名或触发词的映射。"""
+    if callable(value):
+        return {}
+    if not isinstance(value, Mapping):
+        return {}
+    normalized: dict[str, frozenset[str]] = {}
+    for tool_id, keywords in value.items():
+        if isinstance(keywords, str):
+            items = (keywords,)
+        else:
+            try:
+                items = tuple(keywords)
+            except TypeError:
+                items = ()
+        normalized[str(tool_id)] = frozenset(
+            item
+            for keyword in items
+            if (item := _normalize_constraint_text(str(keyword)))
+        )
+    return normalized
+
+
 def _build_method_entity_pattern(method_entity_names: object | None) -> re.Pattern[str] | None:
     """摘要：按算法专名词典构造“按 booth 计算”类双通道识别正则。"""
     names = _normalize_method_entity_names(method_entity_names)
@@ -581,12 +632,72 @@ def _deterministic_algorithm_plan(
     goal: str,
     *,
     method_entity_names: object | None = None,
+    algorithm_name_map: Mapping[str, Iterable[str]] | None = None,
+    trigger_keyword_map: Mapping[str, Iterable[str]] | None = None,
 ) -> list[dict[str, Any]] | None:
     """摘要：为工具集内且参数可解析的算法请求生成本地执行计划。"""
 
     constraints = _extract_method_constraints(goal, method_entity_names=method_entity_names)
-    if not {"booth", "booth算法"}.intersection(constraints):
-        return None
+    normalized_algorithm_map = _normalize_keyword_map(algorithm_name_map)
+    normalized_trigger_map = _normalize_keyword_map(trigger_keyword_map)
+
+    if _tool_requested(
+        "algorithm_booth",
+        goal,
+        constraints,
+        algorithm_name_map=normalized_algorithm_map,
+        trigger_keyword_map=normalized_trigger_map,
+        fallback_names=("booth",),
+    ):
+        return _booth_plan(goal)
+    if _tool_requested(
+        "algorithm_crc32",
+        goal,
+        constraints,
+        algorithm_name_map=normalized_algorithm_map,
+        trigger_keyword_map=normalized_trigger_map,
+    ):
+        return _crc32_plan(goal)
+    if _tool_requested(
+        "algorithm_gcd",
+        goal,
+        constraints,
+        algorithm_name_map=normalized_algorithm_map,
+        trigger_keyword_map=normalized_trigger_map,
+    ):
+        return _gcd_plan(goal)
+    if _tool_requested(
+        "algorithm_quicksort",
+        goal,
+        constraints,
+        algorithm_name_map=normalized_algorithm_map,
+        trigger_keyword_map=normalized_trigger_map,
+    ):
+        return _quicksort_plan(goal)
+    return None
+
+
+def _tool_requested(
+    tool_id: str,
+    goal: str,
+    constraints: tuple[str, ...],
+    *,
+    algorithm_name_map: Mapping[str, frozenset[str]],
+    trigger_keyword_map: Mapping[str, frozenset[str]],
+    fallback_names: tuple[str, ...] = (),
+) -> bool:
+    """摘要：根据方法约束或裸意图触发词判断某个 Tool 是否被请求。"""
+    names = set(algorithm_name_map.get(tool_id, frozenset()))
+    names.update(_normalize_constraint_text(name) for name in fallback_names)
+    for constraint in constraints:
+        if any(constraint == name or constraint.startswith(name) for name in names):
+            return True
+    normalized_goal = _normalize_constraint_text(goal)
+    return any(keyword in normalized_goal for keyword in trigger_keyword_map.get(tool_id, frozenset()))
+
+
+def _booth_plan(goal: str) -> list[dict[str, Any]] | None:
+    """摘要：为 Booth 乘法请求生成确定性工具计划。"""
     expression = parse_calculation_request(goal)
     if expression is None or expression["operator"] not in {"乘", "乘以", "×", "*"}:
         return None
@@ -620,6 +731,148 @@ def _deterministic_algorithm_plan(
             "estimated_minutes": 1,
         },
     ]
+
+
+def _crc32_plan(goal: str) -> list[dict[str, Any]] | None:
+    """摘要：为 CRC-32 文本校验请求生成确定性工具计划。"""
+    match = _QUOTED_TEXT_PATTERN.search(goal)
+    if match is None:
+        return None
+    text = match.group(1)
+    return _algorithm_tool_steps(
+        tool_id="algorithm_crc32",
+        step_id="crc32_tool",
+        transcribe_id="crc32_transcribe",
+        title=f"执行 CRC-32 校验：{text!r}",
+        description="调用本地 CRC-32 工具，按 UTF-8 字节执行真实按位迭代并交叉验证 zlib.crc32。",
+        expected_output="CRC-32 校验值、输入字节和按位迭代摘要。",
+        verification="工具自实现结果必须与 zlib.crc32 交叉验证一致。",
+        completion_criteria="交付 CRC-32 校验值与可追溯中间态。",
+        transcribe_title="转述 CRC-32 校验结果",
+        transcribe_description="根据 CRC-32 工具返回的字节轨迹和校验值转述结果，不编造中间态。",
+        transcribe_expected="包含 UTF-8 字节、迭代摘要和最终校验值的自然语言说明。",
+        transcribe_verification="转述中的校验值与工具结果一致。",
+        transcribe_criteria="同时交付 CRC-32 方法过程和最终校验值。",
+        tool_args={"text": text},
+    )
+
+
+def _gcd_plan(goal: str) -> list[dict[str, Any]] | None:
+    """摘要：为欧几里得最大公约数请求生成确定性工具计划。"""
+    operands = _extract_integer_operands(goal)
+    if len(operands) < 2:
+        return None
+    left, right = operands[0], operands[1]
+    return _algorithm_tool_steps(
+        tool_id="algorithm_gcd",
+        step_id="gcd_tool",
+        transcribe_id="gcd_transcribe",
+        title=f"执行欧几里得算法：gcd({left}, {right})",
+        description="调用本地欧几里得算法工具，生成辗转相除余数序列。",
+        expected_output="余数序列与最大公约数。",
+        verification=f"工具结果应等于 gcd({left}, {right})。",
+        completion_criteria="所有辗转相除步骤可追溯，最终 gcd 与机械计算一致。",
+        transcribe_title="转述欧几里得算法结果",
+        transcribe_description="根据欧几里得工具返回的余数序列转述过程与结果，不重新推理数值。",
+        transcribe_expected="包含余数序列和最大公约数的自然语言说明。",
+        transcribe_verification="转述中的最大公约数与工具结果一致。",
+        transcribe_criteria="同时交付欧几里得方法过程和最终结果。",
+        tool_args={"left": left, "right": right},
+    )
+
+
+def _quicksort_plan(goal: str) -> list[dict[str, Any]] | None:
+    """摘要：为快速排序请求生成确定性工具计划。"""
+    values = _extract_integer_list(goal)
+    if values is None:
+        return None
+    return _algorithm_tool_steps(
+        tool_id="algorithm_quicksort",
+        step_id="quicksort_tool",
+        transcribe_id="quicksort_transcribe",
+        title=f"执行快速排序：{values}",
+        description="调用本地快速排序工具，生成每轮分区快照。",
+        expected_output="分区快照序列与最终有序列表。",
+        verification="工具结果必须等于 Python sorted 的有序列表。",
+        completion_criteria="所有分区快照可追溯，最终排序结果正确。",
+        transcribe_title="转述快速排序结果",
+        transcribe_description="根据快速排序工具返回的分区快照转述过程与结果，不编造步骤。",
+        transcribe_expected="包含分区快照和最终列表的自然语言说明。",
+        transcribe_verification="转述中的排序结果与工具结果一致。",
+        transcribe_criteria="同时交付快速排序过程和最终有序列表。",
+        tool_args={"values": values},
+    )
+
+
+def _algorithm_tool_steps(
+    *,
+    tool_id: str,
+    step_id: str,
+    transcribe_id: str,
+    title: str,
+    description: str,
+    expected_output: str,
+    verification: str,
+    completion_criteria: str,
+    transcribe_title: str,
+    transcribe_description: str,
+    transcribe_expected: str,
+    transcribe_verification: str,
+    transcribe_criteria: str,
+    tool_args: dict[str, object],
+) -> list[dict[str, Any]]:
+    """摘要：生成确定性算法工具执行与转述两步计划。"""
+    return [
+        {
+            "step_id": step_id,
+            "skill_id": tool_id,
+            "title": title,
+            "description": description,
+            "expected_output": expected_output,
+            "verification": verification,
+            "completion_criteria": completion_criteria,
+            "tool_args": tool_args,
+            "estimated_minutes": 1,
+        },
+        {
+            "step_id": transcribe_id,
+            "skill_id": "chat",
+            "title": transcribe_title,
+            "description": transcribe_description,
+            "expected_output": transcribe_expected,
+            "verification": transcribe_verification,
+            "completion_criteria": transcribe_criteria,
+            "depends_on": [step_id],
+            "estimated_minutes": 1,
+        },
+    ]
+
+
+def _extract_integer_operands(text: str) -> list[int]:
+    """摘要：从文本中提取整数操作数。"""
+    operands: list[int] = []
+    for match in _INTEGER_TOKEN_PATTERN.finditer(text):
+        try:
+            operands.append(parse_integer(match.group(0)))
+        except ValueError:
+            continue
+    return operands
+
+
+def _extract_integer_list(text: str) -> list[int] | None:
+    """摘要：从方括号列表中提取整数序列。"""
+    match = re.search(r"[\[【]\s*([^\]】]+)\s*[\]】]", text)
+    if match is None:
+        return None
+    values: list[int] = []
+    for part in re.split(r"[,，、\s]+", match.group(1).strip()):
+        if not part:
+            continue
+        try:
+            values.append(parse_integer(part))
+        except ValueError:
+            return None
+    return values
 
 
 def _deterministic_calculator_plan(goal: str) -> list[dict[str, Any]] | None:

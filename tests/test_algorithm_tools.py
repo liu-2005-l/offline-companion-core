@@ -1,8 +1,19 @@
 from __future__ import annotations
 
+import zlib
+
 import pytest
 
-from offline_companion.core.algorithm_tools import booth_multiply, format_booth_result
+from offline_companion.core.algorithm_tools import (
+    booth_multiply,
+    crc32_utf8,
+    euclidean_gcd,
+    format_booth_result,
+    format_crc32_result,
+    format_gcd_result,
+    format_quicksort_result,
+    quicksort,
+)
 
 
 def test_booth_multiply_returns_deterministic_trace() -> None:
@@ -34,3 +45,46 @@ def test_booth_multiply_matches_integer_arithmetic(multiplicand: int, multiplier
 def test_booth_multiply_rejects_boolean_operands() -> None:
     with pytest.raises(TypeError):
         booth_multiply(True, 3)
+
+
+def test_crc32_utf8_returns_real_bit_trace_and_cross_checks_zlib() -> None:
+    trace = crc32_utf8("abc")
+
+    assert trace["algorithm"] == "crc32"
+    assert trace["bytes"] == [97, 98, 99]
+    assert trace["result"] == zlib.crc32(b"abc") & 0xFFFFFFFF
+    assert trace["hex"] == "0x352441C2"
+    assert len(trace["steps"]) == 3
+    assert len(trace["steps"][0]["bits"]) == 8
+    rendered = format_crc32_result(trace)
+    assert "CRC-32（UTF-8）校验" in rendered
+    assert "zlib.crc32 交叉验证一致" in rendered
+
+
+def test_euclidean_gcd_returns_remainder_sequence() -> None:
+    trace = euclidean_gcd(48, 18)
+
+    assert trace["algorithm"] == "euclidean_gcd"
+    assert trace["result"] == 6
+    assert [(item["a"], item["b"], item["remainder"]) for item in trace["steps"]] == [
+        (48, 18, 12),
+        (18, 12, 6),
+        (12, 6, 0),
+    ]
+    rendered = format_gcd_result(trace)
+    assert "48 mod 18 = 12" in rendered
+    assert "gcd(48, 18) = 6" in rendered
+
+
+def test_quicksort_returns_expected_partition_snapshots() -> None:
+    trace = quicksort([5, 2, 9, 1])
+
+    assert trace["algorithm"] == "quicksort"
+    assert trace["result"] == [1, 2, 5, 9]
+    assert [item["snapshot"] for item in trace["partitions"]] == [
+        [1, 2, 9, 5],
+        [1, 2, 5, 9],
+    ]
+    rendered = format_quicksort_result(trace)
+    assert "第 1 轮 pivot=1" in rendered
+    assert "[1, 2, 5, 9]" in rendered

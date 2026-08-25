@@ -47,7 +47,11 @@ def _dummy_tool() -> dict[str, object]:
     return {}
 
 
-def _algorithm_manifest(tool_id: str, algorithm_names: tuple[str, ...]) -> ToolManifest:
+def _algorithm_manifest(
+    tool_id: str,
+    algorithm_names: tuple[str, ...],
+    trigger_keywords: tuple[str, ...] = (),
+) -> ToolManifest:
     """摘要：构造声明算法专名的测试 ToolManifest。"""
     return ToolManifest(
         tool_id=tool_id,
@@ -63,6 +67,7 @@ def _algorithm_manifest(tool_id: str, algorithm_names: tuple[str, ...]) -> ToolM
         external_config=None,
         version="0.1.0",
         algorithm_names=algorithm_names,
+        trigger_keywords=trigger_keywords,
     )
 
 
@@ -268,6 +273,66 @@ def test_booth_named_entity_without_category_uses_builtin_tool_plan(text: str) -
     assert isinstance(result, list)
     assert [step.skill_id for step in result] == ["algorithm_booth", "chat"]
     assert result[0].payload["tool_args"] == {"multiplicand": 3, "multiplier": 7}
+
+
+def test_crc_uppercase_trigger_keyword_uses_crc32_tool_plan() -> None:
+    registry = ToolRegistry()
+    registry.register_builtin(
+        _algorithm_manifest("algorithm_crc32", ("crc",), ("crc",)),
+        _dummy_tool,
+    )
+    decomposer = PlanDecomposer(
+        llm_router=MagicMock(),
+        method_entity_names=registry.algorithm_names,
+        algorithm_name_map=registry.algorithm_name_map,
+        trigger_keyword_map=registry.trigger_keyword_map,
+    )
+
+    result = decomposer.decide('计算"abc"的CRC校验值')
+
+    assert isinstance(result, list)
+    assert [step.skill_id for step in result] == ["algorithm_crc32", "chat"]
+    assert result[0].payload["tool_args"] == {"text": "abc"}
+
+
+def test_gcd_bare_intent_trigger_uses_euclidean_tool_plan_without_llm() -> None:
+    registry = ToolRegistry()
+    registry.register_builtin(
+        _algorithm_manifest("algorithm_gcd", ("欧几里得", "gcd"), ("最大公约数", "gcd")),
+        _dummy_tool,
+    )
+    decomposer = PlanDecomposer(
+        llm_router=MagicMock(),
+        method_entity_names=registry.algorithm_names,
+        algorithm_name_map=registry.algorithm_name_map,
+        trigger_keyword_map=registry.trigger_keyword_map,
+    )
+
+    result = decomposer.decide("求48和18的最大公约数")
+
+    assert isinstance(result, list)
+    assert [step.skill_id for step in result] == ["algorithm_gcd", "chat"]
+    assert result[0].payload["tool_args"] == {"left": 48, "right": 18}
+
+
+def test_quicksort_method_constraint_uses_tool_plan() -> None:
+    registry = ToolRegistry()
+    registry.register_builtin(
+        _algorithm_manifest("algorithm_quicksort", ("快速排序", "quicksort"), ("快速排序",)),
+        _dummy_tool,
+    )
+    decomposer = PlanDecomposer(
+        llm_router=MagicMock(),
+        method_entity_names=registry.algorithm_names,
+        algorithm_name_map=registry.algorithm_name_map,
+        trigger_keyword_map=registry.trigger_keyword_map,
+    )
+
+    result = decomposer.decide("按快速排序排[5,2,9,1]")
+
+    assert isinstance(result, list)
+    assert [step.skill_id for step in result] == ["algorithm_quicksort", "chat"]
+    assert result[0].payload["tool_args"] == {"values": [5, 2, 9, 1]}
 
 
 def test_calculator_method_uses_builtin_tool_plan_without_llm() -> None:
