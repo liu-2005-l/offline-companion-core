@@ -24,7 +24,7 @@ from offline_companion.shared.errors import A2PlanValidationError
 from offline_companion.shared.types import ToolManifest
 from offline_companion.shell.tool_registry.registry import ToolRegistry
 
-_ALGORITHM_NAMES = ("booth", "rsa")
+_ALGORITHM_NAMES = ("booth", "crc", "rsa")
 
 
 def _valid_raw_step() -> dict[str, object]:
@@ -175,6 +175,7 @@ def test_low_relevance_steps_are_rejected_before_candidate_archive() -> None:
         ("用HTTP协议发送请求", ("http协议",)),
         ("通过 CRC 协议校验数据", ("crc协议",)),
         ("按照 booth 计算一下三乘七", ("booth",)),
+        ("按照 CRC 计算这段数据", ("crc",)),
         ("采用 RSA 加密数据", ("rsa",)),
     ],
 )
@@ -333,6 +334,27 @@ def test_quicksort_method_constraint_uses_tool_plan() -> None:
     assert isinstance(result, list)
     assert [step.skill_id for step in result] == ["algorithm_quicksort", "chat"]
     assert result[0].payload["tool_args"] == {"values": [5, 2, 9, 1]}
+
+
+def test_unknown_algorithm_constraint_falls_back_with_visible_notice() -> None:
+    registry = ToolRegistry()
+    registry.register_builtin(
+        _algorithm_manifest("algorithm_crc32", ("crc",), ("crc",)),
+        _dummy_tool,
+    )
+    decomposer = PlanDecomposer(
+        llm_router=MagicMock(),
+        method_entity_names=registry.algorithm_names,
+        algorithm_name_map=registry.algorithm_name_map,
+        trigger_keyword_map=registry.trigger_keyword_map,
+    )
+
+    result = decomposer.decide("按照MD5算法计算这段文字的哈希")
+
+    assert isinstance(result, NotDecomposableResult)
+    assert result.reason == "method_constraint_lost"
+    assert result.fallback_notice is not None
+    assert "无法按指定方法分步执行" in result.fallback_notice
 
 
 def test_calculator_method_uses_builtin_tool_plan_without_llm() -> None:

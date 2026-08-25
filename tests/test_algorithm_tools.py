@@ -61,6 +61,16 @@ def test_crc32_utf8_returns_real_bit_trace_and_cross_checks_zlib() -> None:
     assert "zlib.crc32 交叉验证一致" in rendered
 
 
+def test_crc32_utf8_matches_standard_check_value() -> None:
+    """摘要：锁定 ISO-HDLC CRC-32 标准 check 值，避免多项式或反射配置漂移。"""
+    assert crc32_utf8("123456789")["hex"] == "0xCBF43926"
+
+
+def test_crc32_utf8_rejects_input_over_64_bytes_without_truncation() -> None:
+    with pytest.raises(ValueError, match="64 UTF-8 bytes"):
+        crc32_utf8("a" * 65)
+
+
 def test_euclidean_gcd_returns_remainder_sequence() -> None:
     trace = euclidean_gcd(48, 18)
 
@@ -74,6 +84,14 @@ def test_euclidean_gcd_returns_remainder_sequence() -> None:
     rendered = format_gcd_result(trace)
     assert "48 mod 18 = 12" in rendered
     assert "gcd(48, 18) = 6" in rendered
+
+
+@pytest.mark.parametrize(
+    ("left", "right", "expected"),
+    [(0, 7, 7), (0, 0, 0), (-48, 18, 6), (48, -18, 6)],
+)
+def test_euclidean_gcd_boundary_semantics(left: int, right: int, expected: int) -> None:
+    assert euclidean_gcd(left, right)["result"] == expected
 
 
 def test_quicksort_returns_expected_partition_snapshots() -> None:

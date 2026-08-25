@@ -112,11 +112,14 @@ def crc32_utf8(text: str) -> dict[str, Any]:
 
     Raises:
         TypeError: 输入不是字符串。
+        ValueError: UTF-8 编码后超过 64 字节。
         ArithmeticError: 自实现结果与 zlib.crc32 不一致。
     """
     if not isinstance(text, str):
         raise TypeError("CRC-32 input must be a string")
     data = text.encode("utf-8")
+    if len(data) > 64:
+        raise ValueError("CRC-32 input exceeds 64 UTF-8 bytes; refuse to truncate silently")
     crc = 0xFFFFFFFF
     steps: list[dict[str, Any]] = []
     for byte_index, byte in enumerate(data):
@@ -192,14 +195,11 @@ def euclidean_gcd(left: int, right: int) -> dict[str, Any]:
 
     Raises:
         TypeError: 参数不是整数或是布尔值。
-        ValueError: 两个参数不能同时为 0。
     """
     if isinstance(left, bool) or isinstance(right, bool):
         raise TypeError("GCD operands must be integers")
     if not isinstance(left, int) or not isinstance(right, int):
         raise TypeError("GCD operands must be integers")
-    if left == 0 and right == 0:
-        raise ValueError("GCD is undefined for 0 and 0")
     a = abs(left)
     b = abs(right)
     steps: list[dict[str, int]] = []

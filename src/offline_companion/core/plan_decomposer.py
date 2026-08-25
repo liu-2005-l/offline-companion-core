@@ -194,17 +194,32 @@ class PlanDecomposer:
             "拆解路径探测: gate=R3 action=continue method_constraints=%s",
             method_constraints,
         )
+        algorithm_name_map = self._current_algorithm_name_map()
+        trigger_keyword_map = self._current_trigger_keyword_map()
         raw_steps: list[dict[str, Any]] | NotDecomposableResult | None = _deterministic_algorithm_plan(
             goal,
             method_entity_names=self._current_method_entity_names(),
-            algorithm_name_map=self._current_algorithm_name_map(),
-            trigger_keyword_map=self._current_trigger_keyword_map(),
+            algorithm_name_map=algorithm_name_map,
+            trigger_keyword_map=trigger_keyword_map,
         )
         if raw_steps is not None:
             logger.info(
                 "拆解路径探测: source=builtin_tool route=algorithm constraints=%s steps=%d",
                 method_constraints,
                 len(raw_steps),
+            )
+        if raw_steps is None and _has_unavailable_algorithm_constraint(
+            method_constraints,
+            algorithm_name_map=algorithm_name_map,
+        ):
+            logger.info(
+                "拆解决策: action=fallback source=builtin_tool reason=algorithm_tool_unavailable constraints=%s",
+                method_constraints,
+            )
+            return NotDecomposableResult(
+                reason="method_constraint_lost",
+                original_input=user_input,
+                fallback_notice=_METHOD_CONSTRAINT_NOTICE,
             )
         if raw_steps is None:
             raw_steps = _deterministic_calculator_plan(goal)
@@ -694,6 +709,28 @@ def _tool_requested(
             return True
     normalized_goal = _normalize_constraint_text(goal)
     return any(keyword in normalized_goal for keyword in trigger_keyword_map.get(tool_id, frozenset()))
+
+
+def _has_unavailable_algorithm_constraint(
+    constraints: tuple[str, ...],
+    *,
+    algorithm_name_map: Mapping[str, frozenset[str]],
+) -> bool:
+    """摘要：判断用户指定了算法类约束但当前 Tool 注册表没有对应算法。"""
+    if not algorithm_name_map:
+        return False
+    algorithm_constraints = tuple(
+        constraint.removesuffix("算法")
+        for constraint in constraints
+        if constraint.endswith("算法")
+    )
+    if not algorithm_constraints:
+        return False
+    available_names = frozenset(name for names in algorithm_name_map.values() for name in names)
+    return any(
+        not any(base == name or base.startswith(name) for name in available_names)
+        for base in algorithm_constraints
+    )
 
 
 def _booth_plan(goal: str) -> list[dict[str, Any]] | None:
