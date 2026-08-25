@@ -69,11 +69,6 @@ _METHOD_CONSTRAINT_PATTERN = re.compile(
     r"([a-zA-Z0-9_+#.\-\u4e00-\u9fff]{1,40})\s*(算法|协议|格式)",
     re.IGNORECASE,
 )
-_METHOD_ENTITY_NAMES = ("booth", "crc", "md5", "rsa", "utf-8", "utf8")
-_METHOD_ENTITY_PATTERN = re.compile(
-    r"(?:按照|按|使用|用|通过|采用)\s*(" + "|".join(_METHOD_ENTITY_NAMES) + r")(?![a-zA-Z0-9_])",
-    re.IGNORECASE,
-)
 _METHOD_CONSTRAINT_NOTICE = (
     "无法按指定方法分步执行，已转为直接回答；本地模型可能无法严格复现该方法。"
 )
@@ -132,6 +127,7 @@ class PlanDecomposer:
         sample_retriever: SampleRetriever | None = None,
         sample_lifecycle: SampleLifecycleManager | None = None,
         learning_enabled_provider: Callable[[], bool] | None = None,
+        method_entity_names: Callable[[], object] | object | None = None,
     ) -> None:
         """摘要：初始化计划拆解器。
 
@@ -141,12 +137,15 @@ class PlanDecomposer:
             sample_retriever: 可选本地拆解样本检索器。
             sample_lifecycle: 可选拆解样本生命周期管理器。
             learning_enabled_provider: 可选动态设置开关读取函数。
+            method_entity_names: 可选算法专名词典或提供者，由 Tool 注册表注入。
         """
         self._router = llm_router
         self._skill_resolver = skill_resolver
         self._sample_retriever = sample_retriever
         self._sample_lifecycle = sample_lifecycle
         self._learning_enabled_provider = learning_enabled_provider
+        self._method_entity_names_provider = method_entity_names
+        self._method_entity_names = _normalize_method_entity_names(method_entity_names)
         self.skill_name: str | None = None
         self.skill_stages: list[str] = []
         self.last_source: str | None = None
@@ -180,12 +179,15 @@ class PlanDecomposer:
                 _explanation_request_reason(goal),
             )
             return NotDecomposableResult(reason="explanation", original_input=user_input)
-        method_constraints = _extract_method_constraints(goal)
+        method_constraints = self._extract_method_constraints(goal)
         logger.info(
             "拆解路径探测: gate=R3 action=continue method_constraints=%s",
             method_constraints,
         )
-        raw_steps: list[dict[str, Any]] | NotDecomposableResult | None = _deterministic_algorithm_plan(goal)
+        raw_steps: list[dict[str, Any]] | NotDecomposableResult | None = _deterministic_algorithm_plan(
+            goal,
+            method_entity_names=self._current_method_entity_names(),
+        )
         if raw_steps is not None:
             logger.info(
                 "拆解路径探测: source=builtin_tool route=algorithm constraints=%s steps=%d",
@@ -230,7 +232,7 @@ class PlanDecomposer:
                     return raw_steps
                 if raw_steps is not None:
                     source = "llm"
-                    missing_constraints = _missing_method_constraints(goal, raw_steps)
+                    missing_constraints = self._missing_method_constraints(goal, raw_steps)
                     logger.info(
                         "拆解路径探测: gate=B4 source=llm constraints=%s missing=%s",
                         method_constraints,
@@ -256,7 +258,7 @@ class PlanDecomposer:
                         if (
                             isinstance(raw_steps, NotDecomposableResult)
                             or raw_steps is None
-                            or _missing_method_constraints(goal, raw_steps)
+                            or self._missing_method_constraints(goal, raw_steps)
                         ):
                             logger.warning(
                                 "任务拆解重试后仍丢失方法约束，降级为普通对话 constraints=%s",
@@ -314,7 +316,11 @@ class PlanDecomposer:
                 relevance,
             )
             return NotDecomposableResult(reason="low_relevance", original_input=user_input)
-        zero_value_score = _zero_value_plan_score(goal, steps)
+        zero_value_score = _zero_value_plan_score(
+            goal,
+            steps,
+            method_entity_names=self._current_method_entity_names(),
+        )
         if zero_value_score is not None and zero_value_score >= 0.8:
             logger.info(
                 "拆解决策: action=fallback gate=B3 reason=zero_value_plan source=%s score=%.4f constraints=%s",
@@ -327,7 +333,7 @@ class PlanDecomposer:
                 original_input=user_input,
                 fallback_notice=(
                     _METHOD_CONSTRAINT_NOTICE
-                    if _extract_method_constraints(goal)
+                    if self._extract_method_constraints(goal)
                     else _ZERO_VALUE_NOTICE
                 ),
             )
@@ -372,6 +378,32 @@ class PlanDecomposer:
         except (OSError, RuntimeError, TypeError, ValueError):
             logger.warning("拆解学习开关读取失败，本次关闭样本学习")
             return False
+
+    def _current_method_entity_names(self) -> frozenset[str]:
+        """摘要：返回当前启动期注入的算法专名词典。"""
+        provider = self._method_entity_names_provider
+        if callable(provider):
+            return _normalize_method_entity_names(provider())
+        return self._method_entity_names
+
+    def _extract_method_constraints(self, text: str) -> tuple[str, ...]:
+        """摘要：按当前算法专名词典提取显式方法约束。"""
+        return _extract_method_constraints(
+            text,
+            method_entity_names=self._current_method_entity_names(),
+        )
+
+    def _missing_method_constraints(
+        self,
+        original_input: str,
+        raw_steps: list[dict[str, Any]],
+    ) -> tuple[str, ...]:
+        """摘要：按当前算法专名词典判断拆解是否丢失方法约束。"""
+        return _missing_method_constraints(
+            original_input,
+            raw_steps,
+            method_entity_names=self._current_method_entity_names(),
+        )
 
     def _resolve_skill(self, user_input: str) -> None:
         """摘要：解析当前计划匹配的 Prompt Skill 及阶段序列。"""
@@ -452,7 +484,11 @@ def _step_relevance(original_input: str, steps: list[PlanStep]) -> float:
     return len(input_tokens & step_tokens) / (len(input_tokens) * len(step_tokens)) ** 0.5
 
 
-def _extract_method_constraints(text: str) -> tuple[str, ...]:
+def _extract_method_constraints(
+    text: str,
+    *,
+    method_entity_names: object | None = None,
+) -> tuple[str, ...]:
     """摘要：提取用户显式指定的算法、协议或格式约束。"""
 
     constraints = []
@@ -463,22 +499,29 @@ def _extract_method_constraints(text: str) -> tuple[str, ...]:
             item == normalized or item.startswith(normalized) for item in constraints
         ):
             constraints.append(normalized)
-    for match in _METHOD_ENTITY_PATTERN.finditer(str(text)):
-        normalized = _normalize_constraint_text(match.group(1))
-        if normalized and not any(
-            item == normalized or item.startswith(normalized) for item in constraints
-        ):
-            constraints.append(normalized)
+    method_entity_pattern = _build_method_entity_pattern(method_entity_names)
+    if method_entity_pattern is not None:
+        for match in method_entity_pattern.finditer(str(text)):
+            normalized = _normalize_constraint_text(match.group(1))
+            if normalized and not any(
+                item == normalized or item.startswith(normalized) for item in constraints
+            ):
+                constraints.append(normalized)
     return tuple(constraints)
 
 
 def _missing_method_constraints(
     original_input: str,
     raw_steps: list[dict[str, Any]],
+    *,
+    method_entity_names: object | None = None,
 ) -> tuple[str, ...]:
     """摘要：返回未被任何拆解步骤保留的方法约束。"""
 
-    constraints = _extract_method_constraints(original_input)
+    constraints = _extract_method_constraints(
+        original_input,
+        method_entity_names=method_entity_names,
+    )
     if not constraints:
         return ()
     step_text = _normalize_constraint_text(
@@ -492,6 +535,38 @@ def _missing_method_constraints(
     return tuple(constraint for constraint in constraints if constraint not in step_text)
 
 
+def _normalize_method_entity_names(value: object | None) -> frozenset[str]:
+    """摘要：规范化 Tool 注册表声明的算法专名词典。"""
+    if value is None:
+        return frozenset()
+    if isinstance(value, str):
+        items = (value,)
+    else:
+        try:
+            items = tuple(value)  # type: ignore[arg-type]
+        except TypeError:
+            items = ()
+    return frozenset(
+        normalized
+        for item in items
+        if (normalized := _normalize_constraint_text(str(item)))
+    )
+
+
+def _build_method_entity_pattern(method_entity_names: object | None) -> re.Pattern[str] | None:
+    """摘要：按算法专名词典构造“按 booth 计算”类双通道识别正则。"""
+    names = _normalize_method_entity_names(method_entity_names)
+    if not names:
+        return None
+    escaped_names = sorted((re.escape(name) for name in names), key=len, reverse=True)
+    return re.compile(
+        r"(?:按照|按|使用|用|通过|采用)\s*("
+        + "|".join(escaped_names)
+        + r")(?![a-zA-Z0-9_])",
+        re.IGNORECASE,
+    )
+
+
 def _normalize_constraint_text(text: str) -> str:
     """摘要：统一约束文本的大小写、标点与空白。"""
 
@@ -502,10 +577,14 @@ def _normalize_constraint_text(text: str) -> str:
     )
 
 
-def _deterministic_algorithm_plan(goal: str) -> list[dict[str, Any]] | None:
+def _deterministic_algorithm_plan(
+    goal: str,
+    *,
+    method_entity_names: object | None = None,
+) -> list[dict[str, Any]] | None:
     """摘要：为工具集内且参数可解析的算法请求生成本地执行计划。"""
 
-    constraints = _extract_method_constraints(goal)
+    constraints = _extract_method_constraints(goal, method_entity_names=method_entity_names)
     if not {"booth", "booth算法"}.intersection(constraints):
         return None
     expression = parse_calculation_request(goal)
@@ -576,7 +655,12 @@ def _deterministic_calculator_plan(goal: str) -> list[dict[str, Any]] | None:
     ]
 
 
-def _zero_value_plan_score(original_input: str, steps: list[PlanStep]) -> float | None:
+def _zero_value_plan_score(
+    original_input: str,
+    steps: list[PlanStep],
+    *,
+    method_entity_names: object | None = None,
+) -> float | None:
     """摘要：评估低风险单步对话计划是否只是复述原任务。"""
 
     if len(steps) != 1:
@@ -584,7 +668,10 @@ def _zero_value_plan_score(original_input: str, steps: list[PlanStep]) -> float 
     step = steps[0]
     if step.skill_id != "chat" or str(step.payload.get("risk") or "low") != "low":
         return None
-    constraints = _extract_method_constraints(original_input)
+    constraints = _extract_method_constraints(
+        original_input,
+        method_entity_names=method_entity_names,
+    )
     normalized_input = _normalize_zero_value_text(_METHOD_CONSTRAINT_PATTERN.sub("", original_input))
     normalized_title = _normalize_zero_value_text(step.title)
     for constraint in constraints:

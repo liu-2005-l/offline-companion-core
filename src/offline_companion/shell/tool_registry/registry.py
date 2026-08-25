@@ -88,6 +88,8 @@ class ToolRegistry:
                 audit_only=True,
                 enabled=bool(item.get("enabled", False)),
                 endpoint=endpoint,
+                algorithm_names=_tuple_field(item.get("algorithm_names")),
+                trigger_keywords=_tuple_field(item.get("trigger_keywords")),
             )
             self._tools[tool_id] = manifest
             manifests.append(manifest)
@@ -114,6 +116,8 @@ class ToolRegistry:
             audit_only=manifest.audit_only,
             enabled=enabled,
             endpoint=manifest.endpoint,
+            algorithm_names=manifest.algorithm_names,
+            trigger_keywords=manifest.trigger_keywords,
         )
         self._tools[tool_id] = updated
         return updated
@@ -126,6 +130,24 @@ class ToolRegistry:
             if manifest.permission != "deny"
             and not (manifest.tool_type == "external" and not manifest.enabled)
         ]
+
+    def algorithm_names(self) -> frozenset[str]:
+        """摘要：返回可用 Tool 声明的算法专名并集，供拆解约束识别使用。"""
+        return frozenset(
+            name
+            for manifest in self.list_available()
+            for name in manifest.algorithm_names
+            if name.strip()
+        )
+
+    def trigger_keywords(self) -> frozenset[str]:
+        """摘要：返回可用 Tool 声明的裸意图触发词并集。"""
+        return frozenset(
+            keyword
+            for manifest in self.list_available()
+            for keyword in manifest.trigger_keywords
+            if keyword.strip()
+        )
 
     def get_manifest(self, tool_id: str) -> ToolManifest | None:
         """摘要：按 tool_id 获取清单。"""
@@ -162,3 +184,10 @@ class ToolRegistry:
 def _dict_field(value: object) -> dict[str, object]:
     """摘要：将配置字段规范化为字典。"""
     return dict(value) if isinstance(value, dict) else {}
+
+
+def _tuple_field(value: object) -> tuple[str, ...]:
+    """摘要：将 YAML 列表字段规范化为去空字符串元组。"""
+    if not isinstance(value, list | tuple):
+        return ()
+    return tuple(str(item).strip() for item in value if str(item).strip())

@@ -21,6 +21,10 @@ from offline_companion.core.plan_decomposer import (
 )
 from offline_companion.core.plan_orchestrator import PlanStep
 from offline_companion.shared.errors import A2PlanValidationError
+from offline_companion.shared.types import ToolManifest
+from offline_companion.shell.tool_registry.registry import ToolRegistry
+
+_ALGORITHM_NAMES = ("booth", "rsa")
 
 
 def _valid_raw_step() -> dict[str, object]:
@@ -36,6 +40,30 @@ def _valid_raw_step() -> dict[str, object]:
         "files": ["src/sort.py"],
         "subagent_type": "implementer",
     }
+
+
+def _dummy_tool() -> dict[str, object]:
+    """摘要：构造测试用 builtin Tool 返回值。"""
+    return {}
+
+
+def _algorithm_manifest(tool_id: str, algorithm_names: tuple[str, ...]) -> ToolManifest:
+    """摘要：构造声明算法专名的测试 ToolManifest。"""
+    return ToolManifest(
+        tool_id=tool_id,
+        display_name=tool_id,
+        description="test algorithm tool",
+        tool_type="builtin",
+        permission="allow",
+        scope="local_computation",
+        params_schema={"type": "object"},
+        return_schema={"type": "object"},
+        handler_module="tests.test_plan_decomposer",
+        handler_function="_dummy_tool",
+        external_config=None,
+        version="0.1.0",
+        algorithm_names=algorithm_names,
+    )
 
 
 def test_decide_returns_plan_steps() -> None:
@@ -146,7 +174,24 @@ def test_low_relevance_steps_are_rejected_before_candidate_archive() -> None:
     ],
 )
 def test_extract_method_constraints(text: str, expected: tuple[str, ...]) -> None:
-    assert _extract_method_constraints(text) == expected
+    assert _extract_method_constraints(text, method_entity_names=_ALGORITHM_NAMES) == expected
+
+
+def test_extract_method_constraints_without_registry_names_does_not_use_direct_entity_channel() -> None:
+    """摘要：未注入 Tool 注册表专名时，不靠模块硬编码识别“按照 booth 计算”。"""
+    assert _extract_method_constraints("按照 booth 计算一下三乘七") == ()
+
+
+def test_method_entity_dictionary_is_read_from_tool_registry_union() -> None:
+    """摘要：拆解器算法专名词典必须等于 Tool 注册表并集，防止手写词表回退。"""
+    registry = ToolRegistry()
+    registry.register_builtin(_algorithm_manifest("tool_a", ("foo",)), _dummy_tool)
+    registry.register_builtin(_algorithm_manifest("tool_b", ("bar",)), _dummy_tool)
+    decomposer = PlanDecomposer(method_entity_names=registry.algorithm_names)
+
+    assert decomposer._current_method_entity_names() == registry.algorithm_names()
+    assert decomposer._extract_method_constraints("按照 foo 计算") == ("foo",)
+    assert decomposer._extract_method_constraints("按照 bar 计算") == ("bar",)
 
 
 def test_method_constraint_loss_retries_once_and_preserves_constraint() -> None:
@@ -191,7 +236,7 @@ def test_method_constraint_loss_retries_once_and_preserves_constraint() -> None:
 
 def test_booth_method_uses_builtin_tool_plan_without_llm() -> None:
     backend = MagicMock()
-    decomposer = PlanDecomposer(llm_router=backend)
+    decomposer = PlanDecomposer(llm_router=backend, method_entity_names=("booth",))
 
     result = decomposer.decide("按booth算法计算7乘3")
 
@@ -204,7 +249,7 @@ def test_booth_method_uses_builtin_tool_plan_without_llm() -> None:
 
 def test_builtin_tool_decision_logs_method_constraints(caplog) -> None:
     """摘要：builtin 工具路径记录 R3 放行、B4 约束与路由详情。"""
-    decomposer = PlanDecomposer(llm_router=MagicMock())
+    decomposer = PlanDecomposer(llm_router=MagicMock(), method_entity_names=("booth",))
 
     with caplog.at_level(logging.INFO, logger="offline_companion.core.plan_decomposer"):
         result = decomposer.decide("按booth算法计算7乘3")
@@ -216,7 +261,7 @@ def test_builtin_tool_decision_logs_method_constraints(caplog) -> None:
 
 @pytest.mark.parametrize("text", ["按照booth计算一下三乘七", "按照booth算法计算一下三乘七"])
 def test_booth_named_entity_without_category_uses_builtin_tool_plan(text: str) -> None:
-    decomposer = PlanDecomposer(llm_router=MagicMock())
+    decomposer = PlanDecomposer(llm_router=MagicMock(), method_entity_names=("booth",))
 
     result = decomposer.decide(text)
 

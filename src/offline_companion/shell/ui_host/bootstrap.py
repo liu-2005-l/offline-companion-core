@@ -363,6 +363,8 @@ def bootstrap_ui_session(
             handler_function="booth_multiply_tool",
             external_config=None,
             version="1.0.0",
+            algorithm_names=("booth",),
+            trigger_keywords=("booth",),
         ),
         booth_multiply_tool,
     )
@@ -435,6 +437,7 @@ def bootstrap_ui_session(
         learning_enabled_provider=lambda: bool(
             load_settings(paths.root).get("decomp_learning_enabled", True)
         ),
+        method_entity_names=tool_registry.algorithm_names,
         subagent_scheduler=SubagentScheduler(
             auto_router=_SubagentRouterAdapter(backend),
             consent_gateway=consent_gateway,

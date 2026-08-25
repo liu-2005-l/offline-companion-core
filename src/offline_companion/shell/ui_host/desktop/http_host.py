@@ -2956,6 +2956,8 @@ def _load_local_model_backend(runtime: DesktopRuntime, model: Any) -> object:
 def _fallback_plan_orchestrator(runtime: DesktopRuntime) -> PlanOrchestrator:
     """摘要：为冷路径构造带硬门禁的计划编排器。"""
     tracker = SkillExecutionTracker(runtime.orchestrator.conn)
+    tool_invoker = getattr(runtime.orchestrator, "tool_invoker", None)
+    tool_registry = getattr(tool_invoker, "registry", None)
     return PlanOrchestrator(
         StateManager(runtime.paths.db_path),
         hard_gate=HardGate(tracker),
@@ -2966,6 +2968,11 @@ def _fallback_plan_orchestrator(runtime: DesktopRuntime) -> PlanOrchestrator:
         sample_lifecycle=runtime.sample_lifecycle,
         learning_enabled_provider=lambda: bool(
             load_settings(runtime.paths.root).get("decomp_learning_enabled", True)
+        ),
+        method_entity_names=(
+            tool_registry.algorithm_names
+            if tool_registry is not None and hasattr(tool_registry, "algorithm_names")
+            else None
         ),
         subagent_scheduler=SubagentScheduler(),
         privacy_mode=runtime.privacy_mode.value,

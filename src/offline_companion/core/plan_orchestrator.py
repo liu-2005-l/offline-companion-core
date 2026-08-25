@@ -534,6 +534,7 @@ class PlanOrchestrator:
         sample_retriever: SampleRetriever | None = None,
         sample_lifecycle: SampleLifecycleManager | None = None,
         learning_enabled_provider: Callable[[], bool] | None = None,
+        method_entity_names: Callable[[], object] | object | None = None,
         subagent_scheduler: SubagentScheduler | None = None,
         privacy_mode: str = "local_only",
     ) -> None:
@@ -562,6 +563,7 @@ class PlanOrchestrator:
             sample_retriever=sample_retriever,
             sample_lifecycle=sample_lifecycle,
             learning_enabled_provider=learning_enabled_provider,
+            method_entity_names=method_entity_names,
         )
         self._subagent_dispatch = PlanSubagentDispatch(scheduler=subagent_scheduler)
         self._privacy_mode = privacy_mode

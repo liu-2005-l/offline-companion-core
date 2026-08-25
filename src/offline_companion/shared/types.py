@@ -360,6 +360,8 @@ class ToolManifest:
     audit_only: bool = True
     enabled: bool = True
     endpoint: str | None = None
+    algorithm_names: tuple[str, ...] = ()
+    trigger_keywords: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
