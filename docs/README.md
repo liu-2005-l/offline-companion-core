@@ -20,6 +20,7 @@
 | **UI 自动化 Skill 生成方案** | [`Skill无门槛生成方案.md`](./Skill无门槛生成方案.md) | — |
 | **1.5B Function Calling 方案** | [`FunctionCalling小模型方案.md`](./FunctionCalling小模型方案.md) | — |
 | **v1.6.0 收尾计划** | [`optimization-plan-2026-08-25.md`](./optimization-plan-2026-08-25.md) | — |
+| **Batch E 红队矩阵** | [`red-team-matrix-2026-08-25.md`](./red-team-matrix-2026-08-25.md) | — |
 
 ---
 
