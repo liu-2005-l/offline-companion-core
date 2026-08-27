@@ -66,11 +66,17 @@ _NON_TASK_INPUTS = frozenset(
 _MIN_STEP_RELEVANCE = 0.05
 _METHOD_CONSTRAINT_PATTERN = re.compile(
     r"(?:按照|按|使用|用|通过|采用)\s*"
-    r"([a-zA-Z0-9_+#.\-\u4e00-\u9fff]{1,40})\s*(算法|协议|格式)",
+    r"([a-zA-Z0-9_+#.\-\u4e00-\u9fff]{1,40})\s*(算法|协议|格式|编码)",
     re.IGNORECASE,
 )
 _METHOD_CONSTRAINT_NOTICE = (
     "无法按指定方法分步执行，已转为直接回答；本地模型可能无法严格复现该方法。"
+)
+_PARAMETER_MISSING_NOTICE = (
+    "已识别到指定方法，但缺少执行所需参数；请补充完整输入后我再按该方法处理。"
+)
+_COMPOSITE_METHOD_NOTICE = (
+    "已执行可解析的首段算法请求；检测到后续复合计算片段，请分步提交以避免静默丢失。"
 )
 _ZERO_VALUE_NOTICE = "该计划没有增加可执行步骤，已转为直接回答。"
 _EXPLANATION_INTENT_PATTERN = re.compile(
@@ -303,6 +309,12 @@ class PlanDecomposer:
                     "拆解决策: action=fallback source=rule reason=no_rule_match constraints=%s",
                     method_constraints,
                 )
+                if method_constraints:
+                    return NotDecomposableResult(
+                        reason="no_rule_match",
+                        original_input=user_input,
+                        fallback_notice=_PARAMETER_MISSING_NOTICE,
+                    )
                 return NotDecomposableResult(
                     reason="no_rule_match",
                     original_input=user_input,
@@ -716,13 +728,13 @@ def _has_unavailable_algorithm_constraint(
     *,
     algorithm_name_map: Mapping[str, frozenset[str]],
 ) -> bool:
-    """摘要：判断用户指定了算法类约束但当前 Tool 注册表没有对应算法。"""
+    """摘要：判断用户指定了方法类约束但当前 Tool 注册表没有对应工具。"""
     if not algorithm_name_map:
         return False
     algorithm_constraints = tuple(
-        constraint.removesuffix("算法")
+        _strip_method_constraint_suffix(constraint)
         for constraint in constraints
-        if constraint.endswith("算法")
+        if _has_method_constraint_suffix(constraint)
     )
     if not algorithm_constraints:
         return False
@@ -731,6 +743,19 @@ def _has_unavailable_algorithm_constraint(
         not any(base == name or base.startswith(name) for name in available_names)
         for base in algorithm_constraints
     )
+
+
+def _has_method_constraint_suffix(constraint: str) -> bool:
+    """摘要：判断约束是否来自显式类别后缀。"""
+    return any(constraint.endswith(suffix) for suffix in ("算法", "协议", "格式", "编码"))
+
+
+def _strip_method_constraint_suffix(constraint: str) -> str:
+    """摘要：移除显式方法类别后缀，保留实体名用于注册表对账。"""
+    for suffix in ("算法", "协议", "格式", "编码"):
+        if constraint.endswith(suffix):
+            return constraint.removesuffix(suffix)
+    return constraint
 
 
 def _booth_plan(goal: str) -> list[dict[str, Any]] | None:
@@ -744,7 +769,7 @@ def _booth_plan(goal: str) -> list[dict[str, Any]] | None:
     except ValueError:
         return None
     expected = multiplicand * multiplier
-    return [
+    steps = [
         {
             "step_id": "booth_tool",
             "skill_id": "algorithm_booth",
@@ -768,6 +793,21 @@ def _booth_plan(goal: str) -> list[dict[str, Any]] | None:
             "estimated_minutes": 1,
         },
     ]
+    if _has_followup_arithmetic_fragment(goal):
+        steps[1]["title"] = "转述 Booth 结果并提示复合指令边界"
+        steps[1]["description"] = (
+            steps[1]["description"]
+            + _COMPOSITE_METHOD_NOTICE
+        )
+        steps[1]["expected_output"] = (
+            steps[1]["expected_output"]
+            + " 同时明示后续复合计算片段需要分步提交。"
+        )
+        steps[1]["verification"] = (
+            steps[1]["verification"]
+            + " 不得把后续复合片段伪装成已完成。"
+        )
+    return steps
 
 
 def _crc32_plan(goal: str) -> list[dict[str, Any]] | None:
@@ -910,6 +950,17 @@ def _extract_integer_list(text: str) -> list[int] | None:
         except ValueError:
             return None
     return values
+
+
+def _has_followup_arithmetic_fragment(text: str) -> bool:
+    """摘要：检测首个可执行算式后是否还有未处理的复合算术片段。"""
+    return bool(
+        re.search(
+            r"(?:再|然后|接着)\s*(?:乘以|乘|加|减|除以|除|\+|-|\*|/|÷|×|\^|\*\*)\s*"
+            r"(?:\d+|[零一二两三四五六七八九十百千万亿]+)",
+            str(text or ""),
+        )
+    )
 
 
 def _deterministic_calculator_plan(goal: str) -> list[dict[str, Any]] | None:

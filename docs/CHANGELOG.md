@@ -35,6 +35,7 @@
 - 补齐 Tool 事件层：`ToolInvoker` 执行时写入 `tool/call` 与 `tool/result`，payload 保留 `tool_id`、`session_id`、状态与可辨识参数，用于 Batch E 红队前置 drill 定位工具链路。
 - 同步 v6 边界战役收尾与主线回归承接计划，并新增 `scripts/drill_algorithm_tools.py`，将 D-3 五判例 route/execute/transcribe drill 固化为可重跑脚本。
 - 同步 Batch E 红队开工方案，并记录 E-1 预注册侦察矩阵：15 条主判例当前 `correct=6`、`degraded-explicit=3`、`silent-fail=6`，为 E-2 silent 清零提供对拍基线。
+- 落地 Batch E-2a 可见性修复：B4 类别约束补“编码”，工具集内方法缺参返回可见缺参提示，复合算法指令保留首段执行并在转述步骤明示后续片段需分步提交；矩阵重跑从 `6/3/6` 推进到 `6/6/3`。
 - 已知债务：`PlanDecomposer` 的 `method_entity_names` / manifest 映射参数仍允许空值以兼容测试与冷路径构造；生产 bootstrap 已传入 callable，后续可将生产装配路径升级为缺失即 fail-fast。
 
 ## v1.6.1 · 2026-08-20（Windows 窗口适配修复）

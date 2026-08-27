@@ -357,6 +357,87 @@ def test_unknown_algorithm_constraint_falls_back_with_visible_notice() -> None:
     assert "无法按指定方法分步执行" in result.fallback_notice
 
 
+def test_encoding_constraint_without_tool_falls_back_with_visible_notice() -> None:
+    """摘要：编码类约束进入同一方法约束降级链，避免词典 miss 静默。"""
+    registry = ToolRegistry()
+    registry.register_builtin(
+        _algorithm_manifest("algorithm_crc32", ("crc",), ("crc",)),
+        _dummy_tool,
+    )
+    decomposer = PlanDecomposer(
+        llm_router=MagicMock(),
+        method_entity_names=registry.algorithm_names,
+        algorithm_name_map=registry.algorithm_name_map,
+        trigger_keyword_map=registry.trigger_keyword_map,
+    )
+
+    result = decomposer.decide('按UTF-8编码计算"你好"的字节')
+
+    assert isinstance(result, NotDecomposableResult)
+    assert result.reason == "method_constraint_lost"
+    assert result.fallback_notice is not None
+    assert "无法按指定方法分步执行" in result.fallback_notice
+    assert _extract_method_constraints('按UTF-8编码计算"你好"的字节') == ("utf8编码",)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected_notice_fragment"),
+    [
+        ("用booth算法算一下", "缺少执行所需参数"),
+        ("按快速排序排", "缺少执行所需参数"),
+    ],
+)
+def test_method_constraint_missing_parameters_returns_visible_notice(
+    text: str,
+    expected_notice_fragment: str,
+) -> None:
+    """摘要：工具集内方法缺参数时明示缺参，不静默 no_rule_match。"""
+    registry = ToolRegistry()
+    registry.register_builtin(
+        _algorithm_manifest("algorithm_booth", ("booth",), ("booth",)),
+        _dummy_tool,
+    )
+    registry.register_builtin(
+        _algorithm_manifest("algorithm_quicksort", ("快速排序",), ("快速排序",)),
+        _dummy_tool,
+    )
+    decomposer = PlanDecomposer(
+        llm_router=MagicMock(),
+        method_entity_names=registry.algorithm_names,
+        algorithm_name_map=registry.algorithm_name_map,
+        trigger_keyword_map=registry.trigger_keyword_map,
+    )
+
+    result = decomposer.decide(text)
+
+    assert isinstance(result, NotDecomposableResult)
+    assert result.reason == "no_rule_match"
+    assert result.fallback_notice is not None
+    assert expected_notice_fragment in result.fallback_notice
+
+
+def test_composite_booth_plan_keeps_first_segment_and_warns_followup() -> None:
+    """摘要：复合算法指令先执行可解析首段，同时显式提示未处理片段。"""
+    decomposer = PlanDecomposer(llm_router=MagicMock(), method_entity_names=("booth",))
+
+    result = decomposer.decide("先按booth算法算3乘7再乘2")
+
+    assert isinstance(result, list)
+    assert [step.skill_id for step in result] == ["algorithm_booth", "chat"]
+    assert result[0].payload["tool_args"] == {"multiplicand": 3, "multiplier": 7}
+    assert "复合计算片段" in result[1].description
+    assert "不得把后续复合片段伪装成已完成" in result[1].verification
+
+
+def test_non_task_no_rule_match_keeps_zero_notice() -> None:
+    """摘要：负控闲聊保持零 notice，避免 no_rule_match 过度发射。"""
+    result = PlanDecomposer().decide("今天天气不错")
+
+    assert isinstance(result, NotDecomposableResult)
+    assert result.reason == "no_rule_match"
+    assert result.fallback_notice is None
+
+
 def test_calculator_method_uses_builtin_tool_plan_without_llm() -> None:
     backend = MagicMock()
     decomposer = PlanDecomposer(llm_router=backend)
