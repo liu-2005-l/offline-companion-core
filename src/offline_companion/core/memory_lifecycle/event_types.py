@@ -13,6 +13,7 @@ EVENT_TYPES = frozenset({
     "milestone",
 })
 EVENT_STATUSES = frozenset({"active", "dormant", "superseded"})
+CONTENT_EMBEDDING_DIMENSIONS = 768
 
 
 @dataclass(frozen=True)
@@ -77,3 +78,10 @@ class SemanticEvent:
             raise ValueError("recall_count must not be negative")
         if self.status not in EVENT_STATUSES:
             raise ValueError(f"invalid event status: {self.status}")
+        if (
+            self.content_embedding is not None
+            and len(self.content_embedding) != CONTENT_EMBEDDING_DIMENSIONS
+        ):
+            raise ValueError(
+                f"content_embedding must have {CONTENT_EMBEDDING_DIMENSIONS} dimensions"
+            )

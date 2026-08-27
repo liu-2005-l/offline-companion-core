@@ -5,7 +5,16 @@ import time
 
 from offline_companion.core.memory_lifecycle.event_recaller import EventRecaller
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
-from offline_companion.core.memory_lifecycle.event_types import SemanticEvent
+from offline_companion.core.memory_lifecycle.event_types import (
+    CONTENT_EMBEDDING_DIMENSIONS,
+    SemanticEvent,
+)
+
+
+def vector(index: int = 0) -> list[float]:
+    values = [0.0] * CONTENT_EMBEDDING_DIMENSIONS
+    values[index] = 1.0
+    return values
 
 
 def event(event_id: str, content: str, *, importance: float = 3.0, related: list[str] | None = None) -> SemanticEvent:
@@ -14,7 +23,7 @@ def event(event_id: str, content: str, *, importance: float = 3.0, related: list
         event_type="fact",
         subject="user",
         content=content,
-        content_embedding=[1.0, 0.0],
+        content_embedding=vector(),
         importance=importance,
         related_events=related or [],
         created_at=time.time(),
@@ -40,7 +49,7 @@ def test_recall_expands_related_events_and_returns_chronological_narrative() -> 
     recaller = EventRecaller(
         repo,
         bm25=lambda _query: ["a"],
-        embed_func=lambda _query: [1.0, 0.0],
+        embed_func=lambda _query: vector(),
     )
 
     results = recaller.recall("用户的技术背景", top_k=1)
@@ -54,7 +63,7 @@ def test_low_importance_related_event_is_not_expanded() -> None:
     repo = EventRepository(sqlite3.connect(":memory:"))
     repo.store(event("a", "用户使用 Python", related=["low"]))
     repo.store(event("low", "临时偏好", importance=2.0))
-    recaller = EventRecaller(repo, embed_func=lambda _query: [1.0, 0.0])
+    recaller = EventRecaller(repo, embed_func=lambda _query: vector())
 
     results = recaller.recall("Python", top_k=1)
 

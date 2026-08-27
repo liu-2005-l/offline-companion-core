@@ -7,8 +7,17 @@ from pathlib import Path
 import pytest
 
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
-from offline_companion.core.memory_lifecycle.event_types import SemanticEvent
+from offline_companion.core.memory_lifecycle.event_types import (
+    CONTENT_EMBEDDING_DIMENSIONS,
+    SemanticEvent,
+)
 from offline_companion.runtime.storage_index.engine import connect
+
+
+def vector(index: int = 0) -> list[float]:
+    values = [0.0] * CONTENT_EMBEDDING_DIMENSIONS
+    values[index] = 1.0
+    return values
 
 
 def make_event(event_id: str, *, event_type: str = "fact", importance: float = 1.0) -> SemanticEvent:
@@ -17,7 +26,7 @@ def make_event(event_id: str, *, event_type: str = "fact", importance: float = 1
         event_type=event_type,
         subject="user",
         content=f"事件 {event_id}",
-        content_embedding=[1.0, 0.0],
+        content_embedding=vector(),
         importance=importance,
         created_at=time.time(),
         source_turns=[1, 2],
@@ -41,7 +50,7 @@ def test_store_and_get_preserves_semantic_event_fields(tmp_path: Path) -> None:
 
     assert loaded is not None
     assert loaded.event_type == "preference"
-    assert loaded.content_embedding == [1.0, 0.0]
+    assert loaded.content_embedding == vector()
     assert loaded.source_turns == [1, 2]
     assert loaded.related_events == ["related-1"]
     assert loaded.importance == 3.5
@@ -67,13 +76,44 @@ def test_vector_search_returns_nearest_active_events(tmp_path: Path) -> None:
         event_type="fact",
         subject="user",
         content="远事件",
-        content_embedding=[0.0, 1.0],
+        content_embedding=vector(1),
         created_at=time.time(),
     ))
 
-    results = repo.vector_search([1.0, 0.0], top_k=1)
+    results = repo.vector_search(vector(), top_k=1)
 
     assert [event.event_id for event, _distance in results] == ["near"]
+
+
+def test_vector_search_logs_returned_count(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    """摘要：vector_search 固定输出返回数 anchor，供回归诊断。"""
+    repo = EventRepository(sqlite3.connect(tmp_path / "events.db"))
+    repo.store(make_event("near"))
+
+    with caplog.at_level("INFO", logger="offline_companion.core.memory_lifecycle.event_repository"):
+        results = repo.vector_search(vector(), top_k=1)
+
+    assert len(results) == 1
+    assert "semantic event vector_search returned 1 events for top_k=1 candidates=1" in caplog.text
+
+
+def test_store_rejects_non_768_dimension_embedding(tmp_path: Path) -> None:
+    """摘要：向量维度错误在仓储写入阶段 fail-fast，不推迟到搜索阶段。"""
+    repo = EventRepository(sqlite3.connect(tmp_path / "events.db"))
+    event = make_event("bad")
+    event.content_embedding[:] = [1.0, 0.0]
+
+    with pytest.raises(ValueError, match="768 dimensions"):
+        repo.store(event)
+
+
+def test_store_duplicate_event_id_raises_integrity_error(tmp_path: Path) -> None:
+    """摘要：仓储层不吞同 ID 冲突，由调用方负责去重策略。"""
+    repo = EventRepository(sqlite3.connect(tmp_path / "events.db"))
+    repo.store(make_event("dup"))
+
+    with pytest.raises(sqlite3.IntegrityError):
+        repo.store(make_event("dup"))
 
 
 def test_update_recall_stats_increments_counter(tmp_path: Path) -> None:

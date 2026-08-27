@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 import time
 from dataclasses import replace
@@ -14,6 +15,8 @@ from offline_companion.shared.deterministic_embedding import (
 )
 
 from .event_types import SemanticEvent
+
+logger = logging.getLogger(__name__)
 
 
 class EventRepository:
@@ -137,7 +140,14 @@ class EventRepository:
             similarity = cosine_similarity(query_embedding, vector)
             ranked.append((event, 1.0 - similarity))
         ranked.sort(key=lambda item: item[1])
-        return ranked[:top_k]
+        results = ranked[:top_k]
+        logger.info(
+            "semantic event vector_search returned %d events for top_k=%d candidates=%d",
+            len(results),
+            top_k,
+            len(ranked),
+        )
+        return results
 
     def update_recall_stats(self, event_id: str) -> None:
         """摘要：记录一次成功召回。"""

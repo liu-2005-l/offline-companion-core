@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import time
 import uuid
@@ -13,6 +14,7 @@ from .event_repository import EventRepository
 from .event_types import EVENT_TYPES, SemanticEvent
 
 EXTRACTION_INTERVAL = 10
+logger = logging.getLogger(__name__)
 
 
 class EventExtractor:
@@ -38,7 +40,6 @@ class EventExtractor:
         self._llm = llm_backend
         self._embed = embedding_func
         self._extraction_interval = extraction_interval
-        self.last_extracted_turn = 0
         self.last_extracted_turn = 0
 
     def should_extract(self, turn_count: int) -> bool:
@@ -73,6 +74,13 @@ class EventExtractor:
                 continue
             self._repo.store(event)
             stored.append(event)
+        logger.info(
+            "semantic extractor extracted %d events from turns %d-%d candidates=%d",
+            len(stored),
+            turn_range[0],
+            turn_range[1],
+            len(raw_events),
+        )
         return stored
 
     def _to_event(
