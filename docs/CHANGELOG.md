@@ -37,7 +37,7 @@
 - 同步 Batch E 红队开工方案，并记录 E-1 预注册侦察矩阵：15 条主判例当前 `correct=6`、`degraded-explicit=3`、`silent-fail=6`，为 E-2 silent 清零提供对拍基线。
 - 落地 Batch E-2a 可见性修复：B4 类别约束补“编码”，工具集内方法缺参返回可见缺参提示，复合算法指令保留首段执行并在转述步骤明示后续片段需分步提交；矩阵重跑从 `6/3/6` 推进到 `6/6/3`。
 - 落地 Batch E-2b 正确性修复：整数解析支持 `负三`、`负3`、`−3` 三类负号，快速排序接受空数组边界，算术审计系动词族补 `为`；矩阵重跑达到 `9/6/0`。
-- 开始 v6 主线 6.1 回归：W22 基线改为 `1099 passed / 3 skipped` 不退步，确认生产 embedding 为 deterministic hash-bow 768 维近似；语义事件存储新增 768 维 fail-fast、同 ID 冲突传播和 vector_search/extractor 固定日志 anchor。
+- 闭合 v6 主线 6.1 回归：W22 基线改为 `1099 passed / 3 skipped` 不退步，确认生产 embedding 为 deterministic hash-bow 768 维近似；语义事件存储新增 768 维 fail-fast、同 ID 冲突传播和 vector_search/extractor 固定日志 anchor，并固化真实 SQLite + deterministic `embed_text` 的 6.1 drill。
 - 已知债务：`PlanDecomposer` 的 `method_entity_names` / manifest 映射参数仍允许空值以兼容测试与冷路径构造；生产 bootstrap 已传入 callable，后续可将生产装配路径升级为缺失即 fail-fast。
 
 ## v1.6.1 · 2026-08-20（Windows 窗口适配修复）

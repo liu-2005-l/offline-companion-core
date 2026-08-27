@@ -70,7 +70,7 @@ C-6	6.6 端到端	用户视角全对率抽样 10% 跑端到端语义验证
 
 验收：六子批全过原则五三判据 + 全量回归绿。
 
-6.1 起步记录（2026-08-27）：当前属于“部分实现 + 补验证/补边界”状态，不是纯补验证也不是白纸实现。已补 W22 新基线、embedding 生产路径确认、语义事件向量 768 维 store fail-fast、同 ID 冲突传播测试、`vector_search returned ...` 与 `extracted ... events from turns X-Y` 两条日志 anchor；全量回归从 1099 推进到 1103。
+6.1 闭合记录（2026-08-27）：当前属于“部分实现 + 补验证/补边界”状态，不是纯补验证也不是白纸实现。已补 W22 新基线、embedding 生产路径确认、语义事件向量 768 维 store fail-fast、同 ID 冲突传播测试、`vector_search returned ...` 与 `extracted ... events from turns X-Y` 两条日志 anchor；新增 `scripts/drill_phase6_1_semantic_events.py` 真链路抽样（真实 SQLite + deterministic `embed_text` 768 维 + 固定结构化后端，不加载模型），验证存储、去重、向量召回与日志 anchor。全量回归从 1099 推进到 1103。
 
 Batch D｜窗口自适应布局（方案 v3 已定稿）
 docs/window-adaptive-layout-design.md（v3，含实测数据归档）。三批次按依赖排序：
