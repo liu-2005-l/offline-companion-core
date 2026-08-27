@@ -34,6 +34,15 @@ def test_booth_multiply_returns_deterministic_trace() -> None:
     assert "= 21" in rendered
 
 
+def test_booth_multiply_negative_three_by_seven() -> None:
+    """摘要：锁定 E1-1 的工具层假设，Booth 本体支持带符号乘法。"""
+    trace = booth_multiply(-3, 7)
+
+    assert trace["multiplicand"] == -3
+    assert trace["multiplier"] == 7
+    assert trace["result"] == -21
+
+
 @pytest.mark.parametrize(
     ("multiplicand", "multiplier"),
     [(0, 7), (7, 0), (3, 5), (-7, 3), (7, -3), (-7, -3)],
@@ -106,3 +115,12 @@ def test_quicksort_returns_expected_partition_snapshots() -> None:
     rendered = format_quicksort_result(trace)
     assert "第 1 轮 pivot=1" in rendered
     assert "[1, 2, 5, 9]" in rendered
+
+
+def test_quicksort_accepts_empty_list_boundary() -> None:
+    """摘要：空数组是快速排序合法边界输入，应返回空结果与空快照。"""
+    trace = quicksort([])
+
+    assert trace["input"] == []
+    assert trace["partitions"] == []
+    assert trace["result"] == []

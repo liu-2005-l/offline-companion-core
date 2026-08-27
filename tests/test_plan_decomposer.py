@@ -276,6 +276,30 @@ def test_booth_named_entity_without_category_uses_builtin_tool_plan(text: str) -
     assert result[0].payload["tool_args"] == {"multiplicand": 3, "multiplier": 7}
 
 
+@pytest.mark.parametrize(
+    ("text", "expected_multiplicand"),
+    [
+        ("用booth算法计算负三乘七", -3),
+        ("用booth算法计算负3乘七", -3),
+        ("用booth算法计算−3乘七", -3),
+    ],
+)
+def test_booth_method_preserves_negative_operand_in_tool_args(
+    text: str,
+    expected_multiplicand: int,
+) -> None:
+    """摘要：负数 Booth 请求在事件层前的 Tool 参数中保留符号。"""
+    decomposer = PlanDecomposer(llm_router=MagicMock(), method_entity_names=("booth",))
+
+    result = decomposer.decide(text)
+
+    assert isinstance(result, list)
+    assert result[0].payload["tool_args"] == {
+        "multiplicand": expected_multiplicand,
+        "multiplier": 7,
+    }
+
+
 def test_crc_uppercase_trigger_keyword_uses_crc32_tool_plan() -> None:
     registry = ToolRegistry()
     registry.register_builtin(
@@ -334,6 +358,27 @@ def test_quicksort_method_constraint_uses_tool_plan() -> None:
     assert isinstance(result, list)
     assert [step.skill_id for step in result] == ["algorithm_quicksort", "chat"]
     assert result[0].payload["tool_args"] == {"values": [5, 2, 9, 1]}
+
+
+def test_quicksort_method_constraint_accepts_empty_array() -> None:
+    """摘要：空数组作为 quicksort 合法参数进入工具路径，不落缺参 notice。"""
+    registry = ToolRegistry()
+    registry.register_builtin(
+        _algorithm_manifest("algorithm_quicksort", ("快速排序", "quicksort"), ("快速排序",)),
+        _dummy_tool,
+    )
+    decomposer = PlanDecomposer(
+        llm_router=MagicMock(),
+        method_entity_names=registry.algorithm_names,
+        algorithm_name_map=registry.algorithm_name_map,
+        trigger_keyword_map=registry.trigger_keyword_map,
+    )
+
+    result = decomposer.decide("按快速排序排[]")
+
+    assert isinstance(result, list)
+    assert [step.skill_id for step in result] == ["algorithm_quicksort", "chat"]
+    assert result[0].payload["tool_args"] == {"values": []}
 
 
 def test_unknown_algorithm_constraint_falls_back_with_visible_notice() -> None:

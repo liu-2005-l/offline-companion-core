@@ -120,7 +120,7 @@ _REQUIRED_FIELDS = (
     "verification",
     "completion_criteria",
 )
-_INTEGER_TOKEN_PATTERN = re.compile(r"[+-]?(?:\d+|[零一二两三四五六七八九十百千万亿]+)")
+_INTEGER_TOKEN_PATTERN = re.compile(r"[+\-−负]?(?:\d+|[零一二两三四五六七八九十百千万亿]+)")
 _QUOTED_TEXT_PATTERN = re.compile(r"[\"“”']([^\"“”']+)[\"“”']")
 
 
@@ -938,7 +938,7 @@ def _extract_integer_operands(text: str) -> list[int]:
 
 def _extract_integer_list(text: str) -> list[int] | None:
     """摘要：从方括号列表中提取整数序列。"""
-    match = re.search(r"[\[【]\s*([^\]】]+)\s*[\]】]", text)
+    match = re.search(r"[\[【]\s*([^\]】]*)\s*[\]】]", text)
     if match is None:
         return None
     values: list[int] = []

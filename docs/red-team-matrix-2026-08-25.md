@@ -74,3 +74,13 @@
 - E8-1 notice 原文：`已执行可解析的首段算法请求；检测到后续复合计算片段，请分步提交以避免静默丢失。`
 - E7-1 口径：当前触发泛化缺参 notice，但输入已含空数组字面量；该 notice 未说明“空数组边界”，按内容质量仍归 `silent-fail`，留给 E-2b 修成 `correct`。
 - 第 3 层口径：暂未形成独立合成判例，按 §7.2 降级为占位并记 v6 观察项；负控闲聊 `今天天气不错` 已由单测锁定零 notice。
+
+## E-2b 效果重跑（2026-08-27）
+
+- 重跑口径：15 条预注册主判例单跑；全部规则/工具/审计确定性路径，未加载模型。
+- schema 前置：生产 `algorithm_quicksort` manifest 仅声明 `values` 为 integer array，无 `minItems>=1` 护栏；放开空数组提取不会被 schema 二次弹回。
+- 三态分布：`correct=9 / degraded-explicit=6 / silent-fail=0`。新增 correct 为 `E1-1`、`E6-2`、`E7-1`；既有 9 条不回归，`E3-1` 未做顺手记忆修复，仍为 degraded。
+- E1-1 事件层：`tool/call` 参数为 `algorithm_booth {"multiplicand": -3, "multiplier": 7}`；工具结果 `result=-21`，中文负号没有再丢失。
+- E6-2 审计层：`3乘7的积为14` 被算术审计提取为错误断言，期望值 `21`，镜像 E6-1 的拦截链路。
+- E7-1 事件层：`tool/call` 参数为 `algorithm_quicksort {"values": []}`；工具结果 `[]`，空数组进入执行层并正确返回。
+- E8-1 非回归：仍执行首段 `algorithm_booth {"multiplicand": 3, "multiplier": 7}` 并保留复合片段 notice，未整体拒绝。

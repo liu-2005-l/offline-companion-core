@@ -15,6 +15,9 @@ from offline_companion.core.tools.calculator_tool import calculator_tool
     ("text", "expected"),
     [
         ("计算三乘七", {"left": "三", "operator": "乘", "right": "七"}),
+        ("计算负三乘七", {"left": "负三", "operator": "乘", "right": "七"}),
+        ("计算负3乘七", {"left": "负3", "operator": "乘", "right": "七"}),
+        ("计算−3乘七", {"left": "−3", "operator": "乘", "right": "七"}),
         ("请算一下 12 除以 3", {"left": "12", "operator": "除以", "right": "3"}),
     ],
 )
@@ -37,6 +40,12 @@ def test_calculate_division_by_zero_is_rejected() -> None:
 def test_parse_integer_supports_chinese_numbers() -> None:
     assert parse_integer("三") == 3
     assert parse_integer("二十一") == 21
+
+
+@pytest.mark.parametrize(("value", "expected"), [("负三", -3), ("负3", -3), ("−3", -3)])
+def test_parse_integer_supports_chinese_negative_prefix(value: str, expected: int) -> None:
+    """摘要：中文负号与数学负号保留到确定性算法参数。"""
+    assert parse_integer(value) == expected
 
 
 def test_calculator_tool_returns_json_safe_values() -> None:

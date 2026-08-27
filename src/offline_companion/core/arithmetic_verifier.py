@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 _NUMBER = r"[+\-−]?\d+(?:\.\d+)?"
 _OPERATOR = r"(?:除以|乘以|\*\*|[×xX*乘+加\-−减÷/^])"
-_EQUALITY = r"(?:=|等于|(?:的结果|的答案|的积|的和)?是)"
+_EQUALITY = r"(?:=|等于|(?:的结果|的答案|的积|的和)?[是为])"
 _OPERATOR_CHARACTERS = "×xX*乘+加-−减÷/^"
 _ASSERTION_PATTERN = re.compile(
     rf"(?<![\w.{re.escape(_OPERATOR_CHARACTERS)}])"
@@ -201,7 +201,7 @@ def _has_arithmetic_candidate(text: str) -> bool:
 
 def _arithmetic_candidate_skip_reason(text: str) -> str | None:
     """摘要：返回算术审计快路径跳过原因，供诊断日志复用。"""
-    if "=" not in text and "等于" not in text and "是" not in text:
+    if "=" not in text and "等于" not in text and "是" not in text and "为" not in text:
         return "missing_equality"
     if not any(marker in text for marker in _OPERATOR_ALIASES):
         return "missing_operator"

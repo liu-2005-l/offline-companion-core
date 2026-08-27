@@ -6,7 +6,7 @@ import re
 from decimal import Decimal, InvalidOperation, localcontext
 from typing import Any
 
-_NUMBER = r"[+-]?(?:\d+(?:\.\d+)?|[零一二两三四五六七八九十百千万亿]+)"
+_NUMBER = r"[+\-−负]?(?:\d+(?:\.\d+)?|[零一二两三四五六七八九十百千万亿]+)"
 _EXPRESSION = re.compile(
     rf"(?P<left>{_NUMBER})\s*(?P<operator>乘以|除以|乘|加|减|\+|-|\*|/|÷|×|\^|\*\*)\s*"
     rf"(?P<right>{_NUMBER})"
@@ -95,6 +95,10 @@ def parse_integer(value: str | int) -> int:
 
 def _to_decimal(value: str | int) -> Decimal:
     text = str(value).strip()
+    if text.startswith("−"):
+        text = "-" + text[1:]
+    if text.startswith("负"):
+        text = "-" + text[1:]
     if text and all(char in _DIGITS or char in _UNITS for char in text.lstrip("+-")):
         sign = -1 if text.startswith("-") else 1
         text = text.lstrip("+-")
