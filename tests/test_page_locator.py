@@ -53,7 +53,9 @@ def test_locator_cache_failure_relocates() -> None:
 
 
 def test_page_identifier_requires_sixty_percent() -> None:
-    ocr = lambda _image: [([[0, 0]], text, 1.0) for text in ("微信", "发送", "文件")]
+    def ocr(_image):
+        return [([[0, 0]], text, 1.0) for text in ("微信", "发送", "文件")]
+
     identifier = PageIdentifier(ocr)
     pages = [{"id": "chat", "features": ["微信", "发送", "文件"]}, {"id": "main", "features": ["微信", "通讯录"]}]
     assert identifier.identify(pages, "screen") == "chat"

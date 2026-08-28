@@ -84,6 +84,7 @@ src = ["src", "tests", "scripts"]
 ignore = ["EXE001"]
 
 [tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["E402"]
 "tests/test_runtime_sandbox.py" = ["S102"]
 "src/offline_companion/core/plan_dag_engine.py" = ["BLE001"]
 "src/offline_companion/core/plan_orchestrator.py" = ["BLE001"]

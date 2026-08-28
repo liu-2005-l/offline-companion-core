@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import yaml
@@ -22,7 +26,11 @@ from offline_companion.runtime.storage_index.engine import connect, new_session
 
 def _patch_embedding_config(monkeypatch, cfg: MemoryEmbeddingConfig) -> None:
     """摘要：统一替换各模块内的 load_embedding_config。"""
-    loader = lambda path=None: cfg
+
+    def loader(path=None):
+        """摘要：返回测试内固定的 embedding 配置。"""
+        return cfg
+
     monkeypatch.setattr(
         "offline_companion.core.memory_lifecycle.embedding.load_embedding_config",
         loader,
@@ -115,6 +123,23 @@ def test_cancelled_memory_excluded_from_recall_and_embedding_candidates(tmp_path
 def test_cosine_identical() -> None:
     v = embed_text("hello world", dimensions=64)
     assert cosine_similarity(v, v) > 0.99
+
+
+def test_embed_text_is_stable_across_processes() -> None:
+    """摘要：hash-bow 使用稳定哈希，避免阈值校准跨进程抖动。"""
+    code = (
+        "import json;"
+        "from offline_companion.shared.deterministic_embedding import embed_text;"
+        "print(json.dumps(embed_text('本地优先方案', dimensions=32)))"
+    )
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(Path(__file__).resolve().parents[1] / "src")
+    env["PYTHONIOENCODING"] = "utf-8"
+
+    first = subprocess.check_output([sys.executable, "-c", code], env=env, text=True)
+    second = subprocess.check_output([sys.executable, "-c", code], env=env, text=True)
+
+    assert json.loads(first) == json.loads(second)
 
 
 def test_default_embedding_config_disabled() -> None:

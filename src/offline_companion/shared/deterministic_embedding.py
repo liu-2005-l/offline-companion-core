@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import re
@@ -33,7 +34,8 @@ def embed_text(text: str, *, dimensions: int) -> list[float]:
     """摘要：将文本编码为 L2 归一化的确定性哈希袋向量。"""
     vec = [0.0] * dimensions
     for token in tokenize_for_embedding(text):
-        idx = hash(token) % dimensions
+        digest = hashlib.sha256(token.encode("utf-8")).digest()
+        idx = int.from_bytes(digest[:8], "big") % dimensions
         vec[idx] += 1.0
     norm = math.sqrt(sum(value * value for value in vec))
     if norm <= 0:
