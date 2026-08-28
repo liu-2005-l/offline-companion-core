@@ -15,6 +15,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
+from offline_companion.core.memory_lifecycle.event_extractor import HASH_BOW_DUPLICATE_THRESHOLD
 from offline_companion.shared.deterministic_embedding import cosine_similarity, embed_text
 
 DEFAULT_FIXTURE = ROOT / "fixtures" / "semantic_event_similarity_pairs.json"
@@ -55,6 +56,18 @@ def _score_pairs(pairs: list[dict[str, Any]], *, dimensions: int) -> list[float]
     return scores
 
 
+def _score_pairs_by_type(
+    pairs_by_type: dict[str, list[dict[str, Any]]],
+    *,
+    dimensions: int,
+) -> dict[str, list[float]]:
+    """摘要：按判别对类型计算分面相似度。"""
+    return {
+        pair_type: _score_pairs(pairs, dimensions=dimensions)
+        for pair_type, pairs in pairs_by_type.items()
+    }
+
+
 def _stats(scores: list[float]) -> SimilarityStats:
     """摘要：汇总相似度分布统计值。"""
     if not scores:
@@ -83,6 +96,21 @@ def _recommended_threshold(similar: SimilarityStats, dissimilar: SimilarityStats
     return similar.min_value - gap * 0.25
 
 
+def _pairs_by_type(data: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    """摘要：将 similar/dissimilar 判别对整理为 literal/paraphrase/dissimilar 三分面。"""
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for group_name in ("similar", "dissimilar"):
+        pairs = data.get(group_name)
+        if not isinstance(pairs, list):
+            raise ValueError("fixture must contain similar and dissimilar lists")
+        for pair in pairs:
+            if not isinstance(pair, dict):
+                raise ValueError("fixture pairs must be objects")
+            pair_type = str(pair.get("pair_type") or group_name)
+            grouped.setdefault(pair_type, []).append(pair)
+    return grouped
+
+
 def main(argv: list[str] | None = None) -> int:
     """摘要：执行阈值校准并输出分布与分支判决。"""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -91,23 +119,27 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     data = _load_fixture(args.fixture)
-    similar_pairs = data.get("similar")
-    dissimilar_pairs = data.get("dissimilar")
-    if not isinstance(similar_pairs, list) or not isinstance(dissimilar_pairs, list):
-        raise ValueError("fixture must contain similar and dissimilar lists")
+    pairs_by_type = _pairs_by_type(data)
+    similar_pairs = pairs_by_type.get("literal_edit", []) + pairs_by_type.get("paraphrase", [])
+    dissimilar_pairs = pairs_by_type.get("dissimilar", [])
 
     similar_stats = _stats(_score_pairs(similar_pairs, dimensions=args.dimensions))
     dissimilar_stats = _stats(_score_pairs(dissimilar_pairs, dimensions=args.dimensions))
     threshold = _recommended_threshold(similar_stats, dissimilar_stats)
+    typed_scores = _score_pairs_by_type(pairs_by_type, dimensions=args.dimensions)
 
     print("Phase 6.2 hash-bow threshold calibration")
     print(f"fixture={args.fixture}")
     print(f"dimensions={args.dimensions}")
-    print(_format_stats("similar", similar_stats))
-    print(_format_stats("dissimilar", dissimilar_stats))
+    print(_format_stats("all_similar", similar_stats))
+    print(_format_stats("all_dissimilar", dissimilar_stats))
+    for pair_type in sorted(typed_scores):
+        print(_format_stats(pair_type, _stats(typed_scores[pair_type])))
     if threshold is None:
         print("decision=overlap")
         print("recommendation=downgrade_to_lexical_near_duplicate_or_move_true_embedding_to_v1.7")
+        print(f"hash_bow_duplicate_threshold={HASH_BOW_DUPLICATE_THRESHOLD:.2f}")
+        print("hash_bow_related_threshold=not_implemented")
         return 0
     related_threshold = max(dissimilar_stats.mean_value, threshold * 0.75)
     print("decision=separable")

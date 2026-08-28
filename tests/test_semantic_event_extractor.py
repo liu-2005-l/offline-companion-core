@@ -3,9 +3,13 @@ from __future__ import annotations
 import logging
 import sqlite3
 
-from offline_companion.core.memory_lifecycle.event_extractor import EventExtractor
+from offline_companion.core.memory_lifecycle.event_extractor import (
+    HASH_BOW_DUPLICATE_THRESHOLD,
+    EventExtractor,
+)
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
 from offline_companion.core.memory_lifecycle.event_types import CONTENT_EMBEDDING_DIMENSIONS
+from offline_companion.shared.deterministic_embedding import embed_text
 
 
 class FakeLlm:
@@ -19,6 +23,19 @@ class FakeLlm:
         return self.response
 
 
+class SequenceLlm:
+    """摘要：按调用顺序返回多个结构化提取响应。"""
+
+    def __init__(self, responses: list[str]) -> None:
+        """摘要：保存待返回的响应序列。"""
+        self.responses = responses
+
+    def generate(self, prompt: str, *, temperature: float) -> str:
+        """摘要：返回下一条响应，并校验提取温度。"""
+        assert temperature == 0.3
+        return self.responses.pop(0)
+
+
 def make_extractor(response: str) -> tuple[EventExtractor, EventRepository, FakeLlm]:
     llm = FakeLlm(response)
     repo = EventRepository(sqlite3.connect(":memory:"))
@@ -28,6 +45,18 @@ def make_extractor(response: str) -> tuple[EventExtractor, EventRepository, Fake
         lambda content: [1.0] + [0.0] * (CONTENT_EMBEDDING_DIMENSIONS - 1),
     )
     return extractor, repo, llm
+
+
+def make_hash_bow_extractor(responses: list[str]) -> tuple[EventExtractor, EventRepository]:
+    """摘要：构造使用真实 deterministic hash-bow 的提取器。"""
+    llm = SequenceLlm(responses)
+    repo = EventRepository(sqlite3.connect(":memory:"))
+    extractor = EventExtractor(
+        repo,
+        llm,
+        lambda content: embed_text(content, dimensions=CONTENT_EMBEDDING_DIMENSIONS),
+    )
+    return extractor, repo
 
 
 def test_should_extract_only_on_interval() -> None:
@@ -80,6 +109,41 @@ def test_extract_skips_duplicate_event_by_embedding_similarity() -> None:
     assert len(first) == 1
     assert second == []
     assert len(repo.get_active()) == 1
+
+
+def test_extract_skips_literal_near_duplicate_with_hash_bow_threshold() -> None:
+    """摘要：hash-bow 字面近似重复达到 0.50 阈值时不重复存储。"""
+    assert HASH_BOW_DUPLICATE_THRESHOLD == 0.50
+    extractor, repo = make_hash_bow_extractor(
+        [
+            '[{"event_type":"fact","subject":"user","content":"用户对花生过敏"}]',
+            '[{"event_type":"fact","subject":"user","content":"用户不能吃花生，会过敏"}]',
+        ]
+    )
+
+    first = extractor.extract([{"role": "user", "content": "花生"}], "s1", (1, 1))
+    second = extractor.extract([{"role": "user", "content": "不能吃花生"}], "s1", (2, 2))
+
+    assert len(first) == 1
+    assert second == []
+    assert len(repo.get_active()) == 1
+
+
+def test_extract_keeps_paraphrase_below_hash_bow_threshold() -> None:
+    """摘要：hash-bow 无法判别的同义改写按降级口径双份存储。"""
+    extractor, repo = make_hash_bow_extractor(
+        [
+            '[{"event_type":"preference","subject":"user","content":"用户重视用户视角验收"}]',
+            '[{"event_type":"preference","subject":"user","content":"用户认为通过测试不等于产品正确"}]',
+        ]
+    )
+
+    first = extractor.extract([{"role": "user", "content": "用户视角"}], "s1", (1, 1))
+    second = extractor.extract([{"role": "user", "content": "测试不等于产品正确"}], "s1", (2, 2))
+
+    assert len(first) == 1
+    assert len(second) == 1
+    assert len(repo.get_active()) == 2
 
 
 def test_extract_ignores_malformed_or_invalid_events() -> None:

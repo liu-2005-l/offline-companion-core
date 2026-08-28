@@ -14,6 +14,7 @@ from .event_repository import EventRepository
 from .event_types import EVENT_TYPES, SemanticEvent
 
 EXTRACTION_INTERVAL = 10
+HASH_BOW_DUPLICATE_THRESHOLD = 0.50
 logger = logging.getLogger(__name__)
 
 
@@ -113,13 +114,13 @@ class EventExtractor:
         return event
 
     def _is_duplicate(self, event: SemanticEvent) -> bool:
-        """摘要：相似度达到 0.85 时跳过重复事件。"""
+        """摘要：相似度达到字面近似阈值时跳过重复事件。"""
         if not event.content_embedding:
             return False
         for existing, distance in self._repo.vector_search(event.content_embedding, top_k=5):
             if existing.event_type != event.event_type or existing.subject != event.subject:
                 continue
-            if 1.0 - distance >= 0.85:
+            if 1.0 - distance >= HASH_BOW_DUPLICATE_THRESHOLD:
                 return True
         return False
 

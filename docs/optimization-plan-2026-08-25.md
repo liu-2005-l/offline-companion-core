@@ -17,7 +17,7 @@ v5 Batch C 判决学到的最贵一课：result_rate=0.8（参数知识直出乘
 
 基线口径更新（2026-08-27 开 6）：原 Phase 6 测试方案头部的 `816 passed / 880+` 是旧快照，W22 作废；当前验收基线改为 `1099 passed / 3 skipped` 不退步 + 新增用例全绿，终态数字以实跑为准。
 
-embedding 依赖实情（2026-08-27 开 6）：生产路径当前使用 `shared.deterministic_embedding.embed_text(..., dimensions=768)` 的 deterministic hash-bow 近似，不是真 ONNX embedding。6.1 存储层可继续用固定 768 维向量验证；6.2 开工门禁已实测相似/不相似样本分布：similar `min=0.1438 max=0.6351 mean=0.3668`，dissimilar `min=0.1491 max=0.2864 mean=0.2094`，两组重叠，不能沿用真 embedding 口径的 `0.85/0.70` 语义阈值。6.2 去重口径降级为 deterministic hash-bow 的字面近似去重；真语义 embedding 去重列入 v1.7.0 候选，避免 mock embedding 假绿。
+embedding 依赖实情（2026-08-27 开 6）：生产路径当前使用 `shared.deterministic_embedding.embed_text(..., dimensions=768)` 的 deterministic hash-bow 近似，不是真 ONNX embedding。6.1 存储层可继续用固定 768 维向量验证；6.2 开工门禁已实测相似/不相似样本分布：similar `min=0.1438 max=0.6351 mean=0.3668`，dissimilar `min=0.1491 max=0.2864 mean=0.2094`，两组重叠，不能沿用真 embedding 口径的 `0.85/0.70` 语义阈值。分面后 literal_edit 为 `min=0.5017 max=0.6351 mean=0.5453`，paraphrase 为 `min=0.1438 max=0.4762 mean=0.3150`，因此 6.2 去重口径降级为 deterministic hash-bow 的字面近似去重，生产 duplicate 阈值落为 `0.50`；related `0.70` 当前没有生产链路消费者，标记为未实现/预留，不装作已生效。真语义 embedding 去重列入 v1.7.0 候选，避免 mock embedding 假绿。
 
 理由：OC 是 C 端私人助理，第一优先级是可靠（嘉荣 USER.md 口径）。C 端用户不按判例说话，也不按用例清单说话——他们遇到的就是端到端的"帮我记一下"或"刚才那个再算一遍"。用例 passed 数是工程产物，用户视角全对才是产品判据。
 
@@ -72,7 +72,7 @@ C-6	6.6 端到端	用户视角全对率抽样 10% 跑端到端语义验证
 
 6.1 闭合记录（2026-08-27）：当前属于“部分实现 + 补验证/补边界”状态，不是纯补验证也不是白纸实现。已补 W22 新基线、embedding 生产路径确认、语义事件向量 768 维 store fail-fast、同 ID 冲突传播测试、`vector_search returned ...` 与 `extracted ... events from turns X-Y` 两条日志 anchor；新增 `scripts/drill_phase6_1_semantic_events.py` 真链路抽样（真实 SQLite + deterministic `embed_text` 768 维 + 固定结构化后端，不加载模型），验证存储、去重、向量召回与日志 anchor。全量回归从 1099 推进到 1103。
 
-6.2 门禁记录（2026-08-27）：新增 `fixtures/semantic_event_similarity_pairs.json`（40 similar / 40 dissimilar，similar 中同义改写覆盖 30%+）与 `scripts/calibrate_phase6_2_hash_bow_thresholds.py`。校准不加载模型、不依赖 GGUF；结果显示 hash-bow 两组分布重叠，不能支撑真语义重复阈值，6.2 后续按字面近似去重推进，v1.7.0 候选保留真 embedding 去重。
+6.2 门禁记录（2026-08-27）：新增 `fixtures/semantic_event_similarity_pairs.json`（40 similar / 40 dissimilar，similar 中同义改写覆盖 30%+，并以 `pair_type` 区分 `literal_edit` / `paraphrase` / `dissimilar`）与 `scripts/calibrate_phase6_2_hash_bow_thresholds.py`。校准不加载模型、不依赖 GGUF；结果显示 hash-bow 两组分布重叠，不能支撑真语义重复阈值，6.2 后续按字面近似去重推进，生产 duplicate 阈值为 `0.50`；同义改写双份存储是当前正确降级。related 阈值无生产消费者，第三组“相关不重复”判别对留到真正实现 related 链路时再补。
 
 Batch D｜窗口自适应布局（方案 v3 已定稿）
 docs/window-adaptive-layout-design.md（v3，含实测数据归档）。三批次按依赖排序：

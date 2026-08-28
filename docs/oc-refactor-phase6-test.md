@@ -48,7 +48,7 @@ T1	手动改 DB 把 status 从 active 改成 invalid 值	get_active 不返回该
 T2	删除 semantic_events_vec 虚拟表 → vector_search	报错或返回空，不静默成功
 T3	store 后不 commit → 另一个连接 get	返回 None（未提交）
 二、6.2 事件提取器
-校准口径（2026-08-27）：生产 embedding 是 deterministic hash-bow 768 维，不是真 ONNX embedding。`fixtures/semantic_event_similarity_pairs.json` 40 组相似 + 40 组不相似判别对实测：similar `min=0.1438 max=0.6351 mean=0.3668`，dissimilar `min=0.1491 max=0.2864 mean=0.2094`，分布重叠严重。因此 6.2 去重验收降级为“字面近似去重”口径；真语义同义改写去重不以 `0.85/0.70` 判定，列入 v1.7.0 真 embedding 候选。
+校准口径（2026-08-27）：生产 embedding 是 deterministic hash-bow 768 维，不是真 ONNX embedding。`fixtures/semantic_event_similarity_pairs.json` 40 组相似 + 40 组不相似判别对实测：similar `min=0.1438 max=0.6351 mean=0.3668`，dissimilar `min=0.1491 max=0.2864 mean=0.2094`，分布重叠严重；`pair_type` 分面用于区分 `literal_edit` / `paraphrase` / `dissimilar`，其中 literal_edit `min=0.5017 max=0.6351 mean=0.5453`，paraphrase `min=0.1438 max=0.4762 mean=0.3150`。因此 6.2 去重验收降级为“字面近似去重”口径，生产 duplicate 阈值为 `0.50`；同义改写双份存储是正确降级。related `0.70` 当前没有生产链路消费者，标为未实现/预留；真语义同义改写去重列入 v1.7.0 真 embedding 候选。
 触发逻辑
 #	用例	预期
 E1	should_extract(turn=10)	True
@@ -71,10 +71,10 @@ E15	提取的事件有 content_embedding	768 维
 去重逻辑
 #	用例	预期
 E16	新事件，库无相似 → _should_store	True
-E17	新事件，库有字面近似重复匹配，新事件 importance 更高	True + 旧事件被 mark_superseded
-E18	新事件，库有字面近似重复匹配，旧事件 importance 更高	False（跳过）
-E19	新事件，库有字面近似重复匹配，importance 相同	False（保留旧的）
-E20	新事件，库有弱相关但未达字面近似重复	False + 旧事件被 merge 更新
+E17	新事件，库有字面近似重复匹配（hash-bow cosine >= 0.50），新事件 importance 更高	True + 旧事件被 mark_superseded
+E18	新事件，库有字面近似重复匹配（hash-bow cosine >= 0.50），旧事件 importance 更高	False（跳过）
+E19	新事件，库有字面近似重复匹配（hash-bow cosine >= 0.50），importance 相同	False（保留旧的）
+E20	新事件与旧事件为同义改写但不达字面近似重复	True（双份存储；merge/related 语义阈值未实现）
 E21	新事件和旧事件无字面近似相关	True
 E22	新事件和旧事件 embedding 都为 None	True（无向量可比时默认存储）
 E23	库为空 → _should_store	True
@@ -101,9 +101,9 @@ E39	零向量	返回 0.0
 trace 验证
 #	操作	预期
 T4	mock LLM 返回已知事件 → extract → 查 DB	DB 有且仅有该事件
-T5	mock LLM 返回与已有事件 cosine=0.9 的事件 → extract	DB 不新增，旧事件不变
-T6	mock LLM 返回与已有事件 cosine=0.8 的事件 → extract	DB 不新增，旧事件 content 被 merge
-T7	mock LLM 返回与已有事件 cosine=0.6 的事件 → extract	DB 新增事件
+T5	mock LLM 返回与已有事件 hash-bow cosine >= 0.50 的字面近似事件 → extract	DB 不新增，旧事件不变
+T6	mock LLM 返回同义改写但 hash-bow cosine < 0.50 的事件 → extract	DB 新增事件（字面近似口径下不 merge）
+T7	mock LLM 返回无关事件 → extract	DB 新增事件
 三、6.3 三阶段召回算法
 Stage 1：多路检索
 #	用例	预期
@@ -258,9 +258,9 @@ W9	多个事件被召回 → 按时序排列	旧事件在前，新事件在后
 W10	召回事件有 related_events → 关联事件也注入	system_prompt 包含关联事件
 去重端到端
 #	用例	预期
-W11	第 10 轮提取"用户是 C++ 工程师" → 第 20 轮再提字面近似信息	不重复存储
+W11	第 10 轮提取"用户是 C++ 工程师" → 第 20 轮再提字面近似信息	不重复存储；同义改写信息应双份存储
 W12	第 10 轮提取 importance=2 → 第 20 轮类似事件 importance=4 → 旧事件被 superseded	旧 status=“superseded”
-W13	第 10 轮和第 20 轮事件 cosine=0.75 → 合并	旧事件 content 包含两部分
+W13	第 10 轮和第 20 轮事件同义相关但未达字面近似	双份存储（related/merge 语义阈值未实现，真 embedding 后重开）
 衰减端到端
 #	用例	预期
 W14	新事件 importance=5 → 召回	在结果中，分数高

@@ -1,88 +1,528 @@
 {
   "version": 1,
-  "description": "Phase 6.2 deterministic hash-bow 阈值校准判别对。similar 中约 35% 为词面大变的同义改写，用于暴露字面去重与语义去重的边界。",
+  "description": "Phase 6.2 deterministic hash-bow 阈值校准判别对。pair_type 分为 literal_edit / paraphrase / dissimilar，用于区分字面近似去重与真语义去重边界。",
   "similar": [
-    {"id": "sim-01", "a": "用户决定采用本地优先方案", "b": "用户决定后续坚持本地默认策略", "kind": "paraphrase"},
-    {"id": "sim-02", "a": "用户对花生过敏", "b": "用户不能吃花生，会过敏", "kind": "lexical"},
-    {"id": "sim-03", "a": "用户喜欢喝无糖乌龙茶", "b": "用户偏好无糖乌龙茶", "kind": "lexical"},
-    {"id": "sim-04", "a": "用户正在开发 Offline Companion", "b": "用户在推进 Offline Companion 项目", "kind": "lexical"},
-    {"id": "sim-05", "a": "用户希望默认不联网", "b": "用户要求默认保持离线", "kind": "paraphrase"},
-    {"id": "sim-06", "a": "用户讨厌香菜", "b": "用户不喜欢香菜", "kind": "lexical"},
-    {"id": "sim-07", "a": "用户计划周五提交报告", "b": "用户打算星期五交报告", "kind": "lexical"},
-    {"id": "sim-08", "a": "用户正在学习日语", "b": "用户开始学日本语", "kind": "paraphrase"},
-    {"id": "sim-09", "a": "用户家的猫叫豆包", "b": "用户养的猫名字是豆包", "kind": "lexical"},
-    {"id": "sim-10", "a": "用户喜欢晚上写代码", "b": "用户习惯夜里编程", "kind": "paraphrase"},
-    {"id": "sim-11", "a": "用户决定先做红队矩阵", "b": "用户选择优先执行红队矩阵", "kind": "lexical"},
-    {"id": "sim-12", "a": "用户偏好简洁报告", "b": "用户喜欢短而清楚的汇报", "kind": "paraphrase"},
-    {"id": "sim-13", "a": "用户今天心情有点焦虑", "b": "用户今天感到紧张不安", "kind": "paraphrase"},
-    {"id": "sim-14", "a": "用户要记住生日是五月三日", "b": "用户生日在5月3日", "kind": "lexical"},
-    {"id": "sim-15", "a": "用户希望回复使用中文", "b": "用户要求以后用中文回答", "kind": "lexical"},
-    {"id": "sim-16", "a": "用户正在准备面试", "b": "用户在为求职面试做准备", "kind": "lexical"},
-    {"id": "sim-17", "a": "用户喜欢低糖咖啡", "b": "用户喝咖啡时偏好少糖", "kind": "lexical"},
-    {"id": "sim-18", "a": "用户不想静默上云", "b": "用户反对未经确认的云端调用", "kind": "paraphrase"},
-    {"id": "sim-19", "a": "用户把 Batch E 标记为闭合", "b": "用户确认 E 批已经收口", "kind": "lexical"},
-    {"id": "sim-20", "a": "用户正在写小说大纲", "b": "用户在构思长篇故事框架", "kind": "paraphrase"},
-    {"id": "sim-21", "a": "用户喜欢周末晨跑", "b": "用户习惯周末早上跑步", "kind": "lexical"},
-    {"id": "sim-22", "a": "用户计划买一台新显示器", "b": "用户打算更换新的屏幕", "kind": "paraphrase"},
-    {"id": "sim-23", "a": "用户希望保留审计日志", "b": "用户要求留下可追溯日志", "kind": "lexical"},
-    {"id": "sim-24", "a": "用户在修复算术校验", "b": "用户正在改算术审计问题", "kind": "lexical"},
-    {"id": "sim-25", "a": "用户喜欢蓝色主题", "b": "用户偏好蓝色界面风格", "kind": "lexical"},
-    {"id": "sim-26", "a": "用户明天要去医院复查", "b": "用户次日需要到医院复诊", "kind": "paraphrase"},
-    {"id": "sim-27", "a": "用户希望窗口不要遮住任务栏", "b": "用户要求最大化时保留任务栏", "kind": "lexical"},
-    {"id": "sim-28", "a": "用户决定先跑全量测试", "b": "用户选择先执行完整回归", "kind": "lexical"},
-    {"id": "sim-29", "a": "用户正在整理旅行清单", "b": "用户在准备出行物品列表", "kind": "paraphrase"},
-    {"id": "sim-30", "a": "用户讨厌冗长解释", "b": "用户不喜欢啰嗦说明", "kind": "paraphrase"},
-    {"id": "sim-31", "a": "用户使用 Windows 开发", "b": "用户的开发环境是 Windows", "kind": "lexical"},
-    {"id": "sim-32", "a": "用户希望测试不要依赖大模型文件", "b": "用户要求 CI 不加载 GGUF", "kind": "paraphrase"},
-    {"id": "sim-33", "a": "用户喜欢把计划写进文档", "b": "用户偏好文档化计划", "kind": "lexical"},
-    {"id": "sim-34", "a": "用户正在学习钢琴", "b": "用户开始练键盘乐器", "kind": "paraphrase"},
-    {"id": "sim-35", "a": "用户要避免覆盖并行编辑", "b": "用户担心文档并发修改丢失", "kind": "lexical"},
-    {"id": "sim-36", "a": "用户喜欢使用 pytest 验证", "b": "用户常用 pytest 跑测试", "kind": "lexical"},
-    {"id": "sim-37", "a": "用户希望先观察再修复", "b": "用户要求红队先侦察后动手", "kind": "paraphrase"},
-    {"id": "sim-38", "a": "用户正在配置本地模型", "b": "用户在设置离线推理模型", "kind": "lexical"},
-    {"id": "sim-39", "a": "用户计划晚上继续开发", "b": "用户打算夜间接着写代码", "kind": "lexical"},
-    {"id": "sim-40", "a": "用户重视用户视角验收", "b": "用户认为通过测试不等于产品正确", "kind": "paraphrase"}
+    {
+      "id": "sim-01",
+      "a": "用户决定采用本地优先方案",
+      "b": "用户决定后续坚持本地默认策略",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-02",
+      "a": "用户对花生过敏",
+      "b": "用户不能吃花生，会过敏",
+      "kind": "lexical",
+      "pair_type": "literal_edit"
+    },
+    {
+      "id": "sim-03",
+      "a": "用户喜欢喝无糖乌龙茶",
+      "b": "用户偏好无糖乌龙茶",
+      "kind": "lexical",
+      "pair_type": "literal_edit"
+    },
+    {
+      "id": "sim-04",
+      "a": "用户正在开发 Offline Companion",
+      "b": "用户在推进 Offline Companion 项目",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-05",
+      "a": "用户希望默认不联网",
+      "b": "用户要求默认保持离线",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-06",
+      "a": "用户讨厌香菜",
+      "b": "用户不喜欢香菜",
+      "kind": "lexical",
+      "pair_type": "literal_edit"
+    },
+    {
+      "id": "sim-07",
+      "a": "用户计划周五提交报告",
+      "b": "用户打算星期五交报告",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-08",
+      "a": "用户正在学习日语",
+      "b": "用户开始学日本语",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-09",
+      "a": "用户家的猫叫豆包",
+      "b": "用户养的猫名字是豆包",
+      "kind": "lexical",
+      "pair_type": "literal_edit"
+    },
+    {
+      "id": "sim-10",
+      "a": "用户喜欢晚上写代码",
+      "b": "用户习惯夜里编程",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-11",
+      "a": "用户决定先做红队矩阵",
+      "b": "用户选择优先执行红队矩阵",
+      "kind": "lexical",
+      "pair_type": "literal_edit"
+    },
+    {
+      "id": "sim-12",
+      "a": "用户偏好简洁报告",
+      "b": "用户喜欢短而清楚的汇报",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-13",
+      "a": "用户今天心情有点焦虑",
+      "b": "用户今天感到紧张不安",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-14",
+      "a": "用户要记住生日是五月三日",
+      "b": "用户生日在5月3日",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-15",
+      "a": "用户希望回复使用中文",
+      "b": "用户要求以后用中文回答",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-16",
+      "a": "用户正在准备面试",
+      "b": "用户在为求职面试做准备",
+      "kind": "lexical",
+      "pair_type": "literal_edit"
+    },
+    {
+      "id": "sim-17",
+      "a": "用户喜欢低糖咖啡",
+      "b": "用户喝咖啡时偏好少糖",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-18",
+      "a": "用户不想静默上云",
+      "b": "用户反对未经确认的云端调用",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-19",
+      "a": "用户把 Batch E 标记为闭合",
+      "b": "用户确认 E 批已经收口",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-20",
+      "a": "用户正在写小说大纲",
+      "b": "用户在构思长篇故事框架",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-21",
+      "a": "用户喜欢周末晨跑",
+      "b": "用户习惯周末早上跑步",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-22",
+      "a": "用户计划买一台新显示器",
+      "b": "用户打算更换新的屏幕",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-23",
+      "a": "用户希望保留审计日志",
+      "b": "用户要求留下可追溯日志",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-24",
+      "a": "用户在修复算术校验",
+      "b": "用户正在改算术审计问题",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-25",
+      "a": "用户喜欢蓝色主题",
+      "b": "用户偏好蓝色界面风格",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-26",
+      "a": "用户明天要去医院复查",
+      "b": "用户次日需要到医院复诊",
+      "kind": "paraphrase",
+      "pair_type": "literal_edit"
+    },
+    {
+      "id": "sim-27",
+      "a": "用户希望窗口不要遮住任务栏",
+      "b": "用户要求最大化时保留任务栏",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-28",
+      "a": "用户决定先跑全量测试",
+      "b": "用户选择先执行完整回归",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-29",
+      "a": "用户正在整理旅行清单",
+      "b": "用户在准备出行物品列表",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-30",
+      "a": "用户讨厌冗长解释",
+      "b": "用户不喜欢啰嗦说明",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-31",
+      "a": "用户使用 Windows 开发",
+      "b": "用户的开发环境是 Windows",
+      "kind": "lexical",
+      "pair_type": "literal_edit"
+    },
+    {
+      "id": "sim-32",
+      "a": "用户希望测试不要依赖大模型文件",
+      "b": "用户要求 CI 不加载 GGUF",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-33",
+      "a": "用户喜欢把计划写进文档",
+      "b": "用户偏好文档化计划",
+      "kind": "lexical",
+      "pair_type": "literal_edit"
+    },
+    {
+      "id": "sim-34",
+      "a": "用户正在学习钢琴",
+      "b": "用户开始练键盘乐器",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-35",
+      "a": "用户要避免覆盖并行编辑",
+      "b": "用户担心文档并发修改丢失",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-36",
+      "a": "用户喜欢使用 pytest 验证",
+      "b": "用户常用 pytest 跑测试",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-37",
+      "a": "用户希望先观察再修复",
+      "b": "用户要求红队先侦察后动手",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-38",
+      "a": "用户正在配置本地模型",
+      "b": "用户在设置离线推理模型",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-39",
+      "a": "用户计划晚上继续开发",
+      "b": "用户打算夜间接着写代码",
+      "kind": "lexical",
+      "pair_type": "paraphrase"
+    },
+    {
+      "id": "sim-40",
+      "a": "用户重视用户视角验收",
+      "b": "用户认为通过测试不等于产品正确",
+      "kind": "paraphrase",
+      "pair_type": "paraphrase"
+    }
   ],
   "dissimilar": [
-    {"id": "dis-01", "a": "用户决定采用本地优先方案", "b": "用户喜欢吃芒果蛋糕"},
-    {"id": "dis-02", "a": "用户对花生过敏", "b": "用户正在学习 Rust"},
-    {"id": "dis-03", "a": "用户喜欢喝无糖乌龙茶", "b": "用户明天要搬家"},
-    {"id": "dis-04", "a": "用户正在开发 Offline Companion", "b": "用户周末要去看牙"},
-    {"id": "dis-05", "a": "用户希望默认不联网", "b": "用户想买一双跑鞋"},
-    {"id": "dis-06", "a": "用户讨厌香菜", "b": "用户计划升级显卡"},
-    {"id": "dis-07", "a": "用户计划周五提交报告", "b": "用户家的狗叫雪球"},
-    {"id": "dis-08", "a": "用户正在学习日语", "b": "用户不喜欢甜咖啡"},
-    {"id": "dis-09", "a": "用户家的猫叫豆包", "b": "用户要修复登录按钮"},
-    {"id": "dis-10", "a": "用户喜欢晚上写代码", "b": "用户决定戒掉奶茶"},
-    {"id": "dis-11", "a": "用户决定先做红队矩阵", "b": "用户预约了体检"},
-    {"id": "dis-12", "a": "用户偏好简洁报告", "b": "用户正在练习吉他"},
-    {"id": "dis-13", "a": "用户今天心情有点焦虑", "b": "用户喜欢蓝莓酸奶"},
-    {"id": "dis-14", "a": "用户生日在五月三日", "b": "用户准备部署网站"},
-    {"id": "dis-15", "a": "用户希望回复使用中文", "b": "用户想学习摄影"},
-    {"id": "dis-16", "a": "用户正在准备面试", "b": "用户不想吃辣椒"},
-    {"id": "dis-17", "a": "用户喜欢低糖咖啡", "b": "用户在规划数据库迁移"},
-    {"id": "dis-18", "a": "用户不想静默上云", "b": "用户想买机械键盘"},
-    {"id": "dis-19", "a": "用户把 Batch E 标记为闭合", "b": "用户下个月要旅行"},
-    {"id": "dis-20", "a": "用户正在写小说大纲", "b": "用户要清理厨房"},
-    {"id": "dis-21", "a": "用户喜欢周末晨跑", "b": "用户在修复算术审计"},
-    {"id": "dis-22", "a": "用户计划买一台新显示器", "b": "用户喜欢猫咪视频"},
-    {"id": "dis-23", "a": "用户希望保留审计日志", "b": "用户要订高铁票"},
-    {"id": "dis-24", "a": "用户在修复算术校验", "b": "用户喜欢海边散步"},
-    {"id": "dis-25", "a": "用户喜欢蓝色主题", "b": "用户准备学习法语"},
-    {"id": "dis-26", "a": "用户明天要去医院复查", "b": "用户正在写插件清单"},
-    {"id": "dis-27", "a": "用户希望窗口不要遮住任务栏", "b": "用户晚餐想吃寿司"},
-    {"id": "dis-28", "a": "用户决定先跑全量测试", "b": "用户喜欢安静的咖啡馆"},
-    {"id": "dis-29", "a": "用户正在整理旅行清单", "b": "用户要优化向量检索"},
-    {"id": "dis-30", "a": "用户讨厌冗长解释", "b": "用户计划换手机"},
-    {"id": "dis-31", "a": "用户使用 Windows 开发", "b": "用户不喜欢榴莲"},
-    {"id": "dis-32", "a": "用户希望测试不要依赖大模型文件", "b": "用户想学水彩画"},
-    {"id": "dis-33", "a": "用户喜欢把计划写进文档", "b": "用户准备参加马拉松"},
-    {"id": "dis-34", "a": "用户正在学习钢琴", "b": "用户要修复 CRC 工具"},
-    {"id": "dis-35", "a": "用户要避免覆盖并行编辑", "b": "用户喜欢番茄炒蛋"},
-    {"id": "dis-36", "a": "用户喜欢使用 pytest 验证", "b": "用户下周要出差"},
-    {"id": "dis-37", "a": "用户希望先观察再修复", "b": "用户想买空气净化器"},
-    {"id": "dis-38", "a": "用户正在配置本地模型", "b": "用户喜欢古典音乐"},
-    {"id": "dis-39", "a": "用户计划晚上继续开发", "b": "用户要预约理发"},
-    {"id": "dis-40", "a": "用户重视用户视角验收", "b": "用户喜欢吃草莓"}
+    {
+      "id": "dis-01",
+      "a": "用户决定采用本地优先方案",
+      "b": "用户喜欢吃芒果蛋糕",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-02",
+      "a": "用户对花生过敏",
+      "b": "用户正在学习 Rust",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-03",
+      "a": "用户喜欢喝无糖乌龙茶",
+      "b": "用户明天要搬家",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-04",
+      "a": "用户正在开发 Offline Companion",
+      "b": "用户周末要去看牙",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-05",
+      "a": "用户希望默认不联网",
+      "b": "用户想买一双跑鞋",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-06",
+      "a": "用户讨厌香菜",
+      "b": "用户计划升级显卡",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-07",
+      "a": "用户计划周五提交报告",
+      "b": "用户家的狗叫雪球",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-08",
+      "a": "用户正在学习日语",
+      "b": "用户不喜欢甜咖啡",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-09",
+      "a": "用户家的猫叫豆包",
+      "b": "用户要修复登录按钮",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-10",
+      "a": "用户喜欢晚上写代码",
+      "b": "用户决定戒掉奶茶",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-11",
+      "a": "用户决定先做红队矩阵",
+      "b": "用户预约了体检",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-12",
+      "a": "用户偏好简洁报告",
+      "b": "用户正在练习吉他",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-13",
+      "a": "用户今天心情有点焦虑",
+      "b": "用户喜欢蓝莓酸奶",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-14",
+      "a": "用户生日在五月三日",
+      "b": "用户准备部署网站",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-15",
+      "a": "用户希望回复使用中文",
+      "b": "用户想学习摄影",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-16",
+      "a": "用户正在准备面试",
+      "b": "用户不想吃辣椒",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-17",
+      "a": "用户喜欢低糖咖啡",
+      "b": "用户在规划数据库迁移",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-18",
+      "a": "用户不想静默上云",
+      "b": "用户想买机械键盘",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-19",
+      "a": "用户把 Batch E 标记为闭合",
+      "b": "用户下个月要旅行",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-20",
+      "a": "用户正在写小说大纲",
+      "b": "用户要清理厨房",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-21",
+      "a": "用户喜欢周末晨跑",
+      "b": "用户在修复算术审计",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-22",
+      "a": "用户计划买一台新显示器",
+      "b": "用户喜欢猫咪视频",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-23",
+      "a": "用户希望保留审计日志",
+      "b": "用户要订高铁票",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-24",
+      "a": "用户在修复算术校验",
+      "b": "用户喜欢海边散步",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-25",
+      "a": "用户喜欢蓝色主题",
+      "b": "用户准备学习法语",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-26",
+      "a": "用户明天要去医院复查",
+      "b": "用户正在写插件清单",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-27",
+      "a": "用户希望窗口不要遮住任务栏",
+      "b": "用户晚餐想吃寿司",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-28",
+      "a": "用户决定先跑全量测试",
+      "b": "用户喜欢安静的咖啡馆",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-29",
+      "a": "用户正在整理旅行清单",
+      "b": "用户要优化向量检索",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-30",
+      "a": "用户讨厌冗长解释",
+      "b": "用户计划换手机",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-31",
+      "a": "用户使用 Windows 开发",
+      "b": "用户不喜欢榴莲",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-32",
+      "a": "用户希望测试不要依赖大模型文件",
+      "b": "用户想学水彩画",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-33",
+      "a": "用户喜欢把计划写进文档",
+      "b": "用户准备参加马拉松",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-34",
+      "a": "用户正在学习钢琴",
+      "b": "用户要修复 CRC 工具",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-35",
+      "a": "用户要避免覆盖并行编辑",
+      "b": "用户喜欢番茄炒蛋",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-36",
+      "a": "用户喜欢使用 pytest 验证",
+      "b": "用户下周要出差",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-37",
+      "a": "用户希望先观察再修复",
+      "b": "用户想买空气净化器",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-38",
+      "a": "用户正在配置本地模型",
+      "b": "用户喜欢古典音乐",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-39",
+      "a": "用户计划晚上继续开发",
+      "b": "用户要预约理发",
+      "pair_type": "dissimilar"
+    },
+    {
+      "id": "dis-40",
+      "a": "用户重视用户视角验收",
+      "b": "用户喜欢吃草莓",
+      "pair_type": "dissimilar"
+    }
   ]
 }

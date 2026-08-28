@@ -38,7 +38,7 @@
 - 落地 Batch E-2a 可见性修复：B4 类别约束补“编码”，工具集内方法缺参返回可见缺参提示，复合算法指令保留首段执行并在转述步骤明示后续片段需分步提交；矩阵重跑从 `6/3/6` 推进到 `6/6/3`。
 - 落地 Batch E-2b 正确性修复：整数解析支持 `负三`、`负3`、`−3` 三类负号，快速排序接受空数组边界，算术审计系动词族补 `为`；矩阵重跑达到 `9/6/0`。
 - 闭合 v6 主线 6.1 回归：W22 基线改为 `1099 passed / 3 skipped` 不退步，确认生产 embedding 为 deterministic hash-bow 768 维近似；语义事件存储新增 768 维 fail-fast、同 ID 冲突传播和 vector_search/extractor 固定日志 anchor，并固化真实 SQLite + deterministic `embed_text` 的 6.1 drill。
-- 启动 v6 主线 6.2 门禁校准：将 Phase 6.1-6.6 的 209 用例方案收进仓库并同步旧基线；新增 40/40 相似度判别对与 hash-bow 校准脚本，实测 similar `0.1438-0.6351`、dissimilar `0.1491-0.2864` 分布重叠，6.2 去重口径降级为字面近似去重，真语义 embedding 去重列入 v1.7.0 候选。
+- 启动 v6 主线 6.2 门禁校准：将 Phase 6.1-6.6 的 209 用例方案收进仓库并同步旧基线；新增 40/40 相似度判别对与 hash-bow 校准脚本，实测 similar `0.1438-0.6351`、dissimilar `0.1491-0.2864` 分布重叠；分面后 literal_edit `0.5017-0.6351`、paraphrase `0.1438-0.4762`，6.2 去重口径降级为字面近似去重，生产 duplicate 阈值落为 `0.50`，related 阈值标记为未实现/预留，真语义 embedding 去重列入 v1.7.0 候选。
 - 已知债务：`PlanDecomposer` 的 `method_entity_names` / manifest 映射参数仍允许空值以兼容测试与冷路径构造；生产 bootstrap 已传入 callable，后续可将生产装配路径升级为缺失即 fail-fast。
 
 ## v1.6.1 · 2026-08-20（Windows 窗口适配修复）
