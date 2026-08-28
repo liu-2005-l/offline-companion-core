@@ -24,7 +24,11 @@ def format_event_narrative(events: list[SemanticEvent]) -> str:
     for event in events:
         emotion = ""
         if abs(event.emotional_valence) > 0.3 or event.emotional_arousal > 0.3:
-            emotion = f"（情感效价 {event.emotional_valence:.2f}，唤醒度 {event.emotional_arousal:.2f}）"
+            emotion = (
+                f"（{_valence_label(event.emotional_valence)}, "
+                f"{_arousal_label(event.emotional_arousal)}；"
+                f"情感效价 {event.emotional_valence:.2f}，唤醒度 {event.emotional_arousal:.2f}）"
+            )
         marker = event.temporal_marker or time.strftime("%Y-%m-%d", time.localtime(event.created_at))
         lines.append(f"- [{marker}] [{event.event_type}] {event.content}{emotion}")
     return "\n".join(lines)
@@ -87,7 +91,7 @@ class EventRecaller:
                 continue
             score = rrf_score * self._decay_score(event)
             if emotional_context is not None:
-                score *= 1.0 + 0.25 * self._emotional_similarity(
+                score *= 1.0 + 0.30 * self._emotional_similarity(
                     emotional_context, event.emotional_valence, event.emotional_arousal
                 )
             ranked.append((score, event))
@@ -100,19 +104,22 @@ class EventRecaller:
             }
             for _score, event in ranked[:top_k]
         ]
+        selected = [event for _score, event in ranked[:top_k]]
+        selected = self._expand_event_chain(selected, by_id, top_k)
+        selected.sort(key=lambda event: (event.created_at, event.event_id))
+        final_ids = [event.event_id for event in selected]
         logger.info(
             "semantic event recall paths query=%r vector=%d bm25=%d hash_bow=%d "
-            "top_k=%d fused_top=%s",
+            "top_k=%d fused_top=%s expansion_count=%d final_ids=%s",
             self._summarize_query(query),
             len(ranked_paths["vector"]),
             len(ranked_paths["bm25"]),
             len(ranked_paths["hash_bow"]),
             top_k,
             fused_top,
+            max(0, len(final_ids) - len(fused_top)),
+            final_ids,
         )
-        selected = [event for _score, event in ranked[:top_k]]
-        selected = self._expand_event_chain(selected, by_id, top_k)
-        selected.sort(key=lambda event: (event.created_at, event.event_id))
         for event in selected:
             self._repo.update_recall_stats(event.event_id)
         return selected
@@ -170,7 +177,7 @@ class EventRecaller:
         scores: dict[str, float] = {}
         for ranked in candidates.values():
             seen: set[str] = set()
-            for rank, event_id in enumerate(ranked, start=1):
+            for rank, event_id in enumerate(ranked):
                 if event_id in seen:
                     continue
                 seen.add(event_id)
@@ -252,3 +259,19 @@ class EventRecaller:
                     seen.add(related.event_id)
         del top_k
         return result
+
+
+def _valence_label(value: float) -> str:
+    """摘要：把情感效价映射为叙事标签。"""
+    if value > 0.3:
+        return "积极"
+    if value < -0.3:
+        return "消极"
+    return "中性"
+
+
+def _arousal_label(value: float) -> str:
+    """摘要：把唤醒度映射为叙事标签。"""
+    if value > 0.5:
+        return "激动"
+    return "平静"

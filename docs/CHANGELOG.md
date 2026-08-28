@@ -40,6 +40,7 @@
 - 闭合 v6 主线 6.1 回归：W22 基线改为 `1099 passed / 3 skipped` 不退步，确认生产 embedding 为 deterministic hash-bow 768 维近似；语义事件存储新增 768 维 fail-fast、同 ID 冲突传播和 vector_search/extractor 固定日志 anchor，并固化真实 SQLite + deterministic `embed_text` 的 6.1 drill。
 - 启动 v6 主线 6.2 门禁校准：将 Phase 6.1-6.6 的 209 用例方案收进仓库并同步旧基线；新增 40/40 相似度判别对与 hash-bow 校准脚本，实测 similar `0.1438-0.6351`、dissimilar `0.1491-0.2864` 分布重叠；分面后 literal_edit `0.5017-0.6351`、paraphrase `0.1438-0.4762`，6.2 去重口径降级为字面近似去重，生产 duplicate 阈值落为 `0.50`，related 阈值标记为未实现/预留，真语义 embedding 去重列入 v1.7.0 候选。
 - 启动 v6 主线 6.3 召回锚点批：语义事件召回新增固定 info anchor，输出 vector/bm25/hash_bow 三路返回数（含 0）、RRF 融合 top-K、来源路标记与 query 摘要；同步记录当前三路均为 hash-bow/词面近似同质路径，真语义召回列入 v1.7.0 候选。
+- 推进 v6 主线 6.3 召回验证：补齐 RRF rank=0 计分、情感 boost ×1.3、中文情感叙事标签、related 后置扩展可见性与 `_assemble_context()` 真链路注入抽样；42 条 R/T 机械用例按当前词面召回口径全覆盖，同义改写语义召回降级为 degraded。
 - 已知债务：`PlanDecomposer` 的 `method_entity_names` / manifest 映射参数仍允许空值以兼容测试与冷路径构造；生产 bootstrap 已传入 callable，后续可将生产装配路径升级为缺失即 fail-fast。
 
 ## v1.6.1 · 2026-08-20（Windows 窗口适配修复）

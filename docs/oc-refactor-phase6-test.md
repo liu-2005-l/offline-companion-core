@@ -105,7 +105,7 @@ T5	mock LLM 返回与已有事件 hash-bow cosine >= 0.50 的字面近似事件 
 T6	mock LLM 返回同义改写但 hash-bow cosine < 0.50 的事件 → extract	DB 新增事件（字面近似口径下不 merge）
 T7	mock LLM 返回无关事件 → extract	DB 新增事件
 三、6.3 三阶段召回算法
-开工口径（2026-08-27）：当前 vector 路使用 deterministic hash-bow 768d，bm25/hash_bow 缺省回退也是词面 token 交集，三路高度同质，不宣称真语义互补。同义改写 query 召不回原事件按 degraded 记档；RRF 只验词面多路排序与来源可解释性，真语义召回列入 v1.7.0 真 embedding 候选。
+开工口径（2026-08-27）：当前 vector 路使用 deterministic hash-bow 768d，bm25/hash_bow 缺省回退也是词面 token 交集，三路高度同质，不宣称真语义互补。同义改写 query 召不回原事件按 degraded 记档；RRF 只验词面多路排序与来源可解释性，召回 anchor 固定输出三路计数、fused_top 来源、后置扩展数和最终注入 ID，真语义召回列入 v1.7.0 真 embedding 候选。
 Stage 1：多路检索
 #	用例	预期
 R1	recall 空库	返回空列表
