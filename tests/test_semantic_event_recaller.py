@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import sqlite3
 import time
 
@@ -57,6 +58,37 @@ def test_recall_expands_related_events_and_returns_chronological_narrative() -> 
     assert [item.event_id for item in results] == ["a", "b"]
     assert repo.get("a").recall_count == 1
     assert repo.get("b").recall_count == 1
+
+
+def test_recall_logs_path_counts_and_fused_sources(caplog) -> None:
+    """摘要：召回固定输出三路计数、RRF top-K 与来源路标记。"""
+    repo = make_repo()
+    recaller = EventRecaller(
+        repo,
+        bm25=lambda _query: ["b", "a"],
+        hash_bow=lambda _query: ["a"],
+        embed_func=lambda _query: vector(),
+    )
+
+    with caplog.at_level(logging.INFO, logger="offline_companion.core.memory_lifecycle.event_recaller"):
+        recaller.recall("用户的技术背景", top_k=2)
+
+    assert "semantic event recall paths query='用户的技术背景'" in caplog.text
+    assert "vector=3 bm25=2 hash_bow=1 top_k=2" in caplog.text
+    assert "'id': 'a'" in caplog.text
+    assert "'sources': ('vector', 'bm25', 'hash_bow')" in caplog.text
+
+
+def test_recall_logs_zero_counts_when_no_path_hits(caplog) -> None:
+    """摘要：召回无命中时仍输出 0 计数 anchor，保留 no-hit 可见性。"""
+    repo = EventRepository(sqlite3.connect(":memory:"))
+    recaller = EventRecaller(repo)
+
+    with caplog.at_level(logging.INFO, logger="offline_companion.core.memory_lifecycle.event_recaller"):
+        assert recaller.recall("完全无关", top_k=2) == []
+
+    assert "semantic event recall paths query='完全无关'" in caplog.text
+    assert "vector=0 bm25=0 hash_bow=0 top_k=2 fused_top=[]" in caplog.text
 
 
 def test_low_importance_related_event_is_not_expanded() -> None:

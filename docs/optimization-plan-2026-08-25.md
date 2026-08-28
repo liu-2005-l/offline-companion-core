@@ -74,6 +74,12 @@ C-6	6.6 端到端	用户视角全对率抽样 10% 跑端到端语义验证
 
 6.2 门禁记录（2026-08-27）：新增 `fixtures/semantic_event_similarity_pairs.json`（40 similar / 40 dissimilar，similar 中同义改写覆盖 30%+，并以 `pair_type` 区分 `literal_edit` / `paraphrase` / `dissimilar`）与 `scripts/calibrate_phase6_2_hash_bow_thresholds.py`。校准不加载模型、不依赖 GGUF；结果显示 hash-bow 两组分布重叠，不能支撑真语义重复阈值，6.2 后续按字面近似去重推进，生产 duplicate 阈值为 `0.50`；同义改写双份存储是当前正确降级。related 阈值无生产消费者，第三组“相关不重复”判别对留到真正实现 related 链路时再补。
 
+held-out 口径（2026-08-27）：三分面线性可分只是校准集内结论，不代表真实空间左尾；真实 literal_edit 低于 `0.50` 时按双份存储 + GC 兜底接受，paraphrase 高于 `0.50` 的误合并风险留到 v1.7 真 embedding 重校时复核。
+
+6.3 开工锚点（2026-08-27）：语义事件召回三路当前为 vector（`EventRepository.vector_search` + hash-bow 768d query embedding）、bm25（外部注入路径；缺省为空时退回 `_lexical_ids`）、hash_bow（外部注入路径；缺省为空时退回 `_overlap_ids`，当前与 lexical 同源）。各路 top_k：vector 使用 `max(len(active_events), 1)`，bm25/hash_bow 由注入路径自行控制，缺省 lexical/overlap 返回全部有 token 交集的 active 事件；RRF 常数 `RRF_K=60`；融合后取调用方 `top_k`，related_events 显式 ID 一跳扩展在 RRF 之后执行，不参与融合分数。召回出口新增固定 anchor：三路返回数（含 0）、融合 top-K（id + rrf_score + 来源路标记）与 query 摘要，保证 no-hit 可见。
+
+6.3 hash-bow 连锁口径（2026-08-27）：vector 路与 lexical/hash_bow 路高度同质，当前不宣称“三路异构语义互补”。同义改写 query 召不回原事件时按 degraded 记档，不视为 bug；若 42 用例中语义召回项大面积 degraded，6.3 判决降级为词面召回口径，真语义召回列入 v1.7.0 候选。v1.7 真 embedding 另需复检 `PersonaSessionCore._assemble_context()` 每轮新建 `EventRecaller` + `embed_text(768)` 的注入点，避免模型实例每轮加载。
+
 Batch D｜窗口自适应布局（方案 v3 已定稿）
 docs/window-adaptive-layout-design.md（v3，含实测数据归档）。三批次按依赖排序：
 

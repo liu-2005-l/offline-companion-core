@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import math
 import re
 import time
@@ -12,6 +13,7 @@ from .event_repository import EventRepository
 from .event_types import SemanticEvent
 
 RRF_K = 60
+logger = logging.getLogger(__name__)
 
 
 def format_event_narrative(events: list[SemanticEvent]) -> str:
@@ -77,6 +79,7 @@ class EventRecaller:
             ranked_paths["hash_bow"] = self._overlap_ids(query, candidates)
 
         fused = self._rrf_fuse(ranked_paths)
+        sources_by_id = self._source_paths(ranked_paths)
         ranked: list[tuple[float, SemanticEvent]] = []
         for event_id, rrf_score in fused.items():
             event = by_id.get(event_id)
@@ -89,6 +92,24 @@ class EventRecaller:
                 )
             ranked.append((score, event))
         ranked.sort(key=lambda item: item[0], reverse=True)
+        fused_top = [
+            {
+                "id": event.event_id,
+                "rrf_score": round(fused.get(event.event_id, 0.0), 6),
+                "sources": sources_by_id.get(event.event_id, ()),
+            }
+            for _score, event in ranked[:top_k]
+        ]
+        logger.info(
+            "semantic event recall paths query=%r vector=%d bm25=%d hash_bow=%d "
+            "top_k=%d fused_top=%s",
+            self._summarize_query(query),
+            len(ranked_paths["vector"]),
+            len(ranked_paths["bm25"]),
+            len(ranked_paths["hash_bow"]),
+            top_k,
+            fused_top,
+        )
         selected = [event for _score, event in ranked[:top_k]]
         selected = self._expand_event_chain(selected, by_id, top_k)
         selected.sort(key=lambda event: (event.created_at, event.event_id))
@@ -155,6 +176,25 @@ class EventRecaller:
                 seen.add(event_id)
                 scores[event_id] = scores.get(event_id, 0.0) + 1.0 / (k + rank)
         return scores
+
+    @staticmethod
+    def _source_paths(candidates: dict[str, list[str]]) -> dict[str, tuple[str, ...]]:
+        """摘要：记录每个事件 ID 来自哪些检索路径，供 RRF anchor 解释来源。"""
+        paths: dict[str, list[str]] = {}
+        for path_name, ranked in candidates.items():
+            for event_id in ranked:
+                path_names = paths.setdefault(event_id, [])
+                if path_name not in path_names:
+                    path_names.append(path_name)
+        return {event_id: tuple(path_names) for event_id, path_names in paths.items()}
+
+    @staticmethod
+    def _summarize_query(query: str, limit: int = 48) -> str:
+        """摘要：压缩查询文本用于日志 anchor，避免长输入刷屏。"""
+        compact = re.sub(r"\s+", " ", query).strip()
+        if len(compact) <= limit:
+            return compact
+        return f"{compact[: limit - 1]}…"
 
     def _expand_query(self, query: str) -> list[str]:
         """摘要：用 LLM 生成最多三个语义变体，失败时保留原查询。"""
