@@ -228,6 +228,7 @@ U16	assemble_reply 时无相关事件 → memory_block	不包含 “【相关语
 U17	召回注入后 → 事件的 recall_count	+1
 U18	emotional_context 有值 → 召回注入	情感上下文传入 EventRecaller，boost 影响入选候选
 前端测试（需手动或 UI 自动化）
+口径（2026-08-29）：当前闭合为记忆面板加载 semantic_events、类型筛选、空状态、删除与内容编辑接线；手动新增语义事件与 importance 专项编辑由 API 用例覆盖，不宣称完整表单 UI。
 #	用例	预期
 U19	打开记忆面板 → 看到事件列表	卡片列表，每张显示类型/内容/时间
 U20	筛选 fact → 列表只显示 fact	类型筛选生效

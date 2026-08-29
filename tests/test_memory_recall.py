@@ -229,6 +229,114 @@ def test_agent_profile_display_name_overrides_system_identity(tmp_path) -> None:
     assert "助手当前自画像：名字 = 立华奏" in result.memory_block
 
 
+def test_system_prompt_locked_uses_default_identity_without_profile_memory(tmp_path) -> None:
+    """摘要：无画像记忆时 system_prompt_locked 保持 persona 默认自称。"""
+    persona = Persona(
+        persona_id="profile-default",
+        name="profile-default",
+        system_prompt="你是一个本地陪伴助手。",
+        role_lock=True,
+        memory_default_on=True,
+        default_companion_display_name="助手一号",
+        companion_display_name=None,
+        raw={},
+    )
+    core = PersonaSessionCore(persona)
+    conn = connect(tmp_path / "profile-default.db")
+    new_session(conn, "s1", "profile-default", title=None)
+
+    assert "【当前自称】助手一号" in core._system_prompt_locked(conn)
+
+
+def test_agent_profile_display_name_replacement_is_idempotent(tmp_path) -> None:
+    """摘要：画像自称替换连续执行两次保持一致，不发生二次替换漂移。"""
+    persona = Persona(
+        persona_id="profile-idempotent",
+        name="profile-idempotent",
+        system_prompt="你是一个本地陪伴助手。",
+        role_lock=True,
+        memory_default_on=True,
+        default_companion_display_name="助手一号",
+        companion_display_name=None,
+        raw={},
+    )
+    core = PersonaSessionCore(persona)
+    conn = connect(tmp_path / "profile-idempotent.db")
+    new_session(conn, "s1", "profile-idempotent", title=None)
+    MemoryLifecycleManager.add_memory_chunk(
+        conn,
+        "助手自画像：名字 = 小诺",
+        session_id="s1",
+        source="semantic_auto",
+        meta={
+            "memory_type": "agent_profile",
+            "target": "assistant",
+            "field": "display_name",
+            "value": "小诺",
+        },
+    )
+
+    first = core._system_prompt_locked(conn)
+    second = core._system_prompt_locked(conn)
+
+    assert first == second
+    assert first.count("【当前自称】小诺") == 1
+    assert "【当前自称】助手一号" not in first
+
+
+def test_user_profile_fields_stay_in_memory_block_not_system_identity(tmp_path) -> None:
+    """摘要：用户画像字段只进入记忆块，不覆盖助手 system_prompt_locked 自称。"""
+    persona = Persona(
+        persona_id="profile-user",
+        name="profile-user",
+        system_prompt="你是一个本地陪伴助手。",
+        role_lock=True,
+        memory_default_on=True,
+        default_companion_display_name="助手一号",
+        companion_display_name=None,
+        raw={},
+    )
+    core = PersonaSessionCore(persona)
+    conn = connect(tmp_path / "profile-user.db")
+    new_session(conn, "s1", "profile-user", title=None)
+    MemoryLifecycleManager.add_memory_chunk(
+        conn,
+        "用户画像：名字 = 小明",
+        session_id="s1",
+        source="semantic_auto",
+        meta={
+            "memory_type": "user_profile",
+            "target": "user",
+            "field": "display_name",
+            "value": "小明",
+        },
+    )
+    MemoryLifecycleManager.add_memory_chunk(
+        conn,
+        "用户偏好：沟通偏好 = 简洁",
+        session_id="s1",
+        source="semantic_auto",
+        meta={
+            "memory_type": "user_preference",
+            "target": "user",
+            "field": "preference",
+            "value": "简洁",
+        },
+    )
+
+    result = core.assemble_reply(
+        EchoBackend("ok"),
+        conn,
+        user_message="你好",
+        history=[],
+        memory_enabled=True,
+    )
+
+    assert "【当前自称】助手一号" in core._system_prompt_locked(conn)
+    assert "用户当前画像：名字 = 小明" in result.memory_block
+    assert "用户长期偏好：简洁" in result.memory_block
+
+
 def test_agent_profile_name_question_returns_deterministic_identity(tmp_path) -> None:
     persona = Persona(
         persona_id="profile",

@@ -2563,10 +2563,14 @@ def _steps_to_legacy_plan(
 def _semantic_event_row(event: SemanticEvent) -> dict[str, Any]:
     """摘要：将语义事件转换为记忆管理 API 的 JSON 记录。"""
     return {
+        "id": event.event_id,
         "event_id": event.event_id,
         "event_type": event.event_type,
+        "memory_type": event.event_type,
         "subject": event.subject,
         "content": event.content,
+        "body": event.content,
+        "source": "semantic_event",
         "emotional_valence": event.emotional_valence,
         "emotional_arousal": event.emotional_arousal,
         "importance": event.importance,
@@ -2575,6 +2579,7 @@ def _semantic_event_row(event: SemanticEvent) -> dict[str, Any]:
         "related_events": event.related_events,
         "superseded_by": event.superseded_by,
         "created_at": event.created_at,
+        "modified_at": event.created_at,
         "last_recalled_at": event.last_recalled_at,
         "recall_count": event.recall_count,
         "status": event.status,

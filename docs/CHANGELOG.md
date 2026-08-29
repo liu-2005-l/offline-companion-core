@@ -44,6 +44,7 @@
 - 推进 v6 主线 6.4 IdleThink 验证：确认语义维护为纯写路径，不经过 `EventRecaller`；补齐残余补提取、正常周期边界不抢跑、提取水位推进、衰减 GC、idle 阈值与 memory_maintenance 注册测试，并记录 hash-bow 召回弱导致 recall_count 不增长、进而加速 dormant 的接受降级。
 - 启动 v6 主线 6.5 召回注入验证：新增召回注入 fixture 构造表，明确 U15/T19 的物理载体为 LLM 请求 `memory_block`；给语义事件召回 vector 路补 hash-bow 召回阈值，避免非空事件库对任意 query 静默注入无关事件，并接通情绪上下文到 `EventRecaller`。
 - 补齐 v6 主线 6.5 召回边界哨兵：明确召回阈值与去重阈值同源，emotion boost 在阈值过滤之后执行，只重排已过阈候选，不捞起低相似事件。
+- 推进 v6 主线 6.5 免疫区验证：补齐 semantic event API 的 DB 落点、404 边界、画像自称幂等、用户画像 memory_block 隔离、T20 LLM 请求捕获，以及记忆面板加载/筛选/删除/编辑语义事件的静态接线哨兵。
 - 已知债务：`PlanDecomposer` 的 `method_entity_names` / manifest 映射参数仍允许空值以兼容测试与冷路径构造；生产 bootstrap 已传入 callable，后续可将生产装配路径升级为缺失即 fail-fast。
 
 ## v1.6.1 · 2026-08-20（Windows 窗口适配修复）

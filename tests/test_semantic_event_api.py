@@ -24,20 +24,37 @@ def test_semantic_event_api_crud_and_soft_delete(tmp_path) -> None:
 
     listed = client.get("/api/memory/events?type=preference")
     assert listed.status_code == 200
-    assert listed.get_json()[0]["event_id"] == event_id
+    listed_item = listed.get_json()[0]
+    assert listed_item["event_id"] == event_id
+    assert listed_item["id"] == event_id
+    assert listed_item["body"] == "用户喜欢安静的沟通"
+    assert listed_item["memory_type"] == "preference"
+    assert listed_item["source"] == "semantic_event"
     invalid_type = client.get("/api/memory/events?type=invalid")
     assert invalid_type.status_code == 200
     assert invalid_type.get_json() == []
 
     patched = client.patch(
         f"/api/memory/events/{event_id}",
-        json={"content": "用户喜欢简洁安静的沟通"},
+        json={"content": "用户喜欢简洁安静的沟通", "importance": 4},
     )
     assert patched.status_code == 200
     assert patched.get_json()["item"]["content"] == "用户喜欢简洁安静的沟通"
+    assert patched.get_json()["item"]["importance"] == 4.0
+    stored_after_patch = runtime.orchestrator.conn.execute(
+        "SELECT content, importance FROM semantic_events WHERE event_id = ?",
+        (event_id,),
+    ).fetchone()
+    assert stored_after_patch["content"] == "用户喜欢简洁安静的沟通"
+    assert stored_after_patch["importance"] == 4.0
 
     deleted = client.delete(f"/api/memory/events/{event_id}")
     assert deleted.status_code == 200
+    stored_after_delete = runtime.orchestrator.conn.execute(
+        "SELECT status FROM semantic_events WHERE event_id = ?",
+        (event_id,),
+    ).fetchone()
+    assert stored_after_delete["status"] == "dormant"
     assert client.get("/api/memory/events?type=preference").get_json() == []
     assert client.get("/api/memory/events").get_json() == []
 

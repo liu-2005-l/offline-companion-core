@@ -1247,8 +1247,8 @@ async function deleteSession(btn) {
 }
 
 function memoryTypeLabel(item) {
-  const value = item.memory_type || (item.meta && item.meta.memory_type) || 'fact';
-  return ({ fact: '\u77e5\u8bc6', preference: '\u504f\u597d', user_preference: '\u504f\u597d', episode: '\u4e8b\u4ef6', agent_profile: '\u753b\u50cf', user_profile: '\u753b\u50cf', knowledge: '\u77e5\u8bc6' })[value] || value;
+  const value = item.memory_type || item.event_type || (item.meta && item.meta.memory_type) || 'fact';
+  return ({ fact: '\u77e5\u8bc6', preference: '\u504f\u597d', user_preference: '\u504f\u597d', relationship: '\u5173\u7cfb', emotional: '\u60c5\u7eea', decision: '\u51b3\u7b56', milestone: '\u91cc\u7a0b\u7891', episode: '\u4e8b\u4ef6', agent_profile: '\u753b\u50cf', user_profile: '\u753b\u50cf', knowledge: '\u77e5\u8bc6' })[value] || value;
 }
 
 function memoryPanelTitle(item, idx) {
@@ -1273,10 +1273,12 @@ function renderMemoryCards(items) {
     const tags = memoryTags(item);
     const type = memoryTypeLabel(item);
     const body = item.body || item.content || '';
+    const itemId = item.event_id || item.id || '';
+    const itemKind = item.event_id ? 'semantic_event' : 'memory_chunk';
     const created = _formatTimestamp(item.created_at, '-');
     const modified = _formatTimestamp(item.modified_at || item.updated_at, created);
     list.insertAdjacentHTML('beforeend',
-      '<div class="memory-card" onclick="openMemoryDetail(this)" data-id="' + item.id + '" data-type="' + apiEscapeHtml(type) + '" data-source="' + apiEscapeHtml(item.source || '') + '" data-created="' + created + '" data-modified="' + modified + '" data-status="' + (item.status || 'active') + '" data-tags=\'' + apiEscapeHtml(JSON.stringify(tags)) + '\'>' +
+      '<div class="memory-card" onclick="openMemoryDetail(this)" data-kind="' + itemKind + '" data-id="' + apiEscapeHtml(String(itemId)) + '" data-type="' + apiEscapeHtml(type) + '" data-source="' + apiEscapeHtml(item.source || '') + '" data-created="' + created + '" data-modified="' + modified + '" data-status="' + (item.status || 'active') + '" data-tags=\'' + apiEscapeHtml(JSON.stringify(tags)) + '\'>' +
         '<div class="memory-card-header"><span class="memory-type">' + apiEscapeHtml(type) + '</span><span class="memory-date">' + apiEscapeHtml(modified || created) + '</span></div>' +
         '<div class="memory-content">' + apiEscapeHtml(body) + '</div>' +
         '<div class="memory-tags">' + tags.map(tag => '<span class="memory-tag">' + apiEscapeHtml(tag) + '</span>').join('') + '</div>' +
@@ -1288,8 +1290,10 @@ function renderMemoryCards(items) {
 async function loadMemories() {
   try {
     const data = await apiJson('/api/memories?page=1&page_size=100');
-    renderMemoryCards(data.items || []);
-    window._memoryPoints = (data.items || []).slice(0, 8).map(function(item, idx) {
+    const semanticEvents = await loadSemanticEvents();
+    const items = (semanticEvents || []).concat(data.items || []);
+    renderMemoryCards(items);
+    window._memoryPoints = items.slice(0, 8).map(function(item, idx) {
       return { msgIdx: idx, id: item.id, title: memoryPanelTitle(item, idx), badge: memoryTypeLabel(item), summary: item.body || item.content || '', original: item.body || item.content || '', turn: idx + 1, time: apiTime(item.modified_at || item.created_at) };
     });
     initMemoryPanel();
@@ -1332,6 +1336,14 @@ async function ctxSaveMemory() {
 
 async function toggleMemoryStatus() {
   if (!window._currentMemoryCard) return;
+  if (window._currentMemoryCard.dataset.kind === 'semantic_event') {
+    await deleteSemanticEvent(window._currentMemoryCard.dataset.id);
+    window._currentMemoryCard.remove();
+    window._currentMemoryCard = null;
+    closeMemoryDetail();
+    applyMemoryFilter();
+    return;
+  }
   const nextStatus = window._currentMemoryCard.dataset.status === 'active' ? 'inactive' : 'active';
   try {
     const data = await apiJson('/api/memories/' + encodeURIComponent(window._currentMemoryCard.dataset.id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: nextStatus }) });
@@ -1350,7 +1362,11 @@ async function saveMemoryEdit() {
   const content = document.getElementById('detailContent').value.trim();
   if (!content) return showToast('记忆内容不能为空');
   try {
-    await apiJson('/api/memories/' + encodeURIComponent(window._currentMemoryCard.dataset.id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: content }) });
+    if (window._currentMemoryCard.dataset.kind === 'semantic_event') {
+      await apiJson('/api/memory/events/' + encodeURIComponent(window._currentMemoryCard.dataset.id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: content }) });
+    } else {
+      await apiJson('/api/memories/' + encodeURIComponent(window._currentMemoryCard.dataset.id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: content }) });
+    }
     window._memoryEditMode = false;
     closeMemoryDetail();
     await loadMemories();
@@ -1365,7 +1381,11 @@ async function deleteMemory() {
   const id = window._currentMemoryCard.dataset.id || '';
   showConfirm('删除记忆', '确认删除记忆 #' + id + ' 此操作不可撤销。', async function() {
     try {
-      await apiJson('/api/memories/' + encodeURIComponent(id) + '/delete', { method: 'POST' });
+      if (window._currentMemoryCard.dataset.kind === 'semantic_event') {
+        await apiJson('/api/memory/events/' + encodeURIComponent(id), { method: 'DELETE' });
+      } else {
+        await apiJson('/api/memories/' + encodeURIComponent(id) + '/delete', { method: 'POST' });
+      }
       window._currentMemoryCard = null;
       closeMemoryDetail();
       await loadMemories();

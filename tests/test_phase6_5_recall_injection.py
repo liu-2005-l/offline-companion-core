@@ -8,6 +8,7 @@ from offline_companion.core.emotion_analyzer.context import EmotionContext
 from offline_companion.core.memory_lifecycle.event_recaller import EventRecaller
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
 from offline_companion.core.memory_lifecycle.event_types import CONTENT_EMBEDDING_DIMENSIONS, SemanticEvent
+from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
 from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
 from offline_companion.runtime.storage_index.engine import connect, new_session
@@ -188,3 +189,34 @@ def test_orchestrator_turn_passes_f1_memory_block_to_backend(tmp_path: Path) -> 
     assert backend.memory_blocks
     assert "【相关语义事件】" in backend.memory_blocks[-1]
     assert "布丁" in backend.memory_blocks[-1]
+
+
+def test_orchestrator_turn_uses_profile_display_name_in_backend_system_prompt(tmp_path: Path) -> None:
+    """摘要：T20 捕获 LLM 请求，确认画像自称进入 system_prompt。"""
+    conn = _conn(tmp_path)
+    MemoryLifecycleManager.add_memory_chunk(
+        conn,
+        "助手自画像：名字 = 小诺",
+        session_id="s1",
+        source="semantic_auto",
+        meta={
+            "memory_type": "agent_profile",
+            "target": "assistant",
+            "field": "display_name",
+            "value": "小诺",
+        },
+    )
+    backend = CaptureBackend()
+    orchestrator = ConversationOrchestrator(
+        session_core=PersonaSessionCore(_persona()),
+        backend=backend,
+        conn=conn,
+        session_id="s1",
+        triggers=load_triggers(),
+    )
+
+    orchestrator.run_turn("你好", memory_on=True)
+
+    assert backend.system_prompts
+    assert "【当前自称】小诺" in backend.system_prompts[-1]
+    assert "【当前自称】助手" not in backend.system_prompts[-1]
