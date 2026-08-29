@@ -28,7 +28,7 @@
 - 查询：`猫咪爱玩哪种玩具`
 - 用途：U16 主负例。
 - 预期：生产 tokenizer 零重叠，hash-bow cosine 为 `0.0`，`memory_block` 不包含语义事件块。
-- v1.8.0+：可能随 R43-R46 翻转；当前用例注释为“词面口径构造”。
+- v1.8.0 C2 实测：`Xenova/bge-base-zh-v1.5` fp32、query prefix off 时相似度为 `0.373039`，低于 `SEMANTIC_RECALL_THRESHOLD = 0.58`，当前仍不注入。
 
 ### F3 情绪 boost 决定性对
 

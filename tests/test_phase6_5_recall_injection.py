@@ -113,7 +113,7 @@ def test_assemble_context_injects_lexical_semantic_event_fixture_f1(tmp_path: Pa
 
 
 def test_assemble_context_does_not_inject_lexically_missed_fixture_f2(tmp_path: Path) -> None:
-    """摘要：U16 主形态使用词面错开对，当前 hash-bow 口径下不注入。"""
+    """摘要：U16 主形态使用词面错开对，semantic 实测 0.373039 也低于 0.58。"""
     assert EventRecaller._tokenize(F1_QUERY) & EventRecaller._tokenize(F1_CONTENT)
     assert EventRecaller._tokenize(F2_QUERY) & EventRecaller._tokenize(F2_CONTENT) == set()
     conn = _conn(tmp_path)

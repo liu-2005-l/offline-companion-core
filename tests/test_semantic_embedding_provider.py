@@ -170,6 +170,67 @@ def test_semantic_embedding_provider_uses_cls_for_token_embeddings(
     assert vector[1] == 0.0
 
 
+def test_semantic_embedding_provider_reuses_loaded_model_handles(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """摘要：同一 provider 多次调用复用 ONNX session 与 tokenizer，避免每轮重载模型。"""
+    session_loads = 0
+    tokenizer_loads = 0
+
+    class _Input:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    class _Session:
+        def __init__(self, _path: str, providers: list[str]) -> None:
+            nonlocal session_loads
+            del providers
+            session_loads += 1
+
+        def get_inputs(self) -> list[_Input]:
+            return [_Input("input_ids"), _Input("attention_mask")]
+
+        def run(self, _names, _feeds):
+            values = [0.0] * CONTENT_EMBEDDING_DIMENSIONS
+            values[0] = 1.0
+            return [[values]]
+
+    class _Ort:
+        InferenceSession = _Session
+
+    class _Encoded:
+        ids = [1]
+        attention_mask = [1]
+
+    class _Tokenizer:
+        @classmethod
+        def from_file(cls, _path: str):
+            nonlocal tokenizer_loads
+            tokenizer_loads += 1
+            return cls()
+
+        def encode(self, _text: str) -> _Encoded:
+            return _Encoded()
+
+    import offline_companion.core.memory_lifecycle.semantic_embedding_provider as module
+
+    monkeypatch.setattr(module, "ort", _Ort)
+    monkeypatch.setattr(module, "Tokenizer", _Tokenizer)
+    model_path = tmp_path / "model.onnx"
+    tokenizer_path = tmp_path / "tokenizer.json"
+    model_path.write_bytes(b"model")
+    tokenizer_path.write_text("{}", encoding="utf-8")
+    provider = SemanticEmbeddingProvider(
+        model_paths=SemanticEmbeddingModelPaths(model_path, tokenizer_path)
+    )
+
+    assert provider("第一次")[0] == 1.0
+    assert provider("第二次")[0] == 1.0
+    assert session_loads == 1
+    assert tokenizer_loads == 1
+
+
 def test_repository_recomputes_all_content_embeddings(tmp_path: Path) -> None:
     """摘要：启动期重算用统一入口覆盖旧库，避免 hash-bow 与 semantic 混源。"""
     repo = EventRepository(sqlite3.connect(tmp_path / "events.db"))
@@ -227,6 +288,40 @@ def test_repository_recomputes_only_mismatched_embedding_space(tmp_path: Path) -
     assert result == {"total": 1, "updated": 1, "failed": 0}
     assert repo.get("done").content_embedding[3] == 1.0
     assert repo.get("old").content_embedding[4] == 1.0
+
+
+def test_repository_failed_recompute_keeps_none_space_for_bounded_retry(tmp_path: Path) -> None:
+    """摘要：重算失败写入 none 空间，后续只作为有界重试目标而不产生混源分数。"""
+    repo = EventRepository(sqlite3.connect(tmp_path / "events.db"))
+    semantic_vector = [0.0] * CONTENT_EMBEDDING_DIMENSIONS
+    semantic_vector[3] = 1.0
+    repo.store(
+        SemanticEvent(
+            event_id="broken",
+            event_type="fact",
+            subject="user",
+            content="失败向量",
+            content_embedding=semantic_vector,
+            content_embedding_space="hash_bow_768",
+            created_at=time.time(),
+        )
+    )
+
+    class _BrokenEmbedder:
+        preferred_embedding_space = "semantic_onnx_768"
+
+        def __call__(self, _content: str) -> list[float]:
+            raise RuntimeError("model crashed")
+
+    first = repo.recompute_content_embeddings(_BrokenEmbedder())
+    second = repo.recompute_content_embeddings(_BrokenEmbedder())
+
+    stored = repo.get("broken")
+    assert first == {"total": 1, "updated": 1, "failed": 1}
+    assert second == {"total": 1, "updated": 1, "failed": 1}
+    assert stored.content_embedding is None
+    assert stored.content_embedding_space == "none"
+    assert repo.vector_search(semantic_vector, embedding_space="semantic_onnx_768") == []
 
 
 def test_semantic_event_entrypoints_do_not_import_hash_bow_directly() -> None:

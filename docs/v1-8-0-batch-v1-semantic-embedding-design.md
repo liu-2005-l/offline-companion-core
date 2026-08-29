@@ -75,3 +75,9 @@
 - 常数口径：`HASH_BOW_DUPLICATE_THRESHOLD = 0.50` 只服务写端文本 Jaccard 去重；`HASH_BOW_RECALL_THRESHOLD = 0.50` 服务 fallback 读端；`SEMANTIC_RECALL_THRESHOLD = 0.58` 服务 ONNX 读端。三者拆分为各空间单一事实源，后续联合重校但不再假别名。
 - 模型不换：407MB fp32 是本批合理上限；bge-large / bge-m3 与 reranker 进入 v1.8.x 候选池，触发条件为同一 fixtures drill 倒挂区清零或 reranker 精排收益实测成立。
 - 记录资产：`fixtures/v1_8_semantic_embedding_c2_scores.json` 记录模型 SHA256、query prefix、R43-R46 分数、三组分布与 sweep 曲线，供无模型 CI 钉住 C2 判决。
+
+## 十一、Phase C3-C5 收口
+
+- C3 注入层：U15/T19 词面命中稳定不翻转；U16 的 F2 词面错开对在 semantic 空间实测 `0.373039 < 0.58`，继续不注入；related `0.70` 语义自动关联仍未实现，显式 `related_events` 一跳扩展保持 correct。
+- C4 降级层：embedding 重算失败写入 `content_embedding = None` 与 `content_embedding_space = none`，后续只作为下一轮有界重试目标；召回按空间过滤，不拿 `none` 行参与 semantic cosine。
+- C5 实例复用：`PersonaSessionCore` 每会话持有一个 `SemanticEmbeddingProvider`；`EventRecaller` 可每轮轻量新建，但 ONNX session 与 tokenizer 在 provider 内惰性加载并复用，不每轮重载模型。
