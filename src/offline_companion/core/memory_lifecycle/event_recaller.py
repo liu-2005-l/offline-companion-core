@@ -13,6 +13,7 @@ from typing import Any
 from .event_extractor import HASH_BOW_DUPLICATE_THRESHOLD
 from .event_repository import EventRepository
 from .event_types import SemanticEvent
+from .semantic_embedding_provider import embedding_space_of
 
 RRF_K = 60
 HASH_BOW_RECALL_THRESHOLD = HASH_BOW_DUPLICATE_THRESHOLD
@@ -134,7 +135,13 @@ class EventRecaller:
         if self._embed is None:
             return []
         try:
-            results = self._repo.vector_search(self._embed(query), top_k=max(len(by_id), 1))
+            query_embedding = self._embed(query)
+            query_space = embedding_space_of(self._embed)
+            results = self._repo.vector_search(
+                query_embedding,
+                top_k=max(len(by_id), 1),
+                embedding_space=query_space,
+            )
         except (OSError, RuntimeError, TypeError, ValueError):
             return []
         return [

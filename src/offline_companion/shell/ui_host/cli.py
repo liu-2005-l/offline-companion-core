@@ -16,10 +16,14 @@ from offline_companion.core.memory_lifecycle.drafts import (
     discard_draft,
     list_pending_drafts,
 )
+from offline_companion.core.memory_lifecycle.event_repository import EventRepository
 from offline_companion.core.memory_lifecycle.manager import (
     MemoryLifecycleManager,
     apply_bundle_import,
     prepare_export_bundle,
+)
+from offline_companion.core.memory_lifecycle.semantic_embedding_provider import (
+    SemanticEmbeddingProvider,
 )
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
 from offline_companion.core.persona_session.persona_loader import (
@@ -150,13 +154,15 @@ def cmd_chat(args: argparse.Namespace) -> int:
     persona = load_persona_file(persona_path)
     if getattr(args, "companion_name", None):
         persona = apply_companion_display_name(persona, args.companion_name)
-    session_core = PersonaSessionCore(persona)
     privacy = _parse_privacy(args.privacy)
     triggers = load_triggers()
 
     memory_on = persona.memory_default_on if args.memory is None else bool(args.memory)
 
     conn = connect(paths.db_path)
+    semantic_embedder = SemanticEmbeddingProvider(data_root=paths.root)
+    EventRepository(conn).recompute_content_embeddings(semantic_embedder)
+    session_core = PersonaSessionCore(persona, semantic_embed_func=semantic_embedder)
     session_id = args.session_id or str(uuid.uuid4())
     row = conn.execute("SELECT id FROM sessions WHERE id = ?;", (session_id,)).fetchone()
     if not row:

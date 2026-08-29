@@ -50,3 +50,11 @@
 - A3 6.5 注入层词面口径注释在档。
 - A4 阈值重校方法在本文件预注册，不写死数值。
 
+## 八、Phase B 入口收口口径
+
+- 模型拍板：优先选择 bge-base-zh-v1.5 级 768 维 ONNX embedding，沿用 `CONTENT_EMBEDDING_DIMENSIONS = 768`，避免 padding 与混维解释债。
+- 风险修正：旧 hash-bow 768 与新 semantic 768 是同维不同语义空间；混源 cosine 表面合法但分数无意义，因此启动期必须先统一入口、再同步重算全库，完成后才进入服务。
+- 单一事实源：`SemanticEmbeddingProvider` 是语义事件 embedding 的唯一生产入口；`PersonaSessionCore` 召回、`EventExtractor` 自动写入、桌面 API 手动写入与 CLI 启动均通过同一 callable。
+- 降级口径：provider 按 per-call 判定模型可用性；模型文件缺失或运行中加载失败时退回 deterministic hash-bow 768 维，并只输出一次进程级 warning，不弹窗、不阻断、不静默上云。
+- 空间标签：`semantic_events.content_embedding_space` 按行记录 `semantic_onnx_768` / `hash_bow_768` / `none`；召回只比较同空间行，重算只处理目标空间不匹配或 embedding 为空的行，避免 mid-session fallback 把混源垃圾分永久化。
+- 性能口径：`EventRepository.vector_search()` 当前保持 Python 线扫，numpy 向量化不混入 V1-B/C，避免污染“模型贡献 vs 阈值贡献”的翻转归因。

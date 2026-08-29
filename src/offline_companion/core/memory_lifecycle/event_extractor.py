@@ -12,6 +12,7 @@ from typing import Any
 
 from .event_repository import EventRepository
 from .event_types import EVENT_TYPES, SemanticEvent
+from .semantic_embedding_provider import NO_EMBEDDING_SPACE, embedding_space_of
 
 EXTRACTION_INTERVAL = 10
 HASH_BOW_DUPLICATE_THRESHOLD = 0.50
@@ -104,8 +105,10 @@ class EventExtractor:
             return None
         try:
             content_embedding = self._embed(content.strip())
+            content_embedding_space = embedding_space_of(self._embed)
         except (OSError, RuntimeError, TypeError, ValueError):
             content_embedding = None
+            content_embedding_space = NO_EMBEDDING_SPACE
         try:
             event = SemanticEvent(
                 event_id=uuid.uuid4().hex,
@@ -113,6 +116,7 @@ class EventExtractor:
                 subject=str(raw.get("subject") or "user"),
                 content=content.strip(),
                 content_embedding=content_embedding,
+                content_embedding_space=content_embedding_space,
                 emotional_valence=float(raw.get("emotional_valence", 0.0)),
                 emotional_arousal=float(raw.get("emotional_arousal", 0.0)),
                 importance=float(raw.get("importance", 1.0)),
@@ -129,7 +133,11 @@ class EventExtractor:
         """摘要：返回达到字面近似阈值的同类重复事件。"""
         if not event.content_embedding:
             return None
-        for existing, distance in self._repo.vector_search(event.content_embedding, top_k=5):
+        for existing, distance in self._repo.vector_search(
+            event.content_embedding,
+            top_k=5,
+            embedding_space=event.content_embedding_space,
+        ):
             if existing.event_type != event.event_type or existing.subject != event.subject:
                 continue
             if 1.0 - distance >= HASH_BOW_DUPLICATE_THRESHOLD:

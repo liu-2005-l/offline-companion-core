@@ -163,6 +163,7 @@ def _init_v12(conn: sqlite3.Connection) -> None:
             subject TEXT NOT NULL,
             content TEXT NOT NULL,
             content_embedding BLOB,
+            content_embedding_space TEXT NOT NULL DEFAULT 'hash_bow_768',
             emotional_valence REAL NOT NULL DEFAULT 0.0,
             emotional_arousal REAL NOT NULL DEFAULT 0.0,
             importance REAL NOT NULL DEFAULT 1.0,

@@ -6,7 +6,7 @@ import logging
 import os
 import sqlite3
 import unicodedata
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable
 
@@ -19,10 +19,12 @@ from offline_companion.core.memory_lifecycle.event_recaller import (
     format_event_narrative,
 )
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
+from offline_companion.core.memory_lifecycle.semantic_embedding_provider import (
+    SemanticEmbeddingProvider,
+)
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
 from offline_companion.core.memory_lifecycle.recall import format_recall_prompt_block, recall
 from offline_companion.core.persona_session.persona_loader import resolved_companion_display_name
-from offline_companion.shared.deterministic_embedding import embed_text
 from offline_companion.shared.runtime_paths import configs_dir, dev_repo_root
 from offline_companion.shared.types import (
     CapabilityProfile,
@@ -200,8 +202,19 @@ class AssembleReplyResult:
 class PersonaSessionCore:
     """摘要：围绕单一人设完成人上下文装配与本地推理调用。"""
 
-    def __init__(self, persona: Persona) -> None:
+    def __init__(
+        self,
+        persona: Persona,
+        semantic_embed_func: Callable[[str], list[float]] | None = None,
+    ) -> None:
+        """摘要：初始化会话核心并绑定语义事件 embedding 入口。
+
+        参数：
+            persona: 当前会话使用的人格定义。
+            semantic_embed_func: 可选的统一语义事件向量函数。
+        """
         self.persona = persona
+        self._semantic_embed = semantic_embed_func or SemanticEmbeddingProvider()
 
     @property
     def system_prompt_locked(self) -> str:
@@ -362,7 +375,7 @@ class PersonaSessionCore:
             memory_block = format_recall_prompt_block(recalls)
             semantic_events = EventRecaller(
                 EventRepository(conn),
-                embed_func=lambda text: embed_text(text, dimensions=768),
+                embed_func=self._semantic_embed,
             ).recall(
                 user_message,
                 emotional_context=(

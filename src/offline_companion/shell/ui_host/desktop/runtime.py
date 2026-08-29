@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from offline_companion.core.decomposition_sample_library import (
@@ -52,6 +53,7 @@ class DesktopRuntime:
     sample_repository: SampleRepository | None = None
     sample_lifecycle: SampleLifecycleManager | None = None
     sample_retriever: SampleRetriever | None = None
+    semantic_embed_func: Callable[[str], list[float]] | None = None
 
     @classmethod
     def from_bundle(cls, bundle: UISessionBundle) -> DesktopRuntime:
@@ -81,4 +83,5 @@ class DesktopRuntime:
             sample_repository=bundle.sample_repository,
             sample_lifecycle=bundle.sample_lifecycle,
             sample_retriever=bundle.sample_retriever,
+            semantic_embed_func=bundle.semantic_embed_func,
         )

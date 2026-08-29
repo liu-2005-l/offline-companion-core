@@ -14,6 +14,7 @@ EVENT_TYPES = frozenset({
 })
 EVENT_STATUSES = frozenset({"active", "dormant", "superseded"})
 CONTENT_EMBEDDING_DIMENSIONS = 768
+CONTENT_EMBEDDING_SPACES = frozenset({"hash_bow_768", "semantic_onnx_768", "none"})
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,7 @@ class SemanticEvent:
     subject: str
     content: str
     content_embedding: list[float] | None = None
+    content_embedding_space: str = "hash_bow_768"
     emotional_valence: float = 0.0
     emotional_arousal: float = 0.0
     importance: float = 1.0
@@ -78,6 +80,8 @@ class SemanticEvent:
             raise ValueError("recall_count must not be negative")
         if self.status not in EVENT_STATUSES:
             raise ValueError(f"invalid event status: {self.status}")
+        if self.content_embedding_space not in CONTENT_EMBEDDING_SPACES:
+            raise ValueError(f"invalid content_embedding_space: {self.content_embedding_space}")
         if (
             self.content_embedding is not None
             and len(self.content_embedding) != CONTENT_EMBEDDING_DIMENSIONS

@@ -6,6 +6,7 @@ import json
 import logging
 import sqlite3
 import time
+from collections.abc import Callable
 from dataclasses import replace
 
 from offline_companion.shared.deterministic_embedding import (
@@ -14,7 +15,12 @@ from offline_companion.shared.deterministic_embedding import (
     vector_to_blob,
 )
 
-from .event_types import SemanticEvent
+from .event_types import CONTENT_EMBEDDING_DIMENSIONS, SemanticEvent
+from .semantic_embedding_provider import (
+    HASH_BOW_EMBEDDING_SPACE,
+    NO_EMBEDDING_SPACE,
+    preferred_embedding_space_of,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +43,7 @@ class EventRepository:
                 subject TEXT NOT NULL,
                 content TEXT NOT NULL,
                 content_embedding BLOB,
+                content_embedding_space TEXT NOT NULL DEFAULT 'hash_bow_768',
                 emotional_valence REAL NOT NULL DEFAULT 0.0,
                 emotional_arousal REAL NOT NULL DEFAULT 0.0,
                 importance REAL NOT NULL DEFAULT 1.0,
@@ -59,6 +66,16 @@ class EventRepository:
                 ON semantic_events(created_at DESC);
             """
         )
+        columns = {
+            str(row["name"])
+            for row in self._conn.execute("PRAGMA table_info(semantic_events)").fetchall()
+        }
+        if "content_embedding_space" not in columns:
+            self._conn.execute(
+                "ALTER TABLE semantic_events ADD COLUMN content_embedding_space "
+                "TEXT NOT NULL DEFAULT 'hash_bow_768'"
+            )
+            self._conn.commit()
 
     def store(self, event: SemanticEvent) -> None:
         """摘要：插入一条语义事件及其可选向量。
@@ -73,14 +90,16 @@ class EventRepository:
             """
             INSERT INTO semantic_events (
                 event_id, event_type, subject, content, content_embedding,
+                content_embedding_space,
                 emotional_valence, emotional_arousal, importance,
                 temporal_marker, source_turns, related_events, superseded_by,
                 created_at, last_recalled_at, recall_count, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 event.event_id, event.event_type, event.subject, event.content,
                 vector_to_blob(event.content_embedding) if event.content_embedding else None,
+                event.content_embedding_space,
                 event.emotional_valence, event.emotional_arousal, event.importance,
                 event.temporal_marker, json.dumps(event.source_turns),
                 json.dumps(event.related_events), event.superseded_by, created_at,
@@ -122,14 +141,20 @@ class EventRepository:
         return [_row_to_event(row) for row in rows]
 
     def vector_search(
-        self, query_embedding: list[float], top_k: int = 20
+        self,
+        query_embedding: list[float],
+        top_k: int = 20,
+        *,
+        embedding_space: str = HASH_BOW_EMBEDDING_SPACE,
     ) -> list[tuple[SemanticEvent, float]]:
         """摘要：在 active 事件向量上执行余弦相似度扫描并返回距离升序结果。"""
         if top_k <= 0:
             return []
         rows = self._conn.execute(
             "SELECT * FROM semantic_events "
-            "WHERE status = 'active' AND content_embedding IS NOT NULL"
+            "WHERE status = 'active' AND content_embedding IS NOT NULL "
+            "AND content_embedding_space = ?",
+            (embedding_space,),
         ).fetchall()
         ranked: list[tuple[SemanticEvent, float]] = []
         for row in rows:
@@ -142,10 +167,11 @@ class EventRepository:
         ranked.sort(key=lambda item: item[1])
         results = ranked[:top_k]
         logger.info(
-            "semantic event vector_search returned %d events for top_k=%d candidates=%d",
+            "semantic event vector_search returned %d events for top_k=%d candidates=%d space=%s",
             len(results),
             top_k,
             len(ranked),
+            embedding_space,
         )
         return results
 
@@ -156,6 +182,60 @@ class EventRepository:
             "last_recalled_at = ? WHERE event_id = ?", (time.time(), event_id)
         )
         self._conn.commit()
+
+    def recompute_content_embeddings(
+        self, embedding_func: Callable[[str], list[float]]
+    ) -> dict[str, int]:
+        """摘要：用当前统一 embedding 入口同步重算全库语义事件向量。
+
+        参数：
+            embedding_func: 将事件内容转换为向量的函数。
+
+        返回值：
+            包含 total、updated 与 failed 的计数字典。
+        """
+        target_space = preferred_embedding_space_of(embedding_func)
+        rows = self._conn.execute(
+            "SELECT event_id, content FROM semantic_events "
+            "WHERE content_embedding IS NULL OR content_embedding_space != ? "
+            "ORDER BY event_id",
+            (target_space,),
+        ).fetchall()
+        total = len(rows)
+        updated = 0
+        failed = 0
+        for row in rows:
+            try:
+                vector = embedding_func(str(row["content"]))
+                if len(vector) != CONTENT_EMBEDDING_DIMENSIONS:
+                    raise ValueError("content_embedding dimension mismatch")
+                embedding_space = str(
+                    getattr(embedding_func, "embedding_space", HASH_BOW_EMBEDDING_SPACE)
+                    or HASH_BOW_EMBEDDING_SPACE
+                )
+            except (OSError, RuntimeError, TypeError, ValueError):
+                vector = None
+                embedding_space = NO_EMBEDDING_SPACE
+                failed += 1
+            self._conn.execute(
+                "UPDATE semantic_events SET content_embedding = ?, "
+                "content_embedding_space = ? WHERE event_id = ?",
+                (
+                    vector_to_blob(vector) if vector else None,
+                    embedding_space,
+                    str(row["event_id"]),
+                ),
+            )
+            updated += 1
+        self._conn.commit()
+        logger.info(
+            "semantic event embedding migration completed target_space=%s total=%d updated=%d failed=%d",
+            target_space,
+            total,
+            updated,
+            failed,
+        )
+        return {"total": total, "updated": updated, "failed": failed}
 
     def mark_superseded(self, old_id: str, new_id: str) -> None:
         """摘要：将旧事件标记为由新事件替代。"""
@@ -187,17 +267,20 @@ class EventRepository:
             return False
         if "content" in changes:
             changes["content_embedding"] = None
+            changes["content_embedding_space"] = NO_EMBEDDING_SPACE
         updated = replace(current, **changes)
         updated.validate()
         self._conn.execute(
             """
             UPDATE semantic_events SET event_type = ?, subject = ?, content = ?,
-                content_embedding = ?, emotional_valence = ?, emotional_arousal = ?,
+                content_embedding = ?, content_embedding_space = ?,
+                emotional_valence = ?, emotional_arousal = ?,
                 importance = ?, temporal_marker = ?, status = ? WHERE event_id = ?
             """,
             (
                 updated.event_type, updated.subject, updated.content,
                 vector_to_blob(updated.content_embedding) if updated.content_embedding else None,
+                updated.content_embedding_space,
                 updated.emotional_valence, updated.emotional_arousal, updated.importance,
                 updated.temporal_marker, updated.status, event_id,
             ),
@@ -214,6 +297,7 @@ def _row_to_event(row: sqlite3.Row) -> SemanticEvent:
         subject=str(row["subject"]),
         content=str(row["content"]),
         content_embedding=blob_to_vector(row["content_embedding"]),
+        content_embedding_space=str(row["content_embedding_space"]),
         emotional_valence=float(row["emotional_valence"]),
         emotional_arousal=float(row["emotional_arousal"]),
         importance=float(row["importance"]),

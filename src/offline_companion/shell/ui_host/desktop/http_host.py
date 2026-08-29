@@ -32,6 +32,10 @@ from offline_companion.core.event_stream import TRAJECTORY_PROJECTION
 from offline_companion.core.hard_gate import HardGate
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
 from offline_companion.core.memory_lifecycle.event_types import SemanticEvent
+from offline_companion.core.memory_lifecycle.semantic_embedding_provider import (
+    SemanticEmbeddingProvider,
+    embedding_space_of,
+)
 from offline_companion.core.memory_lifecycle.fts_ops import (
     count_memory_rows,
     invalidate_memory_chunk,
@@ -65,7 +69,6 @@ from offline_companion.runtime.storage_index.engine import (
     latest_stream_event_seq,
     stream_events_after,
 )
-from offline_companion.shared.deterministic_embedding import embed_text
 from offline_companion.shared.errors import (
     InferenceBackendError,
     SkillInvocationError,
@@ -371,7 +374,10 @@ def create_desktop_app(runtime: DesktopRuntime):
     extension_state: dict[str, bool] = init_extension_status(runtime.paths.root, runtime.paths.db_path)
     persisted_persona = active_persona(runtime.orchestrator.conn)
     if persisted_persona is not None:
-        runtime.orchestrator.session_core = PersonaSessionCore(persisted_persona)
+        runtime.orchestrator.session_core = PersonaSessionCore(
+            persisted_persona,
+            semantic_embed_func=runtime.semantic_embed_func,
+        )
         runtime.persona_name = resolved_companion_display_name(persisted_persona)
     runtime.logged_in = bool(getattr(runtime, "logged_in", False))
     runtime.account_name = str(getattr(runtime, "account_name", "local-user"))
@@ -942,7 +948,10 @@ def create_desktop_app(runtime: DesktopRuntime):
         if item["active"]:
             persona = get_persisted_persona(runtime.orchestrator.conn, persona_id)
             if persona is not None:
-                runtime.orchestrator.session_core = PersonaSessionCore(persona)
+                runtime.orchestrator.session_core = PersonaSessionCore(
+                    persona,
+                    semantic_embed_func=runtime.semantic_embed_func,
+                )
                 runtime.persona_name = resolved_companion_display_name(persona)
         return _json_response(jsonify, {"ok": True, "persona": item})
 
@@ -961,7 +970,10 @@ def create_desktop_app(runtime: DesktopRuntime):
         persona = activate_persisted_persona(runtime.orchestrator.conn, persona_id)
         if persona is None:
             return _json_response(jsonify, {"error": "not_found"}, status=404)
-        runtime.orchestrator.session_core = PersonaSessionCore(persona)
+        runtime.orchestrator.session_core = PersonaSessionCore(
+            persona,
+            semantic_embed_func=runtime.semantic_embed_func,
+        )
         runtime.persona_name = resolved_companion_display_name(persona)
         item = next(item for item in list_personas(runtime.orchestrator.conn) if item["id"] == persona_id)
         return _json_response(jsonify, {"ok": True, "persona": item})
@@ -1515,12 +1527,15 @@ def create_desktop_app(runtime: DesktopRuntime):
         content = str(data.get("content") or "").strip()
         if not content:
             return _json_response(jsonify, {"error": "missing content"}, status=400)
+        embedder = _semantic_embed(runtime)
+        content_embedding = embedder(content)
         event = SemanticEvent(
             event_id=uuid.uuid4().hex,
             event_type=str(data.get("event_type") or "fact"),
             subject=str(data.get("subject") or "user"),
             content=content,
-            content_embedding=embed_text(content, dimensions=768),
+            content_embedding=content_embedding,
+            content_embedding_space=embedding_space_of(embedder),
             emotional_valence=float(data.get("emotional_valence", 0.0)),
             emotional_arousal=float(data.get("emotional_arousal", 0.0)),
             importance=float(data.get("importance", 2.0)),
@@ -2571,6 +2586,7 @@ def _semantic_event_row(event: SemanticEvent) -> dict[str, Any]:
         "content": event.content,
         "body": event.content,
         "source": "semantic_event",
+        "content_embedding_space": event.content_embedding_space,
         "emotional_valence": event.emotional_valence,
         "emotional_arousal": event.emotional_arousal,
         "importance": event.importance,
@@ -2584,6 +2600,13 @@ def _semantic_event_row(event: SemanticEvent) -> dict[str, Any]:
         "recall_count": event.recall_count,
         "status": event.status,
     }
+
+
+def _semantic_embed(runtime: DesktopRuntime):
+    """摘要：返回桌面运行时的统一语义事件 embedding 入口。"""
+    if runtime.semantic_embed_func is None:
+        runtime.semantic_embed_func = SemanticEmbeddingProvider(data_root=runtime.paths.root)
+    return runtime.semantic_embed_func
 
 
 def _legacy_plan_step_invoker(step: PlanStep, _context: TaskContext) -> dict[str, str]:

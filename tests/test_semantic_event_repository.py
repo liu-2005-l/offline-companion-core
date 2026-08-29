@@ -51,6 +51,7 @@ def test_store_and_get_preserves_semantic_event_fields(tmp_path: Path) -> None:
     assert loaded is not None
     assert loaded.event_type == "preference"
     assert loaded.content_embedding == vector()
+    assert loaded.content_embedding_space == "hash_bow_768"
     assert loaded.source_turns == [1, 2]
     assert loaded.related_events == ["related-1"]
     assert loaded.importance == 3.5
@@ -94,7 +95,7 @@ def test_vector_search_logs_returned_count(tmp_path: Path, caplog: pytest.LogCap
         results = repo.vector_search(vector(), top_k=1)
 
     assert len(results) == 1
-    assert "semantic event vector_search returned 1 events for top_k=1 candidates=1" in caplog.text
+    assert "semantic event vector_search returned 1 events for top_k=1 candidates=1 space=hash_bow_768" in caplog.text
 
 
 def test_store_rejects_non_768_dimension_embedding(tmp_path: Path) -> None:
@@ -114,6 +115,25 @@ def test_store_duplicate_event_id_raises_integrity_error(tmp_path: Path) -> None
 
     with pytest.raises(sqlite3.IntegrityError):
         repo.store(make_event("dup"))
+
+
+def test_vector_search_ignores_mismatched_embedding_space(tmp_path: Path) -> None:
+    """摘要：召回只比较同一 embedding 空间，避免同维混源产生垃圾分。"""
+    repo = EventRepository(sqlite3.connect(tmp_path / "events.db"))
+    repo.store(make_event("hash"))
+    repo.store(SemanticEvent(
+        event_id="semantic",
+        event_type="fact",
+        subject="user",
+        content="语义空间事件",
+        content_embedding=vector(),
+        content_embedding_space="semantic_onnx_768",
+        created_at=time.time(),
+    ))
+
+    results = repo.vector_search(vector(), embedding_space="semantic_onnx_768")
+
+    assert [event.event_id for event, _distance in results] == ["semantic"]
 
 
 def test_update_recall_stats_increments_counter(tmp_path: Path) -> None:

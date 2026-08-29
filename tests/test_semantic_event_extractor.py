@@ -198,3 +198,4 @@ def test_extract_stores_event_without_embedding_when_embedding_fails() -> None:
     stored = repo.get(events[0].event_id)
     assert stored is not None
     assert stored.content_embedding is None
+    assert stored.content_embedding_space == "none"

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sys
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,9 @@ from offline_companion.core.hard_gate import HardGate
 from offline_companion.core.memory_lifecycle.event_extractor import EventExtractor
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
 from offline_companion.core.memory_lifecycle.idle_hook import MemoryIdleHook
+from offline_companion.core.memory_lifecycle.semantic_embedding_provider import (
+    SemanticEmbeddingProvider,
+)
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
 from offline_companion.core.persona_session.persona_loader import (
     load_persona_file,
@@ -56,7 +60,6 @@ from offline_companion.runtime.inference_backend import (
     try_stderr_cuda_hint,
 )
 from offline_companion.runtime.storage_index.engine import connect, new_session, recent_messages
-from offline_companion.shared.deterministic_embedding import embed_text
 from offline_companion.shared.errors import InferenceBackendError
 from offline_companion.shared.types import AppPaths, MessageRow, PrivacyMode, ToolManifest
 from offline_companion.shell.auto_router import AutoRouter, RoutingContext
@@ -187,6 +190,7 @@ class UISessionBundle:
     sample_repository: SampleRepository
     sample_lifecycle: SampleLifecycleManager
     sample_retriever: SampleRetriever
+    semantic_embed_func: Callable[[str], list[float]]
     event_stream_manager: StreamManager | None = None
     event_persistence: EventPersistence | None = None
 
@@ -279,11 +283,13 @@ def bootstrap_ui_session(
     repaired_state_files = tuple(check_state_integrity(paths.root))
     settings_state = load_settings(paths.root)
     persona = load_persona_file(Path(persona_path).expanduser())
-    session_core = PersonaSessionCore(persona)
     memory_on = persona.memory_default_on if memory is None else bool(memory)
     triggers = load_triggers()
 
     conn = connect(paths.db_path)
+    semantic_embedder = SemanticEmbeddingProvider(data_root=paths.root)
+    EventRepository(conn).recompute_content_embeddings(semantic_embedder)
+    session_core = PersonaSessionCore(persona, semantic_embed_func=semantic_embedder)
     event_persistence = EventPersistence(paths.db_path)
     event_stream_manager = StreamManager(build_default_registry(), event_persistence)
     event_stream_manager.restore_from_disk()
@@ -489,7 +495,7 @@ def bootstrap_ui_session(
             EventExtractor(
                 EventRepository(conn),
                 backend,
-                lambda text: embed_text(text, dimensions=768),
+                semantic_embedder,
             )
             if local_available
             else None
@@ -634,6 +640,7 @@ def bootstrap_ui_session(
         sample_repository=sample_repository,
         sample_lifecycle=sample_lifecycle,
         sample_retriever=sample_retriever,
+        semantic_embed_func=semantic_embedder,
         event_stream_manager=event_stream_manager,
         event_persistence=event_persistence,
     )
