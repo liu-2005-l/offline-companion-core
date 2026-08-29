@@ -103,6 +103,8 @@ D-3	批次 2 前端档位（假最大化 + 物理像素坐标 + 多屏 MonitorFr
 
 验收：15 条已列 + 多屏 DPI 实测数据归档（依赖升版可复测翻案——TOOLS.md 沉淀的依赖库行为验证模式）。
 
+闭合记录（2026-08-29）：窗口核心实现已由先期提交覆盖，本批补齐 `docs/window-adaptive-layout-design.md` v3 事实源、`docs/v1-6-0-release-checklist.md` 收尾边界网与 G7 静态哨兵；窗口窄测 24 passed，全量 1168 passed / 3 skipped，`full_acceptance --skip-gpu` 10/10。
+
 Batch E｜v1.6.0 收尾发布
 子批	内容	验收
 E-1	全量回归绿 + 新基线 commit 锁定	全量 passed，无 skip 增加

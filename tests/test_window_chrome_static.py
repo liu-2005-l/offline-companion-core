@@ -6,6 +6,7 @@ STATIC_DIR = (
     Path(__file__).resolve().parents[1]
     / "src/offline_companion/shell/ui_host/desktop/static"
 )
+ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
 def test_desktop_shell_uses_only_formal_window_chrome_handlers() -> None:
@@ -67,3 +68,26 @@ def test_memory_default_range_tracks_local_today_and_previous_year() -> None:
     assert "formatLocalDate(referenceDate)" in prototype
     assert "window.addEventListener('focus', refreshDefaultMemoryDateRange);" in prototype
     assert "function fmt(d) { return d.toISOString().slice(0, 10); }" not in prototype
+
+
+def test_window_adaptive_design_fact_source_is_in_repo() -> None:
+    design = (ROOT_DIR / "docs/window-adaptive-layout-design.md").read_text(encoding="utf-8")
+    checklist = (ROOT_DIR / "docs/v1-6-0-release-checklist.md").read_text(encoding="utf-8")
+
+    assert "窗口自适应布局设计 v3" in design
+    assert "SetProcessDpiAwareness(2)" in design
+    assert "MonitorFromWindow" in design
+    assert "SetWindowPos(88,-1920,0,1920,1040,0x0014)" in design
+    assert "G7 | 窗口布局验收行" in checklist
+
+
+def test_desktop_window_native_entry_order_is_locked() -> None:
+    source = (
+        ROOT_DIR / "src/offline_companion/shell/ui_host/desktop/app.py"
+    ).read_text(encoding="utf-8")
+
+    assert source.index("    _ensure_dpi_awareness()\n    _require_desktop_deps()") < source.index("webview.create_window(")
+    assert source.index("webview.create_window(") < source.index("webview.start(debug=False)")
+    assert "frameless=True" in source
+    assert "easy_drag=False" in source
+    assert "min_size=(720, 480)" in source
