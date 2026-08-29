@@ -41,6 +41,7 @@
 - 启动 v6 主线 6.2 门禁校准：将 Phase 6.1-6.6 的 209 用例方案收进仓库并同步旧基线；新增 40/40 相似度判别对与 hash-bow 校准脚本，实测 similar `0.1438-0.6351`、dissimilar `0.1491-0.2864` 分布重叠；分面后 literal_edit `0.5017-0.6351`、paraphrase `0.1438-0.4762`，6.2 去重口径降级为字面近似去重，生产 duplicate 阈值落为 `0.50`，related 阈值标记为未实现/预留，真语义 embedding 去重列入 v1.7.0 候选。
 - 启动 v6 主线 6.3 召回锚点批：语义事件召回新增固定 info anchor，输出 vector/bm25/hash_bow 三路返回数（含 0）、RRF 融合 top-K、来源路标记与 query 摘要；同步记录当前三路均为 hash-bow/词面近似同质路径，真语义召回列入 v1.7.0 候选。
 - 推进 v6 主线 6.3 召回验证：补齐 RRF rank=0 计分、情感 boost ×1.3、中文情感叙事标签、related 后置扩展可见性与 `_assemble_context()` 真链路注入抽样；42 条 R/T 机械用例按当前词面召回口径全覆盖，同义改写语义召回降级为 degraded。
+- 推进 v6 主线 6.4 IdleThink 验证：确认语义维护为纯写路径，不经过 `EventRecaller`；补齐残余补提取、正常周期边界不抢跑、提取水位推进、衰减 GC、idle 阈值与 memory_maintenance 注册测试，并记录 hash-bow 召回弱导致 recall_count 不增长、进而加速 dormant 的接受降级。
 - 已知债务：`PlanDecomposer` 的 `method_entity_names` / manifest 映射参数仍允许空值以兼容测试与冷路径构造；生产 bootstrap 已传入 callable，后续可将生产装配路径升级为缺失即 fail-fast。
 
 ## v1.6.1 · 2026-08-20（Windows 窗口适配修复）

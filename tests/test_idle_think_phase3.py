@@ -143,6 +143,30 @@ def test_idle_think_coordinator_evaluates_and_writes_snapshot() -> None:
     assert snapshot["context"]["last_idle_at"] is not None
 
 
+def test_idle_think_coordinator_runs_memory_maintenance_hook() -> None:
+    """摘要：IdleThink 空闲入口会调用语义记忆维护 hook。"""
+    context = AttentionContext(is_focus_mode=False)
+    goal_manager = MagicMock()
+    goal_manager.evaluate_reminders.return_value = ReminderDecision(
+        candidates_to_show=[],
+        candidates_silent=[],
+        context=context,
+    )
+    state_manager = MagicMock()
+    memory_maintenance = MagicMock(return_value=["extracted 1 events from residual turns"])
+
+    coordinator = IdleThinkCoordinator(
+        goal_manager=goal_manager,
+        state_manager=state_manager,
+        attention_context_provider=lambda: context,
+        memory_maintenance=memory_maintenance,
+    )
+    coordinator.on_idle()
+
+    memory_maintenance.assert_called_once_with(300.0)
+    goal_manager.evaluate_reminders.assert_called_once()
+
+
 def test_idle_think_context_reads_focus_mode_and_last_reminder() -> None:
     context = AttentionContext()
     decision = ReminderDecision(candidates_to_show=[], candidates_silent=[], context=context)

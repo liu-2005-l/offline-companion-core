@@ -82,6 +82,8 @@ held-out 口径（2026-08-27）：三分面线性可分只是校准集内结论�
 
 6.3 对表三分法（2026-08-27）：42 条 R/T 机械用例按当前实现拆分为“已实现有测试”全覆盖（R1-R42、T8-T11），其中新增显式覆盖 RRF rank=0、三路独立命中、no-hit anchor、related 一跳后置扩展、时序重组、召回统计、query expansion、中文情感标签与 `_assemble_context()` 真链路注入；“已实现缺验证”清零；“按 6.2 判决反转”单列为同义改写 query 语义召回，不归入机械 42 条 correct 门禁，预期为 degraded（召回空或召回近似词面事件均需靠 anchor 解释）。
 
+6.4 开工口径（2026-08-29）：IdleThink 语义维护链路是纯写路径，`MemoryIdleHook` 只调用 `EventExtractor.extract()` 做残余补提取，并用 `should_gc()` / `mark_dormant()` 执行衰减 GC，不经过 `EventRecaller`，因此 6.2/6.3 的 hash-bow 召回判决不耦合本批 I/T 用例。二阶效应记档：hash-bow 召回弱会让词面冷事件 recall_count 长期为 0，从而更容易满足 `decay 低 + recall_count=0 → dormant`；v1.6 接受为检索层降级的下游表现，v1.7 真 embedding 生效后复核。
+
 Batch D｜窗口自适应布局（方案 v3 已定稿）
 docs/window-adaptive-layout-design.md（v3，含实测数据归档）。三批次按依赖排序：
 

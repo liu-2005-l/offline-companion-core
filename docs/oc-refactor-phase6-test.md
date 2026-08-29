@@ -173,6 +173,7 @@ T9	灌入 e1(高 importance) + e2(低 importance) → recall → e1 在前	RRF +
 T10	灌入旧事件(90天前) + 新事件(今天) → recall 同查 → 新事件在前	衰减权重生效
 T11	emotional_context={valence:0.9} + 事件 valence=0.9 → recall vs 无 context → 有 context 时该事件排名更高	情感 boost 生效
 四、6.4 IdleThink 集成
+开工口径（2026-08-29）：本批是纯写路径与衰减维护验证，`MemoryIdleHook` 不经过 `EventRecaller`；反转清单为空。语义召回弱导致 recall_count 不增长、进而加速低衰减事件 dormant，是 6.2/6.3 检索降级的下游接受风险，不在 6.4 内修。
 残余消息补提取
 #	用例	预期
 I1	上次提取在 turn 10，当前 turn 17 → on_idle	补提取 turn 11-17

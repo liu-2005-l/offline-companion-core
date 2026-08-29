@@ -33,9 +33,11 @@ class MemoryIdleHook:
         pending = self._get_pending_extraction()
         if pending is not None:
             session_id, messages, turn_range = pending
-            events = self._extractor.extract(messages, session_id, turn_range)
-            if events:
-                actions.append(f"extracted {len(events)} events from residual turns")
+            if not self._extractor.should_extract(turn_range[1]):
+                events = self._extractor.extract(messages, session_id, turn_range)
+                self._extractor.mark_extracted(turn_range[1])
+                if events:
+                    actions.append(f"extracted {len(events)} events from residual turns")
         gc_count = 0
         now = time.time()
         for event in self._repo.get_active(limit=5000):
@@ -59,4 +61,8 @@ class MemoryIdleHook:
             return None
         if not isinstance(turn_range, tuple) or len(turn_range) != 2:
             return None
-        return session_id, messages, (int(turn_range[0]), int(turn_range[1]))
+        start_turn = int(turn_range[0])
+        end_turn = int(turn_range[1])
+        if end_turn <= 0 or start_turn > end_turn:
+            return None
+        return session_id, messages, (start_turn, end_turn)
