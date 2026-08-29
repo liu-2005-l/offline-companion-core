@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import math
 import re
+import sqlite3
 import time
 from collections.abc import Callable
 from typing import Any
@@ -71,7 +72,10 @@ class EventRecaller:
         query = query.strip()
         if not query or top_k <= 0:
             return []
-        candidates = self._repo.get_active(limit=max(top_k * 20, 100))
+        try:
+            candidates = self._repo.get_active(limit=max(top_k * 20, 100))
+        except sqlite3.Error:
+            return []
         by_id = {event.event_id: event for event in candidates}
         queries = self._expand_query(query)
         ranked_paths: dict[str, list[str]] = {"vector": [], "bm25": [], "hash_bow": []}

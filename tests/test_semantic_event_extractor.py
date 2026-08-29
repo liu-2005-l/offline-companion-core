@@ -129,6 +129,25 @@ def test_extract_skips_literal_near_duplicate_with_hash_bow_threshold() -> None:
     assert len(repo.get_active()) == 1
 
 
+def test_extract_supersedes_lower_importance_literal_duplicate() -> None:
+    """摘要：字面近似重复中，新事件重要性更高时替代旧事件。"""
+    extractor, repo = make_hash_bow_extractor(
+        [
+            '[{"event_type":"fact","subject":"user","content":"用户是 C++ 工程师","importance":2}]',
+            '[{"event_type":"fact","subject":"user","content":"用户是资深 C++ 工程师","importance":4}]',
+        ]
+    )
+
+    first = extractor.extract([{"role": "user", "content": "C++"}], "s1", (1, 10))
+    second = extractor.extract([{"role": "user", "content": "资深 C++"}], "s1", (11, 20))
+
+    assert len(first) == 1
+    assert len(second) == 1
+    assert repo.get(first[0].event_id).status == "superseded"
+    assert repo.get(first[0].event_id).superseded_by == second[0].event_id
+    assert [event.event_id for event in repo.get_active()] == [second[0].event_id]
+
+
 def test_extract_keeps_paraphrase_below_hash_bow_threshold() -> None:
     """摘要：hash-bow 无法判别的同义改写按降级口径双份存储。"""
     extractor, repo = make_hash_bow_extractor(
@@ -161,3 +180,21 @@ def test_extract_handles_invalid_llm_json() -> None:
 
     assert extractor.extract([{"role": "user", "content": "内容"}], "s1", (1, 1)) == []
     assert repo.get_active() == []
+
+
+def test_extract_stores_event_without_embedding_when_embedding_fails() -> None:
+    """摘要：embedding 函数失败时事件仍可落库，向量字段降级为空。"""
+    llm = FakeLlm('[{"event_type":"fact","subject":"user","content":"用户喜欢本地优先","importance":3}]')
+    repo = EventRepository(sqlite3.connect(":memory:"))
+
+    def fail_embed(_content: str) -> list[float]:
+        raise RuntimeError("embedding offline")
+
+    extractor = EventExtractor(repo, llm, fail_embed)
+
+    events = extractor.extract([{"role": "user", "content": "本地优先"}], "s1", (1, 10))
+
+    assert len(events) == 1
+    stored = repo.get(events[0].event_id)
+    assert stored is not None
+    assert stored.content_embedding is None

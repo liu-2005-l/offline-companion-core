@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import sqlite3
 from typing import Any
 
 from .decay import should_gc
@@ -40,9 +41,16 @@ class MemoryIdleHook:
                     actions.append(f"extracted {len(events)} events from residual turns")
         gc_count = 0
         now = time.time()
-        for event in self._repo.get_active(limit=5000):
+        try:
+            active_events = self._repo.get_active(limit=5000)
+        except sqlite3.Error:
+            active_events = []
+        for event in active_events:
             if should_gc(event, now):
-                self._repo.mark_dormant(event.event_id)
+                try:
+                    self._repo.mark_dormant(event.event_id)
+                except sqlite3.Error:
+                    continue
                 gc_count += 1
         if gc_count:
             actions.append(f"marked {gc_count} events as dormant")

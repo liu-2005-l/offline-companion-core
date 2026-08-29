@@ -88,7 +88,9 @@ held-out 口径（2026-08-27）：三分面线性可分只是校准集内结论�
 
 6.5 边界口径（2026-08-29）：语义事件召回先按 `HASH_BOW_RECALL_THRESHOLD` 过滤，再做 emotion boost；情绪只重排已过阈候选，不捞起低于阈值的事件。`HASH_BOW_RECALL_THRESHOLD` 刻意同源于 `HASH_BOW_DUPLICATE_THRESHOLD`，共同表示当前 hash-bow 空间的“明确字面相似”带宽；v1.7 真 embedding 重校时随 R43-R46 一起复核。
 
-6.5 免疫区口径（2026-08-29）：U1-U14 与 T16-T20 按确定性 API / prompt / 注入链路补齐；U19-U25 的当前前端闭合范围为记忆面板加载语义事件、类型筛选、空状态、删除与内容编辑接线，手动新增语义事件与 importance 专项编辑仍由 API 覆盖，不伪装成完整表单 UI。
+6.5 免疫区口径（2026-08-29）：U1-U14 与 T16-T20 按确定性 API / prompt / 注入链路补齐；U19-U25 的当前前端闭合范围为记忆面板加载语义事件、类型筛选、空状态、删除与内容编辑接线，U22 手动新增语义事件与 importance 专项编辑仍由 API 覆盖，U25 的 100+ 分页/虚拟滚动列为 out of scope，不伪装成完整表单 UI。
+
+6.6 开工口径（2026-08-29）：W10 只把显式 `related_events` 一跳扩展视为 correct，0.70 语义 related 自动关联未实现，按 degraded 记档并留 v1.7；W11/W13 沿用 6.2 判决后的 hash-bow 字面近似口径（`HASH_BOW_DUPLICATE_THRESHOLD = 0.50`），不再使用旧设计里的 0.85/0.75 真 embedding cosine。
 
 Batch D｜窗口自适应布局（方案 v3 已定稿）
 docs/window-adaptive-layout-design.md（v3，含实测数据归档）。三批次按依赖排序：

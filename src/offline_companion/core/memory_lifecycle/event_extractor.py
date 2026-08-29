@@ -71,7 +71,15 @@ class EventExtractor:
         stored: list[SemanticEvent] = []
         for raw in raw_events:
             event = self._to_event(raw, session_id, turn_range)
-            if event is None or self._is_duplicate(event):
+            if event is None:
+                continue
+            duplicate = self._find_duplicate(event)
+            if duplicate is not None:
+                if event.importance <= duplicate.importance:
+                    continue
+                self._repo.store(event)
+                self._repo.mark_superseded(duplicate.event_id, event.event_id)
+                stored.append(event)
                 continue
             self._repo.store(event)
             stored.append(event)
@@ -95,12 +103,16 @@ class EventExtractor:
         if event_type not in EVENT_TYPES or not isinstance(content, str) or not content.strip():
             return None
         try:
+            content_embedding = self._embed(content.strip())
+        except (OSError, RuntimeError, TypeError, ValueError):
+            content_embedding = None
+        try:
             event = SemanticEvent(
                 event_id=uuid.uuid4().hex,
                 event_type=event_type,
                 subject=str(raw.get("subject") or "user"),
                 content=content.strip(),
-                content_embedding=self._embed(content.strip()),
+                content_embedding=content_embedding,
                 emotional_valence=float(raw.get("emotional_valence", 0.0)),
                 emotional_arousal=float(raw.get("emotional_arousal", 0.0)),
                 importance=float(raw.get("importance", 1.0)),
@@ -113,16 +125,16 @@ class EventExtractor:
             return None
         return event
 
-    def _is_duplicate(self, event: SemanticEvent) -> bool:
-        """摘要：相似度达到字面近似阈值时跳过重复事件。"""
+    def _find_duplicate(self, event: SemanticEvent) -> SemanticEvent | None:
+        """摘要：返回达到字面近似阈值的同类重复事件。"""
         if not event.content_embedding:
-            return False
+            return None
         for existing, distance in self._repo.vector_search(event.content_embedding, top_k=5):
             if existing.event_type != event.event_type or existing.subject != event.subject:
                 continue
             if 1.0 - distance >= HASH_BOW_DUPLICATE_THRESHOLD:
-                return True
-        return False
+                return existing
+        return None
 
     @staticmethod
     def _build_prompt(messages: Sequence[Mapping[str, Any]]) -> str:

@@ -228,7 +228,7 @@ U16	assemble_reply 时无相关事件 → memory_block	不包含 “【相关语
 U17	召回注入后 → 事件的 recall_count	+1
 U18	emotional_context 有值 → 召回注入	情感上下文传入 EventRecaller，boost 影响入选候选
 前端测试（需手动或 UI 自动化）
-口径（2026-08-29）：当前闭合为记忆面板加载 semantic_events、类型筛选、空状态、删除与内容编辑接线；手动新增语义事件与 importance 专项编辑由 API 用例覆盖，不宣称完整表单 UI。
+口径（2026-08-29）：当前闭合为记忆面板加载 semantic_events、类型筛选、空状态、删除与内容编辑接线；U22 手动新增语义事件与 importance 专项编辑由 API 用例覆盖，U25 的 100+ 分页/虚拟滚动列为 out of scope，不宣称完整表单 UI。
 #	用例	预期
 U19	打开记忆面板 → 看到事件列表	卡片列表，每张显示类型/内容/时间
 U20	筛选 fact → 列表只显示 fact	类型筛选生效
@@ -258,7 +258,7 @@ W6	聊 10 轮 + 聊 7 轮后停 5 分钟 → 补提取 turn 11-17	DB 有补提�
 W7	Session A 提取事件 → 新建 Session B → B 第一个问题命中 A 的事件	system_prompt 包含 A 的事件
 W8	Session B 问无关问题 → 召回不命中	system_prompt 不包含相关记忆段
 W9	多个事件被召回 → 按时序排列	旧事件在前，新事件在后
-W10	召回事件有 related_events → 关联事件也注入	system_prompt 包含关联事件
+W10	召回事件有 related_events → 关联事件注入	当前仅支持显式 ID 一跳扩展；0.70 语义 related 未实现，语义关联自动注入按 degraded 记档
 去重端到端
 #	用例	预期
 W11	第 10 轮提取"用户是 C++ 工程师" → 第 20 轮再提字面近似信息	不重复存储；同义改写信息应双份存储
@@ -278,7 +278,7 @@ W20	用户当前情感 valence=-0.8 → 召回 → 消极事件排名更高	负�
 W21	情感模块不可用 → 召回	不带情感 boost，正常召回
 回归测试
 #	用例	预期
-W22	全量 pytest tests/	880+ passed, 3 skipped
+W22	全量 pytest tests/	1154 不退步 + 新增用例全绿，3 skipped
 W23	Ruff 全仓	通过
 W24	现有 memory_chunks 测试	全部通过（不破坏旧记忆）
 W25	现有记忆召回测试	全部通过
