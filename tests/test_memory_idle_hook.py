@@ -10,11 +10,12 @@ from offline_companion.core.memory_lifecycle.idle_hook import MemoryIdleHook
 
 
 class FakeExtractor:
-    def __init__(self, result_count: int = 1, extraction_interval: int = 10) -> None:
+    def __init__(self, result_count: int = 1, extraction_interval: int = 10, on_mark=None) -> None:
         self.calls = []
         self.marked_turns: list[int] = []
         self._result_count = result_count
         self._extraction_interval = extraction_interval
+        self._on_mark = on_mark
 
     def extract(self, messages, session_id, turn_range):
         self.calls.append((messages, session_id, turn_range))
@@ -25,6 +26,8 @@ class FakeExtractor:
 
     def mark_extracted(self, turn_count: int) -> None:
         self.marked_turns.append(turn_count)
+        if self._on_mark is not None:
+            self._on_mark(turn_count)
 
 
 class FakeSessionRepo:
@@ -106,6 +109,20 @@ def test_idle_hook_extracts_initial_residual_turns() -> None:
 
     assert extractor.calls[0][2] == (1, 7)
     assert extractor.marked_turns == [7]
+
+
+def test_idle_hook_does_not_repeat_residual_range_after_watermark_advances() -> None:
+    """摘要：补提取推进水位后，连续 idle 不重复处理同一残余窗口。"""
+    repo = EventRepository(sqlite3.connect(":memory:"))
+    session_repo = FakeSessionRepo(("s1", [{"role": "user", "content": "连续残余"}], (11, 17)))
+    extractor = FakeExtractor(on_mark=lambda _turn_count: setattr(session_repo, "pending", None))
+    hook = MemoryIdleHook(extractor, repo, session_repo)
+
+    assert hook.on_idle(300) == ["extracted 1 events from residual turns"]
+    assert hook.on_idle(300) == []
+    assert len(extractor.calls) == 1
+    assert extractor.calls[0][2] == (11, 17)
+    assert extractor.marked_turns == [17]
 
 
 def test_idle_hook_skips_empty_or_invalid_pending_turn_range() -> None:
