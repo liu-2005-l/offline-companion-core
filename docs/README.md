@@ -19,7 +19,9 @@
 | **Subagent 基础设施设计** | [`subagent-infrastructure-design.md`](./subagent-infrastructure-design.md) | — |
 | **UI 自动化 Skill 生成方案** | [`Skill无门槛生成方案.md`](./Skill无门槛生成方案.md) | — |
 | **1.5B Function Calling 方案** | [`FunctionCalling小模型方案.md`](./FunctionCalling小模型方案.md) | — |
-| **v1.6.0 收尾计划** | [`optimization-plan-2026-08-25.md`](./optimization-plan-2026-08-25.md) | — |
+| **v1.7.0 收尾清单** | [`v1-7-0-release-checklist.md`](./v1-7-0-release-checklist.md) | — |
+| **窗口自适应布局方案** | [`window-adaptive-layout-design.md`](./window-adaptive-layout-design.md) | — |
+| **v6 主线回归计划** | [`optimization-plan-2026-08-25.md`](./optimization-plan-2026-08-25.md) | — |
 | **Phase 6.5 召回注入 Fixture** | [`phase6-5-recall-injection-fixtures.md`](./phase6-5-recall-injection-fixtures.md) | — |
 | **Batch E 红队方案** | [`red-team-batch-e-design.md`](./red-team-batch-e-design.md) | — |
 | **Batch E 红队矩阵** | [`red-team-matrix-2026-08-25.md`](./red-team-matrix-2026-08-25.md) | — |

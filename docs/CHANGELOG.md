@@ -38,13 +38,16 @@
 - 落地 Batch E-2a 可见性修复：B4 类别约束补“编码”，工具集内方法缺参返回可见缺参提示，复合算法指令保留首段执行并在转述步骤明示后续片段需分步提交；矩阵重跑从 `6/3/6` 推进到 `6/6/3`。
 - 落地 Batch E-2b 正确性修复：整数解析支持 `负三`、`负3`、`−3` 三类负号，快速排序接受空数组边界，算术审计系动词族补 `为`；矩阵重跑达到 `9/6/0`。
 - 闭合 v6 主线 6.1 回归：W22 基线改为 `1099 passed / 3 skipped` 不退步，确认生产 embedding 为 deterministic hash-bow 768 维近似；语义事件存储新增 768 维 fail-fast、同 ID 冲突传播和 vector_search/extractor 固定日志 anchor，并固化真实 SQLite + deterministic `embed_text` 的 6.1 drill。
-- 启动 v6 主线 6.2 门禁校准：将 Phase 6.1-6.6 的 209 用例方案收进仓库并同步旧基线；新增 40/40 相似度判别对与 hash-bow 校准脚本，实测 similar `0.1438-0.6351`、dissimilar `0.1491-0.2864` 分布重叠；分面后 literal_edit `0.5017-0.6351`、paraphrase `0.1438-0.4762`，6.2 去重口径降级为字面近似去重，生产 duplicate 阈值落为 `0.50`，related 阈值标记为未实现/预留，真语义 embedding 去重列入 v1.7.0 候选。
-- 启动 v6 主线 6.3 召回锚点批：语义事件召回新增固定 info anchor，输出 vector/bm25/hash_bow 三路返回数（含 0）、RRF 融合 top-K、来源路标记与 query 摘要；同步记录当前三路均为 hash-bow/词面近似同质路径，真语义召回列入 v1.7.0 候选。
+- 启动 v6 主线 6.2 门禁校准：将 Phase 6.1-6.6 的 209 用例方案收进仓库并同步旧基线；新增 40/40 相似度判别对与 hash-bow 校准脚本，实测 similar `0.1438-0.6351`、dissimilar `0.1491-0.2864` 分布重叠；分面后 literal_edit `0.5017-0.6351`、paraphrase `0.1438-0.4762`，6.2 去重口径降级为字面近似去重，生产 duplicate 阈值落为 `0.50`，related 阈值标记为未实现/预留，真语义 embedding 去重列入 v1.8.0+ 候选。
+- 启动 v6 主线 6.3 召回锚点批：语义事件召回新增固定 info anchor，输出 vector/bm25/hash_bow 三路返回数（含 0）、RRF 融合 top-K、来源路标记与 query 摘要；同步记录当前三路均为 hash-bow/词面近似同质路径，真语义召回列入 v1.8.0+ 候选。
 - 推进 v6 主线 6.3 召回验证：补齐 RRF rank=0 计分、情感 boost ×1.3、中文情感叙事标签、related 后置扩展可见性与 `_assemble_context()` 真链路注入抽样；42 条 R/T 机械用例按当前词面召回口径全覆盖，同义改写语义召回降级为 degraded。
 - 推进 v6 主线 6.4 IdleThink 验证：确认语义维护为纯写路径，不经过 `EventRecaller`；补齐残余补提取、正常周期边界不抢跑、提取水位推进、衰减 GC、idle 阈值与 memory_maintenance 注册测试，并记录 hash-bow 召回弱导致 recall_count 不增长、进而加速 dormant 的接受降级。
 - 启动 v6 主线 6.5 召回注入验证：新增召回注入 fixture 构造表，明确 U15/T19 的物理载体为 LLM 请求 `memory_block`；给语义事件召回 vector 路补 hash-bow 召回阈值，避免非空事件库对任意 query 静默注入无关事件，并接通情绪上下文到 `EventRecaller`。
 - 补齐 v6 主线 6.5 召回边界哨兵：明确召回阈值与去重阈值同源，emotion boost 在阈值过滤之后执行，只重排已过阈候选，不捞起低相似事件。
 - 推进 v6 主线 6.5 免疫区验证：补齐 semantic event API 的 DB 落点、404 边界、画像自称幂等、用户画像 memory_block 隔离、T20 LLM 请求捕获，以及记忆面板加载/筛选/删除/编辑语义事件的静态接线哨兵。
+- 闭合 v6 主线 6.6 端到端验证：W10 拆分为显式 `related_events` 一跳注入 correct 与 0.70 语义关联 degraded；W11/W13 同步为 hash-bow 字面近似 `0.50` 口径；补齐高重要度字面重复 supersede、embedding 失败降级存储、召回/GC 数据库错误不中断对话与提取超时用户无感。
+- 闭合窗口自适应布局 G7：将 v3 方案事实源收进仓库，锁定 `SetProcessDpiAwareness(2)` 早于 `webview.create_window()`、无边框假最大化、物理工作区定位、多屏 `MonitorFromWindow` 与前端 compact/standard/wide 档位。
+- v1.7.0 收尾裁决：本次发布只推 tag，不发安装包；GPU 验收与便携包验收接受跳过，原因分别为开发机无 NVIDIA GPU 且打包链路本周期零变更。
 - 已知债务：`PlanDecomposer` 的 `method_entity_names` / manifest 映射参数仍允许空值以兼容测试与冷路径构造；生产 bootstrap 已传入 callable，后续可将生产装配路径升级为缺失即 fail-fast。
 
 ## v1.6.1 · 2026-08-20（Windows 窗口适配修复）

@@ -2,7 +2,7 @@
 
 状态：v3 复验归档（2026-08-29）  
 范围：桌面壳窗口原生层、前端布局档位、无边框窗口拖拽/缩放与多屏工作区适配。  
-事实源口径：窗口核心实现已在先期提交落地，本文件把 v6 引用的方案实体收进仓库，并作为 v1.6.0 G7 的验收锚点。
+事实源口径：窗口核心实现已在先期提交落地，本文件把 v6 引用的方案实体收进仓库，并作为 v1.7.0 G7 的验收锚点。
 
 ## 一、目标
 
@@ -40,12 +40,11 @@
 | 前端 compact | `width < 900 || height < 600` | `data-layout="compact"` |
 | 前端 wide | `width >= 1600 && height >= 900` | `data-layout="wide"` |
 
-说明：本批不启动真实 GUI，不读取用户屏幕；验证数据来自 `tests/test_desktop_window_api.py` 的 Win32 API fake 与 `tests/test_window_chrome_static.py` 的静态前端哨兵。真实安装包若发布，另按 v1.6.0 G6 在干净 Windows 机执行打包/启动验收。
+说明：本批不启动真实 GUI，不读取用户屏幕；验证数据来自 `tests/test_desktop_window_api.py` 的 Win32 API fake 与 `tests/test_window_chrome_static.py` 的静态前端哨兵。本次 v1.7.0 只推 tag，不发安装包；真实安装包若后续发布，另按 G6 在干净 Windows 机执行打包/启动验收。
 
-## 五、v1.6.0 G7 判据
+## 五、v1.7.0 G7 判据
 
 - `tests/test_desktop_window_api.py` 全绿。
 - `tests/test_window_chrome_static.py` 全绿。
 - `python scripts/full_acceptance.py --skip-gpu` 全绿，其中分层检查保持 `core` 不 import `shell`。
 - 本文件保持 v3 状态与验证数据归档，不再悬空引用。
-

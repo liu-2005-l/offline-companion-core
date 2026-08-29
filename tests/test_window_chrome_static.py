@@ -72,7 +72,7 @@ def test_memory_default_range_tracks_local_today_and_previous_year() -> None:
 
 def test_window_adaptive_design_fact_source_is_in_repo() -> None:
     design = (ROOT_DIR / "docs/window-adaptive-layout-design.md").read_text(encoding="utf-8")
-    checklist = (ROOT_DIR / "docs/v1-6-0-release-checklist.md").read_text(encoding="utf-8")
+    checklist = (ROOT_DIR / "docs/v1-7-0-release-checklist.md").read_text(encoding="utf-8")
 
     assert "窗口自适应布局设计 v3" in design
     assert "SetProcessDpiAwareness(2)" in design

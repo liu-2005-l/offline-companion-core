@@ -48,7 +48,7 @@ T1	手动改 DB 把 status 从 active 改成 invalid 值	get_active 不返回该
 T2	删除 semantic_events_vec 虚拟表 → vector_search	报错或返回空，不静默成功
 T3	store 后不 commit → 另一个连接 get	返回 None（未提交）
 二、6.2 事件提取器
-校准口径（2026-08-27）：生产 embedding 是 deterministic hash-bow 768 维，不是真 ONNX embedding。`fixtures/semantic_event_similarity_pairs.json` 40 组相似 + 40 组不相似判别对实测：similar `min=0.1438 max=0.6351 mean=0.3668`，dissimilar `min=0.1491 max=0.2864 mean=0.2094`，分布重叠严重；`pair_type` 分面用于区分 `literal_edit` / `paraphrase` / `dissimilar`，其中 literal_edit `min=0.5017 max=0.6351 mean=0.5453`，paraphrase `min=0.1438 max=0.4762 mean=0.3150`。因此 6.2 去重验收降级为“字面近似去重”口径，生产 duplicate 阈值为 `0.50`；同义改写双份存储是正确降级。related `0.70` 当前没有生产链路消费者，标为未实现/预留；真语义同义改写去重列入 v1.7.0 真 embedding 候选。
+校准口径（2026-08-27）：生产 embedding 是 deterministic hash-bow 768 维，不是真 ONNX embedding。`fixtures/semantic_event_similarity_pairs.json` 40 组相似 + 40 组不相似判别对实测：similar `min=0.1438 max=0.6351 mean=0.3668`，dissimilar `min=0.1491 max=0.2864 mean=0.2094`，分布重叠严重；`pair_type` 分面用于区分 `literal_edit` / `paraphrase` / `dissimilar`，其中 literal_edit `min=0.5017 max=0.6351 mean=0.5453`，paraphrase `min=0.1438 max=0.4762 mean=0.3150`。因此 6.2 去重验收降级为“字面近似去重”口径，生产 duplicate 阈值为 `0.50`；同义改写双份存储是正确降级。related `0.70` 当前没有生产链路消费者，标为未实现/预留；真语义同义改写去重列入 v1.8.0+ 真 embedding 候选。
 触发逻辑
 #	用例	预期
 E1	should_extract(turn=10)	True
@@ -105,7 +105,7 @@ T5	mock LLM 返回与已有事件 hash-bow cosine >= 0.50 的字面近似事件 
 T6	mock LLM 返回同义改写但 hash-bow cosine < 0.50 的事件 → extract	DB 新增事件（字面近似口径下不 merge）
 T7	mock LLM 返回无关事件 → extract	DB 新增事件
 三、6.3 三阶段召回算法
-开工口径（2026-08-27）：当前 vector 路使用 deterministic hash-bow 768d，bm25/hash_bow 缺省回退也是词面 token 交集，三路高度同质，不宣称真语义互补。同义改写 query 召不回原事件按 degraded 记档；RRF 只验词面多路排序与来源可解释性，召回 anchor 固定输出三路计数、fused_top 来源、后置扩展数和最终注入 ID，真语义召回列入 v1.7.0 真 embedding 候选。
+开工口径（2026-08-27）：当前 vector 路使用 deterministic hash-bow 768d，bm25/hash_bow 缺省回退也是词面 token 交集，三路高度同质，不宣称真语义互补。同义改写 query 召不回原事件按 degraded 记档；RRF 只验词面多路排序与来源可解释性，召回 anchor 固定输出三路计数、fused_top 来源、后置扩展数和最终注入 ID，真语义召回列入 v1.8.0+ 真 embedding 候选。
 Stage 1：多路检索
 #	用例	预期
 R1	recall 空库	返回空列表

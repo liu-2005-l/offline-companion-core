@@ -9,7 +9,7 @@
 - 远离决策边界：正例词面重叠宽裕命中，负例宽裕不命中。
 - 分词颗粒度验证：词面错开对必须按生产 tokenizer / 召回链路验证，不按字面直觉。
 - 控制变量到唯一差异源：boost 用例中情绪匹配必须能解释入选差异。
-- 断言不锁全文本、具体分数或具体向量，避免 v1.7 真 embedding 迁移假红。
+- 断言不锁全文本、具体分数或具体向量，避免 v1.8.0+ 真 embedding 迁移假红。
 - 当前物理载体是 LLM 请求的 `memory_block`；C 后端再把 `memory_block` 拼入最终系统消息。
 
 ## 二、Fixture
@@ -62,4 +62,4 @@
 - F2：可能随 R43-R46 从 degraded 翻 correct。
 - F3：结构不翻转，但真 embedding 接入后需复核排序解释。
 - R43-R46 先钉 degraded、再实现 embedding、再判翻转的顺序条件不变。
-- `HASH_BOW_RECALL_THRESHOLD` 与 `HASH_BOW_DUPLICATE_THRESHOLD` 刻意同源，代表当前 hash-bow 空间里的“明确字面相似”带宽；v1.7 真 embedding 重校时二者随 R43-R46 一并复核。
+- `HASH_BOW_RECALL_THRESHOLD` 与 `HASH_BOW_DUPLICATE_THRESHOLD` 刻意同源，代表当前 hash-bow 空间里的“明确字面相似”带宽；v1.8.0+ 真 embedding 重校时二者随 R43-R46 一并复核。

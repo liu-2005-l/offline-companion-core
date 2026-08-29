@@ -1,7 +1,7 @@
 ﻿OC 优化计划 v6（2026-08-25：边界战役收尾 → 主线回归承接）
-项目：Offline Companion · v1.6.0 开发中
+项目：Offline Companion · v1.7.0 收尾中（repo 版本事实源校正）
 日期：2026-08-25
-定位：接替 optimization-plan-2026-08-23.md（v5）。v5 A/B/C/D/E 全闭合（D 全链 83f5ca9→b8a8911→8a1bd0c→5045645，E 全链 a4faceb→606959d→c191f30→607d7ad，998→1099），Batch E 红队矩阵已达 9/6/0（silent 清零）。本文后续承接主线回归 + v1.6.0 收尾路径
+定位：接替 optimization-plan-2026-08-23.md（v5）。v5 A/B/C/D/E 全闭合（D 全链 83f5ca9→b8a8911→8a1bd0c→5045645，E 全链 a4faceb→606959d→c191f30→607d7ad，998→1099），Batch E 红队矩阵已达 9/6/0（silent 清零）。本文后续承接主线回归 + v1.7.0 收尾路径；2026-08-29 核对 repo 后确认 `pyproject.toml` / `offline_companion.__version__` / `CHANGELOG` 已以 `1.7.0` 为版本事实源，旧“v1.6.0 收尾”措辞只作为历史草稿口径，不再作为发布号。
 排序原则：清账 > 红队收尾 > 主线回归 > 收尾发布。不写时间估算
 延续：v3 三原则（降级是底线不是目标 / 确定性算法工具化 / 无米之炊）+ v5 原则四（金路径≠可靠，边界不静默）全文继续适用，不重述
 
@@ -17,7 +17,7 @@ v5 Batch C 判决学到的最贵一课：result_rate=0.8（参数知识直出乘
 
 基线口径更新（2026-08-27 开 6）：原 Phase 6 测试方案头部的 `816 passed / 880+` 是旧快照，W22 作废；当前验收基线改为 `1099 passed / 3 skipped` 不退步 + 新增用例全绿，终态数字以实跑为准。
 
-embedding 依赖实情（2026-08-27 开 6）：生产路径当前使用 `shared.deterministic_embedding.embed_text(..., dimensions=768)` 的 deterministic hash-bow 近似，不是真 ONNX embedding。6.1 存储层可继续用固定 768 维向量验证；6.2 开工门禁已实测相似/不相似样本分布：similar `min=0.1438 max=0.6351 mean=0.3668`，dissimilar `min=0.1491 max=0.2864 mean=0.2094`，两组重叠，不能沿用真 embedding 口径的 `0.85/0.70` 语义阈值。分面后 literal_edit 为 `min=0.5017 max=0.6351 mean=0.5453`，paraphrase 为 `min=0.1438 max=0.4762 mean=0.3150`，因此 6.2 去重口径降级为 deterministic hash-bow 的字面近似去重，生产 duplicate 阈值落为 `0.50`；related `0.70` 当前没有生产链路消费者，标记为未实现/预留，不装作已生效。真语义 embedding 去重列入 v1.7.0 候选，避免 mock embedding 假绿。
+embedding 依赖实情（2026-08-27 开 6）：生产路径当前使用 `shared.deterministic_embedding.embed_text(..., dimensions=768)` 的 deterministic hash-bow 近似，不是真 ONNX embedding。6.1 存储层可继续用固定 768 维向量验证；6.2 开工门禁已实测相似/不相似样本分布：similar `min=0.1438 max=0.6351 mean=0.3668`，dissimilar `min=0.1491 max=0.2864 mean=0.2094`，两组重叠，不能沿用真 embedding 口径的 `0.85/0.70` 语义阈值。分面后 literal_edit 为 `min=0.5017 max=0.6351 mean=0.5453`，paraphrase 为 `min=0.1438 max=0.4762 mean=0.3150`，因此 6.2 去重口径降级为 deterministic hash-bow 的字面近似去重，生产 duplicate 阈值落为 `0.50`；related `0.70` 当前没有生产链路消费者，标记为未实现/预留，不装作已生效。真语义 embedding 去重列入 v1.8.0+ 候选，避免 mock embedding 假绿。
 
 理由：OC 是 C 端私人助理，第一优先级是可靠（嘉荣 USER.md 口径）。C 端用户不按判例说话，也不按用例清单说话——他们遇到的就是端到端的"帮我记一下"或"刚才那个再算一遍"。用例 passed 数是工程产物，用户视角全对才是产品判据。
 
@@ -74,19 +74,19 @@ C-6	6.6 端到端	用户视角全对率抽样 10% 跑端到端语义验证
 
 6.2 门禁记录（2026-08-27）：新增 `fixtures/semantic_event_similarity_pairs.json`（40 similar / 40 dissimilar，similar 中同义改写覆盖 30%+，并以 `pair_type` 区分 `literal_edit` / `paraphrase` / `dissimilar`）与 `scripts/calibrate_phase6_2_hash_bow_thresholds.py`。校准不加载模型、不依赖 GGUF；结果显示 hash-bow 两组分布重叠，不能支撑真语义重复阈值，6.2 后续按字面近似去重推进，生产 duplicate 阈值为 `0.50`；同义改写双份存储是当前正确降级。related 阈值无生产消费者，第三组“相关不重复”判别对留到真正实现 related 链路时再补。
 
-held-out 口径（2026-08-27）：三分面线性可分只是校准集内结论，不代表真实空间左尾；真实 literal_edit 低于 `0.50` 时按双份存储 + GC 兜底接受，paraphrase 高于 `0.50` 的误合并风险留到 v1.7 真 embedding 重校时复核。
+held-out 口径（2026-08-27）：三分面线性可分只是校准集内结论，不代表真实空间左尾；真实 literal_edit 低于 `0.50` 时按双份存储 + GC 兜底接受，paraphrase 高于 `0.50` 的误合并风险留到 v1.8.0+ 真 embedding 重校时复核。
 
 6.3 开工锚点（2026-08-27）：语义事件召回三路当前为 vector（`EventRepository.vector_search` + hash-bow 768d query embedding）、bm25（外部注入路径；缺省为空时退回 `_lexical_ids`）、hash_bow（外部注入路径；缺省为空时退回 `_overlap_ids`，当前与 lexical 同源）。各路 top_k：vector 使用 `max(len(active_events), 1)`，bm25/hash_bow 由注入路径自行控制，缺省 lexical/overlap 返回全部有 token 交集的 active 事件；RRF 常数 `RRF_K=60`；融合后取调用方 `top_k`，related_events 显式 ID 一跳扩展在 RRF 之后执行，不参与融合分数。召回出口新增固定 anchor：三路返回数（含 0）、融合 top-K（id + rrf_score + 来源路标记）、query 摘要、后置扩展数与最终注入 ID，保证 no-hit 与最后一公里扩展可见。
 
-6.3 hash-bow 连锁口径（2026-08-27）：vector 路与 lexical/hash_bow 路高度同质，当前不宣称“三路异构语义互补”。同义改写 query 召不回原事件时按 degraded 记档，不视为 bug；若 42 用例中语义召回项大面积 degraded，6.3 判决降级为词面召回口径，真语义召回列入 v1.7.0 候选。v1.7 真 embedding 另需复检 `PersonaSessionCore._assemble_context()` 每轮新建 `EventRecaller` + `embed_text(768)` 的注入点，避免模型实例每轮加载。
+6.3 hash-bow 连锁口径（2026-08-27）：vector 路与 lexical/hash_bow 路高度同质，当前不宣称“三路异构语义互补”。同义改写 query 召不回原事件时按 degraded 记档，不视为 bug；若 42 用例中语义召回项大面积 degraded，6.3 判决降级为词面召回口径，真语义召回列入 v1.8.0+ 候选。v1.8.0+ 真 embedding 另需复检 `PersonaSessionCore._assemble_context()` 每轮新建 `EventRecaller` + `embed_text(768)` 的注入点，避免模型实例每轮加载。
 
 6.3 对表三分法（2026-08-27）：42 条 R/T 机械用例按当前实现拆分为“已实现有测试”全覆盖（R1-R42、T8-T11），其中新增显式覆盖 RRF rank=0、三路独立命中、no-hit anchor、related 一跳后置扩展、时序重组、召回统计、query expansion、中文情感标签与 `_assemble_context()` 真链路注入；“已实现缺验证”清零；“按 6.2 判决反转”单列为同义改写 query 语义召回，不归入机械 42 条 correct 门禁，预期为 degraded（召回空或召回近似词面事件均需靠 anchor 解释）。
 
-6.4 开工口径（2026-08-29）：IdleThink 语义维护链路是纯写路径，`MemoryIdleHook` 只调用 `EventExtractor.extract()` 做残余补提取，并用 `should_gc()` / `mark_dormant()` 执行衰减 GC，不经过 `EventRecaller`，因此 6.2/6.3 的 hash-bow 召回判决不耦合本批 I/T 用例。二阶效应记档：hash-bow 召回弱会让词面冷事件 recall_count 长期为 0，从而更容易满足 `decay 低 + recall_count=0 → dormant`；v1.6 接受为检索层降级的下游表现，v1.7 真 embedding 生效后复核。
+6.4 开工口径（2026-08-29）：IdleThink 语义维护链路是纯写路径，`MemoryIdleHook` 只调用 `EventExtractor.extract()` 做残余补提取，并用 `should_gc()` / `mark_dormant()` 执行衰减 GC，不经过 `EventRecaller`，因此 6.2/6.3 的 hash-bow 召回判决不耦合本批 I/T 用例。二阶效应记档：hash-bow 召回弱会让词面冷事件 recall_count 长期为 0，从而更容易满足 `decay 低 + recall_count=0 → dormant`；v1.7.0 接受为检索层降级的下游表现，v1.8.0+ 真 embedding 生效后复核。
 
 6.5 开工口径（2026-08-29）：召回注入敏感区使用 `docs/phase6-5-recall-injection-fixtures.md` 作为 fixture 事实源；当前物理载体是 LLM 请求的 `memory_block`，不是 `system_prompt` 字符串本体。U15/T19 复用 F1 词面命中对，U16 使用 F2 词面错开对与 F4 空库，U18 验证情绪上下文传入 `EventRecaller` 并影响候选入选；F2 未来是否翻转随 v1.7 R43-R46 判决。
 
-6.5 边界口径（2026-08-29）：语义事件召回先按 `HASH_BOW_RECALL_THRESHOLD` 过滤，再做 emotion boost；情绪只重排已过阈候选，不捞起低于阈值的事件。`HASH_BOW_RECALL_THRESHOLD` 刻意同源于 `HASH_BOW_DUPLICATE_THRESHOLD`，共同表示当前 hash-bow 空间的“明确字面相似”带宽；v1.7 真 embedding 重校时随 R43-R46 一起复核。
+6.5 边界口径（2026-08-29）：语义事件召回先按 `HASH_BOW_RECALL_THRESHOLD` 过滤，再做 emotion boost；情绪只重排已过阈候选，不捞起低于阈值的事件。`HASH_BOW_RECALL_THRESHOLD` 刻意同源于 `HASH_BOW_DUPLICATE_THRESHOLD`，共同表示当前 hash-bow 空间的“明确字面相似”带宽；v1.8.0+ 真 embedding 重校时随 R43-R46 一起复核。
 
 6.5 免疫区口径（2026-08-29）：U1-U14 与 T16-T20 按确定性 API / prompt / 注入链路补齐；U19-U25 的当前前端闭合范围为记忆面板加载语义事件、类型筛选、空状态、删除与内容编辑接线，U22 手动新增语义事件与 importance 专项编辑仍由 API 覆盖，U25 的 100+ 分页/虚拟滚动列为 out of scope，不伪装成完整表单 UI。
 
@@ -103,40 +103,40 @@ D-3	批次 2 前端档位（假最大化 + 物理像素坐标 + 多屏 MonitorFr
 
 验收：15 条已列 + 多屏 DPI 实测数据归档（依赖升版可复测翻案——TOOLS.md 沉淀的依赖库行为验证模式）。
 
-闭合记录（2026-08-29）：窗口核心实现已由先期提交覆盖，本批补齐 `docs/window-adaptive-layout-design.md` v3 事实源、`docs/v1-6-0-release-checklist.md` 收尾边界网与 G7 静态哨兵；窗口窄测 24 passed，全量 1168 passed / 3 skipped，`full_acceptance --skip-gpu` 10/10。
+闭合记录（2026-08-29）：窗口核心实现已由先期提交覆盖，本批补齐 `docs/window-adaptive-layout-design.md` v3 事实源、`docs/v1-7-0-release-checklist.md` 收尾边界网与 G7 静态哨兵；窗口窄测 24 passed，全量 1168 passed / 3 skipped，`full_acceptance --skip-gpu` 10/10。
 
-Batch E｜v1.6.0 收尾发布
+Batch E｜v1.7.0 收尾发布
 子批	内容	验收
 E-1	全量回归绿 + 新基线 commit 锁定	全量 passed，无 skip 增加
 E-2	文档同步（架构文档 v2.7 / CHANGELOG / README / 设计文档库终态头）	设计文档全部闭合终态头
-E-3	版本号判定	嘉荣口径：完成已有 UI 后端接线 = patch（v1.6.x），新开能力 = minor（v1.7.0）。本批是 v1.6.0 收尾，判定走 patch 系列
-验收：v1.6.0 发布就绪。
+E-3	版本号判定	repo 事实源已是 `1.7.0`，且本批包含语义记忆与边界战役新能力，发布号保持 v1.7.0，不降级
+验收：v1.7.0 发布就绪。
 
 依赖图
 Batch A（E 清账 + v5 终态对齐，已闭合）
    └─► Batch B（E-1 侦察 → E-2 修复，已闭合：9/6/0）
           └─► Batch C（6.1-6.6 验证，已解锁）
                  ├─► Batch D（窗口布局，与 C 可并行——分层不交叉）
-                 └─► Batch E（v1.6.0 收尾，依赖 C+D 全绿）
-                        └─► 下一计划候选（v1.7.0）
+                 └─► Batch E（v1.7.0 收尾，依赖 C+D 全绿）
+                        └─► 下一计划候选（v1.8.0+）
  
 依赖理由：
 
 A 先于 B：E-0 二项 + C-1/2/3 确认项是 E-1 侦察的前提（miss 可见性 / debug 级 / 多轮历史可及层不答就跑红队 = 每条判例变脏测试）
 B 先于 C：E 红队的 silent 修复可能改 D 工具/B 观测，影响 C 的基线；E 闭合才有稳定基线开主线
 C 与 D 并行：分层不交叉（core 情感层 vs shell 原生层）
-E 依赖 C+D：v1.6.0 收尾要两者都绿
+E 依赖 C+D：v1.7.0 收尾要两者都绿
 完成判据
 主判据（原则五）：6.1-6.6 六子批过原则五三判据（用户视角端到端 / 边界不静默 / 观测可回答），抽样 10% 跑端到端语义验证无假绿
 机制判据（原则四收官）：Batch B E 红队 silent 清零 + D 工具链生产路径稳定（已闭合：607d7ad / 1099）
 数据判据：窗口布局多屏 DPI 实测归档（依赖升版可复测）
 观测判据：主线用例的失败可从 B 日志 + 事件流回答"为什么过 / 为什么不过"
-通用判据：全量回归绿 + 新基线 commit 锁定 + v1.6.0 发布就绪
-下一计划候选（v1.7.0 方向，本文不立项）
+通用判据：全量回归绿 + 新基线 commit 锁定 + v1.7.0 发布就绪
+下一计划候选（v1.8.0+ 方向，本文不立项）
 P2-3 代码执行沙箱：词典外"按X算法"的通用解（模型生成代码 + 沙箱执行 + 测试验证）。v5 Batch C 数据已入（保守口径）：算法型代码生成（构造新中间状态）强负证据（步骤类 0%）；检索型生成（复述训练分布内模式）未测、本判决不适用。立项时判据设计必须区分这两类
 plan-as-reasoning：已关闭（v5 Batch C 判决 full_success_rate=0.0，≤50% 分支，2026-08-24 入档）
 P3 云轨路由：条件项，待云端配置（无云端是默认场景，嘉荣未配云端 API，所有兜底依赖本地构件）
-v1.7.0 新能力候选（列清单不立项）：会话级约束记忆（如“再用刚才的算法”，E3 已 degraded 合格但体验仍弱）/ 扩展插件生态 / 移动端 / 多用户场景 / UI 自动化 Skill 上线商城——具体方向看 v1.6.0 发布后的用户反馈
+v1.8.0+ 新能力候选（列清单不立项）：会话级约束记忆（如“再用刚才的算法”，E3 已 degraded 合格但体验仍弱）/ 扩展插件生态 / 移动端 / 多用户场景 / UI 自动化 Skill 上线商城——具体方向看 v1.7.0 发布后的用户反馈
 非阻断顺手项（搭车）
 v5 遗留照旧：decomposer 示例区多域分散 / 范例按钮读 candidate_sample_id / 警示块逐条排版与千分位百分号。v5 Batch B 搭车低优项"回复区算术校验 ✓ 标记"状态待确认——未做则降入本清单。
 
