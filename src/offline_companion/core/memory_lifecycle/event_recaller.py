@@ -9,11 +9,12 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+from .event_extractor import HASH_BOW_DUPLICATE_THRESHOLD
 from .event_repository import EventRepository
 from .event_types import SemanticEvent
 
 RRF_K = 60
-HASH_BOW_RECALL_THRESHOLD = 0.50
+HASH_BOW_RECALL_THRESHOLD = HASH_BOW_DUPLICATE_THRESHOLD
 logger = logging.getLogger(__name__)
 
 

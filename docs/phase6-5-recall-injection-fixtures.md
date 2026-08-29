@@ -38,6 +38,7 @@
 - 情绪上下文：`joy`，`valence=0.9`，`arousal=0.7`
 - 用途：U18。
 - 预期：SessionCore 把情绪上下文传入 `EventRecaller`；测试用相同 query embedding 构造 6 个候选，让 boost 改变 top-K 入选集合。不用叙事文本顺序证明，因为最终叙事按时间重排。
+- 边界：召回先按 `HASH_BOW_RECALL_THRESHOLD` 过滤，再做 emotion boost；情绪只重排已过阈候选，不把 `0.45 × 1.3` 捞入注入集。
 
 ### F4 干净库
 
@@ -61,3 +62,4 @@
 - F2：可能随 R43-R46 从 degraded 翻 correct。
 - F3：结构不翻转，但真 embedding 接入后需复核排序解释。
 - R43-R46 先钉 degraded、再实现 embedding、再判翻转的顺序条件不变。
+- `HASH_BOW_RECALL_THRESHOLD` 与 `HASH_BOW_DUPLICATE_THRESHOLD` 刻意同源，代表当前 hash-bow 空间里的“明确字面相似”带宽；v1.7 真 embedding 重校时二者随 R43-R46 一并复核。

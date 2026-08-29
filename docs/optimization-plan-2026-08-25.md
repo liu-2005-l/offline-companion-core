@@ -86,6 +86,8 @@ held-out 口径（2026-08-27）：三分面线性可分只是校准集内结论�
 
 6.5 开工口径（2026-08-29）：召回注入敏感区使用 `docs/phase6-5-recall-injection-fixtures.md` 作为 fixture 事实源；当前物理载体是 LLM 请求的 `memory_block`，不是 `system_prompt` 字符串本体。U15/T19 复用 F1 词面命中对，U16 使用 F2 词面错开对与 F4 空库，U18 验证情绪上下文传入 `EventRecaller` 并影响候选入选；F2 未来是否翻转随 v1.7 R43-R46 判决。
 
+6.5 边界口径（2026-08-29）：语义事件召回先按 `HASH_BOW_RECALL_THRESHOLD` 过滤，再做 emotion boost；情绪只重排已过阈候选，不捞起低于阈值的事件。`HASH_BOW_RECALL_THRESHOLD` 刻意同源于 `HASH_BOW_DUPLICATE_THRESHOLD`，共同表示当前 hash-bow 空间的“明确字面相似”带宽；v1.7 真 embedding 重校时随 R43-R46 一起复核。
+
 Batch D｜窗口自适应布局（方案 v3 已定稿）
 docs/window-adaptive-layout-design.md（v3，含实测数据归档）。三批次按依赖排序：
 

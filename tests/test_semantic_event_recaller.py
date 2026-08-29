@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import logging
+import math
 import sqlite3
 import time
 
 import pytest
 
+from offline_companion.core.memory_lifecycle.event_extractor import HASH_BOW_DUPLICATE_THRESHOLD
 from offline_companion.core.memory_lifecycle.event_recaller import (
     HASH_BOW_RECALL_THRESHOLD,
     RRF_K,
@@ -116,8 +118,35 @@ def test_vector_path_filters_below_hash_bow_recall_threshold() -> None:
 
     results = EventRecaller(repo, embed_func=lambda _query: vector(1)).recall("向量", top_k=5)
 
-    assert HASH_BOW_RECALL_THRESHOLD == 0.50
+    assert HASH_BOW_RECALL_THRESHOLD == HASH_BOW_DUPLICATE_THRESHOLD == 0.50
     assert [item.event_id for item in results] == ["hit"]
+
+
+def test_emotional_boost_does_not_rescue_event_below_recall_threshold() -> None:
+    """摘要：召回先过 hash-bow 阈值再做情绪 boost，情绪只重排不捞人。"""
+    repo = EventRepository(sqlite3.connect(":memory:"))
+    below_threshold = [0.45, math.sqrt(1.0 - 0.45**2), *([0.0] * (CONTENT_EMBEDDING_DIMENSIONS - 2))]
+    repo.store(
+        SemanticEvent(
+            event_id="below",
+            event_type="fact",
+            subject="user",
+            content="alpha-memory",
+            content_embedding=below_threshold,
+            emotional_valence=0.9,
+            emotional_arousal=0.7,
+            importance=5.0,
+            created_at=time.time(),
+        )
+    )
+
+    results = EventRecaller(repo, embed_func=lambda _query: vector()).recall(
+        "zulu-query",
+        emotional_context={"valence": 0.9, "arousal": 0.7},
+        top_k=1,
+    )
+
+    assert results == []
 
 
 def test_recall_expands_related_events_and_returns_chronological_narrative() -> None:
