@@ -6,18 +6,28 @@ from offline_companion.shell.ui_host.desktop.http_host import create_desktop_app
 
 
 def test_semantic_event_api_crud_and_soft_delete(tmp_path) -> None:
-    client = create_desktop_app(_runtime(tmp_path)).test_client()
+    runtime = _runtime(tmp_path)
+    client = create_desktop_app(runtime).test_client()
 
     created = client.post(
         "/api/memory/events",
         json={"event_type": "preference", "content": "用户喜欢安静的沟通", "importance": 3},
     )
     assert created.status_code == 201
-    event_id = created.get_json()["event_id"]
+    created_body = created.get_json()
+    event_id = created_body["event_id"]
+    stored = runtime.orchestrator.conn.execute(
+        "SELECT content_embedding FROM semantic_events WHERE event_id = ?",
+        (event_id,),
+    ).fetchone()
+    assert stored["content_embedding"]
 
     listed = client.get("/api/memory/events?type=preference")
     assert listed.status_code == 200
     assert listed.get_json()[0]["event_id"] == event_id
+    invalid_type = client.get("/api/memory/events?type=invalid")
+    assert invalid_type.status_code == 200
+    assert invalid_type.get_json() == []
 
     patched = client.patch(
         f"/api/memory/events/{event_id}",
@@ -28,7 +38,29 @@ def test_semantic_event_api_crud_and_soft_delete(tmp_path) -> None:
 
     deleted = client.delete(f"/api/memory/events/{event_id}")
     assert deleted.status_code == 200
+    assert client.get("/api/memory/events?type=preference").get_json() == []
     assert client.get("/api/memory/events").get_json() == []
+
+
+def test_semantic_event_api_returns_empty_list_for_empty_store(tmp_path) -> None:
+    """摘要：空语义事件库返回稳定的空 JSON 列表。"""
+    client = create_desktop_app(_runtime(tmp_path)).test_client()
+
+    response = client.get("/api/memory/events")
+
+    assert response.status_code == 200
+    assert response.get_json() == []
+
+
+def test_semantic_event_api_missing_event_returns_404(tmp_path) -> None:
+    """摘要：PATCH/DELETE 不存在的语义事件时显式返回 404。"""
+    client = create_desktop_app(_runtime(tmp_path)).test_client()
+
+    patched = client.patch("/api/memory/events/missing", json={"content": "不存在"})
+    deleted = client.delete("/api/memory/events/missing")
+
+    assert patched.status_code == 404
+    assert deleted.status_code == 404
 
 
 def test_semantic_event_api_rejects_empty_content(tmp_path) -> None:

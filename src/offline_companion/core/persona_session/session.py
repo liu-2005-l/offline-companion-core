@@ -363,7 +363,15 @@ class PersonaSessionCore:
             semantic_events = EventRecaller(
                 EventRepository(conn),
                 embed_func=lambda text: embed_text(text, dimensions=768),
-            ).recall(user_message, top_k=min(5, recall_limit))
+            ).recall(
+                user_message,
+                emotional_context=(
+                    {"valence": emotion_context.valence, "arousal": emotion_context.arousal}
+                    if emotion_context is not None
+                    else None
+                ),
+                top_k=min(5, recall_limit),
+            )
             event_block = format_event_narrative(semantic_events)
             if event_block:
                 memory_block = "\n\n".join(part for part in (memory_block, event_block) if part.strip())

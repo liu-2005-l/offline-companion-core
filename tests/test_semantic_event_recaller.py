@@ -6,7 +6,12 @@ import time
 
 import pytest
 
-from offline_companion.core.memory_lifecycle.event_recaller import RRF_K, EventRecaller, format_event_narrative
+from offline_companion.core.memory_lifecycle.event_recaller import (
+    HASH_BOW_RECALL_THRESHOLD,
+    RRF_K,
+    EventRecaller,
+    format_event_narrative,
+)
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
 from offline_companion.core.memory_lifecycle.event_types import (
     CONTENT_EMBEDDING_DIMENSIONS,
@@ -101,6 +106,18 @@ def test_recall_uses_vector_bm25_and_hash_bow_paths() -> None:
         item.event_id
         for item in EventRecaller(repo, hash_bow=lambda _query: ["bow-hit"]).recall("无词面", top_k=1)
     ] == ["bow-hit"]
+
+
+def test_vector_path_filters_below_hash_bow_recall_threshold() -> None:
+    """摘要：Session 注入使用的 vector 路不把低相似事件静默注入上下文。"""
+    repo = EventRepository(sqlite3.connect(":memory:"))
+    repo.store(event("hit", "向量命中", vector_index=1))
+    repo.store(event("miss", "无关事件", vector_index=2))
+
+    results = EventRecaller(repo, embed_func=lambda _query: vector(1)).recall("向量", top_k=5)
+
+    assert HASH_BOW_RECALL_THRESHOLD == 0.50
+    assert [item.event_id for item in results] == ["hit"]
 
 
 def test_recall_expands_related_events_and_returns_chronological_narrative() -> None:

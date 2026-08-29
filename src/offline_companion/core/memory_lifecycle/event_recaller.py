@@ -13,6 +13,7 @@ from .event_repository import EventRepository
 from .event_types import SemanticEvent
 
 RRF_K = 60
+HASH_BOW_RECALL_THRESHOLD = 0.50
 logger = logging.getLogger(__name__)
 
 
@@ -131,7 +132,11 @@ class EventRecaller:
             results = self._repo.vector_search(self._embed(query), top_k=max(len(by_id), 1))
         except (OSError, RuntimeError, TypeError, ValueError):
             return []
-        return [event.event_id for event, _distance in results if event.event_id in by_id]
+        return [
+            event.event_id
+            for event, distance in results
+            if event.event_id in by_id and 1.0 - distance >= HASH_BOW_RECALL_THRESHOLD
+        ]
 
     @staticmethod
     def _path_ids(

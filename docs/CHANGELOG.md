@@ -42,6 +42,7 @@
 - 启动 v6 主线 6.3 召回锚点批：语义事件召回新增固定 info anchor，输出 vector/bm25/hash_bow 三路返回数（含 0）、RRF 融合 top-K、来源路标记与 query 摘要；同步记录当前三路均为 hash-bow/词面近似同质路径，真语义召回列入 v1.7.0 候选。
 - 推进 v6 主线 6.3 召回验证：补齐 RRF rank=0 计分、情感 boost ×1.3、中文情感叙事标签、related 后置扩展可见性与 `_assemble_context()` 真链路注入抽样；42 条 R/T 机械用例按当前词面召回口径全覆盖，同义改写语义召回降级为 degraded。
 - 推进 v6 主线 6.4 IdleThink 验证：确认语义维护为纯写路径，不经过 `EventRecaller`；补齐残余补提取、正常周期边界不抢跑、提取水位推进、衰减 GC、idle 阈值与 memory_maintenance 注册测试，并记录 hash-bow 召回弱导致 recall_count 不增长、进而加速 dormant 的接受降级。
+- 启动 v6 主线 6.5 召回注入验证：新增召回注入 fixture 构造表，明确 U15/T19 的物理载体为 LLM 请求 `memory_block`；给语义事件召回 vector 路补 hash-bow 召回阈值，避免非空事件库对任意 query 静默注入无关事件，并接通情绪上下文到 `EventRecaller`。
 - 已知债务：`PlanDecomposer` 的 `method_entity_names` / manifest 映射参数仍允许空值以兼容测试与冷路径构造；生产 bootstrap 已传入 callable，后续可将生产装配路径升级为缺失即 fail-fast。
 
 ## v1.6.1 · 2026-08-20（Windows 窗口适配修复）

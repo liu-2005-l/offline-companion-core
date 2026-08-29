@@ -84,6 +84,8 @@ held-out 口径（2026-08-27）：三分面线性可分只是校准集内结论�
 
 6.4 开工口径（2026-08-29）：IdleThink 语义维护链路是纯写路径，`MemoryIdleHook` 只调用 `EventExtractor.extract()` 做残余补提取，并用 `should_gc()` / `mark_dormant()` 执行衰减 GC，不经过 `EventRecaller`，因此 6.2/6.3 的 hash-bow 召回判决不耦合本批 I/T 用例。二阶效应记档：hash-bow 召回弱会让词面冷事件 recall_count 长期为 0，从而更容易满足 `decay 低 + recall_count=0 → dormant`；v1.6 接受为检索层降级的下游表现，v1.7 真 embedding 生效后复核。
 
+6.5 开工口径（2026-08-29）：召回注入敏感区使用 `docs/phase6-5-recall-injection-fixtures.md` 作为 fixture 事实源；当前物理载体是 LLM 请求的 `memory_block`，不是 `system_prompt` 字符串本体。U15/T19 复用 F1 词面命中对，U16 使用 F2 词面错开对与 F4 空库，U18 验证情绪上下文传入 `EventRecaller` 并影响候选入选；F2 未来是否翻转随 v1.7 R43-R46 判决。
+
 Batch D｜窗口自适应布局（方案 v3 已定稿）
 docs/window-adaptive-layout-design.md（v3，含实测数据归档）。三批次按依赖排序：
 

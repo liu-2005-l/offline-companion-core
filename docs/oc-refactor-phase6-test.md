@@ -223,10 +223,10 @@ U13	profile_memory 有 display_name=“小诺” → 两次调用	第一次替�
 U14	profile_memory 有其他可覆盖字段 → assemble_reply	对应字段也被替换
 召回注入
 #	用例	预期
-U15	assemble_reply 时有相关事件 → system_prompt	包含 “## 相关记忆” 段落
-U16	assemble_reply 时无相关事件 → system_prompt	不包含 “## 相关记忆”
+U15	assemble_reply 时有相关事件 → memory_block	包含 “【相关语义事件】” 段落
+U16	assemble_reply 时无相关事件 → memory_block	不包含 “【相关语义事件】”
 U17	召回注入后 → 事件的 recall_count	+1
-U18	emotional_context 有值 → 召回注入	情感匹配的事件优先
+U18	emotional_context 有值 → 召回注入	情感上下文传入 EventRecaller，boost 影响入选候选
 前端测试（需手动或 UI 自动化）
 #	用例	预期
 U19	打开记忆面板 → 看到事件列表	卡片列表，每张显示类型/内容/时间
@@ -241,7 +241,7 @@ trace 验证
 T16	curl GET /api/memory/events → 响应	200, JSON 格式正确
 T17	curl POST → 查 DB → 有新事件	event_id 存在
 T18	curl DELETE → 查 DB → status=“dormant”	软删除
-T19	有记忆时发消息 → 查 LLM 请求	system_prompt 包含相关记忆段
+T19	有记忆时发消息 → 查 LLM 请求	memory_block 包含相关记忆段
 T20	改 profile_memory 的 display_name → 发消息 → 检查 LLM 请求	system_prompt 中 display_name 被替换
 六、6.6 接线 + 端到端验收
 提取触发接线
