@@ -22,6 +22,7 @@
 | **v1.7.0 收尾清单** | [`v1-7-0-release-checklist.md`](./v1-7-0-release-checklist.md) | — |
 | **窗口自适应布局方案** | [`window-adaptive-layout-design.md`](./window-adaptive-layout-design.md) | — |
 | **v6 主线回归计划** | [`optimization-plan-2026-08-25.md`](./optimization-plan-2026-08-25.md) | — |
+| **v1.8.0 V1 真 embedding 方案** | [`v1-8-0-batch-v1-semantic-embedding-design.md`](./v1-8-0-batch-v1-semantic-embedding-design.md) | — |
 | **Phase 6.5 召回注入 Fixture** | [`phase6-5-recall-injection-fixtures.md`](./phase6-5-recall-injection-fixtures.md) | — |
 | **Batch E 红队方案** | [`red-team-batch-e-design.md`](./red-team-batch-e-design.md) | — |
 | **Batch E 红队矩阵** | [`red-team-matrix-2026-08-25.md`](./red-team-matrix-2026-08-25.md) | — |
