@@ -117,12 +117,12 @@ def test_extract_skips_literal_near_duplicate_with_hash_bow_threshold() -> None:
     extractor, repo = make_hash_bow_extractor(
         [
             '[{"event_type":"fact","subject":"user","content":"用户对花生过敏"}]',
-            '[{"event_type":"fact","subject":"user","content":"用户不能吃花生，会过敏"}]',
+            '[{"event_type":"fact","subject":"user","content":"用户对花生严重过敏"}]',
         ]
     )
 
     first = extractor.extract([{"role": "user", "content": "花生"}], "s1", (1, 1))
-    second = extractor.extract([{"role": "user", "content": "不能吃花生"}], "s1", (2, 2))
+    second = extractor.extract([{"role": "user", "content": "严重花生过敏"}], "s1", (2, 2))
 
     assert len(first) == 1
     assert second == []
@@ -159,6 +159,32 @@ def test_extract_keeps_paraphrase_below_hash_bow_threshold() -> None:
 
     first = extractor.extract([{"role": "user", "content": "用户视角"}], "s1", (1, 1))
     second = extractor.extract([{"role": "user", "content": "测试不等于产品正确"}], "s1", (2, 2))
+
+    assert len(first) == 1
+    assert len(second) == 1
+    assert len(repo.get_active()) == 2
+
+
+def test_extract_keeps_semantic_paraphrase_when_literal_overlap_is_low() -> None:
+    """摘要：真 semantic 向量不把写端去重静默漂移成语义去重。"""
+
+    class SemanticSameVector:
+        embedding_space = "semantic_onnx_768"
+
+        def __call__(self, _content: str) -> list[float]:
+            return [1.0] + [0.0] * (CONTENT_EMBEDDING_DIMENSIONS - 1)
+
+    llm = SequenceLlm(
+        [
+            '[{"event_type":"fact","subject":"user","content":"relocate shanghai next spring"}]',
+            '[{"event_type":"fact","subject":"user","content":"move magiccity after winter"}]',
+        ]
+    )
+    repo = EventRepository(sqlite3.connect(":memory:"))
+    extractor = EventExtractor(repo, llm, SemanticSameVector())
+
+    first = extractor.extract([{"role": "user", "content": "relocate"}], "s1", (1, 1))
+    second = extractor.extract([{"role": "user", "content": "move"}], "s1", (2, 2))
 
     assert len(first) == 1
     assert len(second) == 1

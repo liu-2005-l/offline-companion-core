@@ -31,8 +31,9 @@
 真 embedding 空间不得平移 `0.50`。重校方法沿用 Phase 6.2 谷底定位法：
 
 - 复用 `fixtures/semantic_event_similarity_pairs.json`，按 `literal_edit` / `paraphrase` / `dissimilar` 分面计算余弦分布。
-- 若三组可分，duplicate / recall 阈值取谷底偏保守侧，并保持写端去重与读端召回同源。
-- 若 paraphrase 与 dissimilar 仍严重重叠，不调参装绿，保留 degraded 并记录模型能力边界。
+- 若三组可分，recall 阈值取谷底偏保守侧。
+- 若 paraphrase 与 dissimilar 仍出现排序倒挂，不调参装绿，保留 degraded 并记录模型能力边界。
+- 写端 duplicate 继续使用文本 Jaccard `0.50` 的字面近似口径，不随真 semantic recall 阈值静默漂移。
 - C2 翻转归因分两步：先只换模型不动阈值，再重校阈值；分别记录模型贡献与阈值贡献。
 
 ## 五、选型与降级
@@ -58,3 +59,19 @@
 - 降级口径：provider 按 per-call 判定模型可用性；模型文件缺失或运行中加载失败时退回 deterministic hash-bow 768 维，并只输出一次进程级 warning，不弹窗、不阻断、不静默上云。
 - 空间标签：`semantic_events.content_embedding_space` 按行记录 `semantic_onnx_768` / `hash_bow_768` / `none`；召回只比较同空间行，重算只处理目标空间不匹配或 embedding 为空的行，避免 mid-session fallback 把混源垃圾分永久化。
 - 性能口径：`EventRepository.vector_search()` 当前保持 Python 线扫，numpy 向量化不混入 V1-B/C，避免污染“模型贡献 vs 阈值贡献”的翻转归因。
+
+## 九、Phase C1 模型接入口径
+
+- 资产选择：使用 bge-base-zh-v1.5 级 768 维 ONNX fp32 模型（`model.onnx` 406,953,171 字节），默认下载到 `models/semantic-embedding/model.onnx` 与 `models/semantic-embedding/tokenizer.json`。
+- 下载入口：`scripts/download_semantic_embedding_model.py` 调用 `SemanticEmbeddingDownloader`，沿用 Phase 3 下载器的断点续传、原子落盘与磁盘空间预检口径；ONNX 主文件执行 SHA256 校验，tokenizer 小文件原子落盘但不声明已校验。
+- pooling 口径：BGE token 级 3D 输出取 CLS 向量并 L2 归一化；若导出模型直接返回句向量，则直接归一化句向量。
+- query prefix：生产与 C2 实验均关闭检索前缀；前缀 on/off 对照显示开启后 R43-R46 全变差，因此不把 prefix 作为隐性质量变量。
+
+## 十、Phase C2 排序倒挂裁决
+
+- 定性结论：`Xenova/bge-base-zh-v1.5` fp32 在判别对集上仍存在排序倒挂，paraphrase `min=0.490024` 低于 dissimilar `max=0.571243`，任何阈值都不能同时全抓 paraphrase 且零 FP。
+- 模型贡献：在 hash-bow 阈值 `0.50` 不动时，R44 `0.502429` 与 R46 `0.514473` 翻 correct，R43 `0.380117` 与 R45 `0.363984` 仍 degraded。
+- 阈值贡献：`0.575` 与 `0.58` 均为 literal `9/9`、paraphrase `29/31`、dissimilar FP `0/40`；因 R44/R46 低于该区间，最终按可靠性第一选择 `SEMANTIC_RECALL_THRESHOLD = 0.58`，四条 R43-R46 均标记 degraded-for-cause。
+- 常数口径：`HASH_BOW_DUPLICATE_THRESHOLD = 0.50` 只服务写端文本 Jaccard 去重；`HASH_BOW_RECALL_THRESHOLD = 0.50` 服务 fallback 读端；`SEMANTIC_RECALL_THRESHOLD = 0.58` 服务 ONNX 读端。三者拆分为各空间单一事实源，后续联合重校但不再假别名。
+- 模型不换：407MB fp32 是本批合理上限；bge-large / bge-m3 与 reranker 进入 v1.8.x 候选池，触发条件为同一 fixtures drill 倒挂区清零或 reranker 精排收益实测成立。
+- 记录资产：`fixtures/v1_8_semantic_embedding_c2_scores.json` 记录模型 SHA256、query prefix、R43-R46 分数、三组分布与 sweep 曲线，供无模型 CI 钉住 C2 判决。

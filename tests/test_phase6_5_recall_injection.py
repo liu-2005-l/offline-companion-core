@@ -54,6 +54,14 @@ def _persona() -> Persona:
     )
 
 
+def _session_core() -> PersonaSessionCore:
+    """摘要：构造固定 hash-bow 入口的会话核心，保持 6.5 词面 fixture 口径。"""
+    return PersonaSessionCore(
+        _persona(),
+        semantic_embed_func=lambda text: embed_text(text, dimensions=CONTENT_EMBEDDING_DIMENSIONS),
+    )
+
+
 def _conn(tmp_path: Path, name: str = "phase65.db") -> sqlite3.Connection:
     """摘要：创建带 session 的测试连接。"""
     conn = connect(tmp_path / name)
@@ -93,7 +101,7 @@ def test_assemble_context_injects_lexical_semantic_event_fixture_f1(tmp_path: Pa
     repo = EventRepository(conn)
     repo.store(_event("E-F1-1", F1_CONTENT))
 
-    _recalls, memory_block, _system_prompt, _identity_reply = PersonaSessionCore(_persona())._assemble_context(
+    _recalls, memory_block, _system_prompt, _identity_reply = _session_core()._assemble_context(
         conn,
         user_message=F1_QUERY,
         memory_enabled=True,
@@ -112,7 +120,7 @@ def test_assemble_context_does_not_inject_lexically_missed_fixture_f2(tmp_path: 
     repo = EventRepository(conn)
     repo.store(_event("E-F2-1", F2_CONTENT))
 
-    _recalls, memory_block, _system_prompt, _identity_reply = PersonaSessionCore(_persona())._assemble_context(
+    _recalls, memory_block, _system_prompt, _identity_reply = _session_core()._assemble_context(
         conn,
         user_message=F2_QUERY,
         memory_enabled=True,
@@ -126,7 +134,7 @@ def test_assemble_context_keeps_empty_store_without_semantic_event_block(tmp_pat
     """摘要：U16 附带 sanity 锁住空库不会产生任意注入块。"""
     conn = _conn(tmp_path)
 
-    _recalls, memory_block, _system_prompt, _identity_reply = PersonaSessionCore(_persona())._assemble_context(
+    _recalls, memory_block, _system_prompt, _identity_reply = _session_core()._assemble_context(
         conn,
         user_message=F1_QUERY,
         memory_enabled=True,
@@ -154,12 +162,12 @@ def test_assemble_context_passes_emotional_context_to_semantic_recaller(tmp_path
         )
     )
 
-    no_emotion_block = PersonaSessionCore(_persona())._assemble_context(
+    no_emotion_block = _session_core()._assemble_context(
         conn,
         user_message=query,
         memory_enabled=True,
     )[1]
-    emotion_block = PersonaSessionCore(_persona())._assemble_context(
+    emotion_block = _session_core()._assemble_context(
         conn,
         user_message=query,
         memory_enabled=True,
@@ -176,7 +184,7 @@ def test_orchestrator_turn_passes_f1_memory_block_to_backend(tmp_path: Path) -> 
     EventRepository(conn).store(_event("E-F1-1", F1_CONTENT))
     backend = CaptureBackend()
     orchestrator = ConversationOrchestrator(
-        session_core=PersonaSessionCore(_persona()),
+        session_core=_session_core(),
         backend=backend,
         conn=conn,
         session_id="s1",
@@ -208,7 +216,7 @@ def test_orchestrator_turn_uses_profile_display_name_in_backend_system_prompt(tm
     )
     backend = CaptureBackend()
     orchestrator = ConversationOrchestrator(
-        session_core=PersonaSessionCore(_persona()),
+        session_core=_session_core(),
         backend=backend,
         conn=conn,
         session_id="s1",

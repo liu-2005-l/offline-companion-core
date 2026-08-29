@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
+from pathlib import Path
 
 import pytest
 
-from offline_companion.core.memory_lifecycle.event_recaller import EventRecaller
+from offline_companion.core.memory_lifecycle.event_recaller import (
+    EventRecaller,
+    SEMANTIC_RECALL_THRESHOLD,
+)
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
 from offline_companion.core.memory_lifecycle.event_types import (
     CONTENT_EMBEDDING_DIMENSIONS,
@@ -21,6 +26,8 @@ R43_R46_PARAPHRASE_TRIPWIRES = (
     ("R45", "cilantro causes nausea", "avoid coriander garnish"),
     ("R46", "offline default privacy policy", "network access requires consent"),
 )
+ROOT = Path(__file__).resolve().parents[1]
+C2_SCORES = ROOT / "fixtures" / "v1_8_semantic_embedding_c2_scores.json"
 
 
 def _repo_with_event(event_id: str, content: str) -> EventRepository:
@@ -94,3 +101,26 @@ def test_related_semantic_auto_association_is_degraded_until_true_embedding() ->
     assert repo.get("primary").recall_count == 1
     assert repo.get("semantic-related").recall_count == 0
 
+
+def test_c2_semantic_threshold_uses_zero_false_positive_side() -> None:
+    """摘要：C2 排序倒挂后选择零 FP 阈值，并记录 R43-R46 未翻原因。"""
+    report = json.loads(C2_SCORES.read_text(encoding="utf-8"))
+
+    assert report["semantic_recall_threshold"] == SEMANTIC_RECALL_THRESHOLD == 0.58
+    assert report["distributions"]["paraphrase"]["min"] < report["distributions"]["dissimilar"]["max"]
+    assert report["distributions"]["dissimilar"]["max"] < SEMANTIC_RECALL_THRESHOLD
+    assert {row["case_id"]: row["expected"] for row in report["tripwires"]} == {
+        "R43": "degraded-for-cause",
+        "R44": "degraded-for-cause",
+        "R45": "degraded-for-cause",
+        "R46": "degraded-for-cause",
+    }
+    assert max(row["similarity"] for row in report["tripwires"]) < SEMANTIC_RECALL_THRESHOLD
+    assert next(
+        row for row in report["threshold_sweep"] if row["threshold"] == SEMANTIC_RECALL_THRESHOLD
+    ) == {
+        "threshold": 0.58,
+        "literal_hit": "9/9",
+        "paraphrase_hit": "29/31",
+        "dissimilar_false_positive": "0/40",
+    }

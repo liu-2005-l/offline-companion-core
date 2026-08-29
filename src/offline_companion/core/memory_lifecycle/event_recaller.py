@@ -10,13 +10,17 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from .event_extractor import HASH_BOW_DUPLICATE_THRESHOLD
 from .event_repository import EventRepository
 from .event_types import SemanticEvent
-from .semantic_embedding_provider import embedding_space_of
+from .semantic_embedding_provider import (
+    HASH_BOW_EMBEDDING_SPACE,
+    SEMANTIC_ONNX_EMBEDDING_SPACE,
+    embedding_space_of,
+)
 
 RRF_K = 60
-HASH_BOW_RECALL_THRESHOLD = HASH_BOW_DUPLICATE_THRESHOLD
+HASH_BOW_RECALL_THRESHOLD = 0.50
+SEMANTIC_RECALL_THRESHOLD = 0.58
 logger = logging.getLogger(__name__)
 
 
@@ -147,7 +151,8 @@ class EventRecaller:
         return [
             event.event_id
             for event, distance in results
-            if event.event_id in by_id and 1.0 - distance >= HASH_BOW_RECALL_THRESHOLD
+            if event.event_id in by_id
+            and 1.0 - distance >= recall_threshold_for_space(query_space)
         ]
 
     @staticmethod
@@ -292,3 +297,12 @@ def _arousal_label(value: float) -> str:
     if value > 0.5:
         return "激动"
     return "平静"
+
+
+def recall_threshold_for_space(embedding_space: str) -> float:
+    """摘要：按 embedding 空间返回召回准入阈值。"""
+    if embedding_space == SEMANTIC_ONNX_EMBEDDING_SPACE:
+        return SEMANTIC_RECALL_THRESHOLD
+    if embedding_space == HASH_BOW_EMBEDDING_SPACE:
+        return HASH_BOW_RECALL_THRESHOLD
+    return HASH_BOW_RECALL_THRESHOLD

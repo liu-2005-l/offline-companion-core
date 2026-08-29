@@ -10,6 +10,8 @@ import uuid
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
+from offline_companion.shared.deterministic_embedding import tokenize_for_embedding
+
 from .event_repository import EventRepository
 from .event_types import EVENT_TYPES, SemanticEvent
 from .semantic_embedding_provider import NO_EMBEDDING_SPACE, embedding_space_of
@@ -131,16 +133,10 @@ class EventExtractor:
 
     def _find_duplicate(self, event: SemanticEvent) -> SemanticEvent | None:
         """摘要：返回达到字面近似阈值的同类重复事件。"""
-        if not event.content_embedding:
-            return None
-        for existing, distance in self._repo.vector_search(
-            event.content_embedding,
-            top_k=5,
-            embedding_space=event.content_embedding_space,
-        ):
+        for existing in self._repo.get_active(limit=1000):
             if existing.event_type != event.event_type or existing.subject != event.subject:
                 continue
-            if 1.0 - distance >= HASH_BOW_DUPLICATE_THRESHOLD:
+            if _literal_jaccard(event.content, existing.content) >= HASH_BOW_DUPLICATE_THRESHOLD:
                 return existing
         return None
 
@@ -194,3 +190,12 @@ class EventExtractor:
         if not isinstance(payload, list):
             return []
         return [item for item in payload if isinstance(item, Mapping)]
+
+
+def _literal_jaccard(left: str, right: str) -> float:
+    """摘要：计算去重专用的字面 token Jaccard 相似度。"""
+    left_tokens = set(tokenize_for_embedding(left))
+    right_tokens = set(tokenize_for_embedding(right))
+    if not left_tokens or not right_tokens:
+        return 0.0
+    return len(left_tokens & right_tokens) / len(left_tokens | right_tokens)

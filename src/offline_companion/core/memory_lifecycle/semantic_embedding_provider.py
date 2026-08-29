@@ -117,9 +117,17 @@ class SemanticEmbeddingProvider:
         inputs = session.get_inputs()
         if not inputs:
             raise RuntimeError("semantic embedding model has no inputs")
-        feeds: dict[str, Any] = {inputs[0].name: np.array([input_ids], dtype=np.int64)}
-        if len(inputs) >= 2:
-            feeds[inputs[1].name] = np.array([attention_mask], dtype=np.int64)
+        arrays = {
+            "input_ids": np.array([input_ids], dtype=np.int64),
+            "attention_mask": np.array([attention_mask], dtype=np.int64),
+            "token_type_ids": np.zeros((1, len(input_ids)), dtype=np.int64),
+        }
+        feeds: dict[str, Any] = {}
+        for input_meta in inputs:
+            value = arrays.get(input_meta.name)
+            if value is None:
+                raise RuntimeError(f"unsupported semantic embedding input: {input_meta.name}")
+            feeds[input_meta.name] = value
         outputs = session.run(None, feeds)
         if not outputs:
             raise RuntimeError("semantic embedding model returned no outputs")
@@ -210,24 +218,8 @@ def _flatten_embedding_output(output: Any, attention_mask: list[int]) -> list[fl
         raise RuntimeError("semantic embedding output is empty")
     first = array[0]
     if isinstance(first, list) and first and isinstance(first[0], list):
-        token_vectors = first
-        active = [index for index, value in enumerate(attention_mask) if value]
-        if not active:
-            active = list(range(len(token_vectors)))
-        width = len(token_vectors[0])
-        pooled = [0.0] * width
-        count = 0
-        for index in active:
-            if index >= len(token_vectors):
-                continue
-            vector = token_vectors[index]
-            if len(vector) != width:
-                raise ValueError("semantic embedding token vector width mismatch")
-            pooled = [left + float(right) for left, right in zip(pooled, vector, strict=True)]
-            count += 1
-        if count <= 0:
-            raise RuntimeError("semantic embedding has no active tokens")
-        return [value / count for value in pooled]
+        cls_vector = first[0]
+        return [float(value) for value in cls_vector]
     if isinstance(first, list):
         return [float(value) for value in first]
     return [float(value) for value in array]

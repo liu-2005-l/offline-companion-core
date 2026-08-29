@@ -12,7 +12,9 @@ from offline_companion.core.memory_lifecycle.event_recaller import (
     HASH_BOW_RECALL_THRESHOLD,
     RRF_K,
     EventRecaller,
+    SEMANTIC_RECALL_THRESHOLD,
     format_event_narrative,
+    recall_threshold_for_space,
 )
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
 from offline_companion.core.memory_lifecycle.event_types import (
@@ -43,6 +45,7 @@ def event(
     emotional_arousal: float = 0.0,
     recall_count: int = 0,
     status: str = "active",
+    content_embedding_space: str = "hash_bow_768",
 ) -> SemanticEvent:
     return SemanticEvent(
         event_id=event_id,
@@ -50,6 +53,7 @@ def event(
         subject="user",
         content=content,
         content_embedding=vector(vector_index),
+        content_embedding_space=content_embedding_space,
         emotional_valence=emotional_valence,
         emotional_arousal=emotional_arousal,
         importance=importance,
@@ -119,6 +123,50 @@ def test_vector_path_filters_below_hash_bow_recall_threshold() -> None:
     results = EventRecaller(repo, embed_func=lambda _query: vector(1)).recall("向量", top_k=5)
 
     assert HASH_BOW_RECALL_THRESHOLD == HASH_BOW_DUPLICATE_THRESHOLD == 0.50
+    assert [item.event_id for item in results] == ["hit"]
+
+
+def test_vector_path_uses_semantic_recall_threshold_for_onnx_space() -> None:
+    """摘要：真 semantic 召回使用独立阈值，零 FP 侧不沿用 hash-bow 0.50。"""
+    repo = EventRepository(sqlite3.connect(":memory:"))
+    near_miss = [0.575, math.sqrt(1.0 - 0.575**2), *([0.0] * (CONTENT_EMBEDDING_DIMENSIONS - 2))]
+    hit = [0.581, math.sqrt(1.0 - 0.581**2), *([0.0] * (CONTENT_EMBEDDING_DIMENSIONS - 2))]
+    repo.store(
+        SemanticEvent(
+            event_id="near-miss",
+            event_type="fact",
+            subject="user",
+            content="semantic-only-a",
+            content_embedding=near_miss,
+            content_embedding_space="semantic_onnx_768",
+            importance=5.0,
+            created_at=time.time(),
+        )
+    )
+    repo.store(
+        SemanticEvent(
+            event_id="hit",
+            event_type="fact",
+            subject="user",
+            content="semantic-only-b",
+            content_embedding=hit,
+            content_embedding_space="semantic_onnx_768",
+            importance=5.0,
+            created_at=time.time(),
+        )
+    )
+
+    class SemanticQuery:
+        embedding_space = "semantic_onnx_768"
+
+        def __call__(self, _query: str) -> list[float]:
+            return vector()
+
+    results = EventRecaller(repo, embed_func=SemanticQuery()).recall("query-without-overlap", top_k=5)
+
+    assert HASH_BOW_RECALL_THRESHOLD == 0.50
+    assert SEMANTIC_RECALL_THRESHOLD == 0.58
+    assert recall_threshold_for_space("semantic_onnx_768") == SEMANTIC_RECALL_THRESHOLD
     assert [item.event_id for item in results] == ["hit"]
 
 

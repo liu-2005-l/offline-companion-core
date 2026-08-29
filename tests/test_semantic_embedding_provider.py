@@ -66,10 +66,12 @@ def test_semantic_embedding_provider_uses_onnx_and_normalizes(
             assert providers == ["CPUExecutionProvider"]
 
         def get_inputs(self) -> list[_Input]:
-            return [_Input("input_ids"), _Input("attention_mask")]
+            return [_Input("input_ids"), _Input("attention_mask"), _Input("token_type_ids")]
 
         def run(self, _names, feeds):
             assert "input_ids" in feeds
+            assert "attention_mask" in feeds
+            assert "token_type_ids" in feeds
             values = [0.0] * CONTENT_EMBEDDING_DIMENSIONS
             values[0] = 3.0
             values[1] = 4.0
@@ -110,6 +112,62 @@ def test_semantic_embedding_provider_uses_onnx_and_normalizes(
     assert provider.embedding_space == "semantic_onnx_768"
     assert provider.preferred_embedding_space == "semantic_onnx_768"
     assert math.isclose(sum(value * value for value in vector), 1.0)
+
+
+def test_semantic_embedding_provider_uses_cls_for_token_embeddings(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """摘要：BGE 3D token 输出使用 CLS 向量，避免 mean pooling 漂移。"""
+
+    class _Input:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    class _Session:
+        def __init__(self, _path: str, providers: list[str]) -> None:
+            del providers
+
+        def get_inputs(self) -> list[_Input]:
+            return [_Input("input_ids"), _Input("attention_mask")]
+
+        def run(self, _names, _feeds):
+            cls = [0.0] * CONTENT_EMBEDDING_DIMENSIONS
+            other = [0.0] * CONTENT_EMBEDDING_DIMENSIONS
+            cls[0] = 1.0
+            other[1] = 1.0
+            return [[[cls, other]]]
+
+    class _Ort:
+        InferenceSession = _Session
+
+    class _Encoded:
+        ids = [1, 2]
+        attention_mask = [1, 1]
+
+    class _Tokenizer:
+        @classmethod
+        def from_file(cls, _path: str):
+            return cls()
+
+        def encode(self, _text: str) -> _Encoded:
+            return _Encoded()
+
+    import offline_companion.core.memory_lifecycle.semantic_embedding_provider as module
+
+    monkeypatch.setattr(module, "ort", _Ort)
+    monkeypatch.setattr(module, "Tokenizer", _Tokenizer)
+    model_path = tmp_path / "model.onnx"
+    tokenizer_path = tmp_path / "tokenizer.json"
+    model_path.write_bytes(b"model")
+    tokenizer_path.write_text("{}", encoding="utf-8")
+
+    vector = SemanticEmbeddingProvider(
+        model_paths=SemanticEmbeddingModelPaths(model_path, tokenizer_path)
+    )("任意文本")
+
+    assert vector[0] == 1.0
+    assert vector[1] == 0.0
 
 
 def test_repository_recomputes_all_content_embeddings(tmp_path: Path) -> None:
