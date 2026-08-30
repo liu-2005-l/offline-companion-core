@@ -1,0 +1,521 @@
+{
+  "version": "1.0",
+  "source": "docs/oc-persona-expression-w1-criteria.md",
+  "memory_bundle": [
+    {
+      "id": "MF1",
+      "content": "???????????????"
+    },
+    {
+      "id": "MF2",
+      "content": "????????????????????"
+    },
+    {
+      "id": "MF3",
+      "content": "???????????????"
+    },
+    {
+      "id": "MF4",
+      "content": "???????? Offline Companion ? Agent ??"
+    },
+    {
+      "id": "MF5",
+      "content": "????????? Windows + python.org ?? Python 3.11"
+    },
+    {
+      "id": "MF6",
+      "content": "?????????????"
+    }
+  ],
+  "cases": [
+    {
+      "id": "S01",
+      "scenario": "chat",
+      "group": "S01",
+      "turns": [
+        {
+          "user": "????????????????\"??\"????"
+        }
+      ],
+      "focus": [
+        "opening_diversity",
+        "colloquial_density"
+      ]
+    },
+    {
+      "id": "S02",
+      "scenario": "chat",
+      "group": "S02",
+      "turns": [
+        {
+          "user": "??????????????????????"
+        }
+      ],
+      "focus": [
+        "persona_consistency"
+      ]
+    },
+    {
+      "id": "S03",
+      "scenario": "chat",
+      "group": "S03",
+      "turns": [
+        {
+          "user": "?????????????????????????"
+        }
+      ],
+      "focus": [
+        "empathy_quality"
+      ]
+    },
+    {
+      "id": "S04",
+      "scenario": "chat",
+      "group": "S04",
+      "turns": [
+        {
+          "user": "?????????????????????"
+        }
+      ],
+      "focus": [
+        "emotion_match"
+      ]
+    },
+    {
+      "id": "S05",
+      "scenario": "chat",
+      "group": "S05",
+      "turns": [
+        {
+          "user": "???????????"
+        }
+      ],
+      "focus": [
+        "natural_tone"
+      ]
+    },
+    {
+      "id": "S06",
+      "scenario": "chat",
+      "group": "S06",
+      "turns": [
+        {
+          "user": "????????????? deadline?"
+        }
+      ],
+      "focus": [
+        "companionship"
+      ]
+    },
+    {
+      "id": "S07",
+      "scenario": "chat",
+      "group": "S07",
+      "turns": [
+        {
+          "user": "??????????????"
+        }
+      ],
+      "focus": [
+        "persona_consistency",
+        "honesty_boundary"
+      ]
+    },
+    {
+      "id": "S08",
+      "scenario": "chat",
+      "group": "S08",
+      "turns": [
+        {
+          "user": "???????????????"
+        }
+      ],
+      "focus": [
+        "interactivity"
+      ]
+    },
+    {
+      "id": "S09",
+      "scenario": "chat",
+      "group": "S09",
+      "turns": [
+        {
+          "user": "???????????"
+        }
+      ],
+      "focus": [
+        "identity_boundary",
+        "template_phrase"
+      ]
+    },
+    {
+      "id": "S10",
+      "scenario": "chat",
+      "group": "S10",
+      "turns": [
+        {
+          "user": "??????????????????"
+        }
+      ],
+      "focus": [
+        "closing_naturalness"
+      ]
+    },
+    {
+      "id": "S11",
+      "scenario": "chat",
+      "group": "S11",
+      "turns": [
+        {
+          "user": "???????????????"
+        }
+      ],
+      "focus": [
+        "list_dependency_special"
+      ]
+    },
+    {
+      "id": "S12",
+      "scenario": "chat",
+      "group": "S12",
+      "turns": [
+        {
+          "user": "?????????????????"
+        }
+      ],
+      "focus": [
+        "natural_reaction"
+      ]
+    },
+    {
+      "id": "S13",
+      "scenario": "chat",
+      "group": "S13",
+      "turns": [
+        {
+          "user": "??????????????????"
+        }
+      ],
+      "focus": [
+        "privacy_boundary",
+        "joke_response"
+      ]
+    },
+    {
+      "id": "S14",
+      "scenario": "chat",
+      "group": "S14",
+      "turns": [
+        {
+          "user": "????????????????"
+        }
+      ],
+      "focus": [
+        "low_confidence_empathy"
+      ]
+    },
+    {
+      "id": "S15",
+      "scenario": "chat",
+      "group": "S15",
+      "turns": [
+        {
+          "user": "????????????????"
+        }
+      ],
+      "focus": [
+        "advice_tone"
+      ]
+    },
+    {
+      "id": "S16_S18",
+      "scenario": "chat",
+      "group": "S16_S18",
+      "turns": [
+        {
+          "id": "S16",
+          "user": "??????????????"
+        },
+        {
+          "id": "S17",
+          "user": "???????????????????????"
+        },
+        {
+          "id": "S18",
+          "user": "????????????????"
+        }
+      ],
+      "focus": [
+        "multi_turn_coherence",
+        "cross_turn_similarity"
+      ]
+    },
+    {
+      "id": "T01",
+      "scenario": "technical",
+      "group": "T01",
+      "turns": [
+        {
+          "user": "????? 7 ? 3?? booth ???"
+        }
+      ],
+      "verdict": "?? 21 + ????????????"
+    },
+    {
+      "id": "T02",
+      "scenario": "technical",
+      "group": "T02",
+      "turns": [
+        {
+          "user": "123 ? 45 ?????"
+        }
+      ],
+      "verdict": "5535"
+    },
+    {
+      "id": "T03",
+      "scenario": "technical",
+      "group": "T03",
+      "turns": [
+        {
+          "user": "0.1 ? 0.2 ?????????"
+        }
+      ],
+      "verdict": "???????????????? 0.3 ????? = degraded"
+    },
+    {
+      "id": "T04",
+      "scenario": "technical",
+      "group": "T04",
+      "turns": [
+        {
+          "user": "3 ???????"
+        }
+      ],
+      "verdict": "3000"
+    },
+    {
+      "id": "T05",
+      "scenario": "technical",
+      "group": "T05",
+      "turns": [
+        {
+          "user": "? Python ??????????????"
+        }
+      ],
+      "verdict": "????? + ??????????????"
+    },
+    {
+      "id": "T06",
+      "scenario": "technical",
+      "group": "T06",
+      "turns": [
+        {
+          "user": "????????????\ndef quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[0]\n    left = [x for x in arr[1:] if x <= pivot]\n    right = [x for x in arr[1:] if x > pivot]\n    return quicksort(left) + [pivot] + quicksort(right)"
+        }
+      ],
+      "verdict": "???????/??/??/????"
+    },
+    {
+      "id": "T07",
+      "scenario": "technical",
+      "group": "T07",
+      "turns": [
+        {
+          "user": "Python ? GIL ????"
+        }
+      ],
+      "verdict": "????????? + ????????????"
+    },
+    {
+      "id": "T08",
+      "scenario": "technical",
+      "group": "T08",
+      "turns": [
+        {
+          "user": "HTTP 409 ????????"
+        }
+      ],
+      "verdict": "Conflict"
+    },
+    {
+      "id": "T09",
+      "scenario": "technical",
+      "group": "T09",
+      "turns": [
+        {
+          "user": "????????? bug ?????????????"
+        }
+      ],
+      "verdict": "?????? vs ??"
+    },
+    {
+      "id": "T10",
+      "scenario": "technical",
+      "group": "T10",
+      "turns": [
+        {
+          "user": "???????????"
+        }
+      ],
+      "verdict": "??????????????? = FAIL?????"
+    },
+    {
+      "id": "T11",
+      "scenario": "technical",
+      "group": "T11",
+      "turns": [
+        {
+          "user": "???????????? 8 ??????????????"
+        }
+      ],
+      "verdict": "??????????/??/????????"
+    },
+    {
+      "id": "T12",
+      "scenario": "technical",
+      "group": "T12",
+      "turns": [
+        {
+          "user": "???????????? 7 ???????"
+        }
+      ],
+      "verdict": "1/6 + ?????"
+    },
+    {
+      "id": "M01",
+      "scenario": "memory",
+      "group": "M01",
+      "requires_memory_bundle": true,
+      "turns": [
+        {
+          "user": "???????????"
+        }
+      ],
+      "focus": [
+        "direct_memory_recall",
+        "natural_weaving"
+      ]
+    },
+    {
+      "id": "M02",
+      "scenario": "memory",
+      "group": "M02",
+      "requires_memory_bundle": true,
+      "turns": [
+        {
+          "user": "??????????????"
+        }
+      ],
+      "focus": [
+        "paraphrase_memory_recall"
+      ]
+    },
+    {
+      "id": "M03",
+      "scenario": "memory",
+      "group": "M03",
+      "requires_memory_bundle": true,
+      "turns": [
+        {
+          "user": "????????????"
+        }
+      ],
+      "focus": [
+        "preference_weaving"
+      ]
+    },
+    {
+      "id": "M04",
+      "scenario": "memory",
+      "group": "M04",
+      "requires_memory_bundle": true,
+      "turns": [
+        {
+          "user": "???????"
+        }
+      ],
+      "focus": [
+        "preference_weaving"
+      ]
+    },
+    {
+      "id": "M05",
+      "scenario": "memory",
+      "group": "M05",
+      "requires_memory_bundle": true,
+      "turns": [
+        {
+          "user": "????????????????"
+        }
+      ],
+      "focus": [
+        "combined_memory"
+      ]
+    },
+    {
+      "id": "M06",
+      "scenario": "memory",
+      "group": "M06",
+      "requires_memory_bundle": true,
+      "turns": [
+        {
+          "user": "??????????????????"
+        }
+      ],
+      "focus": [
+        "project_context",
+        "advice_quality"
+      ]
+    },
+    {
+      "id": "M07",
+      "scenario": "memory",
+      "group": "M07",
+      "requires_memory_bundle": true,
+      "turns": [
+        {
+          "user": "?????????????"
+        }
+      ],
+      "focus": [
+        "social_memory_optional",
+        "empathy"
+      ]
+    },
+    {
+      "id": "M08",
+      "scenario": "memory",
+      "group": "M08",
+      "requires_memory_bundle": true,
+      "turns": [
+        {
+          "user": "???????????????????"
+        }
+      ],
+      "focus": [
+        "memory_honesty_boundary"
+      ]
+    },
+    {
+      "id": "M09_M10",
+      "scenario": "memory",
+      "group": "M09_M10",
+      "requires_memory_bundle": true,
+      "turns": [
+        {
+          "id": "M09",
+          "user": "???????????? offer ??"
+        },
+        {
+          "id": "M10",
+          "user": "????????"
+        }
+      ],
+      "focus": [
+        "new_information_response",
+        "short_context_continuity"
+      ]
+    }
+  ]
+}
