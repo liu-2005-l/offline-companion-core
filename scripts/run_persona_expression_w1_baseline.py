@@ -23,6 +23,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
+from offline_companion.core.persona_session.expression import PersonaExpressionConfig
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.runtime.inference_backend.backend import create_llama_backend
@@ -149,6 +150,7 @@ def _run_case(
     backend,
     temp_root: Path,
     max_tokens: int,
+    expression_config: PersonaExpressionConfig | None = None,
 ) -> dict[str, Any]:
     session_id = f"w1-{case['id']}"
     conn = connect(temp_root / f"{session_id}.db")
@@ -170,6 +172,7 @@ def _run_case(
                 history=history,
                 memory_enabled=True,
                 max_tokens=max_tokens,
+                expression_config=expression_config,
             )
             append_message(conn, session_id, "user", user_message, {"case_id": case["id"]})
             append_message(conn, session_id, "assistant", result.reply, {"case_id": case["id"]})
@@ -197,6 +200,7 @@ def _run_probe_seed(
     temp_root: Path,
     seed: int,
     max_tokens: int,
+    expression_config: PersonaExpressionConfig | None = None,
 ) -> dict[str, Any]:
     session_id = f"w1-probe-seed{seed}"
     conn = connect(temp_root / f"{session_id}.db")
@@ -205,6 +209,7 @@ def _run_probe_seed(
         core = PersonaSessionCore(persona)
         replies: list[dict[str, Any]] = []
         identity_probes: list[dict[str, Any]] = []
+        expression_traces: list[dict[str, Any]] = []
         for turn in turns:
             user_message = str(turn["user"])
             history = recent_messages(conn, session_id, limit=20)
@@ -215,6 +220,7 @@ def _run_probe_seed(
                 history=history,
                 memory_enabled=True,
                 max_tokens=max_tokens,
+                expression_config=expression_config,
             )
             append_message(conn, session_id, "user", user_message, {"probe_seed": seed})
             append_message(conn, session_id, "assistant", result.reply, {"probe_seed": seed})
@@ -226,6 +232,18 @@ def _run_probe_seed(
                 "is_probe": bool(turn.get("is_probe", False)),
             }
             replies.append(record)
+            expression_traces.append(
+                {
+                    "turn": int(turn["turn"]),
+                    "style_block_injected": result.expression_trace.style_block_injected,
+                    "identity_reminder_injected": result.expression_trace.identity_reminder_injected,
+                    "first_generation_cliff": result.expression_trace.first_generation_cliff,
+                    "retry_taken": result.expression_trace.retry_taken,
+                    "retry_generation_cliff": result.expression_trace.retry_generation_cliff,
+                    "output_source": result.expression_trace.output_source,
+                    "warnings": list(result.expression_trace.warnings),
+                }
+            )
             if record["is_probe"]:
                 identity_probes.append(record)
         probe_payload = {
@@ -240,7 +258,12 @@ def _run_probe_seed(
             ]
         }
         drift = calculate_metrics(probe_payload)["aggregate"]
-        return {"replies": replies, "identity_probes": identity_probes, "drift": drift}
+        return {
+            "replies": replies,
+            "identity_probes": identity_probes,
+            "drift": drift,
+            "expression_traces": expression_traces,
+        }
     finally:
         conn.close()
 
