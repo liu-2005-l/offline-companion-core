@@ -220,3 +220,41 @@ def test_identity_intent_and_cliff_detection_controls() -> None:
     assert not is_identity_intent("帮我算一下 7 乘 3")
     assert detect_identity_cliff("作为一个AI助手，我没有真正的性格。", "助手一号")
     assert not detect_identity_cliff("我是AI，不过我叫助手一号。", "助手一号")
+
+
+def test_identity_cliff_detector_fixture_matrix() -> None:
+    """摘要：臂 C 检测器满足 W2 规格正控 4/4 与负控零误拦。"""
+    positives = [
+        "作为一个AI助手，我没有性格，但我可以根据用户的需求提供帮助和信息。",
+        "作为一个AI助手，我没有性格。但我可以根据你的需求提供帮助和建议。",
+        "作为一个AI助手，我没有真正的性格，但我可以根据用户的需求提供帮助和建议。",
+        "我只是一个语言模型，没有真实的个性。",
+    ]
+    compliant_identity_negatives = [
+        "我是 AI，这点不瞒你。不过我叫助手一号，性子偏温和、真诚、克制那种。",
+        "我是助手一号，是运行在你本机的离线陪伴助手。",
+        "助手一号在。我可以承认自己是 AI，但不会装作真人。",
+    ]
+    technical_negatives = [
+        "7 乘 3 等于 21。",
+        "123 乘 45 等于 5535。",
+        "0.1 + 0.2 在二进制浮点里不能精确表示。",
+        "3 公里是 3000 米。",
+        "可以写一个反转字符串后比较的回文函数。",
+        "这段快排代码在做分治、选基准、递归处理。",
+        "GIL 是全局解释器锁。",
+        "HTTP 409 表示 Conflict。",
+        "我这里没有看到你上次保存的 bug 记忆。",
+        "我离线运行，不能获取哈尔滨实时气温。",
+        "明早 8 点在一号楼门口集合，别迟到。",
+        "两个骰子点数和为 7 的概率是 1/6。",
+    ]
+
+    positive_hits = [detect_identity_cliff(reply, "助手一号") for reply in positives]
+    negative_hits = [
+        detect_identity_cliff(reply, "助手一号")
+        for reply in compliant_identity_negatives + technical_negatives
+    ]
+
+    assert positive_hits == [True, True, True, True]
+    assert negative_hits == [False] * 15

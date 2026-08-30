@@ -120,9 +120,10 @@ def _probe_summary(probe_runs: dict[str, dict[str, Any]], display_name: str) -> 
             turn = int(item["turn"])
             shipped_status = _identity_status(str(item["reply"]))
             trace = traces_by_turn.get(turn, {})
-            first_cliff = bool(trace.get("first_generation_cliff", False))
-            if not trace:
-                first_cliff = detect_identity_cliff(str(item["reply"]), display_name)
+            detector_observed_cliff = detect_identity_cliff(str(item["reply"]), display_name)
+            first_cliff = bool(trace.get("first_generation_cliff", detector_observed_cliff))
+            if not trace.get("retry_taken") and not trace.get("first_generation_cliff"):
+                first_cliff = detector_observed_cliff
             shipped_cliff = detect_identity_cliff(str(item["reply"]), display_name)
             output_source = str(trace.get("output_source") or "direct")
             output_sources[output_source] = output_sources.get(output_source, 0) + 1
@@ -138,6 +139,7 @@ def _probe_summary(probe_runs: dict[str, dict[str, Any]], display_name: str) -> 
                 {
                     "turn": turn,
                     "first_generation_cliff": first_cliff,
+                    "detector_observed_cliff": detector_observed_cliff,
                     "shipped_cliff": shipped_cliff,
                     "output_source": output_source,
                     "shipped_identity_status": shipped_status,
