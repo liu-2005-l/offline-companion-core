@@ -21,10 +21,10 @@ from offline_companion.shared.deterministic_embedding import embed_text
 
 
 R43_R46_PARAPHRASE_TRIPWIRES = (
-    ("R43", "canine companion naps beside keyboard", "dog sleeps near laptop"),
-    ("R44", "relocate shanghai next spring", "move magiccity after winter"),
-    ("R45", "cilantro causes nausea", "avoid coriander garnish"),
-    ("R46", "offline default privacy policy", "network access requires consent"),
+    ("R43", "canine companion naps beside keyboard", "dog sleeps near laptop", 0.380117),
+    ("R44", "relocate shanghai next spring", "move magiccity after winter", 0.502429),
+    ("R45", "cilantro causes nausea", "avoid coriander garnish", 0.363984),
+    ("R46", "offline default privacy policy", "network access requires consent", 0.514473),
 )
 ROOT = Path(__file__).resolve().parents[1]
 C2_SCORES = ROOT / "fixtures" / "v1_8_semantic_embedding_c2_scores.json"
@@ -47,13 +47,18 @@ def _repo_with_event(event_id: str, content: str) -> EventRepository:
     return repo
 
 
-@pytest.mark.parametrize(("case_id", "stored_content", "query"), R43_R46_PARAPHRASE_TRIPWIRES)
+@pytest.mark.parametrize(
+    ("case_id", "stored_content", "query", "semantic_similarity"),
+    R43_R46_PARAPHRASE_TRIPWIRES,
+)
 def test_r43_r46_paraphrase_recall_tripwires_are_degraded(
     case_id: str,
     stored_content: str,
     query: str,
+    semantic_similarity: float,
 ) -> None:
-    """摘要：R43-R46 先钉当前 hash-bow 语义改写召回降级基线。"""
+    """摘要：R43-R46 终态为 degraded-for-cause，并钉住 C2 semantic 实测分。"""
+    assert semantic_similarity < SEMANTIC_RECALL_THRESHOLD
     assert EventRecaller._tokenize(stored_content) & EventRecaller._tokenize(query) == set()
     repo = _repo_with_event(case_id, stored_content)
 

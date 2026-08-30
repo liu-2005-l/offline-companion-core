@@ -59,7 +59,7 @@
 ## 四、v1.7 传导
 
 - F1：不翻转。
-- F2：可能随 R43-R46 从 degraded 翻 correct。
+- F2：v1.8.0 C2 后保持 degraded；后续只有模型或 reranker 重裁决越线时才翻 correct。
 - F3：结构不翻转，但真 embedding 接入后需复核排序解释。
 - R43-R46 先钉 degraded、再实现 embedding、再判翻转的顺序条件不变。
-- `HASH_BOW_RECALL_THRESHOLD` 与 `HASH_BOW_DUPLICATE_THRESHOLD` 刻意同源，代表当前 hash-bow 空间里的“明确字面相似”带宽；v1.8.0+ 真 embedding 重校时二者随 R43-R46 一并复核。
+- v1.8.0 C2 后阈值拆分：写端 `HASH_BOW_DUPLICATE_THRESHOLD = 0.50` 只服务文本 Jaccard 去重，fallback 读端 `HASH_BOW_RECALL_THRESHOLD = 0.50`，ONNX 读端 `SEMANTIC_RECALL_THRESHOLD = 0.58`。

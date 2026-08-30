@@ -81,3 +81,9 @@
 - C3 注入层：U15/T19 词面命中稳定不翻转；U16 的 F2 词面错开对在 semantic 空间实测 `0.373039 < 0.58`，继续不注入；related `0.70` 语义自动关联仍未实现，显式 `related_events` 一跳扩展保持 correct。
 - C4 降级层：embedding 重算失败写入 `content_embedding = None` 与 `content_embedding_space = none`，后续只作为下一轮有界重试目标；召回按空间过滤，不拿 `none` 行参与 semantic cosine。
 - C5 实例复用：`PersonaSessionCore` 每会话持有一个 `SemanticEmbeddingProvider`；`EventRecaller` 可每轮轻量新建，但 ONNX session 与 tokenizer 在 provider 内惰性加载并复用，不每轮重载模型。
+
+## 十二、Phase D 收口
+
+- Release gate：`pytest -q` 为 1187 passed、3 skipped；`scripts/full_acceptance.py --skip-gpu` 在模型在场环境为 10/10；Ruff 与分层依赖检查全绿。
+- 版本裁定：按 repo 轴升为 `1.8.0` minor；semantic recall 是功能级增量，tag 创建等待发布动作确认。
+- 候选池消化：EventRecaller 实例复用复检已闭合；semantic duplicate 去重、模型升级触发器、reranker、expansion 接线与 hash-bow 冗余简化留 v1.8.x 独立批。

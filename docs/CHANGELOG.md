@@ -4,6 +4,22 @@
 
 ---
 
+## v1.8.0 · 2026-08-30（真语义召回）
+
+### 设计与实现
+- 记忆召回从字面匹配升级为可选真 semantic embedding：新增 `SemanticEmbeddingProvider`，接入 `Xenova/bge-base-zh-v1.5` ONNX fp32（768 维、CLS pooling、L2 归一化），无模型或运行失败时自动回退 hash-bow，不劣于 v1.7.0。
+- 统一语义事件 embedding 生产入口，收口会话注入、自动提取、桌面 API 与 CLI 四个入口；新增 `content_embedding_space` 行级标签，召回只比较同空间向量，启动期重算只处理目标空间不匹配或空 embedding 的行。
+- 按预注册判别对集完成 C2 重校：同义改写命中 `29/31`（94%）、dissimilar 误报 `0/40`；排序倒挂证据为 paraphrase `min=0.490024` 低于 dissimilar `max=0.571243`，因此 semantic recall 阈值取零 FP 侧 `0.58`。
+- 拆分三把阈值尺子：写端文本 Jaccard 去重 `0.50`、fallback hash-bow 召回 `0.50`、ONNX semantic 召回 `0.58`；修回写端去重误吃 semantic cosine 的静默漂移。
+- R43-R46 tripwire 终态改为全 degraded-for-cause，并以 fixture 记录实际分数；该组从“等待翻转”转为后续模型升级与 reranker 的触发器。
+
+### 验收
+- v1.8.0 V1 收尾门禁：`pytest -q` 为 1187 passed、3 skipped；`scripts/full_acceptance.py --skip-gpu` 为 10/10；Ruff 与分层依赖检查全绿。
+- 可选模型组件本地验收：模型在场环境已覆盖 ONNX provider、下载器、重算迁移、注入层 F2 负例与 `none` 降级有界重试；无模型 CI 仍可通过预录 C2 分数 fixture 验证语义裁决。
+
+### 已知债务
+- semantic duplicate 去重需独立校准 `SEMANTIC_DUPLICATE_THRESHOLD`，不得作为召回阈值副作用；bge-large / bge-m3 模型升级、cross-encoder reranker、expansion 接线、两路 hash-bow 冗余简化继续进入 v1.8.x 候选池。
+
 ## v1.7.0 · 2026-08-22（任务拆解可靠性增强）
 
 ### 设计与实现
