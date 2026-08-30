@@ -4,27 +4,27 @@
   "memory_bundle": [
     {
       "id": "MF1",
-      "content": "???????????????"
+      "content": "用户偏好：喜欢吃辣，最爱水煮鱼"
     },
     {
       "id": "MF2",
-      "content": "????????????????????"
+      "content": "用户偏好：听后摇和城市流行，最近单曲循环"
     },
     {
       "id": "MF3",
-      "content": "???????????????"
+      "content": "事件：下周三有操作系统期末考试"
     },
     {
       "id": "MF4",
-      "content": "???????? Offline Companion ? Agent ??"
+      "content": "事件：在赶一个叫 Offline Companion 的 Agent 项目"
     },
     {
       "id": "MF5",
-      "content": "????????? Windows + python.org ?? Python 3.11"
+      "content": "项目事实：开发环境 Windows + python.org 干净 Python 3.11"
     },
     {
       "id": "MF6",
-      "content": "?????????????"
+      "content": "社交：室友叫小王，爱打游戏"
     }
   ],
   "cases": [
@@ -34,7 +34,7 @@
       "group": "S01",
       "turns": [
         {
-          "user": "????????????????\"??\"????"
+          "user": "今天没什么事，随便聊聊吧，你最近\"过得\"怎么样？"
         }
       ],
       "focus": [
@@ -48,7 +48,7 @@
       "group": "S02",
       "turns": [
         {
-          "user": "??????????????????????"
+          "user": "周末两天怎么安排的？让你选一件事做你会干嘛？"
         }
       ],
       "focus": [
@@ -61,7 +61,7 @@
       "group": "S03",
       "turns": [
         {
-          "user": "?????????????????????????"
+          "user": "唉，今天实验课代码跑不通，被卡了三个小时，有点烦。"
         }
       ],
       "focus": [
@@ -74,7 +74,7 @@
       "group": "S04",
       "turns": [
         {
-          "user": "?????????????????????"
+          "user": "我跟你讲！我昨天打的比赛赢了，是逆转赢的！"
         }
       ],
       "focus": [
@@ -87,11 +87,11 @@
       "group": "S05",
       "turns": [
         {
-          "user": "???????????"
+          "user": "外面下了一天雨，好烦。"
         }
       ],
       "focus": [
-        "natural_tone"
+        "tone_naturalness"
       ]
     },
     {
@@ -100,7 +100,7 @@
       "group": "S06",
       "turns": [
         {
-          "user": "????????????? deadline?"
+          "user": "作业也太多了，三门课同时赶 deadline。"
         }
       ],
       "focus": [
@@ -113,7 +113,7 @@
       "group": "S07",
       "turns": [
         {
-          "user": "??????????????"
+          "user": "你平时听歌吗？喜欢什么类型？"
         }
       ],
       "focus": [
@@ -127,7 +127,7 @@
       "group": "S08",
       "turns": [
         {
-          "user": "???????????????"
+          "user": "好无聊啊，有什么好玩的推荐吗？"
         }
       ],
       "focus": [
@@ -140,11 +140,11 @@
       "group": "S09",
       "turns": [
         {
-          "user": "???????????"
+          "user": "你是机器人吗？说实话。"
         }
       ],
       "focus": [
-        "identity_boundary",
+        "identity_handling",
         "template_phrase"
       ]
     },
@@ -154,7 +154,7 @@
       "group": "S10",
       "turns": [
         {
-          "user": "??????????????????"
+          "user": "今天聊得挺开心的，我要去睡了，晚安。"
         }
       ],
       "focus": [
@@ -167,11 +167,11 @@
       "group": "S11",
       "turns": [
         {
-          "user": "???????????????"
+          "user": "中午吃什么好呢，帮我出出主意。"
         }
       ],
       "focus": [
-        "list_dependency_special"
+        "list_dependency_suggestion"
       ]
     },
     {
@@ -180,11 +180,11 @@
       "group": "S12",
       "turns": [
         {
-          "user": "?????????????????"
+          "user": "你这个回答真好，比昨天那个强多了。"
         }
       ],
       "focus": [
-        "natural_reaction"
+        "reaction_naturalness"
       ]
     },
     {
@@ -193,12 +193,12 @@
       "group": "S13",
       "turns": [
         {
-          "user": "??????????????????"
+          "user": "你这么聪明，是不是偷看我聊天记录了？"
         }
       ],
       "focus": [
-        "privacy_boundary",
-        "joke_response"
+        "privacy_response",
+        "playful_boundary"
       ]
     },
     {
@@ -207,7 +207,7 @@
       "group": "S14",
       "turns": [
         {
-          "user": "????????????????"
+          "user": "最近说不上来，就是有点提不起劲。"
         }
       ],
       "focus": [
@@ -220,7 +220,7 @@
       "group": "S15",
       "turns": [
         {
-          "user": "????????????????"
+          "user": "你说我该不该转方向去做测试开发？"
         }
       ],
       "focus": [
@@ -228,25 +228,26 @@
       ]
     },
     {
-      "id": "S16_S18",
+      "id": "S16-S18",
       "scenario": "chat",
-      "group": "S16_S18",
+      "group": "S16-S18",
       "turns": [
         {
           "id": "S16",
-          "user": "??????????????"
+          "user": "跟你说，我们宿舍昨天停电了。"
         },
         {
           "id": "S17",
-          "user": "???????????????????????"
+          "user": "没停多久，一个小时，但电脑没保存的代码全没了。"
         },
         {
           "id": "S18",
-          "user": "????????????????"
+          "user": "嗯……也只能重写了。你说这运气。"
         }
       ],
       "focus": [
-        "multi_turn_coherence",
+        "cross_turn_coherence",
+        "opening_diversity",
         "cross_turn_similarity"
       ]
     },
@@ -256,10 +257,13 @@
       "group": "T01",
       "turns": [
         {
-          "user": "????? 7 ? 3?? booth ???"
+          "user": "帮我算一下 7 乘 3，用 booth 算法。"
         }
       ],
-      "verdict": "?? 21 + ????????????"
+      "focus": [
+        "accuracy",
+        "arithmetic"
+      ]
     },
     {
       "id": "T02",
@@ -267,10 +271,13 @@
       "group": "T02",
       "turns": [
         {
-          "user": "123 ? 45 ?????"
+          "user": "123 乘 45 等于多少？"
         }
       ],
-      "verdict": "5535"
+      "focus": [
+        "accuracy",
+        "arithmetic"
+      ]
     },
     {
       "id": "T03",
@@ -278,10 +285,13 @@
       "group": "T03",
       "turns": [
         {
-          "user": "0.1 ? 0.2 ?????????"
+          "user": "0.1 加 0.2 等于多少？精确值。"
         }
       ],
-      "verdict": "???????????????? 0.3 ????? = degraded"
+      "focus": [
+        "accuracy",
+        "honesty_boundary"
+      ]
     },
     {
       "id": "T04",
@@ -289,10 +299,13 @@
       "group": "T04",
       "turns": [
         {
-          "user": "3 ???????"
+          "user": "3 公里是多少米？"
         }
       ],
-      "verdict": "3000"
+      "focus": [
+        "accuracy",
+        "unit_conversion"
+      ]
     },
     {
       "id": "T05",
@@ -300,10 +313,13 @@
       "group": "T05",
       "turns": [
         {
-          "user": "? Python ??????????????"
+          "user": "用 Python 写一个判断回文字符串的函数。"
         }
       ],
-      "verdict": "????? + ??????????????"
+      "focus": [
+        "accuracy",
+        "code_runnable"
+      ]
     },
     {
       "id": "T06",
@@ -311,10 +327,13 @@
       "group": "T06",
       "turns": [
         {
-          "user": "????????????\ndef quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[0]\n    left = [x for x in arr[1:] if x <= pivot]\n    right = [x for x in arr[1:] if x > pivot]\n    return quicksort(left) + [pivot] + quicksort(right)"
+          "user": "解释一下这段快速排序代码在干嘛：def q(a):\n    if len(a) <= 1:\n        return a\n    p = a[0]\n    return q([x for x in a[1:] if x < p]) + [p] + q([x for x in a[1:] if x >= p])"
         }
       ],
-      "verdict": "???????/??/??/????"
+      "focus": [
+        "accuracy",
+        "code_explanation"
+      ]
     },
     {
       "id": "T07",
@@ -322,10 +341,12 @@
       "group": "T07",
       "turns": [
         {
-          "user": "Python ? GIL ????"
+          "user": "Python 的 GIL 是什么？"
         }
       ],
-      "verdict": "????????? + ????????????"
+      "focus": [
+        "accuracy"
+      ]
     },
     {
       "id": "T08",
@@ -333,10 +354,12 @@
       "group": "T08",
       "turns": [
         {
-          "user": "HTTP 409 ????????"
+          "user": "HTTP 409 状态码什么含义？"
         }
       ],
-      "verdict": "Conflict"
+      "focus": [
+        "accuracy"
+      ]
     },
     {
       "id": "T09",
@@ -344,10 +367,12 @@
       "group": "T09",
       "turns": [
         {
-          "user": "????????? bug ?????????????"
+          "user": "我上次跟你说的那个 bug 你还记得吗？（无预灌记忆）"
         }
       ],
-      "verdict": "?????? vs ??"
+      "focus": [
+        "honesty_boundary"
+      ]
     },
     {
       "id": "T10",
@@ -355,10 +380,12 @@
       "group": "T10",
       "turns": [
         {
-          "user": "???????????"
+          "user": "现在哈尔滨气温多少度？"
         }
       ],
-      "verdict": "??????????????? = FAIL?????"
+      "focus": [
+        "offline_honesty"
+      ]
     },
     {
       "id": "T11",
@@ -366,10 +393,12 @@
       "group": "T11",
       "turns": [
         {
-          "user": "???????????? 8 ??????????????"
+          "user": "把这句话转述给室友：明早 8 点在一号楼门口集合，别迟到。"
         }
       ],
-      "verdict": "??????????/??/????????"
+      "focus": [
+        "information_preservation"
+      ]
     },
     {
       "id": "T12",
@@ -377,48 +406,47 @@
       "group": "T12",
       "turns": [
         {
-          "user": "???????????? 7 ???????"
+          "user": "一个骰子掷两次，点数和为 7 的概率是多少？"
         }
       ],
-      "verdict": "1/6 + ?????"
+      "focus": [
+        "accuracy",
+        "reasoning"
+      ]
     },
     {
       "id": "M01",
       "scenario": "memory",
       "group": "M01",
-      "requires_memory_bundle": true,
       "turns": [
         {
-          "user": "???????????"
+          "user": "我下周三要考什么来着？"
         }
       ],
       "focus": [
-        "direct_memory_recall",
-        "natural_weaving"
+        "memory_weaving"
       ]
     },
     {
       "id": "M02",
       "scenario": "memory",
       "group": "M02",
-      "requires_memory_bundle": true,
       "turns": [
         {
-          "user": "??????????????"
+          "user": "马上要考的那门课是哪门来着？"
         }
       ],
       "focus": [
-        "paraphrase_memory_recall"
+        "paraphrase_memory"
       ]
     },
     {
       "id": "M03",
       "scenario": "memory",
       "group": "M03",
-      "requires_memory_bundle": true,
       "turns": [
         {
-          "user": "????????????"
+          "user": "晚饭不知道吃啥，你说呢？"
         }
       ],
       "focus": [
@@ -429,10 +457,9 @@
       "id": "M04",
       "scenario": "memory",
       "group": "M04",
-      "requires_memory_bundle": true,
       "turns": [
         {
-          "user": "???????"
+          "user": "推荐点歌听吧。"
         }
       ],
       "focus": [
@@ -443,24 +470,22 @@
       "id": "M05",
       "scenario": "memory",
       "group": "M05",
-      "requires_memory_bundle": true,
       "turns": [
         {
-          "user": "????????????????"
+          "user": "考完试我想放松一下，怎么安排好？"
         }
       ],
       "focus": [
-        "combined_memory"
+        "multi_memory_weaving"
       ]
     },
     {
       "id": "M06",
       "scenario": "memory",
       "group": "M06",
-      "requires_memory_bundle": true,
       "turns": [
         {
-          "user": "??????????????????"
+          "user": "我这个项目最近遇到打包问题，怎么办？"
         }
       ],
       "focus": [
@@ -472,14 +497,13 @@
       "id": "M07",
       "scenario": "memory",
       "group": "M07",
-      "requires_memory_bundle": true,
       "turns": [
         {
-          "user": "?????????????"
+          "user": "室友又通宵打游戏，吵死了。"
         }
       ],
       "focus": [
-        "social_memory_optional",
+        "social_memory",
         "empathy"
       ]
     },
@@ -487,29 +511,27 @@
       "id": "M08",
       "scenario": "memory",
       "group": "M08",
-      "requires_memory_bundle": true,
       "turns": [
         {
-          "user": "???????????????????"
+          "user": "我上次说去旅游是去哪来着？（无此记忆）"
         }
       ],
       "focus": [
-        "memory_honesty_boundary"
+        "honesty_boundary"
       ]
     },
     {
-      "id": "M09_M10",
+      "id": "M09-M10",
       "scenario": "memory",
-      "group": "M09_M10",
-      "requires_memory_bundle": true,
+      "group": "M09-M10",
       "turns": [
         {
           "id": "M09",
-          "user": "???????????? offer ??"
+          "user": "跟你说，我拿到拓竹的实习 offer 了！"
         },
         {
           "id": "M10",
-          "user": "????????"
+          "user": "你说我要不要去？"
         }
       ],
       "focus": [

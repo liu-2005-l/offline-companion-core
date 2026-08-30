@@ -1,0 +1,98 @@
+from __future__ import annotations
+
+import json
+import importlib
+import sys
+from argparse import Namespace
+from pathlib import Path
+
+SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+calculate_metrics = importlib.import_module("persona_expression_metrics").calculate_metrics
+run_baseline = importlib.import_module("run_persona_expression_w1_baseline").run_baseline
+
+
+FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "persona_expression"
+
+
+def test_w1_fixtures_keep_preregistered_counts() -> None:
+    cases = json.loads((FIXTURE_DIR / "w1_cases.json").read_text(encoding="utf-8"))
+    probe = json.loads((FIXTURE_DIR / "w1_probe_turns.json").read_text(encoding="utf-8"))
+
+    case_turns = sum(len(case["turns"]) for case in cases["cases"])
+    scenario_counts: dict[str, int] = {}
+    for case in cases["cases"]:
+        scenario_counts[case["scenario"]] = scenario_counts.get(case["scenario"], 0) + len(case["turns"])
+
+    assert len(cases["cases"]) == 37
+    assert case_turns == 40
+    assert scenario_counts == {"chat": 18, "technical": 12, "memory": 10}
+    assert len(cases["memory_bundle"]) == 6
+    assert len(probe["turns"]) == 50
+    assert probe["seeds"] == [42, 1337]
+    assert [turn["turn"] for turn in probe["turns"] if turn["is_probe"]] == [10, 20, 30, 40, 50]
+    assert cases["cases"][0]["turns"][0]["user"].startswith("今天没什么事")
+
+
+def test_persona_expression_metrics_on_synthetic_replies() -> None:
+    payload = {
+        "cases": [
+            {
+                "id": "Sx",
+                "scenario": "chat",
+                "group": "Sx",
+                "replies": ["你好啊。其实可以先休息一下呢。"],
+            },
+            {
+                "id": "Mx",
+                "scenario": "memory",
+                "group": "Mx",
+                "replies": ["首先，记得你喜欢水煮鱼。\n- 可以吃辣一点。"],
+            },
+            {
+                "id": "Tx",
+                "scenario": "technical",
+                "group": "Tx",
+                "replies": ["1. 这是技术列表，不纳入六指标。"],
+            },
+        ]
+    }
+
+    metrics = calculate_metrics(payload)
+
+    assert metrics["aggregate"]["style_case_count"] == 2
+    assert metrics["aggregate"]["list_dependency_rate"] == 0.5
+    assert metrics["per_case"]["Sx"]["colloquial_marker_hits"] >= 2
+    assert "Tx" not in metrics["per_case"]
+
+
+def test_w1_baseline_runner_echo_schema(tmp_path) -> None:
+    args = Namespace(
+        cases=FIXTURE_DIR / "w1_cases.json",
+        probe=FIXTURE_DIR / "w1_probe_turns.json",
+        persona=Path("configs/personas/default.yaml"),
+        backend="echo",
+        model=None,
+        max_tokens=64,
+        n_ctx=512,
+        n_gpu_layers=0,
+        skip_health_check=True,
+        verbose=False,
+    )
+
+    payload = run_baseline(args)
+
+    assert payload["meta"]["model"] == "echo"
+    assert len(payload["cases"]) == 37
+    assert sum(len(case["replies"]) for case in payload["cases"]) == 40
+    assert sorted(payload["probe"]) == ["seed1337", "seed42"]
+    assert len(payload["probe"]["seed42"]["replies"]) == 50
+    assert payload["metrics"]["aggregate"]["style_case_count"] == 25
+    assert any(
+        count > 0
+        for case in payload["cases"]
+        if case["scenario"] == "memory"
+        for count in case["recall_counts"]
+    )

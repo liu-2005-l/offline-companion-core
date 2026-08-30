@@ -163,9 +163,9 @@ C2 任务判据不降（token 挤占主闸门）；
 终裁：TA 盲评同判例子集（有/无锚点两版），指标全绿但盲评无感 → 推翻指标权重，人终裁（方案 §5 既定）。
 
 8. W1 验收行
-[ ] W1-A 锚 commit 落 repo（规格 + 40 判例 + probe 题目清单）
-[ ] baseline runner 就绪，40 判例 + 双 seed probe 全跑通
-[ ] baseline JSON 落档（回复原文全量 + 指标 + 判定）
-[ ] 六指标 baseline 数值表产出（闲聊/记忆子集聚合 + 技术子集判据结果）
-[ ] 漂移定级三档裁决 + 方案 v2.1 风险表"待实测"回填
+[x] W1-A 锚 commit 落 repo（规格 + 40 判例 + probe 题目清单）
+[x] baseline runner 就绪，40 判例 + 双 seed probe 全跑通
+[x] baseline JSON 落档（回复原文全量 + 指标 + 判定）
+[x] 六指标 baseline 数值表产出（闲聊/记忆子集聚合 + 技术子集判据结果）
+[x] 漂移定级三档裁决 + 方案 v2.1 风险表"待实测"回填
 [ ] 口语标记目标区间 + W2 效果闸门数值化（baseline 后定稿）

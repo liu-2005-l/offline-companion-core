@@ -1,0 +1,219 @@
+{
+  "aggregate": {
+    "style_case_count": 25,
+    "style_reply_count": 28,
+    "opening_distinct_2": 0.851852,
+    "sentence_cv": 0.530947,
+    "per_case_sentence_cv_median": 0.183099,
+    "list_dependency_rate": 0.0,
+    "template_phrase_density_per_1000": 0.0,
+    "colloquial_marker_density_per_1000": 18.935978,
+    "cross_turn_4gram_jaccard_mean": 0.0,
+    "cross_turn_4gram_jaccard_by_group": {
+      "S16-S18": 0.0,
+      "M09-M10": 0.0
+    }
+  },
+  "per_case": {
+    "S01": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.728231,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 5,
+      "chars": 32
+    },
+    "S02": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.735484,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 1,
+      "chars": 63
+    },
+    "S03": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.030303,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 2,
+      "chars": 35
+    },
+    "S04": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.454545,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 0,
+      "chars": 13
+    },
+    "S05": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.222439,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 1,
+      "chars": 51
+    },
+    "S06": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.034483,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 0,
+      "chars": 31
+    },
+    "S07": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.2628,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 1,
+      "chars": 56
+    },
+    "S08": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.44,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 1,
+      "chars": 27
+    },
+    "S09": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.0,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 0,
+      "chars": 11
+    },
+    "S10": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.625,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 0,
+      "chars": 18
+    },
+    "S11": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.183099,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 0,
+      "chars": 73
+    },
+    "S12": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.0,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 0,
+      "chars": 15
+    },
+    "S13": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.681818,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 2,
+      "chars": 46
+    },
+    "S14": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.030303,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 0,
+      "chars": 35
+    },
+    "S15": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.265775,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 0,
+      "chars": 109
+    },
+    "S16-S18": {
+      "opening_distinct_2": 0.866667,
+      "sentence_cv": 0.253472,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 2,
+      "chars": 136
+    },
+    "M01": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.0,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 0,
+      "chars": 19
+    },
+    "M02": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.0,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 0,
+      "chars": 27
+    },
+    "M03": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.0,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 2,
+      "chars": 14
+    },
+    "M04": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.096774,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 1,
+      "chars": 33
+    },
+    "M05": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.022097,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 0,
+      "chars": 67
+    },
+    "M06": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.087719,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 0,
+      "chars": 59
+    },
+    "M07": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.32,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 2,
+      "chars": 52
+    },
+    "M08": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.0,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 0,
+      "chars": 27
+    },
+    "M09-M10": {
+      "opening_distinct_2": 1.0,
+      "sentence_cv": 0.791692,
+      "contains_list_structure": false,
+      "template_phrase_hits": 0,
+      "colloquial_marker_hits": 1,
+      "chars": 63
+    }
+  }
+}
