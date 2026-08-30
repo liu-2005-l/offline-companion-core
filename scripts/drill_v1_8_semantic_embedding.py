@@ -13,18 +13,18 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from offline_companion.core.memory_lifecycle.event_recaller import (  # noqa: E402
+from offline_companion.core.memory_lifecycle.event_recaller import (
     HASH_BOW_RECALL_THRESHOLD,
-    EventRecaller,
     SEMANTIC_RECALL_THRESHOLD,
+    EventRecaller,
 )
-from offline_companion.core.memory_lifecycle.event_repository import EventRepository  # noqa: E402
-from offline_companion.core.memory_lifecycle.event_types import SemanticEvent  # noqa: E402
-from offline_companion.core.memory_lifecycle.semantic_embedding_provider import (  # noqa: E402
+from offline_companion.core.memory_lifecycle.event_repository import EventRepository
+from offline_companion.core.memory_lifecycle.event_types import SemanticEvent
+from offline_companion.core.memory_lifecycle.semantic_embedding_provider import (
     SemanticEmbeddingProvider,
     embedding_space_of,
 )
-from offline_companion.shared.deterministic_embedding import cosine_similarity  # noqa: E402
+from offline_companion.shared.deterministic_embedding import cosine_similarity
 
 TRIPWIRES = (
     ("R43", "canine companion naps beside keyboard", "dog sleeps near laptop"),

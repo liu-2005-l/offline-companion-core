@@ -27,9 +27,13 @@ from offline_companion.core.persona_session.persona_loader import load_persona_f
 from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.runtime.inference_backend.backend import create_llama_backend
 from offline_companion.runtime.inference_backend.mock import EchoBackend
-from offline_companion.runtime.storage_index.engine import append_message, connect, new_session, recent_messages
+from offline_companion.runtime.storage_index.engine import (
+    append_message,
+    connect,
+    new_session,
+    recent_messages,
+)
 from offline_companion.shared.types import OceanVector, Persona
-
 from persona_expression_metrics import calculate_metrics
 
 DEFAULT_CASES = REPO_ROOT / "fixtures" / "persona_expression" / "w1_cases.json"
@@ -69,7 +73,7 @@ def _git_commit() -> str:
             text=True,
             encoding="utf-8",
         ).strip()
-    except Exception:
+    except (OSError, subprocess.CalledProcessError):
         return "unknown"
 
 
