@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from offline_companion.shared.types import TurnResult
-from offline_companion.shell.ui_host.cli import _resolve_cli_consent
+from offline_companion.shell.ui_host.cli import _default_persona_path, _resolve_cli_consent
 
 
 class _StubGateway:
@@ -65,3 +67,13 @@ def test_resolve_cli_consent_reprompts_then_denies(monkeypatch) -> None:
 
     assert result.reply == "已取消本轮云端请求。"
     assert orchestrator.calls == [("req-2", False)]
+
+
+def test_default_persona_path_is_absolute_and_existing(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("OFFLINE_COMPANION_PERSONA_PATH", raising=False)
+
+    persona_path = Path(_default_persona_path())
+
+    assert persona_path.is_absolute()
+    assert persona_path.is_file()

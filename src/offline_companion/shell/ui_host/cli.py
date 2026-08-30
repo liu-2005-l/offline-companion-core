@@ -46,6 +46,7 @@ from offline_companion.runtime.storage_index.knowledge_store import (
     default_knowledge_db_path,
 )
 from offline_companion.shared.errors import InferenceBackendError
+from offline_companion.shared.runtime_paths import configs_dir
 from offline_companion.shared.types import (
     AppPaths,
     OutboundPlan,
@@ -500,7 +501,7 @@ def _default_persona_path() -> str:
     env = os.environ.get("OFFLINE_COMPANION_PERSONA_PATH")
     if env:
         return env
-    return str(Path("configs") / "personas" / "default.yaml")
+    return str(configs_dir() / "personas" / "default.yaml")
 
 
 def build_parser() -> argparse.ArgumentParser:
