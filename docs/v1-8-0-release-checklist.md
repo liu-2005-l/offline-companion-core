@@ -18,7 +18,7 @@
 | G7 | 模型资产验收 | ONNX fp32 `model.onnx` SHA256 已校验；tokenizer 原子落盘 |
 | G8 | C2 判决资产 | `fixtures/v1_8_semantic_embedding_c2_scores.json` 在 repo，记录分布、sweep 与 R43-R46 分数 |
 | G9 | 文档终审 | CHANGELOG、V1 方案、fixture 文档与 docs 导航已同步 |
-| G10 | 版本号 + tag | `pyproject.toml` 与 `offline_companion.__version__` 为 `1.8.0`；tag 待发布动作执行 |
+| G10 | 版本号 + tag | ✅ `pyproject.toml` 与 `offline_companion.__version__` 为 `1.8.0`；`v1.8.0` tag 已推送，目标 `1084c13` |
 
 ## 二、已闭合范围
 
@@ -66,5 +66,5 @@
 ## 七、发布动作
 
 1. 收尾提交锁定 1187 基线。
-2. 用户确认后创建 `v1.8.0` tag。
+2. 已创建并推送 `v1.8.0` tag，目标 `1084c13`。
 3. 若决定发安装包，先执行干净 Windows 便携包/安装器验收；否则沿用 tag-only 口径。
