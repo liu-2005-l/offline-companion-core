@@ -70,6 +70,7 @@ def test_wait_until_ready_wraps_timeout(tmp_path: Path) -> None:
 def test_generate_posts_openai_messages(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     backend = LlamaServerBackend(
         _model_file(tmp_path),
+        seed=2024,
         model_config=ModelRuntimeConfig(
             model_id="test",
             stop_tokens=("<stop>",),
@@ -101,6 +102,7 @@ def test_generate_posts_openai_messages(monkeypatch: pytest.MonkeyPatch, tmp_pat
     assert captured["path"] == "/v1/chat/completions"
     payload = captured["payload"]
     assert isinstance(payload, dict)
+    assert payload["seed"] == 2024
     assert payload["stop"] == ["<stop>"]
     assert payload["messages"] == [
         {"role": "system", "content": "系统\n\n记忆"},

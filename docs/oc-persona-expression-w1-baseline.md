@@ -18,6 +18,12 @@
 
 说明：commit 记录为运行时产品基线。W1-B tooling 与本报告随后入档，不改变被测产品行为。
 
+勘误：原始数据中的 `seed42` / `seed1337` 实为 run 标签，W1-B runner 当时尚未传入 llama sampler seed；P50 漂移存在性结论不受影响，“双 seed 受控”表述作废，受控数据以 B.1 产物为准。
+
+锚关账：锚 commit `18f24c5` 内 fixture 存在中文问号落盘失真；`e4f052b` 已修复（编码修复，判据语义未变）；修复发生于任何 baseline 运行之前，锚内失真版本从未产生数据。
+
+B.1 受控补测：`w1_b1_controlled_rerun.json` 已用真实 sampler seed 重跑；同 seed 完整 run 90 条回复逐字节一致，N=5 probe 漂移率为 5/5。
+
 2. 六指标 baseline
 
 | 指标 | baseline |

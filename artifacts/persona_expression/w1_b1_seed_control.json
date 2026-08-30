@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "commit": "5e4ba95",
+    "model": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+    "date": "2026-08-30T08:59:50Z",
+    "case_seeds": [
+      42,
+      1337,
+      2024
+    ],
+    "probe_seeds": [
+      42,
+      1337,
+      2024,
+      7,
+      99
+    ],
+    "verify_seed": 42,
+    "sampler_seed_connected": true
+  },
+  "seed_control": {
+    "seed": 42,
+    "byte_identical": true,
+    "compared_reply_count": 90
+  },
+  "case_runs": {},
+  "case_metric_distribution": {},
+  "probe_runs": {},
+  "probe_summary": {
+    "runs": {},
+    "drift_rate": 0.0,
+    "cliff_run_count": 0,
+    "run_count": 0,
+    "first_cliff_turns": []
+  },
+  "paired_probe_runs": {},
+  "paired_probe_summary": {}
+}

@@ -104,6 +104,7 @@ def _build_backend(args: argparse.Namespace, *, seed: int | None = None):
         n_gpu_layers=args.n_gpu_layers,
         verbose=args.verbose,
         run_health_check=not args.skip_health_check,
+        seed=seed,
     )
 
 

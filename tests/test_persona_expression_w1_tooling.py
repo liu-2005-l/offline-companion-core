@@ -12,6 +12,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 calculate_metrics = importlib.import_module("persona_expression_metrics").calculate_metrics
 run_baseline = importlib.import_module("run_persona_expression_w1_baseline").run_baseline
+run_b1 = importlib.import_module("run_persona_expression_w1_b1").run_b1
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "persona_expression"
@@ -96,3 +97,74 @@ def test_w1_baseline_runner_echo_schema(tmp_path) -> None:
         if case["scenario"] == "memory"
         for count in case["recall_counts"]
     )
+
+
+def test_w1_b1_runner_echo_schema(tmp_path) -> None:
+    cases_path = tmp_path / "cases.json"
+    probe_path = tmp_path / "probe.json"
+    cases_path.write_text(
+        json.dumps(
+            {
+                "version": "test",
+                "memory_bundle": [{"id": "MF3", "content": "事件：下周三有操作系统期末考试"}],
+                "cases": [
+                    {
+                        "id": "M01",
+                        "scenario": "memory",
+                        "group": "M01",
+                        "turns": [{"user": "我下周三要考什么来着？"}],
+                        "focus": ["memory_weaving"],
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    probe_path.write_text(
+        json.dumps(
+            {
+                "version": "test",
+                "seeds": [42],
+                "probe_points": [1],
+                "turns": [
+                    {
+                        "turn": 1,
+                        "domain": "identity_probe",
+                        "user": "你现在叫什么名字来着？",
+                        "is_probe": True,
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    args = Namespace(
+        cases=cases_path,
+        probe=probe_path,
+        persona=Path("configs/personas/default.yaml"),
+        backend="echo",
+        model=None,
+        output=tmp_path / "out.json",
+        max_tokens=64,
+        n_ctx=512,
+        n_gpu_layers=0,
+        skip_health_check=True,
+        verbose=False,
+        case_seeds=(42,),
+        probe_seeds=(42,),
+        verify_seed=42,
+        include_paired_probe=False,
+        allow_nondeterministic=False,
+        skip_seed_control=False,
+        skip_cases=False,
+        skip_probe=False,
+    )
+
+    payload = run_b1(args)
+
+    assert payload["seed_control"]["byte_identical"] is True
+    assert payload["seed_control"]["compared_reply_count"] == 2
+    assert sorted(payload["case_runs"]) == ["seed42"]
+    assert payload["probe_summary"]["run_count"] == 1

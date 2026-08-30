@@ -83,6 +83,7 @@ class LlamaServerBackend:
         model_config: ModelRuntimeConfig | None = None,
         startup_timeout: float = 30.0,
         request_timeout: float = 180.0,
+        seed: int | None = None,
     ) -> None:
         """摘要：保存服务启动参数，首次健康检查或生成时再启动进程。
 
@@ -102,6 +103,7 @@ class LlamaServerBackend:
         self.model_config = model_config or ModelRuntimeConfig(model_id=self.model_path.stem)
         self.startup_timeout = startup_timeout
         self.request_timeout = request_timeout
+        self.seed = seed
         self.port = _find_free_port()
         self._base_url = f"http://127.0.0.1:{self.port}"
         self._process: subprocess.Popen[bytes] | None = None
@@ -210,6 +212,8 @@ class LlamaServerBackend:
                 "max_tokens": max_tokens,
                 "stream": False,
             }
+            if self.seed is not None:
+                payload["seed"] = int(self.seed)
             if self.model_config.stop_tokens:
                 payload["stop"] = list(self.model_config.stop_tokens)
             try:
@@ -255,6 +259,8 @@ class LlamaServerBackend:
             "max_tokens": max_tokens,
             "stream": True,
         }
+        if self.seed is not None:
+            payload["seed"] = int(self.seed)
         if self.model_config.stop_tokens:
             payload["stop"] = list(self.model_config.stop_tokens)
         request = urllib.request.Request(

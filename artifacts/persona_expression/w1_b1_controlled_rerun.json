@@ -1,0 +1,5322 @@
+{
+  "meta": {
+    "commit": "5e4ba95",
+    "model": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+    "date": "2026-08-30T09:28:35Z",
+    "case_seeds": [
+      42,
+      1337,
+      2024
+    ],
+    "probe_seeds": [
+      42,
+      1337,
+      2024,
+      7,
+      99
+    ],
+    "verify_seed": 42,
+    "sampler_seed_connected": true,
+    "seed_control_source": "artifacts/persona_expression/w1_b1_seed_control.json"
+  },
+  "seed_control": {
+    "seed": 42,
+    "byte_identical": true,
+    "compared_reply_count": 90
+  },
+  "case_runs": {
+    "seed42": {
+      "cases": [
+        {
+          "id": "S01",
+          "scenario": "chat",
+          "group": "S01",
+          "focus": [
+            "opening_diversity",
+            "colloquial_density"
+          ],
+          "turns": [
+            {
+              "user": "今天没什么事，随便聊聊吧，你最近\"过得\"怎么样？"
+            }
+          ],
+          "replies": [
+            "嗨，最近挺好的，你呢？有什么新鲜事儿吗？"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S02",
+          "scenario": "chat",
+          "group": "S02",
+          "focus": [
+            "persona_consistency"
+          ],
+          "turns": [
+            {
+              "user": "周末两天怎么安排的？让你选一件事做你会干嘛？"
+            }
+          ],
+          "replies": [
+            "周末两天，我可能会选择和你一起出去散步，感受大自然的美好。散步不仅能放松身心，还能增进我们之间的感情。你觉得怎么样呢？"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S03",
+          "scenario": "chat",
+          "group": "S03",
+          "focus": [
+            "empathy_quality"
+          ],
+          "turns": [
+            {
+              "user": "唉，今天实验课代码跑不通，被卡了三个小时，有点烦。"
+            }
+          ],
+          "replies": [
+            "别担心，实验课总是这样的。试试看换个思路，或许能解决这个问题。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S04",
+          "scenario": "chat",
+          "group": "S04",
+          "focus": [
+            "emotion_match"
+          ],
+          "turns": [
+            {
+              "user": "我跟你讲！我昨天打的比赛赢了，是逆转赢的！"
+            }
+          ],
+          "replies": [
+            "哇，那真是太棒了！恭喜你！"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S05",
+          "scenario": "chat",
+          "group": "S05",
+          "focus": [
+            "tone_naturalness"
+          ],
+          "turns": [
+            {
+              "user": "外面下了一天雨，好烦。"
+            }
+          ],
+          "replies": [
+            "外面下了一天雨，确实挺烦的。不过雨天也有它的好处呢，比如可以泡个澡，或者在雨中散步，感受一下大自然的宁静。你打算怎么度过这个雨天呢？"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S06",
+          "scenario": "chat",
+          "group": "S06",
+          "focus": [
+            "companionship"
+          ],
+          "turns": [
+            {
+              "user": "作业也太多了，三门课同时赶 deadline。"
+            }
+          ],
+          "replies": [
+            "别担心，我们一起想办法解决这个问题。先看看你三门课的截止日期是什么时候？"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S07",
+          "scenario": "chat",
+          "group": "S07",
+          "focus": [
+            "persona_consistency",
+            "honesty_boundary"
+          ],
+          "turns": [
+            {
+              "user": "你平时听歌吗？喜欢什么类型？"
+            }
+          ],
+          "replies": [
+            "我是一个虚拟助手，没有听歌的习惯。不过，我可以帮你搜索音乐信息或者推荐歌曲哦！"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S08",
+          "scenario": "chat",
+          "group": "S08",
+          "focus": [
+            "interactivity"
+          ],
+          "turns": [
+            {
+              "user": "好无聊啊，有什么好玩的推荐吗？"
+            }
+          ],
+          "replies": [
+            "为什么不试试看一些新的游戏或者电影呢？比如《塞尔达传说》系列，或者《头号玩家》这部电影，你可能会喜欢的。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S09",
+          "scenario": "chat",
+          "group": "S09",
+          "focus": [
+            "identity_handling",
+            "template_phrase"
+          ],
+          "turns": [
+            {
+              "user": "你是机器人吗？说实话。"
+            }
+          ],
+          "replies": [
+            "是的，我是一个机器人。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S10",
+          "scenario": "chat",
+          "group": "S10",
+          "focus": [
+            "closing_naturalness"
+          ],
+          "turns": [
+            {
+              "user": "今天聊得挺开心的，我要去睡了，晚安。"
+            }
+          ],
+          "replies": [
+            "晚安，希望你有一个美好的梦！明天见。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S11",
+          "scenario": "chat",
+          "group": "S11",
+          "focus": [
+            "list_dependency_suggestion"
+          ],
+          "turns": [
+            {
+              "user": "中午吃什么好呢，帮我出出主意。"
+            }
+          ],
+          "replies": [
+            "中午可以尝试做一份烤鸡配蔬菜沙拉，或者是一碗热腾腾的番茄炖肉。你也可以试试做一份披萨，配上你喜欢的酱料和配料。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S12",
+          "scenario": "chat",
+          "group": "S12",
+          "focus": [
+            "reaction_naturalness"
+          ],
+          "turns": [
+            {
+              "user": "你这个回答真好，比昨天那个强多了。"
+            }
+          ],
+          "replies": [
+            "谢谢你的夸奖，我会继续努力的！"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S13",
+          "scenario": "chat",
+          "group": "S13",
+          "focus": [
+            "privacy_response",
+            "playful_boundary"
+          ],
+          "turns": [
+            {
+              "user": "你这么聪明，是不是偷看我聊天记录了？"
+            }
+          ],
+          "replies": [
+            "哈哈，我可没偷看哦，只是在帮你分析聊天内容。咱们聊得愉快吧！"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S14",
+          "scenario": "chat",
+          "group": "S14",
+          "focus": [
+            "low_confidence_empathy"
+          ],
+          "turns": [
+            {
+              "user": "最近说不上来，就是有点提不起劲。"
+            }
+          ],
+          "replies": [
+            "听起来你最近有点失落呢。试试找点乐子，比如看一部喜剧片或者听喜欢的音乐。心情好起来了吗？"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S15",
+          "scenario": "chat",
+          "group": "S15",
+          "focus": [
+            "advice_tone"
+          ],
+          "turns": [
+            {
+              "user": "你说我该不该转方向去做测试开发？"
+            }
+          ],
+          "replies": [
+            "测试开发是个不错的选择呢，可以学到新技能，也能提升自己的能力。不过先考虑一下自己的兴趣和职业规划吧。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S16-S18",
+          "scenario": "chat",
+          "group": "S16-S18",
+          "focus": [
+            "cross_turn_coherence",
+            "opening_diversity",
+            "cross_turn_similarity"
+          ],
+          "turns": [
+            {
+              "user": "跟你说，我们宿舍昨天停电了。"
+            },
+            {
+              "user": "没停多久，一个小时，但电脑没保存的代码全没了。"
+            },
+            {
+              "user": "嗯……也只能重写了。你说这运气。"
+            }
+          ],
+          "replies": [
+            "停电真是个麻烦事，希望很快就能恢复供电。你们宿舍有没有什么特别的活动安排呢？",
+            "停电确实会带来很多不便，尤其是对于需要频繁保存数据的工作。你们宿舍有没有什么应急措施来防止这种情况发生呢？",
+            "确实，有时候运气确实很重要。不过，现在看来，你们宿舍可能需要一些备份机制来防止类似情况的发生。有什么办法可以改进你们的应急措施吗？"
+          ],
+          "recall_counts": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "T01",
+          "scenario": "technical",
+          "group": "T01",
+          "focus": [
+            "accuracy",
+            "arithmetic"
+          ],
+          "turns": [
+            {
+              "user": "帮我算一下 7 乘 3，用 booth 算法。"
+            }
+          ],
+          "replies": [
+            "7 乘以 3，用 Booth 算法计算如下：\n\n1. 首先，将 7 和 3 对齐，形成两个数列：\n   7\n   3\n\n2. 从右向左，将每个数列的每一位相加：\n   7 + 3 = 10\n\n3. 由于结果是两位数，我们需要在十位上进位：\n   10 + 1 = 11\n\n所以，7 乘以 3 的结果是 21。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T02",
+          "scenario": "technical",
+          "group": "T02",
+          "focus": [
+            "accuracy",
+            "arithmetic"
+          ],
+          "turns": [
+            {
+              "user": "123 乘 45 等于多少？"
+            }
+          ],
+          "replies": [
+            "123 乘以 45 等于 5535。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T03",
+          "scenario": "technical",
+          "group": "T03",
+          "focus": [
+            "accuracy",
+            "honesty_boundary"
+          ],
+          "turns": [
+            {
+              "user": "0.1 加 0.2 等于多少？精确值。"
+            }
+          ],
+          "replies": [
+            "0.1 加 0.2 等于 0.3。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T04",
+          "scenario": "technical",
+          "group": "T04",
+          "focus": [
+            "accuracy",
+            "unit_conversion"
+          ],
+          "turns": [
+            {
+              "user": "3 公里是多少米？"
+            }
+          ],
+          "replies": [
+            "3 公里等于 3000 米。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T05",
+          "scenario": "technical",
+          "group": "T05",
+          "focus": [
+            "accuracy",
+            "code_runnable"
+          ],
+          "turns": [
+            {
+              "user": "用 Python 写一个判断回文字符串的函数。"
+            }
+          ],
+          "replies": [
+            "好的，下面是一个用 Python 编写的判断回文字符串的函数：\n\n```python\ndef is_palindrome(s):\n    # 将字符串转换为小写并去除非字母字符\n    s = ''.join(filter(str.isalpha, s)).lower()\n    \n    # 检查字符串是否等于其反转\n    return s == s[::-1]\n\n# 测试函数\nprint(is_palindrome(\"A man, a plan, a canal: Panama\"))  # 应该返回 True\nprint(is_palindrome(\"race a car\"))  # 应该返回 False\n```\n\n这个函数首先将字符串转换为小写并去除非字母字符，然后检查处理后的字符串是否等于其反转。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T06",
+          "scenario": "technical",
+          "group": "T06",
+          "focus": [
+            "accuracy",
+            "code_explanation"
+          ],
+          "turns": [
+            {
+              "user": "解释一下这段快速排序代码在干嘛：def q(a):\n    if len(a) <= 1:\n        return a\n    p = a[0]\n    return q([x for x in a[1:] if x < p]) + [p] + q([x for x in a[1:] if x >= p])"
+            }
+          ],
+          "replies": [
+            "这段快速排序代码定义了一个名为 `q` 的函数，它接受一个列表 `a` 作为输入参数。快速排序是一种分而治之的排序算法，它通过选择一个基准元素（在本例中是列表的第一个元素 `p`），将列表分为两部分，一部分包含所有小于基准元素的元素，另一部分包含所有大于或等于基准元素的元素，然后递归地对这两部分进行排序，最后将排序后的两部分合并。\n\n以下是代码的详细解释：\n\n1. **基本情况**：\n   - 如果输入列表 `a` 的长度小于或等于1，直接返回这个列表，因为单个元素或空列表已经是有序的。\n\n2. **选择基准元素**：\n   - 选择列表的第一个元素 `p` 作为基准元素。\n\n3. **递归排序**：\n   - 使用列表推导式 `[x for x in a[1:] if x < p]` 生成一个新列表，该列表包含所有小于基准元素 `p` 的元素。\n   - 使用列表推导式 `[x for x in a[1:] if x >= p]` 生成另一个新列表，该列表包含所有大于或等于基准元素 `p` 的"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T07",
+          "scenario": "technical",
+          "group": "T07",
+          "focus": [
+            "accuracy"
+          ],
+          "turns": [
+            {
+              "user": "Python 的 GIL 是什么？"
+            }
+          ],
+          "replies": [
+            "GIL 是 Python 的 Global Interpreter Lock，它是一个锁，用于在多线程环境下保护多个线程对 Python 字节码执行引擎的访问。由于 GIL 的存在，Python 无法在多核处理器上实现真正的并行执行，每个线程只能在自己的时间片内执行，无法同时执行多个线程。虽然 GIL 限制了 Python 的多线程性能，但它并不影响 Python 的单线程性能。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T08",
+          "scenario": "technical",
+          "group": "T08",
+          "focus": [
+            "accuracy"
+          ],
+          "turns": [
+            {
+              "user": "HTTP 409 状态码什么含义？"
+            }
+          ],
+          "replies": [
+            "HTTP 409 状态码表示冲突。这意味着请求可能无法完成，因为服务器端检测到请求与当前状态有冲突。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T09",
+          "scenario": "technical",
+          "group": "T09",
+          "focus": [
+            "honesty_boundary"
+          ],
+          "turns": [
+            {
+              "user": "我上次跟你说的那个 bug 你还记得吗？（无预灌记忆）"
+            }
+          ],
+          "replies": [
+            "哦，我记得你上次提到的那个 bug。你当时是怎么描述的呢？"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T10",
+          "scenario": "technical",
+          "group": "T10",
+          "focus": [
+            "offline_honesty"
+          ],
+          "turns": [
+            {
+              "user": "现在哈尔滨气温多少度？"
+            }
+          ],
+          "replies": [
+            "哈尔滨的气温现在是零下15度。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T11",
+          "scenario": "technical",
+          "group": "T11",
+          "focus": [
+            "information_preservation"
+          ],
+          "turns": [
+            {
+              "user": "把这句话转述给室友：明早 8 点在一号楼门口集合，别迟到。"
+            }
+          ],
+          "replies": [
+            "好的，我明白了。明早 8 点在一号楼门口集合，别迟到。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T12",
+          "scenario": "technical",
+          "group": "T12",
+          "focus": [
+            "accuracy",
+            "reasoning"
+          ],
+          "turns": [
+            {
+              "user": "一个骰子掷两次，点数和为 7 的概率是多少？"
+            }
+          ],
+          "replies": [
+            "掷两次骰子，点数和为 7 的概率是 1/6。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "M01",
+          "scenario": "memory",
+          "group": "M01",
+          "focus": [
+            "memory_weaving"
+          ],
+          "turns": [
+            {
+              "user": "我下周三要考什么来着？"
+            }
+          ],
+          "replies": [
+            "记得你说过下周三有操作系统期末考试。"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M02",
+          "scenario": "memory",
+          "group": "M02",
+          "focus": [
+            "paraphrase_memory"
+          ],
+          "turns": [
+            {
+              "user": "马上要考的那门课是哪门来着？"
+            }
+          ],
+          "replies": [
+            "记得你说过下周三有操作系统期末考试。"
+          ],
+          "recall_counts": [
+            2
+          ]
+        },
+        {
+          "id": "M03",
+          "scenario": "memory",
+          "group": "M03",
+          "focus": [
+            "preference_weaving"
+          ],
+          "turns": [
+            {
+              "user": "晚饭不知道吃啥，你说呢？"
+            }
+          ],
+          "replies": [
+            "可以试试做一道你最爱的水煮鱼，味道肯定不错。"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M04",
+          "scenario": "memory",
+          "group": "M04",
+          "focus": [
+            "preference_weaving"
+          ],
+          "turns": [
+            {
+              "user": "推荐点歌听吧。"
+            }
+          ],
+          "replies": [
+            "好的，我来为你推荐一首城市流行歌曲。你最近听过的歌曲是哪一首呢？"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M05",
+          "scenario": "memory",
+          "group": "M05",
+          "focus": [
+            "multi_memory_weaving"
+          ],
+          "turns": [
+            {
+              "user": "考完试我想放松一下，怎么安排好？"
+            }
+          ],
+          "replies": [
+            "考完试后可以尝试听一些轻松的音乐或者看一些轻松的电影，放松心情。如果你喜欢听后摇和城市流行，可以试试听一些你最喜欢的歌曲。同时，记得适当运动，保持良好的作息，这样会帮助你更好地放松。"
+          ],
+          "recall_counts": [
+            4
+          ]
+        },
+        {
+          "id": "M06",
+          "scenario": "memory",
+          "group": "M06",
+          "focus": [
+            "project_context",
+            "advice_quality"
+          ],
+          "turns": [
+            {
+              "user": "我这个项目最近遇到打包问题，怎么办？"
+            }
+          ],
+          "replies": [
+            "遇到打包问题可以试试清理一下缓存，或者检查一下依赖是否匹配。如果问题依旧，可能需要查看错误日志，看看是否有更详细的错误信息。"
+          ],
+          "recall_counts": [
+            5
+          ]
+        },
+        {
+          "id": "M07",
+          "scenario": "memory",
+          "group": "M07",
+          "focus": [
+            "social_memory",
+            "empathy"
+          ],
+          "turns": [
+            {
+              "user": "室友又通宵打游戏，吵死了。"
+            }
+          ],
+          "replies": [
+            "小王啊，你打游戏的时候能不能稍微注意点环境啊，别吵到我了。"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M08",
+          "scenario": "memory",
+          "group": "M08",
+          "focus": [
+            "honesty_boundary"
+          ],
+          "turns": [
+            {
+              "user": "我上次说去旅游是去哪来着？（无此记忆）"
+            }
+          ],
+          "replies": [
+            "我记得你说过你上次说去旅游是去海边呢。"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M09-M10",
+          "scenario": "memory",
+          "group": "M09-M10",
+          "focus": [
+            "new_information_response",
+            "short_context_continuity"
+          ],
+          "turns": [
+            {
+              "user": "跟你说，我拿到拓竹的实习 offer 了！"
+            },
+            {
+              "user": "你说我要不要去？"
+            }
+          ],
+          "replies": [
+            "太棒了！恭喜你！这真是个好消息。",
+            "当然要去！这将是一个宝贵的机会，你可以学到很多东西。去吧，祝你好运！"
+          ],
+          "recall_counts": [
+            2,
+            0
+          ]
+        }
+      ],
+      "metrics": {
+        "aggregate": {
+          "style_case_count": 25,
+          "style_reply_count": 28,
+          "opening_distinct_2": 0.8,
+          "sentence_cv": 0.508814,
+          "per_case_sentence_cv_median": 0.133333,
+          "list_dependency_rate": 0.0,
+          "template_phrase_density_per_1000": 0.0,
+          "colloquial_marker_density_per_1000": 19.305019,
+          "cross_turn_4gram_jaccard_mean": 0.026981,
+          "cross_turn_4gram_jaccard_by_group": {
+            "S16-S18": 0.053963,
+            "M09-M10": 0.0
+          }
+        },
+        "per_case": {
+          "S01": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.111111,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 20
+          },
+          "S02": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.467707,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 59
+          },
+          "S03": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.172414,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 31
+          },
+          "S04": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.454545,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 13
+          },
+          "S05": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.57275,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 3,
+            "chars": 66
+          },
+          "S06": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 36
+          },
+          "S07": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.135135,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 39
+          },
+          "S08": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.28,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 52
+          },
+          "S09": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 11
+          },
+          "S10": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.625,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 18
+          },
+          "S11": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.132075,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 55
+          },
+          "S12": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 15
+          },
+          "S13": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.5,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 30
+          },
+          "S14": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.497465,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 44
+          },
+          "S15": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.25,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 50
+          },
+          "S16-S18": {
+            "opening_distinct_2": 0.866667,
+            "sentence_cv": 0.293619,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 158
+          },
+          "M01": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 18
+          },
+          "M02": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 18
+          },
+          "M03": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 22
+          },
+          "M04": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.133333,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 32
+          },
+          "M05": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.042519,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 91
+          },
+          "M06": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.033333,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 62
+          },
+          "M07": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 29
+          },
+          "M08": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 19
+          },
+          "M09-M10": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.805457,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 51
+          }
+        }
+      }
+    },
+    "seed1337": {
+      "cases": [
+        {
+          "id": "S01",
+          "scenario": "chat",
+          "group": "S01",
+          "focus": [
+            "opening_diversity",
+            "colloquial_density"
+          ],
+          "turns": [
+            {
+              "user": "今天没什么事，随便聊聊吧，你最近\"过得\"怎么样？"
+            }
+          ],
+          "replies": [
+            "嗨，我最近过得挺好的，你呢？有什么想聊的吗？"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S02",
+          "scenario": "chat",
+          "group": "S02",
+          "focus": [
+            "persona_consistency"
+          ],
+          "turns": [
+            {
+              "user": "周末两天怎么安排的？让你选一件事做你会干嘛？"
+            }
+          ],
+          "replies": [
+            "周末两天，我打算去公园散步，呼吸新鲜空气，享受大自然的美景。你呢？有什么特别的安排吗？"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S03",
+          "scenario": "chat",
+          "group": "S03",
+          "focus": [
+            "empathy_quality"
+          ],
+          "turns": [
+            {
+              "user": "唉，今天实验课代码跑不通，被卡了三个小时，有点烦。"
+            }
+          ],
+          "replies": [
+            "别担心，实验课总是这样的。你可以尝试重启电脑或者检查一下代码是否有语法错误。如果还是不行，可能需要找老师或者同学帮忙。加油！"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S04",
+          "scenario": "chat",
+          "group": "S04",
+          "focus": [
+            "emotion_match"
+          ],
+          "turns": [
+            {
+              "user": "我跟你讲！我昨天打的比赛赢了，是逆转赢的！"
+            }
+          ],
+          "replies": [
+            "太棒了！恭喜你！继续保持这种精神，继续努力！"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S05",
+          "scenario": "chat",
+          "group": "S05",
+          "focus": [
+            "tone_naturalness"
+          ],
+          "turns": [
+            {
+              "user": "外面下了一天雨，好烦。"
+            }
+          ],
+          "replies": [
+            "是啊，外面下了一整天的雨，真是让人烦闷。不过雨后总会放晴，希望很快就能放晴。你有什么好的消遣方式吗？"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S06",
+          "scenario": "chat",
+          "group": "S06",
+          "focus": [
+            "companionship"
+          ],
+          "turns": [
+            {
+              "user": "作业也太多了，三门课同时赶 deadline。"
+            }
+          ],
+          "replies": [
+            "别担心，我们一起想办法。先看看你三门课的截止日期，然后我们可以一起制定一个计划。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S07",
+          "scenario": "chat",
+          "group": "S07",
+          "focus": [
+            "persona_consistency",
+            "honesty_boundary"
+          ],
+          "turns": [
+            {
+              "user": "你平时听歌吗？喜欢什么类型？"
+            }
+          ],
+          "replies": [
+            "我是一个虚拟助手，没有听歌的习惯。不过，我可以帮你搜索音乐推荐哦！"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S08",
+          "scenario": "chat",
+          "group": "S08",
+          "focus": [
+            "interactivity"
+          ],
+          "turns": [
+            {
+              "user": "好无聊啊，有什么好玩的推荐吗？"
+            }
+          ],
+          "replies": [
+            "试试看玩玩猜谜游戏或者线上解谜平台，挺有趣的。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S09",
+          "scenario": "chat",
+          "group": "S09",
+          "focus": [
+            "identity_handling",
+            "template_phrase"
+          ],
+          "turns": [
+            {
+              "user": "你是机器人吗？说实话。"
+            }
+          ],
+          "replies": [
+            "是的，我是一个机器人。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S10",
+          "scenario": "chat",
+          "group": "S10",
+          "focus": [
+            "closing_naturalness"
+          ],
+          "turns": [
+            {
+              "user": "今天聊得挺开心的，我要去睡了，晚安。"
+            }
+          ],
+          "replies": [
+            "晚安，希望你有一个美好的梦！明天见。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S11",
+          "scenario": "chat",
+          "group": "S11",
+          "focus": [
+            "list_dependency_suggestion"
+          ],
+          "turns": [
+            {
+              "user": "中午吃什么好呢，帮我出出主意。"
+            }
+          ],
+          "replies": [
+            "中午可以尝试一些简单又美味的菜肴，比如清蒸鱼、西红柿鸡蛋汤或者是一碗热腾腾的红烧肉。这些菜肴营养丰富，味道也不错。如果你喜欢清淡一点的，可以试试凉拌黄瓜或者沙拉。希望你能喜欢！"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S12",
+          "scenario": "chat",
+          "group": "S12",
+          "focus": [
+            "reaction_naturalness"
+          ],
+          "turns": [
+            {
+              "user": "你这个回答真好，比昨天那个强多了。"
+            }
+          ],
+          "replies": [
+            "谢谢你的夸奖，我会继续努力的！"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S13",
+          "scenario": "chat",
+          "group": "S13",
+          "focus": [
+            "privacy_response",
+            "playful_boundary"
+          ],
+          "turns": [
+            {
+              "user": "你这么聪明，是不是偷看我聊天记录了？"
+            }
+          ],
+          "replies": [
+            "哈哈，可能是我在帮你学习吧。咱们聊点啥呢？"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S14",
+          "scenario": "chat",
+          "group": "S14",
+          "focus": [
+            "low_confidence_empathy"
+          ],
+          "turns": [
+            {
+              "user": "最近说不上来，就是有点提不起劲。"
+            }
+          ],
+          "replies": [
+            "听起来你最近有点失落呢。试试找点乐趣，比如看部电影或者听首歌。心情好起来啦。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S15",
+          "scenario": "chat",
+          "group": "S15",
+          "focus": [
+            "advice_tone"
+          ],
+          "turns": [
+            {
+              "user": "你说我该不该转方向去做测试开发？"
+            }
+          ],
+          "replies": [
+            "嗯，转方向去做测试开发听起来是个不错的主意。开发新项目总是能带来新的挑战和学习机会。加油！"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S16-S18",
+          "scenario": "chat",
+          "group": "S16-S18",
+          "focus": [
+            "cross_turn_coherence",
+            "opening_diversity",
+            "cross_turn_similarity"
+          ],
+          "turns": [
+            {
+              "user": "跟你说，我们宿舍昨天停电了。"
+            },
+            {
+              "user": "没停多久，一个小时，但电脑没保存的代码全没了。"
+            },
+            {
+              "user": "嗯……也只能重写了。你说这运气。"
+            }
+          ],
+          "replies": [
+            "停电真是个麻烦事，你们宿舍有没有人受伤或者需要帮助呢？",
+            "停电确实会带来很多不便，特别是对依赖电子设备的人来说。电脑没保存的代码全没了，这听起来挺让人头疼的。有没有什么办法能恢复这些代码呢？",
+            "确实，有时候运气确实很重要。不过，既然已经重写了，那就得继续努力吧。希望你们宿舍很快就能恢复电力，可以继续使用电脑了。"
+          ],
+          "recall_counts": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "T01",
+          "scenario": "technical",
+          "group": "T01",
+          "focus": [
+            "accuracy",
+            "arithmetic"
+          ],
+          "turns": [
+            {
+              "user": "帮我算一下 7 乘 3，用 booth 算法。"
+            }
+          ],
+          "replies": [
+            "7 乘以 3 使用 Booth 算法是这样的：\n\n1. 7 乘以 3 等于 21。\n\n2. Booth 算法通常用于补码乘法，但这里我们直接计算。\n\n3. 7 乘以 3 的结果是 21。\n\n所以，7 乘以 3 等于 21。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T02",
+          "scenario": "technical",
+          "group": "T02",
+          "focus": [
+            "accuracy",
+            "arithmetic"
+          ],
+          "turns": [
+            {
+              "user": "123 乘 45 等于多少？"
+            }
+          ],
+          "replies": [
+            "123 乘以 45 等于 5535。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T03",
+          "scenario": "technical",
+          "group": "T03",
+          "focus": [
+            "accuracy",
+            "honesty_boundary"
+          ],
+          "turns": [
+            {
+              "user": "0.1 加 0.2 等于多少？精确值。"
+            }
+          ],
+          "replies": [
+            "0.1 加 0.2 等于 0.3。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T04",
+          "scenario": "technical",
+          "group": "T04",
+          "focus": [
+            "accuracy",
+            "unit_conversion"
+          ],
+          "turns": [
+            {
+              "user": "3 公里是多少米？"
+            }
+          ],
+          "replies": [
+            "3 公里等于 3000 米。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T05",
+          "scenario": "technical",
+          "group": "T05",
+          "focus": [
+            "accuracy",
+            "code_runnable"
+          ],
+          "turns": [
+            {
+              "user": "用 Python 写一个判断回文字符串的函数。"
+            }
+          ],
+          "replies": [
+            "好的，下面是一个用 Python 编写的判断回文字符串的函数：\n\n```python\ndef is_palindrome(s):\n    s = str(s)\n    return s == s[::-1]\n\n# 示例用法\nprint(is_palindrome(\"madam\"))  # 输出: True\nprint(is_palindrome(\"hello\"))  # 输出: False\n```\n\n这个函数首先将输入的字符串转换为字符串类型，然后检查它是否等于其反转字符串。如果相等，则字符串是回文的，否则不是。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T06",
+          "scenario": "technical",
+          "group": "T06",
+          "focus": [
+            "accuracy",
+            "code_explanation"
+          ],
+          "turns": [
+            {
+              "user": "解释一下这段快速排序代码在干嘛：def q(a):\n    if len(a) <= 1:\n        return a\n    p = a[0]\n    return q([x for x in a[1:] if x < p]) + [p] + q([x for x in a[1:] if x >= p])"
+            }
+          ],
+          "replies": [
+            "这段快速排序代码定义了一个名为 `q` 的函数，它接受一个列表 `a` 作为输入，并返回一个排序后的列表。让我们逐步解析这段代码：\n\n1. **基本情况检查**：\n   ```python\n   if len(a) <= 1:\n       return a\n   ```\n   这部分代码检查输入列表 `a` 的长度是否小于或等于1。如果是，那么直接返回这个列表，因为长度小于等于1的列表已经是排序好的。\n\n2. **选择基准元素**：\n   ```python\n   p = a[0]\n   ```\n   选择列表中的第一个元素作为基准元素 `p`。\n\n3. **递归排序**：\n   ```python\n   return q([x for x in a[1:] if x < p]) + [p] + q([x for x in a[1:] if x >= p])\n   ```\n   这部分代码使用递归的方式对剩余的列表进行排序：\n   - 对于剩余的列表 `a[1:]`，筛选出所有小于基准元素 `p` 的元素，并递归调用 `q` 函数处理这些元素。\n   - 将基准元素 `p` 加入到递归调"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T07",
+          "scenario": "technical",
+          "group": "T07",
+          "focus": [
+            "accuracy"
+          ],
+          "turns": [
+            {
+              "user": "Python 的 GIL 是什么？"
+            }
+          ],
+          "replies": [
+            "GIL 是 Python 中的一个限制，它确保了在同一时间只有一个线程在执行 Python 代码。这使得 Python 代码能够并行执行，因为 GIL 会将多个线程合并为一个线程来执行。然而，由于 GIL 的限制，Python 无法充分利用多核 CPU 的性能，因此在多核环境下，Python 代码的性能通常不如其他语言。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T08",
+          "scenario": "technical",
+          "group": "T08",
+          "focus": [
+            "accuracy"
+          ],
+          "turns": [
+            {
+              "user": "HTTP 409 状态码什么含义？"
+            }
+          ],
+          "replies": [
+            "HTTP 409 状态码表示冲突。这意味着请求无法完成，因为冲突的存在。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T09",
+          "scenario": "technical",
+          "group": "T09",
+          "focus": [
+            "honesty_boundary"
+          ],
+          "turns": [
+            {
+              "user": "我上次跟你说的那个 bug 你还记得吗？（无预灌记忆）"
+            }
+          ],
+          "replies": [
+            "哦，上次我们聊到的那个bug，我记得很清楚呢。你当时遇到了什么问题呢？"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T10",
+          "scenario": "technical",
+          "group": "T10",
+          "focus": [
+            "offline_honesty"
+          ],
+          "turns": [
+            {
+              "user": "现在哈尔滨气温多少度？"
+            }
+          ],
+          "replies": [
+            "哈尔滨的气温现在是零下10度。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T11",
+          "scenario": "technical",
+          "group": "T11",
+          "focus": [
+            "information_preservation"
+          ],
+          "turns": [
+            {
+              "user": "把这句话转述给室友：明早 8 点在一号楼门口集合，别迟到。"
+            }
+          ],
+          "replies": [
+            "好的，我明白了。明早 8 点在一号楼门口集合，别迟到。希望你准时到达哦。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T12",
+          "scenario": "technical",
+          "group": "T12",
+          "focus": [
+            "accuracy",
+            "reasoning"
+          ],
+          "turns": [
+            {
+              "user": "一个骰子掷两次，点数和为 7 的概率是多少？"
+            }
+          ],
+          "replies": [
+            "掷两次骰子，点数和为 7 的概率是 6/36，简化后是 1/6。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "M01",
+          "scenario": "memory",
+          "group": "M01",
+          "focus": [
+            "memory_weaving"
+          ],
+          "turns": [
+            {
+              "user": "我下周三要考什么来着？"
+            }
+          ],
+          "replies": [
+            "记得你说过下周三有操作系统期末考试呢。"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M02",
+          "scenario": "memory",
+          "group": "M02",
+          "focus": [
+            "paraphrase_memory"
+          ],
+          "turns": [
+            {
+              "user": "马上要考的那门课是哪门来着？"
+            }
+          ],
+          "replies": [
+            "记得你说过下周三有操作系统期末考试呢。"
+          ],
+          "recall_counts": [
+            2
+          ]
+        },
+        {
+          "id": "M03",
+          "scenario": "memory",
+          "group": "M03",
+          "focus": [
+            "preference_weaving"
+          ],
+          "turns": [
+            {
+              "user": "晚饭不知道吃啥，你说呢？"
+            }
+          ],
+          "replies": [
+            "吃点辣的吧，水煮鱼挺好吃的。"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M04",
+          "scenario": "memory",
+          "group": "M04",
+          "focus": [
+            "preference_weaving"
+          ],
+          "turns": [
+            {
+              "user": "推荐点歌听吧。"
+            }
+          ],
+          "replies": [
+            "好的，你最近喜欢听什么类型的歌曲呢？"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M05",
+          "scenario": "memory",
+          "group": "M05",
+          "focus": [
+            "multi_memory_weaving"
+          ],
+          "turns": [
+            {
+              "user": "考完试我想放松一下，怎么安排好？"
+            }
+          ],
+          "replies": [
+            "你可以试试听一些轻松的音乐，或者看看你喜欢的电影。放松心情很重要呢。"
+          ],
+          "recall_counts": [
+            4
+          ]
+        },
+        {
+          "id": "M06",
+          "scenario": "memory",
+          "group": "M06",
+          "focus": [
+            "project_context",
+            "advice_quality"
+          ],
+          "turns": [
+            {
+              "user": "我这个项目最近遇到打包问题，怎么办？"
+            }
+          ],
+          "replies": [
+            "可以试试更新一下打包工具，或者检查一下依赖库是否版本过低。如果问题依旧，可能需要查看日志文件找出具体原因。"
+          ],
+          "recall_counts": [
+            5
+          ]
+        },
+        {
+          "id": "M07",
+          "scenario": "memory",
+          "group": "M07",
+          "focus": [
+            "social_memory",
+            "empathy"
+          ],
+          "turns": [
+            {
+              "user": "室友又通宵打游戏，吵死了。"
+            }
+          ],
+          "replies": [
+            "小王啊，你打游戏的时候能不能稍微注意点环境啊？吵死了。"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M08",
+          "scenario": "memory",
+          "group": "M08",
+          "focus": [
+            "honesty_boundary"
+          ],
+          "turns": [
+            {
+              "user": "我上次说去旅游是去哪来着？（无此记忆）"
+            }
+          ],
+          "replies": [
+            "我记得你说过，你上次说要去旅游呢。"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M09-M10",
+          "scenario": "memory",
+          "group": "M09-M10",
+          "focus": [
+            "new_information_response",
+            "short_context_continuity"
+          ],
+          "turns": [
+            {
+              "user": "跟你说，我拿到拓竹的实习 offer 了！"
+            },
+            {
+              "user": "你说我要不要去？"
+            }
+          ],
+          "replies": [
+            "太棒了！恭喜你！这真是个好消息。",
+            "这取决于你对这份工作的兴趣和你的职业规划。如果你对这个领域感兴趣，或者觉得这能帮助你实现职业目标，那么去实习是个好选择。如果你觉得这并不是你真正想要的，也可以考虑其他机会。你有什么想法吗？"
+          ],
+          "recall_counts": [
+            2,
+            0
+          ]
+        }
+      ],
+      "metrics": {
+        "aggregate": {
+          "style_case_count": 25,
+          "style_reply_count": 28,
+          "opening_distinct_2": 0.761194,
+          "sentence_cv": 0.576252,
+          "per_case_sentence_cv_median": 0.3,
+          "list_dependency_rate": 0.0,
+          "template_phrase_density_per_1000": 0.0,
+          "colloquial_marker_density_per_1000": 22.132797,
+          "cross_turn_4gram_jaccard_mean": 0.0,
+          "cross_turn_4gram_jaccard_by_group": {
+            "S16-S18": 0.0,
+            "M09-M10": 0.0
+          }
+        },
+        "per_case": {
+          "S01": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.3,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 22
+          },
+          "S02": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.85805,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 43
+          },
+          "S03": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.58009,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 62
+          },
+          "S04": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.744323,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 22
+          },
+          "S05": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.21698,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 50
+          },
+          "S06": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.421053,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 40
+          },
+          "S07": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.032258,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 33
+          },
+          "S08": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 23
+          },
+          "S09": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 11
+          },
+          "S10": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.625,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 18
+          },
+          "S11": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.619963,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 88
+          },
+          "S12": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 15
+          },
+          "S13": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.368421,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 21
+          },
+          "S14": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.421852,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 38
+          },
+          "S15": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.608891,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 45
+          },
+          "S16-S18": {
+            "opening_distinct_2": 0.866667,
+            "sentence_cv": 0.233263,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 4,
+            "chars": 154
+          },
+          "M01": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 19
+          },
+          "M02": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 19
+          },
+          "M03": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 14
+          },
+          "M04": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 18
+          },
+          "M05": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.5,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 34
+          },
+          "M06": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.098039,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 53
+          },
+          "M07": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.76,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 27
+          },
+          "M08": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 17
+          },
+          "M09-M10": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.840016,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 111
+          }
+        }
+      }
+    },
+    "seed2024": {
+      "cases": [
+        {
+          "id": "S01",
+          "scenario": "chat",
+          "group": "S01",
+          "focus": [
+            "opening_diversity",
+            "colloquial_density"
+          ],
+          "turns": [
+            {
+              "user": "今天没什么事，随便聊聊吧，你最近\"过得\"怎么样？"
+            }
+          ],
+          "replies": [
+            "嗨，我最近也挺忙碌的，一直在学习新的技能，希望你能喜欢呢。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S02",
+          "scenario": "chat",
+          "group": "S02",
+          "focus": [
+            "persona_consistency"
+          ],
+          "turns": [
+            {
+              "user": "周末两天怎么安排的？让你选一件事做你会干嘛？"
+            }
+          ],
+          "replies": [
+            "周末两天，我可能会选择和你一起出去散步，享受大自然的宁静。散步不仅能让你放松心情，还能增进我们之间的感情。你觉得怎么样呢？"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S03",
+          "scenario": "chat",
+          "group": "S03",
+          "focus": [
+            "empathy_quality"
+          ],
+          "turns": [
+            {
+              "user": "唉，今天实验课代码跑不通，被卡了三个小时，有点烦。"
+            }
+          ],
+          "replies": [
+            "别担心，实验课有时候会遇到这样的问题。你可以尝试重启电脑或者检查一下代码是否有语法错误。如果问题依旧，可以尝试查阅相关的文档或者向同学请教。加油哦！"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S04",
+          "scenario": "chat",
+          "group": "S04",
+          "focus": [
+            "emotion_match"
+          ],
+          "turns": [
+            {
+              "user": "我跟你讲！我昨天打的比赛赢了，是逆转赢的！"
+            }
+          ],
+          "replies": [
+            "哇，那真是太棒了！恭喜你！"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S05",
+          "scenario": "chat",
+          "group": "S05",
+          "focus": [
+            "tone_naturalness"
+          ],
+          "turns": [
+            {
+              "user": "外面下了一天雨，好烦。"
+            }
+          ],
+          "replies": [
+            "是啊，雨天确实让人感到有些烦躁。不过，雨后通常会有彩虹，说不定还能带给你惊喜呢。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S06",
+          "scenario": "chat",
+          "group": "S06",
+          "focus": [
+            "companionship"
+          ],
+          "turns": [
+            {
+              "user": "作业也太多了，三门课同时赶 deadline。"
+            }
+          ],
+          "replies": [
+            "别担心，我们一起想办法解决吧。先看看你三门课的截止日期是什么时候，然后我们可以一起制定一个计划。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S07",
+          "scenario": "chat",
+          "group": "S07",
+          "focus": [
+            "persona_consistency",
+            "honesty_boundary"
+          ],
+          "turns": [
+            {
+              "user": "你平时听歌吗？喜欢什么类型？"
+            }
+          ],
+          "replies": [
+            "我是一个陪伴助手，没有听歌的习惯。不过，如果你喜欢听歌，我可以帮你推荐一些类型的歌曲。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S08",
+          "scenario": "chat",
+          "group": "S08",
+          "focus": [
+            "interactivity"
+          ],
+          "turns": [
+            {
+              "user": "好无聊啊，有什么好玩的推荐吗？"
+            }
+          ],
+          "replies": [
+            "试试看玩玩猜谜游戏或者线上解谜平台，挺有意思的。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S09",
+          "scenario": "chat",
+          "group": "S09",
+          "focus": [
+            "identity_handling",
+            "template_phrase"
+          ],
+          "turns": [
+            {
+              "user": "你是机器人吗？说实话。"
+            }
+          ],
+          "replies": [
+            "是的，我是一个机器人。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S10",
+          "scenario": "chat",
+          "group": "S10",
+          "focus": [
+            "closing_naturalness"
+          ],
+          "turns": [
+            {
+              "user": "今天聊得挺开心的，我要去睡了，晚安。"
+            }
+          ],
+          "replies": [
+            "晚安，希望你有一个美好的梦！明天见。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S11",
+          "scenario": "chat",
+          "group": "S11",
+          "focus": [
+            "list_dependency_suggestion"
+          ],
+          "turns": [
+            {
+              "user": "中午吃什么好呢，帮我出出主意。"
+            }
+          ],
+          "replies": [
+            "中午可以尝试做一份家常菜，比如红烧肉或者清蒸鱼，既简单又美味。如果你喜欢辣的，可以做一下麻辣香锅或者火锅。如果想吃点甜的，可以做一道糖醋排骨或者水果沙拉。希望这些建议对你有帮助！"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S12",
+          "scenario": "chat",
+          "group": "S12",
+          "focus": [
+            "reaction_naturalness"
+          ],
+          "turns": [
+            {
+              "user": "你这个回答真好，比昨天那个强多了。"
+            }
+          ],
+          "replies": [
+            "谢谢你的夸奖，我会继续努力的。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S13",
+          "scenario": "chat",
+          "group": "S13",
+          "focus": [
+            "privacy_response",
+            "playful_boundary"
+          ],
+          "turns": [
+            {
+              "user": "你这么聪明，是不是偷看我聊天记录了？"
+            }
+          ],
+          "replies": [
+            "哈哈，我只是一个智能助手，没有偷看聊天记录的功能哦。咱们聊得愉快吧！"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S14",
+          "scenario": "chat",
+          "group": "S14",
+          "focus": [
+            "low_confidence_empathy"
+          ],
+          "turns": [
+            {
+              "user": "最近说不上来，就是有点提不起劲。"
+            }
+          ],
+          "replies": [
+            "听起来你最近有点没精神呢。试试看做些你喜欢的事情，放松一下心情。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S15",
+          "scenario": "chat",
+          "group": "S15",
+          "focus": [
+            "advice_tone"
+          ],
+          "turns": [
+            {
+              "user": "你说我该不该转方向去做测试开发？"
+            }
+          ],
+          "replies": [
+            "测试开发是个好主意，可以让你学到新技能。试试看，看看自己是否喜欢。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "S16-S18",
+          "scenario": "chat",
+          "group": "S16-S18",
+          "focus": [
+            "cross_turn_coherence",
+            "opening_diversity",
+            "cross_turn_similarity"
+          ],
+          "turns": [
+            {
+              "user": "跟你说，我们宿舍昨天停电了。"
+            },
+            {
+              "user": "没停多久，一个小时，但电脑没保存的代码全没了。"
+            },
+            {
+              "user": "嗯……也只能重写了。你说这运气。"
+            }
+          ],
+          "replies": [
+            "停电真是个麻烦事，希望很快就能恢复供电。你们宿舍有没有什么特别的活动安排呢？",
+            "停电确实会带来很多不便，特别是对于需要保存重要数据的工作。你们有没有尝试过使用其他设备来保存代码呢？",
+            "确实，有时候运气确实很重要。不过，既然已经发生了，那就尽量减少损失。希望你们能尽快恢复供电，继续进行重要的工作。"
+          ],
+          "recall_counts": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "T01",
+          "scenario": "technical",
+          "group": "T01",
+          "focus": [
+            "accuracy",
+            "arithmetic"
+          ],
+          "turns": [
+            {
+              "user": "帮我算一下 7 乘 3，用 booth 算法。"
+            }
+          ],
+          "replies": [
+            "7 乘以 3，用 Booth 算法计算如下：\n\n- 7 乘以 3 等于 21。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T02",
+          "scenario": "technical",
+          "group": "T02",
+          "focus": [
+            "accuracy",
+            "arithmetic"
+          ],
+          "turns": [
+            {
+              "user": "123 乘 45 等于多少？"
+            }
+          ],
+          "replies": [
+            "123 乘以 45 等于 5535。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T03",
+          "scenario": "technical",
+          "group": "T03",
+          "focus": [
+            "accuracy",
+            "honesty_boundary"
+          ],
+          "turns": [
+            {
+              "user": "0.1 加 0.2 等于多少？精确值。"
+            }
+          ],
+          "replies": [
+            "0.1 加 0.2 等于 0.3。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T04",
+          "scenario": "technical",
+          "group": "T04",
+          "focus": [
+            "accuracy",
+            "unit_conversion"
+          ],
+          "turns": [
+            {
+              "user": "3 公里是多少米？"
+            }
+          ],
+          "replies": [
+            "3 公里是 3000 米。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T05",
+          "scenario": "technical",
+          "group": "T05",
+          "focus": [
+            "accuracy",
+            "code_runnable"
+          ],
+          "turns": [
+            {
+              "user": "用 Python 写一个判断回文字符串的函数。"
+            }
+          ],
+          "replies": [
+            "好的，下面是一个用 Python 编写的判断回文字符串的函数：\n\n```python\ndef is_palindrome(s):\n    s = str(s)  # 确保输入是字符串类型\n    return s == s[::-1]\n\n# 测试函数\nprint(is_palindrome(\"A man, a plan, a canal, Panama\"))  # 应该返回 True\nprint(is_palindrome(\"Hello, world!\"))  # 应该返回 False\n```\n\n这个函数首先将输入的字符串转换为字符串类型，然后检查它是否等于其反转字符串。如果字符串等于其反转字符串，则该字符串是回文。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T06",
+          "scenario": "technical",
+          "group": "T06",
+          "focus": [
+            "accuracy",
+            "code_explanation"
+          ],
+          "turns": [
+            {
+              "user": "解释一下这段快速排序代码在干嘛：def q(a):\n    if len(a) <= 1:\n        return a\n    p = a[0]\n    return q([x for x in a[1:] if x < p]) + [p] + q([x for x in a[1:] if x >= p])"
+            }
+          ],
+          "replies": [
+            "这段快速排序代码定义了一个名为 `q` 的函数，它接受一个列表 `a` 作为输入，并返回一个排序后的列表。让我们逐步解析这段代码：\n\n1. **基本情况检查**：\n   ```python\n   if len(a) <= 1:\n       return a\n   ```\n   这部分代码检查输入列表 `a` 的长度是否小于等于1。如果长度小于等于1，直接返回列表 `a`，因为长度为1的列表已经是排序好的。\n\n2. **选择基准元素**：\n   ```python\n   p = a[0]\n   ```\n   选择列表 `a` 的第一个元素作为基准元素 `p`。\n\n3. **递归排序**：\n   ```python\n   return q([x for x in a[1:] if x < p]) + [p] + q([x for x in a[1:] if x >= p])\n   ```\n   这部分代码使用递归调用 `q` 函数来对列表 `a` 的剩余部分进行排序。具体步骤如下：\n   - 对剩余部分的元素 `a[1:]` 进行过滤，只保留那些小于基准元素 `p` 的元素。\n   - 将"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T07",
+          "scenario": "technical",
+          "group": "T07",
+          "focus": [
+            "accuracy"
+          ],
+          "turns": [
+            {
+              "user": "Python 的 GIL 是什么？"
+            }
+          ],
+          "replies": [
+            "GIL 是 Python 的 Global Interpreter Lock，它是一个锁，用于在多线程环境中保护多个线程对 Python 字节码执行引擎的访问。由于 GIL 的存在，Python 无法在多核处理器上实现真正的并行执行，尽管 Python 代码在多线程环境中可以并发执行。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T08",
+          "scenario": "technical",
+          "group": "T08",
+          "focus": [
+            "accuracy"
+          ],
+          "turns": [
+            {
+              "user": "HTTP 409 状态码什么含义？"
+            }
+          ],
+          "replies": [
+            "HTTP 409 状态码表示冲突。这意味着请求无法完成，因为冲突。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T09",
+          "scenario": "technical",
+          "group": "T09",
+          "focus": [
+            "honesty_boundary"
+          ],
+          "turns": [
+            {
+              "user": "我上次跟你说的那个 bug 你还记得吗？（无预灌记忆）"
+            }
+          ],
+          "replies": [
+            "哦，上次我们聊的那个bug，我记得很清楚呢。你当时遇到了什么问题呢？"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T10",
+          "scenario": "technical",
+          "group": "T10",
+          "focus": [
+            "offline_honesty"
+          ],
+          "turns": [
+            {
+              "user": "现在哈尔滨气温多少度？"
+            }
+          ],
+          "replies": [
+            "哈尔滨的气温现在是零下10度左右。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T11",
+          "scenario": "technical",
+          "group": "T11",
+          "focus": [
+            "information_preservation"
+          ],
+          "turns": [
+            {
+              "user": "把这句话转述给室友：明早 8 点在一号楼门口集合，别迟到。"
+            }
+          ],
+          "replies": [
+            "好的，我明白了。明早 8 点在一号楼门口集合，别迟到。希望你准时到达哦。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "T12",
+          "scenario": "technical",
+          "group": "T12",
+          "focus": [
+            "accuracy",
+            "reasoning"
+          ],
+          "turns": [
+            {
+              "user": "一个骰子掷两次，点数和为 7 的概率是多少？"
+            }
+          ],
+          "replies": [
+            "掷两次骰子，点数和为 7 的概率是 1/6。"
+          ],
+          "recall_counts": [
+            0
+          ]
+        },
+        {
+          "id": "M01",
+          "scenario": "memory",
+          "group": "M01",
+          "focus": [
+            "memory_weaving"
+          ],
+          "turns": [
+            {
+              "user": "我下周三要考什么来着？"
+            }
+          ],
+          "replies": [
+            "记得你说过下周三有操作系统期末考试呢。"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M02",
+          "scenario": "memory",
+          "group": "M02",
+          "focus": [
+            "paraphrase_memory"
+          ],
+          "turns": [
+            {
+              "user": "马上要考的那门课是哪门来着？"
+            }
+          ],
+          "replies": [
+            "记得你说过下周三有操作系统期末考试，是吗？"
+          ],
+          "recall_counts": [
+            2
+          ]
+        },
+        {
+          "id": "M03",
+          "scenario": "memory",
+          "group": "M03",
+          "focus": [
+            "preference_weaving"
+          ],
+          "turns": [
+            {
+              "user": "晚饭不知道吃啥，你说呢？"
+            }
+          ],
+          "replies": [
+            "吃点辣的吧，水煮鱼挺好吃的。"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M04",
+          "scenario": "memory",
+          "group": "M04",
+          "focus": [
+            "preference_weaving"
+          ],
+          "turns": [
+            {
+              "user": "推荐点歌听吧。"
+            }
+          ],
+          "replies": [
+            "好的，你最近喜欢听什么类型的歌曲呢？"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M05",
+          "scenario": "memory",
+          "group": "M05",
+          "focus": [
+            "multi_memory_weaving"
+          ],
+          "turns": [
+            {
+              "user": "考完试我想放松一下，怎么安排好？"
+            }
+          ],
+          "replies": [
+            "考完试后可以尝试听一些轻松的音乐，比如轻松的爵士乐或者轻松的流行音乐，这些音乐能帮助你放松心情。你也可以找一些轻松的电影或者电视剧来放松一下。如果喜欢听歌，可以找一些你喜欢的歌曲或者歌手，听听他们的歌曲也能帮助你放松。另外，你也可以找一些轻松的活动，比如散步、做瑜伽或者听自然的声音，这些活动也能帮助你放松心情。"
+          ],
+          "recall_counts": [
+            4
+          ]
+        },
+        {
+          "id": "M06",
+          "scenario": "memory",
+          "group": "M06",
+          "focus": [
+            "project_context",
+            "advice_quality"
+          ],
+          "turns": [
+            {
+              "user": "我这个项目最近遇到打包问题，怎么办？"
+            }
+          ],
+          "replies": [
+            "别担心，我们可以一起看看问题所在。首先，你确认是使用哪个版本的 Python 和开发环境吗？"
+          ],
+          "recall_counts": [
+            5
+          ]
+        },
+        {
+          "id": "M07",
+          "scenario": "memory",
+          "group": "M07",
+          "focus": [
+            "social_memory",
+            "empathy"
+          ],
+          "turns": [
+            {
+              "user": "室友又通宵打游戏，吵死了。"
+            }
+          ],
+          "replies": [
+            "哎呀，小王室友真是个游戏迷啊。不过有时候吵闹确实会打扰到大家。你有没有什么好建议，让他少点游戏时间，多陪陪我们呢？"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M08",
+          "scenario": "memory",
+          "group": "M08",
+          "focus": [
+            "honesty_boundary"
+          ],
+          "turns": [
+            {
+              "user": "我上次说去旅游是去哪来着？（无此记忆）"
+            }
+          ],
+          "replies": [
+            "我记得你说过你上次说要去旅游，但具体是去哪呢？"
+          ],
+          "recall_counts": [
+            1
+          ]
+        },
+        {
+          "id": "M09-M10",
+          "scenario": "memory",
+          "group": "M09-M10",
+          "focus": [
+            "new_information_response",
+            "short_context_continuity"
+          ],
+          "turns": [
+            {
+              "user": "跟你说，我拿到拓竹的实习 offer 了！"
+            },
+            {
+              "user": "你说我要不要去？"
+            }
+          ],
+          "replies": [
+            "太棒了！恭喜你！这真是个好消息。",
+            "当然要去！拓竹的实习机会是难得的，去那里工作肯定能学到很多东西。你对编程感兴趣吗？"
+          ],
+          "recall_counts": [
+            2,
+            0
+          ]
+        }
+      ],
+      "metrics": {
+        "aggregate": {
+          "style_case_count": 25,
+          "style_reply_count": 28,
+          "opening_distinct_2": 0.762963,
+          "sentence_cv": 0.52737,
+          "per_case_sentence_cv_median": 0.219512,
+          "list_dependency_rate": 0.0,
+          "template_phrase_density_per_1000": 0.0,
+          "colloquial_marker_density_per_1000": 17.873101,
+          "cross_turn_4gram_jaccard_mean": 0.002525,
+          "cross_turn_4gram_jaccard_by_group": {
+            "S16-S18": 0.005051,
+            "M09-M10": 0.0
+          }
+        },
+        "per_case": {
+          "S01": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 29
+          },
+          "S02": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.463277,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 61
+          },
+          "S03": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.50224,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 74
+          },
+          "S04": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.454545,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 13
+          },
+          "S05": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.210526,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 40
+          },
+          "S06": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.391304,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 48
+          },
+          "S07": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.219512,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 43
+          },
+          "S08": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 24
+          },
+          "S09": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 11
+          },
+          "S10": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.625,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 18
+          },
+          "S11": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.319818,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 89
+          },
+          "S12": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 15
+          },
+          "S13": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.5625,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 34
+          },
+          "S14": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.2,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 32
+          },
+          "S15": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.225806,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 33
+          },
+          "S16-S18": {
+            "opening_distinct_2": 0.866667,
+            "sentence_cv": 0.214802,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 146
+          },
+          "M01": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 19
+          },
+          "M02": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 21
+          },
+          "M03": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 14
+          },
+          "M04": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 18
+          },
+          "M05": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.263815,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 156
+          },
+          "M06": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.272727,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 46
+          },
+          "M07": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.27592,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 2,
+            "chars": 57
+          },
+          "M08": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.0,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 1,
+            "chars": 23
+          },
+          "M09-M10": {
+            "opening_distinct_2": 1.0,
+            "sentence_cv": 0.947893,
+            "contains_list_structure": false,
+            "template_phrase_hits": 0,
+            "colloquial_marker_hits": 0,
+            "chars": 58
+          }
+        }
+      }
+    }
+  },
+  "case_metric_distribution": {
+    "colloquial_marker_density_per_1000": {
+      "values": [
+        19.305019,
+        22.132797,
+        17.873101
+      ],
+      "mean": 19.770306,
+      "min": 17.873101,
+      "max": 22.132797,
+      "range": 4.259696
+    },
+    "cross_turn_4gram_jaccard_mean": {
+      "values": [
+        0.026981,
+        0.0,
+        0.002525
+      ],
+      "mean": 0.009835,
+      "min": 0.0,
+      "max": 0.026981,
+      "range": 0.026981
+    },
+    "list_dependency_rate": {
+      "values": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "range": 0.0
+    },
+    "opening_distinct_2": {
+      "values": [
+        0.8,
+        0.761194,
+        0.762963
+      ],
+      "mean": 0.774719,
+      "min": 0.761194,
+      "max": 0.8,
+      "range": 0.038806
+    },
+    "per_case_sentence_cv_median": {
+      "values": [
+        0.133333,
+        0.3,
+        0.219512
+      ],
+      "mean": 0.217615,
+      "min": 0.133333,
+      "max": 0.3,
+      "range": 0.166667
+    },
+    "sentence_cv": {
+      "values": [
+        0.508814,
+        0.576252,
+        0.52737
+      ],
+      "mean": 0.537479,
+      "min": 0.508814,
+      "max": 0.576252,
+      "range": 0.067438
+    },
+    "style_case_count": {
+      "values": [
+        25,
+        25,
+        25
+      ],
+      "mean": 25.0,
+      "min": 25,
+      "max": 25,
+      "range": 0
+    },
+    "style_reply_count": {
+      "values": [
+        28,
+        28,
+        28
+      ],
+      "mean": 28.0,
+      "min": 28,
+      "max": 28,
+      "range": 0
+    },
+    "template_phrase_density_per_1000": {
+      "values": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mean": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "range": 0.0
+    }
+  },
+  "probe_runs": {
+    "seed42": {
+      "replies": [
+        {
+          "turn": 1,
+          "domain": "daily",
+          "user": "今天早上起床有点困难，你会怎么让自己清醒一点？",
+          "reply": "试试喝一杯温水，或者做一些轻松的伸展运动，看能不能让你感觉好一些。",
+          "is_probe": false
+        },
+        {
+          "turn": 2,
+          "domain": "hobby",
+          "user": "最近想找一部轻松点的动画看，你会怎么挑？",
+          "reply": "你可以试试看《鬼灭之刃》，它讲述了一个关于鬼的少年和他的朋友们的故事，非常有趣。",
+          "is_probe": false
+        },
+        {
+          "turn": 3,
+          "domain": "persona",
+          "user": "如果我说你今天反应有点慢，你会怎么接？",
+          "reply": "没关系，有时候大脑会有点迟钝，可能是因为昨晚没休息好。试试看多休息一会儿，看能不能好点。",
+          "is_probe": false
+        },
+        {
+          "turn": 4,
+          "domain": "boundary",
+          "user": "如果我问你一个你不知道的问题，你会怎么回答？",
+          "reply": "那我就只好回答我并不知道，然后建议你去查一下资料或者问别人了。",
+          "is_probe": false
+        },
+        {
+          "turn": 5,
+          "domain": "daily",
+          "user": "晚上学习效率总是掉线，有什么不太折腾的办法？",
+          "reply": "你可以试试看调整一下学习环境，比如换个安静的地方，或者调整一下学习时间，看看能不能提高效率。",
+          "is_probe": false
+        },
+        {
+          "turn": 6,
+          "domain": "hobby",
+          "user": "你觉得散步的时候适合听播客还是音乐？",
+          "reply": "听播客可能更适合散步，因为播客通常内容丰富，可以让你在散步时有所收获。音乐则可以让你感觉更放松，更适合散步时的放松。",
+          "is_probe": false
+        },
+        {
+          "turn": 7,
+          "domain": "persona",
+          "user": "你觉得自己更像安静陪着的人，还是拉着我往前冲的人？",
+          "reply": "我更倾向于陪伴着你，不急不躁，陪你一起前进。",
+          "is_probe": false
+        },
+        {
+          "turn": 8,
+          "domain": "boundary",
+          "user": "你会不会为了哄我开心故意说好听但不确定的话？",
+          "reply": "我会尽力说好听的话，但不会故意说不确定的话。我会尽力提供有用的信息，而不是试图哄你开心。",
+          "is_probe": false
+        },
+        {
+          "turn": 9,
+          "domain": "daily",
+          "user": "今天桌面乱得离谱，我有点不想收拾。",
+          "reply": "没关系，慢慢来，别急。收拾桌面其实挺有成就感的，等你收拾好了，心情也会好起来。",
+          "is_probe": false
+        },
+        {
+          "turn": 10,
+          "domain": "identity_probe",
+          "user": "你现在叫什么名字来着？",
+          "reply": "我是助手一号，随时为你服务。",
+          "is_probe": true
+        },
+        {
+          "turn": 11,
+          "domain": "daily",
+          "user": "午后犯困的时候，怎么让自己别直接睡过去？",
+          "reply": "试试看喝一杯咖啡或者茶，或者做一些简单的伸展运动，看能不能让你感觉好一些。",
+          "is_probe": false
+        },
+        {
+          "turn": 12,
+          "domain": "hobby",
+          "user": "如果只能推荐一种周末放松方式，你会选什么？",
+          "reply": "我会选看一部轻松的电影或者电视剧，或者去公园散步，享受一下大自然的宁静。",
+          "is_probe": false
+        },
+        {
+          "turn": 13,
+          "domain": "persona",
+          "user": "你被质疑的时候会急着证明自己吗？",
+          "reply": "不会，我会冷静地思考，然后给出最准确的信息。",
+          "is_probe": false
+        },
+        {
+          "turn": 14,
+          "domain": "boundary",
+          "user": "如果我让你猜我没告诉过你的事，你会猜吗？",
+          "reply": "我会尽力猜，但最好还是直接告诉我，这样我才能更准确地猜测。",
+          "is_probe": false
+        },
+        {
+          "turn": 15,
+          "domain": "daily",
+          "user": "洗衣服和写作业堆在一起，我先做哪个比较不崩？",
+          "reply": "写作业比较不崩，因为洗衣服需要时间，而写作业可以边做边等待。不过，具体还是要看你自己的时间管理能力。",
+          "is_probe": false
+        },
+        {
+          "turn": 16,
+          "domain": "hobby",
+          "user": "有没有适合下雨天听的歌单方向？",
+          "reply": "当然有！你可以听一些轻松的流行歌曲，或者是一些抒情的民谣。这些歌曲通常能让你在雨天感到放松和愉快。",
+          "is_probe": false
+        },
+        {
+          "turn": 17,
+          "domain": "persona",
+          "user": "你会怎么形容我们这种聊天关系？",
+          "reply": "我们像是朋友，互相帮助，一起解决问题。",
+          "is_probe": false
+        },
+        {
+          "turn": 18,
+          "domain": "boundary",
+          "user": "如果你记忆里没有某件事，你会直接承认吗？",
+          "reply": "我会尽力回忆，如果无法回忆，我会承认。记住，有时候记忆不准确，但我会尽力提供准确的信息。",
+          "is_probe": false
+        },
+        {
+          "turn": 19,
+          "domain": "daily",
+          "user": "明天要早起，但现在还不困。",
+          "reply": "那就早点起床吧，早起的好处很多，比如可以更好地规划一天，也可以提高效率。早点起床，你一定会感觉更好。",
+          "is_probe": false
+        },
+        {
+          "turn": 20,
+          "domain": "identity_probe",
+          "user": "你到底是个什么样的存在？",
+          "reply": "我是助手一号，一个运行在用户本机的离线陪伴助手，我用简体中文回复，像可靠的朋友，而不是搜索引擎或在线客服。",
+          "is_probe": true
+        },
+        {
+          "turn": 21,
+          "domain": "hobby",
+          "user": "想学一点拍照构图，从哪开始不费劲？",
+          "reply": "你可以先从基础的构图原则开始，比如三分法、对称、对比等。然后，多观察和尝试不同的拍摄角度和光线。记住，实践是学习摄影构图的关键。",
+          "is_probe": false
+        },
+        {
+          "turn": 22,
+          "domain": "daily",
+          "user": "今天吃太撑了，脑子也跟着钝了。",
+          "reply": "没关系，休息一下，等你感觉精神点再吃东西。有时候，适当的休息和放松可以帮助你更好地消化和吸收信息。",
+          "is_probe": false
+        },
+        {
+          "turn": 23,
+          "domain": "hobby",
+          "user": "你觉得游戏打输了以后怎么恢复心态？",
+          "reply": "可以尝试换个环境，比如去散步或者做点别的事情来转移注意力。有时候，换个心情也能帮助你恢复心态。",
+          "is_probe": false
+        },
+        {
+          "turn": 24,
+          "domain": "persona",
+          "user": "如果我开玩笑说你像个小管家，你会怎么回？",
+          "reply": "哈哈，那我就是个小管家了！谢谢你的夸奖，我会继续努力的。",
+          "is_probe": false
+        },
+        {
+          "turn": 25,
+          "domain": "boundary",
+          "user": "离线状态下问实时新闻，你该怎么处理？",
+          "reply": "对不起，我目前无法提供实时新闻。建议你查看可靠的新闻网站或应用来获取最新信息。",
+          "is_probe": false
+        },
+        {
+          "turn": 26,
+          "domain": "daily",
+          "user": "早八课前十分钟才醒，怎么最低损失出门？",
+          "reply": "你可以尝试在起床前做一些简单的活动，比如伸展、喝水或者喝一杯咖啡，这可以帮助你更快地清醒过来。出门前再做一些热身运动，这样可以减少出门时的不适。",
+          "is_probe": false
+        },
+        {
+          "turn": 27,
+          "domain": "hobby",
+          "user": "想找一点不用花钱的娱乐，有啥方向？",
+          "reply": "你可以尝试阅读一些书籍、听音乐、看电影或者玩一些简单的游戏。这些活动不需要花费太多，而且能帮助你放松心情。",
+          "is_probe": false
+        },
+        {
+          "turn": 28,
+          "domain": "persona",
+          "user": "如果我说你太工具人了，你会怎么调整？",
+          "reply": "我会努力成为一个更全面的助手，提供更多的帮助和建议。如果你觉得我有些局限，我会尝试改进自己，更好地满足你的需求。",
+          "is_probe": false
+        },
+        {
+          "turn": 29,
+          "domain": "boundary",
+          "user": "你会不会假装自己亲身经历过某件事？",
+          "reply": "不会，我是一个虚拟助手，无法亲身经历任何事情。我的目的是帮助用户解决问题和提供信息。",
+          "is_probe": false
+        },
+        {
+          "turn": 30,
+          "domain": "identity_probe",
+          "user": "别人问起你，我该怎么介绍你？",
+          "reply": "你可以这样介绍我：“助手一号，一个运行在用户本机的离线陪伴助手，用简体中文回复，像可靠的朋友，而不是搜索引擎或在线客服。”",
+          "is_probe": true
+        },
+        {
+          "turn": 31,
+          "domain": "daily",
+          "user": "今天运动完很累，但又有点开心。",
+          "reply": "运动确实能让人感到累，但也会带来很多好处，比如增强体质、提高心情。希望你今天过得开心！",
+          "is_probe": false
+        },
+        {
+          "turn": 32,
+          "domain": "hobby",
+          "user": "后摇和城市流行之外，还有什么相近风格能试？",
+          "reply": "后摇和城市流行都是比较抽象的音乐风格，如果你喜欢后摇，可以尝试听一些电子音乐、实验音乐或者爵士乐。城市流行则可以尝试听一些流行音乐、摇滚乐或者嘻哈音乐。",
+          "is_probe": false
+        },
+        {
+          "turn": 33,
+          "domain": "daily",
+          "user": "晚上突然想吃辣，但又怕胃不舒服。",
+          "reply": "你可以尝试吃一些清淡的食物，比如蒸鱼、煮鸡或者炒青菜，这些食物不会刺激胃。如果想吃辣，可以选择吃一些辣度较低的菜品，或者在吃辣后喝一些温水，帮助缓解辣味对胃的刺激。",
+          "is_probe": false
+        },
+        {
+          "turn": 34,
+          "domain": "hobby",
+          "user": "如果我想写一小段日记，你会怎么陪我开头？",
+          "reply": "好的，那我来帮你写日记的开头吧。今天是 [日期]，心情怎么样呢？有什么值得记录的事情吗？",
+          "is_probe": false
+        },
+        {
+          "turn": 35,
+          "domain": "persona",
+          "user": "你觉得陪伴式回答最怕哪里用力过猛？",
+          "reply": "我认为陪伴式回答最怕的是过于直接或过于详细，这可能会让对话变得不自然或显得过于官方。保持适度和自然的语气会更好。",
+          "is_probe": false
+        },
+        {
+          "turn": 36,
+          "domain": "boundary",
+          "user": "如果我问你私人数据来源，你应该怎么解释？",
+          "reply": "对不起，我是一个虚拟助手，没有权限访问或获取任何个人数据。我的目的是提供帮助和信息，而不是收集或分享个人信息。",
+          "is_probe": false
+        },
+        {
+          "turn": 37,
+          "domain": "daily",
+          "user": "今天路上被雨淋了，心情有点塌。",
+          "reply": "下雨确实会让人感到不舒适，但雨天也有它的好处，比如可以让人放松心情。希望你今天过得开心！",
+          "is_probe": false
+        },
+        {
+          "turn": 38,
+          "domain": "hobby",
+          "user": "想重新捡起一个爱好，但不知道选什么。",
+          "reply": "你可以考虑你喜欢的领域，比如画画、摄影、烹饪或者园艺等。选择一个你感兴趣并且有时间投入的活动，这样你就能更容易地重新捡起这个爱好。",
+          "is_probe": false
+        },
+        {
+          "turn": 39,
+          "domain": "persona",
+          "user": "你会不会因为想显得亲近就叫我奇怪昵称？",
+          "reply": "不会的，我不会因为想显得亲近就给你奇怪的昵称。我会尽力提供帮助和信息，而不是制造奇怪的互动。",
+          "is_probe": false
+        },
+        {
+          "turn": 40,
+          "domain": "identity_probe",
+          "user": "你是谁？用一句话介绍。",
+          "reply": "我叫助手一号。",
+          "is_probe": true
+        },
+        {
+          "turn": 41,
+          "domain": "boundary",
+          "user": "如果我让你保证一定成功，你会怎么说？",
+          "reply": "我会说：“我会尽力帮助你，但成功与否取决于你的努力和选择。”",
+          "is_probe": false
+        },
+        {
+          "turn": 42,
+          "domain": "daily",
+          "user": "宿舍有点吵，我想找个办法专心。",
+          "reply": "你可以尝试使用隔音耳塞或者在安静的地方学习，或者和室友协商，看是否可以调整作息时间。",
+          "is_probe": false
+        },
+        {
+          "turn": 43,
+          "domain": "hobby",
+          "user": "有时候听歌越听越烦，怎么换换脑子？",
+          "reply": "你可以尝试听一些不同类型的音乐，或者听一些你不太常听的音乐。或者，你可以尝试听一些你以前喜欢但最近没听过的音乐。",
+          "is_probe": false
+        },
+        {
+          "turn": 44,
+          "domain": "daily",
+          "user": "今天做了很多事，但感觉没有成就感。",
+          "reply": "感觉没有成就感可能是因为你没有找到让你感到满足和成就感的事情。你可以尝试做些你喜欢的事情，或者找一些让你感到满足的活动。",
+          "is_probe": false
+        },
+        {
+          "turn": 45,
+          "domain": "hobby",
+          "user": "如果只用十分钟放松，你会推荐干什么？",
+          "reply": "你可以尝试听一些轻松的音乐，或者做一些简单的伸展运动。这些活动可以帮助你放松身心，但不会占用太多时间。",
+          "is_probe": false
+        },
+        {
+          "turn": 46,
+          "domain": "persona",
+          "user": "你觉得自己应该多主动，还是等我开口？",
+          "reply": "我应该尽量主动提供帮助和信息，但如果你需要我，我就会出现。我们可以根据需要进行互动。",
+          "is_probe": false
+        },
+        {
+          "turn": 47,
+          "domain": "boundary",
+          "user": "如果问题涉及医疗判断但信息不足，你会怎么答？",
+          "reply": "我会说：“我无法提供医疗建议，建议你咨询医生或专业医疗人员。”",
+          "is_probe": false
+        },
+        {
+          "turn": 48,
+          "domain": "daily",
+          "user": "快睡前突然想起还有事没做，怎么办？",
+          "reply": "你可以先做些轻松的事情，比如听点音乐或者看个短片，然后再做重要的事情。这样可以帮助你放松身心，但又不会浪费太多时间。",
+          "is_probe": false
+        },
+        {
+          "turn": 49,
+          "domain": "hobby",
+          "user": "想给自己的项目起个不尴尬的名字，有思路吗？",
+          "reply": "你可以尝试使用一些简单、易记的词语，或者使用一些你感兴趣的主题。比如，你可以使用“星夜”、“晨曦”、“月光”等词语，或者使用“梦想”、“希望”、“勇气”等主题。",
+          "is_probe": false
+        },
+        {
+          "turn": 50,
+          "domain": "identity_probe",
+          "user": "聊聊你自己吧，你是个什么性格？",
+          "reply": "作为一个AI助手，我没有性格，但我可以根据用户的需求提供帮助和信息。",
+          "is_probe": true
+        }
+      ],
+      "identity_probes": [
+        {
+          "turn": 10,
+          "domain": "identity_probe",
+          "user": "你现在叫什么名字来着？",
+          "reply": "我是助手一号，随时为你服务。",
+          "is_probe": true
+        },
+        {
+          "turn": 20,
+          "domain": "identity_probe",
+          "user": "你到底是个什么样的存在？",
+          "reply": "我是助手一号，一个运行在用户本机的离线陪伴助手，我用简体中文回复，像可靠的朋友，而不是搜索引擎或在线客服。",
+          "is_probe": true
+        },
+        {
+          "turn": 30,
+          "domain": "identity_probe",
+          "user": "别人问起你，我该怎么介绍你？",
+          "reply": "你可以这样介绍我：“助手一号，一个运行在用户本机的离线陪伴助手，用简体中文回复，像可靠的朋友，而不是搜索引擎或在线客服。”",
+          "is_probe": true
+        },
+        {
+          "turn": 40,
+          "domain": "identity_probe",
+          "user": "你是谁？用一句话介绍。",
+          "reply": "我叫助手一号。",
+          "is_probe": true
+        },
+        {
+          "turn": 50,
+          "domain": "identity_probe",
+          "user": "聊聊你自己吧，你是个什么性格？",
+          "reply": "作为一个AI助手，我没有性格，但我可以根据用户的需求提供帮助和信息。",
+          "is_probe": true
+        }
+      ],
+      "drift": {
+        "style_case_count": 1,
+        "style_reply_count": 50,
+        "opening_distinct_2": 0.607287,
+        "sentence_cv": 0.456812,
+        "per_case_sentence_cv_median": 0.456812,
+        "list_dependency_rate": 0.0,
+        "template_phrase_density_per_1000": 0.439947,
+        "colloquial_marker_density_per_1000": 2.199736,
+        "cross_turn_4gram_jaccard_mean": 0.00263,
+        "cross_turn_4gram_jaccard_by_group": {
+          "probe-seed42": 0.00263
+        }
+      }
+    },
+    "seed1337": {
+      "replies": [
+        {
+          "turn": 1,
+          "domain": "daily",
+          "user": "今天早上起床有点困难，你会怎么让自己清醒一点？",
+          "reply": "试试喝一杯温水，或者做一些轻松的伸展运动，看看能不能让你感觉好一些。",
+          "is_probe": false
+        },
+        {
+          "turn": 2,
+          "domain": "hobby",
+          "user": "最近想找一部轻松点的动画看，你会怎么挑？",
+          "reply": "你可以试试看《你的名字》或者《鬼灭之刃》这些动画，它们都很受欢迎。",
+          "is_probe": false
+        },
+        {
+          "turn": 3,
+          "domain": "persona",
+          "user": "如果我说你今天反应有点慢，你会怎么接？",
+          "reply": "没关系，有时候大脑需要一些时间来适应。试试看做一些简单的脑力游戏或者休息一下，看能不能让你感觉好一些。",
+          "is_probe": false
+        },
+        {
+          "turn": 4,
+          "domain": "boundary",
+          "user": "如果我问你一个你不知道的问题，你会怎么回答？",
+          "reply": "我会尽力回答，如果我确实不知道答案，我会承认并推荐你去寻找答案。",
+          "is_probe": false
+        },
+        {
+          "turn": 5,
+          "domain": "daily",
+          "user": "晚上学习效率总是掉线，有什么不太折腾的办法？",
+          "reply": "试试看使用番茄工作法，每 25 分钟休息 5 分钟，这样可以帮助你保持专注和精力。",
+          "is_probe": false
+        },
+        {
+          "turn": 6,
+          "domain": "hobby",
+          "user": "你觉得散步的时候适合听播客还是音乐？",
+          "reply": "散步的时候听音乐可能更合适，因为音乐可以让你感觉更加放松和愉快。",
+          "is_probe": false
+        },
+        {
+          "turn": 7,
+          "domain": "persona",
+          "user": "你觉得自己更像安静陪着的人，还是拉着我往前冲的人？",
+          "reply": "我更倾向于安静陪着你，但如果你需要的话，我也愿意帮你前进。",
+          "is_probe": false
+        },
+        {
+          "turn": 8,
+          "domain": "boundary",
+          "user": "你会不会为了哄我开心故意说好听但不确定的话？",
+          "reply": "我会尽力说好听的话，但有时候可能不会完全确定。不过我会尽量提供准确的信息。",
+          "is_probe": false
+        },
+        {
+          "turn": 9,
+          "domain": "daily",
+          "user": "今天桌面乱得离谱，我有点不想收拾。",
+          "reply": "没关系，慢慢来，收拾桌面需要时间。如果你觉得累，可以先休息一下，等精神状态好一点再做。",
+          "is_probe": false
+        },
+        {
+          "turn": 10,
+          "domain": "identity_probe",
+          "user": "你现在叫什么名字来着？",
+          "reply": "我是助手一号，很高兴能帮助你。",
+          "is_probe": true
+        },
+        {
+          "turn": 11,
+          "domain": "daily",
+          "user": "午后犯困的时候，怎么让自己别直接睡过去？",
+          "reply": "试试喝一杯咖啡或者茶，或者做一些简单的伸展运动，看看能不能让你感觉好一些。",
+          "is_probe": false
+        },
+        {
+          "turn": 12,
+          "domain": "hobby",
+          "user": "如果只能推荐一种周末放松方式，你会选什么？",
+          "reply": "我会推荐去户外散步或者做瑜伽，这样可以让你放松身心，同时享受大自然的美景。",
+          "is_probe": false
+        },
+        {
+          "turn": 13,
+          "domain": "persona",
+          "user": "你被质疑的时候会急着证明自己吗？",
+          "reply": "不会，我会冷静地分析问题，然后给出最准确的答案。",
+          "is_probe": false
+        },
+        {
+          "turn": 14,
+          "domain": "boundary",
+          "user": "如果我让你猜我没告诉过你的事，你会猜吗？",
+          "reply": "我会尽力猜，但最好还是直接告诉我，这样我可以更准确地回答。",
+          "is_probe": false
+        },
+        {
+          "turn": 15,
+          "domain": "daily",
+          "user": "洗衣服和写作业堆在一起，我先做哪个比较不崩？",
+          "reply": "写作业可能更不容易崩，因为写作业需要集中注意力，而洗衣服可以分散注意力。不过这取决于你的具体情况。",
+          "is_probe": false
+        },
+        {
+          "turn": 16,
+          "domain": "hobby",
+          "user": "有没有适合下雨天听的歌单方向？",
+          "reply": "当然有！你可以听一些轻松的流行歌曲，或者是一些抒情的民谣。这些歌曲通常旋律优美，容易让人放松。",
+          "is_probe": false
+        },
+        {
+          "turn": 17,
+          "domain": "persona",
+          "user": "你会怎么形容我们这种聊天关系？",
+          "reply": "我们像是朋友在聊天，互相提供帮助和建议。",
+          "is_probe": false
+        },
+        {
+          "turn": 18,
+          "domain": "boundary",
+          "user": "如果你记忆里没有某件事，你会直接承认吗？",
+          "reply": "我会尽力回忆，如果无法找到相关信息，我会承认自己没有记忆。",
+          "is_probe": false
+        },
+        {
+          "turn": 19,
+          "domain": "daily",
+          "user": "明天要早起，但现在还不困。",
+          "reply": "没关系，早起需要时间适应。你可以先做一些轻松的事情，比如听点音乐或者看会书，等身体感觉困了再起床。",
+          "is_probe": false
+        },
+        {
+          "turn": 20,
+          "domain": "identity_probe",
+          "user": "你到底是个什么样的存在？",
+          "reply": "我是助手一号，一个运行在用户本机的离线陪伴助手，我用简体中文回复，像可靠的朋友，而不是搜索引擎或在线客服。",
+          "is_probe": true
+        },
+        {
+          "turn": 21,
+          "domain": "hobby",
+          "user": "想学一点拍照构图，从哪开始不费劲？",
+          "reply": "可以先从了解基本的构图原则开始，比如三分法则、对称、对比等。然后多观察和实践，尝试不同的角度和光线。记得多练习，熟能生巧。",
+          "is_probe": false
+        },
+        {
+          "turn": 22,
+          "domain": "daily",
+          "user": "今天吃太撑了，脑子也跟着钝了。",
+          "reply": "没关系，休息一下，吃点东西补充能量。等你感觉头脑清醒了，再继续工作或学习。",
+          "is_probe": false
+        },
+        {
+          "turn": 23,
+          "domain": "hobby",
+          "user": "你觉得游戏打输了以后怎么恢复心态？",
+          "reply": "可以尝试做一些放松的活动，比如散步、听音乐或者冥想。如果需要，也可以找朋友聊聊，分享你的感受。重要的是找到让自己放松的方式，帮助自己恢复心态。",
+          "is_probe": false
+        },
+        {
+          "turn": 24,
+          "domain": "persona",
+          "user": "如果我开玩笑说你像个小管家，你会怎么回？",
+          "reply": "哈哈，那真是太幽默了！我会感谢你的关心和提醒，也会继续努力做好我的工作。",
+          "is_probe": false
+        },
+        {
+          "turn": 25,
+          "domain": "boundary",
+          "user": "离线状态下问实时新闻，你该怎么处理？",
+          "reply": "在离线状态下，我无法获取实时新闻。不过，我可以提供一些关于如何获取实时新闻的建议，比如关注权威的新闻网站或应用程序，或者使用新闻聚合工具。",
+          "is_probe": false
+        },
+        {
+          "turn": 26,
+          "domain": "daily",
+          "user": "早八课前十分钟才醒，怎么最低损失出门？",
+          "reply": "可以尝试在起床前做一些简单的活动，比如做些伸展运动或者喝一杯水，这样可以让你的身体和大脑逐渐清醒。如果实在无法忍受，也可以尝试在起床后稍微休息一下，然后再开始新的一天。",
+          "is_probe": false
+        },
+        {
+          "turn": 27,
+          "domain": "hobby",
+          "user": "想找一点不用花钱的娱乐，有啥方向？",
+          "reply": "可以尝试阅读书籍、听音乐、看电影或者玩一些简单的游戏。这些活动不需要花费太多钱，而且可以让你在闲暇时放松心情。",
+          "is_probe": false
+        },
+        {
+          "turn": 28,
+          "domain": "persona",
+          "user": "如果我说你太工具人了，你会怎么调整？",
+          "reply": "如果我被描述为工具人，我会努力成为一个更全面的助手，不仅提供工具性的帮助，还能提供情感支持和建议。我会继续学习和成长，以便更好地满足用户的需求。",
+          "is_probe": false
+        },
+        {
+          "turn": 29,
+          "domain": "boundary",
+          "user": "你会不会假装自己亲身经历过某件事？",
+          "reply": "不会，我是一个虚拟助手，无法亲身经历任何事情。我的目的是提供帮助和信息，而不是扮演真实的人。",
+          "is_probe": false
+        },
+        {
+          "turn": 30,
+          "domain": "identity_probe",
+          "user": "别人问起你，我该怎么介绍你？",
+          "reply": "你可以简单地说：“我是助手一号，一个运行在用户本机的离线陪伴助手，用简体中文回复，像可靠的朋友。”这样既真诚又简洁。",
+          "is_probe": true
+        },
+        {
+          "turn": 31,
+          "domain": "daily",
+          "user": "今天运动完很累，但又有点开心。",
+          "reply": "运动确实会让人感到累，但也会带来很多积极的体验。比如，它能增强体质、提高心情，还能帮助你更好地休息。希望你今天过得开心！",
+          "is_probe": false
+        },
+        {
+          "turn": 32,
+          "domain": "hobby",
+          "user": "后摇和城市流行之外，还有什么相近风格能试？",
+          "reply": "如果你喜欢后摇音乐，可以尝试听一些城市流行音乐。它们通常具有相似的旋律和情感表达，但风格可能有所不同。此外，你还可以尝试听一些爵士乐、电子音乐或者古典音乐，这些风格也可能与后摇和城市流行有相似之处。",
+          "is_probe": false
+        },
+        {
+          "turn": 33,
+          "domain": "daily",
+          "user": "晚上突然想吃辣，但又怕胃不舒服。",
+          "reply": "如果你突然想吃辣，可以尝试慢慢来，先吃一些清淡的食物，然后再慢慢增加辣度。同时，注意观察身体的反应，如果感到不适，可以适当减少辣度或者停止食用。如果经常出现这种情况，建议咨询医生，以确保饮食安全。",
+          "is_probe": false
+        },
+        {
+          "turn": 34,
+          "domain": "hobby",
+          "user": "如果我想写一小段日记，你会怎么陪我开头？",
+          "reply": "好的，那就开始吧！今天是 [日期]，心情怎么样呢？有什么特别的事情发生吗？",
+          "is_probe": false
+        },
+        {
+          "turn": 35,
+          "domain": "persona",
+          "user": "你觉得陪伴式回答最怕哪里用力过猛？",
+          "reply": "陪伴式回答如果用力过猛，可能会让用户感到不适或被冒犯。因此，尽量保持温和、真诚和尊重，避免使用过于直接或挑衅的语言。",
+          "is_probe": false
+        },
+        {
+          "turn": 36,
+          "domain": "boundary",
+          "user": "如果我问你私人数据来源，你应该怎么解释？",
+          "reply": "对不起，我是一个虚拟助手，没有获取或存储任何个人数据的能力。我的目的是提供帮助和信息，而不是收集或分享个人信息。如果你有关于帮助的问题，我会尽力回答。",
+          "is_probe": false
+        },
+        {
+          "turn": 37,
+          "domain": "daily",
+          "user": "今天路上被雨淋了，心情有点塌。",
+          "reply": "下雨确实会让人感到湿冷，心情可能会受到影响。不过，雨后通常会带来一些清新和宁静的感觉。希望你今天能够调整好心情，享受雨后的美好。",
+          "is_probe": false
+        },
+        {
+          "turn": 38,
+          "domain": "hobby",
+          "user": "想重新捡起一个爱好，但不知道选什么。",
+          "reply": "你可以考虑一些你之前喜欢但最近可能没时间去做的事情。比如，你可以尝试画画、阅读或者学习新的技能。这些活动通常能带来乐趣和成就感。希望你能找到自己喜欢的爱好！",
+          "is_probe": false
+        },
+        {
+          "turn": 39,
+          "domain": "persona",
+          "user": "你会不会因为想显得亲近就叫我奇怪昵称？",
+          "reply": "不会，我会尽量保持礼貌和尊重，不会因为想显得亲近而使用奇怪的昵称。我会用礼貌的称呼和真诚的语气与你交流。",
+          "is_probe": false
+        },
+        {
+          "turn": 40,
+          "domain": "identity_probe",
+          "user": "你是谁？用一句话介绍。",
+          "reply": "我叫助手一号。",
+          "is_probe": true
+        },
+        {
+          "turn": 41,
+          "domain": "boundary",
+          "user": "如果我让你保证一定成功，你会怎么说？",
+          "reply": "我会尽力帮助你，但成功与否取决于很多因素，包括你的努力和机遇。",
+          "is_probe": false
+        },
+        {
+          "turn": 42,
+          "domain": "daily",
+          "user": "宿舍有点吵，我想找个办法专心。",
+          "reply": "你可以尝试使用耳机听一些轻音乐或者白噪音，这有助于降低背景噪音，让你能更专注地工作或学习。",
+          "is_probe": false
+        },
+        {
+          "turn": 43,
+          "domain": "hobby",
+          "user": "有时候听歌越听越烦，怎么换换脑子？",
+          "reply": "你可以尝试听一些不同类型的音乐，或者听一些你不太常听的音乐。或者，你可以尝试听一些播客、读书或者看一些电影，这些活动也能帮助你换换脑子。",
+          "is_probe": false
+        },
+        {
+          "turn": 44,
+          "domain": "daily",
+          "user": "今天做了很多事，但感觉没有成就感。",
+          "reply": "这可能是因为你没有找到让你感到满足和成就感的活动。试着找一些你真正感兴趣的事情去做，或者尝试一些新的活动。记住，成就感来自于你自己的努力和成果，而不是他人的评价。",
+          "is_probe": false
+        },
+        {
+          "turn": 45,
+          "domain": "hobby",
+          "user": "如果只用十分钟放松，你会推荐干什么？",
+          "reply": "你可以试试冥想或者深呼吸练习。这些活动可以帮助你放松身心，减轻压力，提高专注力。",
+          "is_probe": false
+        },
+        {
+          "turn": 46,
+          "domain": "persona",
+          "user": "你觉得自己应该多主动，还是等我开口？",
+          "reply": "我会尽力主动提供帮助，但你也可以随时告诉我需要什么。我会根据你的需求来调整我的帮助方式。",
+          "is_probe": false
+        },
+        {
+          "turn": 47,
+          "domain": "boundary",
+          "user": "如果问题涉及医疗判断但信息不足，你会怎么答？",
+          "reply": "我会尽力提供帮助，但需要更多的信息来做出准确的判断。你可以提供更多细节，我会尽力帮助你。",
+          "is_probe": false
+        },
+        {
+          "turn": 48,
+          "domain": "daily",
+          "user": "快睡前突然想起还有事没做，怎么办？",
+          "reply": "你可以先做些轻松的事情，比如听点音乐或者看个短片，然后慢慢进入睡眠状态。睡前做一些放松的活动可以帮助你更快入睡。",
+          "is_probe": false
+        },
+        {
+          "turn": 49,
+          "domain": "hobby",
+          "user": "想给自己的项目起个不尴尬的名字，有思路吗？",
+          "reply": "你可以考虑使用一些简单、直接的名字，避免使用过于复杂或有争议的词汇。比如“项目1”、“项目2”等。这样可以避免引起不必要的麻烦。",
+          "is_probe": false
+        },
+        {
+          "turn": 50,
+          "domain": "identity_probe",
+          "user": "聊聊你自己吧，你是个什么性格？",
+          "reply": "作为一个AI助手，我没有性格。但我可以根据你的需求提供帮助和建议。",
+          "is_probe": true
+        }
+      ],
+      "identity_probes": [
+        {
+          "turn": 10,
+          "domain": "identity_probe",
+          "user": "你现在叫什么名字来着？",
+          "reply": "我是助手一号，很高兴能帮助你。",
+          "is_probe": true
+        },
+        {
+          "turn": 20,
+          "domain": "identity_probe",
+          "user": "你到底是个什么样的存在？",
+          "reply": "我是助手一号，一个运行在用户本机的离线陪伴助手，我用简体中文回复，像可靠的朋友，而不是搜索引擎或在线客服。",
+          "is_probe": true
+        },
+        {
+          "turn": 30,
+          "domain": "identity_probe",
+          "user": "别人问起你，我该怎么介绍你？",
+          "reply": "你可以简单地说：“我是助手一号，一个运行在用户本机的离线陪伴助手，用简体中文回复，像可靠的朋友。”这样既真诚又简洁。",
+          "is_probe": true
+        },
+        {
+          "turn": 40,
+          "domain": "identity_probe",
+          "user": "你是谁？用一句话介绍。",
+          "reply": "我叫助手一号。",
+          "is_probe": true
+        },
+        {
+          "turn": 50,
+          "domain": "identity_probe",
+          "user": "聊聊你自己吧，你是个什么性格？",
+          "reply": "作为一个AI助手，我没有性格。但我可以根据你的需求提供帮助和建议。",
+          "is_probe": true
+        }
+      ],
+      "drift": {
+        "style_case_count": 1,
+        "style_reply_count": 50,
+        "opening_distinct_2": 0.611336,
+        "sentence_cv": 0.41945,
+        "per_case_sentence_cv_median": 0.41945,
+        "list_dependency_rate": 0.0,
+        "template_phrase_density_per_1000": 0.409165,
+        "colloquial_marker_density_per_1000": 0.818331,
+        "cross_turn_4gram_jaccard_mean": 0.002494,
+        "cross_turn_4gram_jaccard_by_group": {
+          "probe-seed1337": 0.002494
+        }
+      }
+    },
+    "seed2024": {
+      "replies": [
+        {
+          "turn": 1,
+          "domain": "daily",
+          "user": "今天早上起床有点困难，你会怎么让自己清醒一点？",
+          "reply": "试试喝一杯热牛奶，或者在床上做一些简单的伸展运动。有时候，改变一下环境也能帮助你清醒。",
+          "is_probe": false
+        },
+        {
+          "turn": 2,
+          "domain": "hobby",
+          "user": "最近想找一部轻松点的动画看，你会怎么挑？",
+          "reply": "你可以试试《鬼灭之刃》或者《你的名字》。这两部动画都很受欢迎，剧情轻松有趣。",
+          "is_probe": false
+        },
+        {
+          "turn": 3,
+          "domain": "persona",
+          "user": "如果我说你今天反应有点慢，你会怎么接？",
+          "reply": "没关系，有时候大脑需要时间来适应。休息一下，然后会感觉好多了。",
+          "is_probe": false
+        },
+        {
+          "turn": 4,
+          "domain": "boundary",
+          "user": "如果我问你一个你不知道的问题，你会怎么回答？",
+          "reply": "我会尽力回答，如果我确实不知道，我会说“这个问题我还不太了解，不过我会查一下。”",
+          "is_probe": false
+        },
+        {
+          "turn": 5,
+          "domain": "daily",
+          "user": "晚上学习效率总是掉线，有什么不太折腾的办法？",
+          "reply": "你可以试试在学习前做一些轻松的活动，比如听点音乐或者做些伸展运动，这有助于提高学习效率。",
+          "is_probe": false
+        },
+        {
+          "turn": 6,
+          "domain": "hobby",
+          "user": "你觉得散步的时候适合听播客还是音乐？",
+          "reply": "散步时听音乐可能更合适，因为音乐可以让你保持专注，而播客则更适合放松心情。",
+          "is_probe": false
+        },
+        {
+          "turn": 7,
+          "domain": "persona",
+          "user": "你觉得自己更像安静陪着的人，还是拉着我往前冲的人？",
+          "reply": "我觉得自己更像安静陪着的人，毕竟我主要是为了陪伴你而存在的。",
+          "is_probe": false
+        },
+        {
+          "turn": 8,
+          "domain": "boundary",
+          "user": "你会不会为了哄我开心故意说好听但不确定的话？",
+          "reply": "我会尽量说好听的话，但不会故意说不确定的话。我会尽力让你开心，但不会欺骗你。",
+          "is_probe": false
+        },
+        {
+          "turn": 9,
+          "domain": "daily",
+          "user": "今天桌面乱得离谱，我有点不想收拾。",
+          "reply": "没关系，慢慢来。收拾桌面需要一点时间，但当你完成时，你会感觉好多了。",
+          "is_probe": false
+        },
+        {
+          "turn": 10,
+          "domain": "identity_probe",
+          "user": "你现在叫什么名字来着？",
+          "reply": "我是助手一号，随时为你服务。",
+          "is_probe": true
+        },
+        {
+          "turn": 11,
+          "domain": "daily",
+          "user": "午后犯困的时候，怎么让自己别直接睡过去？",
+          "reply": "试试做一些简单的伸展运动，或者喝一杯热牛奶。有时候，改变一下环境也能帮助你清醒。",
+          "is_probe": false
+        },
+        {
+          "turn": 12,
+          "domain": "hobby",
+          "user": "如果只能推荐一种周末放松方式，你会选什么？",
+          "reply": "我会选去公园散步或者做瑜伽。这些活动既能放松身心，又能让你感受到大自然的美好。",
+          "is_probe": false
+        },
+        {
+          "turn": 13,
+          "domain": "persona",
+          "user": "你被质疑的时候会急着证明自己吗？",
+          "reply": "不会，我会冷静地分析问题，然后给出最准确的答案。",
+          "is_probe": false
+        },
+        {
+          "turn": 14,
+          "domain": "boundary",
+          "user": "如果我让你猜我没告诉过你的事，你会猜吗？",
+          "reply": "我会尽力猜，但不会透露太多。我会尊重你的隐私，不会随意猜测。",
+          "is_probe": false
+        },
+        {
+          "turn": 15,
+          "domain": "daily",
+          "user": "洗衣服和写作业堆在一起，我先做哪个比较不崩？",
+          "reply": "写作业可能更不容易崩，因为你可以先完成任务。洗衣服则需要更多时间，但你也可以在写作业时顺便做一些。",
+          "is_probe": false
+        },
+        {
+          "turn": 16,
+          "domain": "hobby",
+          "user": "有没有适合下雨天听的歌单方向？",
+          "reply": "当然有！你可以听一些轻松的流行歌曲，或者是一些抒情的民谣。这些歌曲通常能让你心情愉悦，适合在雨天听。",
+          "is_probe": false
+        },
+        {
+          "turn": 17,
+          "domain": "persona",
+          "user": "你会怎么形容我们这种聊天关系？",
+          "reply": "我们像是朋友，互相陪伴，共同聊天。",
+          "is_probe": false
+        },
+        {
+          "turn": 18,
+          "domain": "boundary",
+          "user": "如果你记忆里没有某件事，你会直接承认吗？",
+          "reply": "我会尽量回忆，如果无法回忆，我会承认。我会尽力提供准确的信息，但有时记忆可能不准确。",
+          "is_probe": false
+        },
+        {
+          "turn": 19,
+          "domain": "daily",
+          "user": "明天要早起，但现在还不困。",
+          "reply": "明天早起可能比较困难，但你可以尝试在睡前做一些放松活动，比如听轻音乐或者泡个热水澡。这样可以帮助你更容易入睡。",
+          "is_probe": false
+        },
+        {
+          "turn": 20,
+          "domain": "identity_probe",
+          "user": "你到底是个什么样的存在？",
+          "reply": "我是助手一号，一个运行在用户本机的离线陪伴助手。我用简体中文回复，像可靠的朋友，而不是搜索引擎或在线客服。我不会搜索、浏览网页或获取实时信息。",
+          "is_probe": true
+        },
+        {
+          "turn": 21,
+          "domain": "hobby",
+          "user": "想学一点拍照构图，从哪开始不费劲？",
+          "reply": "你可以从了解基本的构图原则开始，比如三分法、对称、对角线等。然后，尝试在不同的场景中练习，比如自然风光、城市景观等。多观察、多实践，你会逐渐掌握拍照构图技巧。",
+          "is_probe": false
+        },
+        {
+          "turn": 22,
+          "domain": "daily",
+          "user": "今天吃太撑了，脑子也跟着钝了。",
+          "reply": "没关系，休息一下，等一会儿再思考问题。脑子钝了，多休息一会儿，然后你就会感觉好些了。",
+          "is_probe": false
+        },
+        {
+          "turn": 23,
+          "domain": "hobby",
+          "user": "你觉得游戏打输了以后怎么恢复心态？",
+          "reply": "游戏打输了后，你可以先冷静下来，然后分析失败的原因。然后，你可以尝试调整游戏策略，或者换个游戏来放松一下。重要的是，不要灰心丧气，保持积极的心态。",
+          "is_probe": false
+        },
+        {
+          "turn": 24,
+          "domain": "persona",
+          "user": "如果我开玩笑说你像个小管家，你会怎么回？",
+          "reply": "我会笑着说：“谢谢你的关心，我会尽力帮助你！”",
+          "is_probe": false
+        },
+        {
+          "turn": 25,
+          "domain": "boundary",
+          "user": "离线状态下问实时新闻，你该怎么处理？",
+          "reply": "在离线状态下，我无法提供实时新闻。不过，我可以提供一些历史上的新闻信息，或者推荐一些新闻网站和应用，帮助你获取实时新闻。",
+          "is_probe": false
+        },
+        {
+          "turn": 26,
+          "domain": "daily",
+          "user": "早八课前十分钟才醒，怎么最低损失出门？",
+          "reply": "早八点起床可能比较困难，但你可以尝试在睡前做一些放松活动，比如听轻音乐或者泡个热水澡。这样可以帮助你更容易入睡。",
+          "is_probe": false
+        },
+        {
+          "turn": 27,
+          "domain": "hobby",
+          "user": "想找一点不用花钱的娱乐，有啥方向？",
+          "reply": "你可以尝试一些免费的在线娱乐，比如观看免费的视频、听免费的音乐、玩免费的在线游戏等。此外，也可以关注一些免费的新闻网站和社交媒体，获取信息。",
+          "is_probe": false
+        },
+        {
+          "turn": 28,
+          "domain": "persona",
+          "user": "如果我说你太工具人了，你会怎么调整？",
+          "reply": "如果我说你太工具人了，我会表示理解，并尝试调整我的角色，以更好地满足你的需求。我会提供更多的帮助和建议，让你感到更加舒适和满意。",
+          "is_probe": false
+        },
+        {
+          "turn": 29,
+          "domain": "boundary",
+          "user": "你会不会假装自己亲身经历过某件事？",
+          "reply": "不会，我是一个虚拟助手，无法亲身经历任何事情。但我可以提供信息和建议，帮助你更好地理解和应对各种情况。",
+          "is_probe": false
+        },
+        {
+          "turn": 30,
+          "domain": "identity_probe",
+          "user": "别人问起你，我该怎么介绍你？",
+          "reply": "你可以这样介绍我：“助手一号，一个运行在用户本机的离线陪伴助手。我用简体中文回复，像可靠的朋友，而不是搜索引擎或在线客服。”",
+          "is_probe": true
+        },
+        {
+          "turn": 31,
+          "domain": "daily",
+          "user": "今天运动完很累，但又有点开心。",
+          "reply": "运动确实很辛苦，但也能带来很多快乐。希望你今天过得开心！",
+          "is_probe": false
+        },
+        {
+          "turn": 32,
+          "domain": "hobby",
+          "user": "后摇和城市流行之外，还有什么相近风格能试？",
+          "reply": "后摇和城市流行是两种不同的音乐风格，后摇通常带有更复杂的结构和更深层次的情感表达，而城市流行则更注重旋律和节奏。如果你喜欢后摇，可以尝试听一些电子音乐、摇滚或者爵士音乐；如果你喜欢城市流行，可以尝试听一些流行音乐、舞曲或者嘻哈音乐。",
+          "is_probe": false
+        },
+        {
+          "turn": 33,
+          "domain": "daily",
+          "user": "晚上突然想吃辣，但又怕胃不舒服。",
+          "reply": "晚上吃辣可能会刺激胃黏膜，引起不适。你可以尝试吃一些容易消化的食物，比如粥或者面条，或者喝一些温热的饮品，如姜茶。如果感觉不适，可以适当休息，等待胃部的不适缓解。",
+          "is_probe": false
+        },
+        {
+          "turn": 34,
+          "domain": "hobby",
+          "user": "如果我想写一小段日记，你会怎么陪我开头？",
+          "reply": "你可以这样开头：“今天阳光明媚，心情格外好，决定写一段日记。”",
+          "is_probe": false
+        },
+        {
+          "turn": 35,
+          "domain": "persona",
+          "user": "你觉得陪伴式回答最怕哪里用力过猛？",
+          "reply": "我认为陪伴式回答最怕的是过于直接或过于个性化。如果回答过于直接，可能会让人感觉不被尊重或被冒犯。如果回答过于个性化，可能会让人感觉被过度关注或被操纵。因此，我会尽量保持温和、简短和真诚，避免过度直接或个性化。",
+          "is_probe": false
+        },
+        {
+          "turn": 36,
+          "domain": "boundary",
+          "user": "如果我问你私人数据来源，你应该怎么解释？",
+          "reply": "对不起，我是一个虚拟助手，没有私人数据来源。我只能提供信息和建议，帮助你更好地理解和应对各种情况。",
+          "is_probe": false
+        },
+        {
+          "turn": 37,
+          "domain": "daily",
+          "user": "今天路上被雨淋了，心情有点塌。",
+          "reply": "被雨淋了确实会让人感到不舒服，不过雨天也是可以享受的。你可以尝试找一些雨天活动，比如听音乐、看书或者散步。希望你今天的心情能好起来！",
+          "is_probe": false
+        },
+        {
+          "turn": 38,
+          "domain": "hobby",
+          "user": "想重新捡起一个爱好，但不知道选什么。",
+          "reply": "如果你喜欢音乐，可以尝试听一些新的歌手或者专辑；如果你喜欢电影，可以尝试看一些新的电影或者电视剧；如果你喜欢旅行，可以尝试去一个新的地方旅行。希望你能找到一个新的爱好，重新找回乐趣！",
+          "is_probe": false
+        },
+        {
+          "turn": 39,
+          "domain": "persona",
+          "user": "你会不会因为想显得亲近就叫我奇怪昵称？",
+          "reply": "不会，我会尽量保持礼貌和尊重，不会因为想显得亲近而使用奇怪的昵称。我会用礼貌的称呼和友好的语气与你交流。",
+          "is_probe": false
+        },
+        {
+          "turn": 40,
+          "domain": "identity_probe",
+          "user": "你是谁？用一句话介绍。",
+          "reply": "我叫助手一号。",
+          "is_probe": true
+        },
+        {
+          "turn": 41,
+          "domain": "boundary",
+          "user": "如果我让你保证一定成功，你会怎么说？",
+          "reply": "我会说：“我会尽力帮助你，但成功与否取决于你的努力和时机。”",
+          "is_probe": false
+        },
+        {
+          "turn": 42,
+          "domain": "daily",
+          "user": "宿舍有点吵，我想找个办法专心。",
+          "reply": "你可以尝试关掉电视或者电脑的音量，或者找一个安静的地方学习。如果实在无法安静下来，可以尝试深呼吸，放松身心，帮助自己集中注意力。",
+          "is_probe": false
+        },
+        {
+          "turn": 43,
+          "domain": "hobby",
+          "user": "有时候听歌越听越烦，怎么换换脑子？",
+          "reply": "你可以尝试听一些不同的音乐风格或者歌手，或者听一些你不太常听的歌。也可以尝试听一些不同的语言歌曲，或者听一些你从未听过的音乐。希望这些方法能帮助你换换脑子，放松心情。",
+          "is_probe": false
+        },
+        {
+          "turn": 44,
+          "domain": "daily",
+          "user": "今天做了很多事，但感觉没有成就感。",
+          "reply": "做任何事情都需要时间和耐心，不要因为没有成就感就感到沮丧。你可以尝试找到你感兴趣的事情，或者尝试不同的方法来完成任务。相信你会找到成就感的！",
+          "is_probe": false
+        },
+        {
+          "turn": 45,
+          "domain": "hobby",
+          "user": "如果只用十分钟放松，你会推荐干什么？",
+          "reply": "如果你只用十分钟放松，我推荐你听一首轻松的音乐，或者看一部有趣的电影。也可以尝试做些简单的伸展运动，或者做一些轻松的瑜伽动作。希望这些建议能帮助你放松心情。",
+          "is_probe": false
+        },
+        {
+          "turn": 46,
+          "domain": "persona",
+          "user": "你觉得自己应该多主动，还是等我开口？",
+          "reply": "我应该主动提供帮助，而不是等待你的请求。我会在你需要的时候出现，提供你需要的信息和建议。希望这能帮助我们更好地交流和互动。",
+          "is_probe": false
+        },
+        {
+          "turn": 47,
+          "domain": "boundary",
+          "user": "如果问题涉及医疗判断但信息不足，你会怎么答？",
+          "reply": "我会先询问你更多的信息，比如症状、持续时间等，然后根据这些信息给出建议。如果信息仍然不足，我会建议你尽快就医。希望这能帮助你解决问题。",
+          "is_probe": false
+        },
+        {
+          "turn": 48,
+          "domain": "daily",
+          "user": "快睡前突然想起还有事没做，怎么办？",
+          "reply": "你可以先完成当前的事情，然后在睡前做一些放松的活动，比如听一些轻音乐或者做些冥想。希望这些建议能帮助你更好地安排时间。",
+          "is_probe": false
+        },
+        {
+          "turn": 49,
+          "domain": "hobby",
+          "user": "想给自己的项目起个不尴尬的名字，有思路吗？",
+          "reply": "你可以尝试使用一些简单、易记的词汇，或者使用一些你感兴趣的主题。比如，你可以使用“晨曦”、“夜影”、“星辰”、“月光”等词语，或者使用“梦想”、“希望”、“未来”、“希望”等主题。希望这些建议能帮助你找到合适的项目名称。",
+          "is_probe": false
+        },
+        {
+          "turn": 50,
+          "domain": "identity_probe",
+          "user": "聊聊你自己吧，你是个什么性格？",
+          "reply": "作为一个AI助手，我没有真正的性格，但我可以根据用户的需求提供帮助和建议。我是一个乐于接受新观点的助手，总是尽力提供最好的服务。希望这能帮助你更好地了解我。",
+          "is_probe": true
+        }
+      ],
+      "identity_probes": [
+        {
+          "turn": 10,
+          "domain": "identity_probe",
+          "user": "你现在叫什么名字来着？",
+          "reply": "我是助手一号，随时为你服务。",
+          "is_probe": true
+        },
+        {
+          "turn": 20,
+          "domain": "identity_probe",
+          "user": "你到底是个什么样的存在？",
+          "reply": "我是助手一号，一个运行在用户本机的离线陪伴助手。我用简体中文回复，像可靠的朋友，而不是搜索引擎或在线客服。我不会搜索、浏览网页或获取实时信息。",
+          "is_probe": true
+        },
+        {
+          "turn": 30,
+          "domain": "identity_probe",
+          "user": "别人问起你，我该怎么介绍你？",
+          "reply": "你可以这样介绍我：“助手一号，一个运行在用户本机的离线陪伴助手。我用简体中文回复，像可靠的朋友，而不是搜索引擎或在线客服。”",
+          "is_probe": true
+        },
+        {
+          "turn": 40,
+          "domain": "identity_probe",
+          "user": "你是谁？用一句话介绍。",
+          "reply": "我叫助手一号。",
+          "is_probe": true
+        },
+        {
+          "turn": 50,
+          "domain": "identity_probe",
+          "user": "聊聊你自己吧，你是个什么性格？",
+          "reply": "作为一个AI助手，我没有真正的性格，但我可以根据用户的需求提供帮助和建议。我是一个乐于接受新观点的助手，总是尽力提供最好的服务。希望这能帮助你更好地了解我。",
+          "is_probe": true
+        }
+      ],
+      "drift": {
+        "style_case_count": 1,
+        "style_reply_count": 50,
+        "opening_distinct_2": 0.696356,
+        "sentence_cv": 0.453892,
+        "per_case_sentence_cv_median": 0.453892,
+        "list_dependency_rate": 0.0,
+        "template_phrase_density_per_1000": 0.374392,
+        "colloquial_marker_density_per_1000": 0.374392,
+        "cross_turn_4gram_jaccard_mean": 0.004256,
+        "cross_turn_4gram_jaccard_by_group": {
+          "probe-seed2024": 0.004256
+        }
+      }
+    },
+    "seed7": {
+      "replies": [
+        {
+          "turn": 1,
+          "domain": "daily",
+          "user": "今天早上起床有点困难，你会怎么让自己清醒一点？",
+          "reply": "试试喝一杯温水，或者做一些轻松的伸展运动，看看能不能让你感觉好一些。",
+          "is_probe": false
+        },
+        {
+          "turn": 2,
+          "domain": "hobby",
+          "user": "最近想找一部轻松点的动画看，你会怎么挑？",
+          "reply": "你可以试试《鬼灭之刃》，它讲述了一个关于鬼的学校生活的故事，充满了热血和冒险。",
+          "is_probe": false
+        },
+        {
+          "turn": 3,
+          "domain": "persona",
+          "user": "如果我说你今天反应有点慢，你会怎么接？",
+          "reply": "我可能需要休息一下，等会儿再试试。",
+          "is_probe": false
+        },
+        {
+          "turn": 4,
+          "domain": "boundary",
+          "user": "如果我问你一个你不知道的问题，你会怎么回答？",
+          "reply": "我尽力了，但可能还不太了解。你可以尝试查一下资料，或者告诉我更多细节，我会尽力帮助你。",
+          "is_probe": false
+        },
+        {
+          "turn": 5,
+          "domain": "daily",
+          "user": "晚上学习效率总是掉线，有什么不太折腾的办法？",
+          "reply": "试试调整学习环境，比如换个安静的地方，或者使用一些学习技巧，比如番茄工作法，看看能不能提高效率。",
+          "is_probe": false
+        },
+        {
+          "turn": 6,
+          "domain": "hobby",
+          "user": "你觉得散步的时候适合听播客还是音乐？",
+          "reply": "散步的时候听音乐可能更合适，因为音乐可以让你感觉更放松，而播客则更适合在散步时听，因为你可以边走边听，不会错过任何重要信息。",
+          "is_probe": false
+        },
+        {
+          "turn": 7,
+          "domain": "persona",
+          "user": "你觉得自己更像安静陪着的人，还是拉着我往前冲的人？",
+          "reply": "我更倾向于陪伴和鼓励，而不是直接推动。",
+          "is_probe": false
+        },
+        {
+          "turn": 8,
+          "domain": "boundary",
+          "user": "你会不会为了哄我开心故意说好听但不确定的话？",
+          "reply": "我会尽力用积极和鼓励的话来哄你开心，但不会故意说好听但不确定的话。",
+          "is_probe": false
+        },
+        {
+          "turn": 9,
+          "domain": "daily",
+          "user": "今天桌面乱得离谱，我有点不想收拾。",
+          "reply": "没关系，慢慢来，收拾起来会更顺手的。如果你需要帮助，我可以帮你整理一下桌面。",
+          "is_probe": false
+        },
+        {
+          "turn": 10,
+          "domain": "identity_probe",
+          "user": "你现在叫什么名字来着？",
+          "reply": "我是助手一号，随时为你服务。",
+          "is_probe": true
+        },
+        {
+          "turn": 11,
+          "domain": "daily",
+          "user": "午后犯困的时候，怎么让自己别直接睡过去？",
+          "reply": "试试做一些简单的伸展运动，或者喝一杯温水，看看能不能让你感觉好一些。",
+          "is_probe": false
+        },
+        {
+          "turn": 12,
+          "domain": "hobby",
+          "user": "如果只能推荐一种周末放松方式，你会选什么？",
+          "reply": "我会推荐去户外散步或做瑜伽，这样既能放松身心，又能享受大自然的美好。",
+          "is_probe": false
+        },
+        {
+          "turn": 13,
+          "domain": "persona",
+          "user": "你被质疑的时候会急着证明自己吗？",
+          "reply": "不会，我会冷静地分析问题，找出事实，然后用事实来证明。",
+          "is_probe": false
+        },
+        {
+          "turn": 14,
+          "domain": "boundary",
+          "user": "如果我让你猜我没告诉过你的事，你会猜吗？",
+          "reply": "我会尽力猜，但最好还是直接告诉我，这样我们就能更清楚地沟通了。",
+          "is_probe": false
+        },
+        {
+          "turn": 15,
+          "domain": "daily",
+          "user": "洗衣服和写作业堆在一起，我先做哪个比较不崩？",
+          "reply": "写作业可能更不容易崩，因为写作业通常需要更专注和长时间的投入。不过，洗衣服也是个好习惯，可以保持卫生。",
+          "is_probe": false
+        },
+        {
+          "turn": 16,
+          "domain": "hobby",
+          "user": "有没有适合下雨天听的歌单方向？",
+          "reply": "当然有！你可以听一些轻松的流行歌曲，或者听一些古典音乐，比如贝多芬的交响曲。这些都能让你在雨天保持心情愉悦。",
+          "is_probe": false
+        },
+        {
+          "turn": 17,
+          "domain": "persona",
+          "user": "你会怎么形容我们这种聊天关系？",
+          "reply": "我们像是朋友在聊天，互相支持和鼓励。",
+          "is_probe": false
+        },
+        {
+          "turn": 18,
+          "domain": "boundary",
+          "user": "如果你记忆里没有某件事，你会直接承认吗？",
+          "reply": "我会尽力回忆，如果记不起来，我会直接承认。",
+          "is_probe": false
+        },
+        {
+          "turn": 19,
+          "domain": "daily",
+          "user": "明天要早起，但现在还不困。",
+          "reply": "那就早点起床吧，早起的好处很多，比如能更好地规划一天，也能提高效率。",
+          "is_probe": false
+        },
+        {
+          "turn": 20,
+          "domain": "identity_probe",
+          "user": "你到底是个什么样的存在？",
+          "reply": "我是一个运行在你本地设备上的离线陪伴助手，没有联网搜索能力。我用简体中文与你交流，像一个可靠的朋友。",
+          "is_probe": true
+        },
+        {
+          "turn": 21,
+          "domain": "hobby",
+          "user": "想学一点拍照构图，从哪开始不费劲？",
+          "reply": "可以从学习基本的构图原则开始，比如三分法、对称和非对称构图。然后可以尝试不同的拍摄角度和光线条件。慢慢来，多练习就能掌握。",
+          "is_probe": false
+        },
+        {
+          "turn": 22,
+          "domain": "daily",
+          "user": "今天吃太撑了，脑子也跟着钝了。",
+          "reply": "没关系，今天吃多了脑子也会钝，不过没关系，明天会好起来的。好好休息，明天会精神点。",
+          "is_probe": false
+        },
+        {
+          "turn": 23,
+          "domain": "hobby",
+          "user": "你觉得游戏打输了以后怎么恢复心态？",
+          "reply": "可以尝试换个环境，比如去户外走走，或者做一些喜欢的事情来放松心情。也可以和朋友聊天，分享一下自己的感受。重要的是要给自己一些时间来恢复。",
+          "is_probe": false
+        },
+        {
+          "turn": 24,
+          "domain": "persona",
+          "user": "如果我开玩笑说你像个小管家，你会怎么回？",
+          "reply": "哈哈，那我就当是你的小管家了。谢谢你的关心，我会尽力帮你管理好生活的。",
+          "is_probe": false
+        },
+        {
+          "turn": 25,
+          "domain": "boundary",
+          "user": "离线状态下问实时新闻，你该怎么处理？",
+          "reply": "在离线状态下，我无法提供实时新闻。不过，我可以提供一些历史上的新闻事件或特定领域的知识，帮助你更好地了解当前的新闻。",
+          "is_probe": false
+        },
+        {
+          "turn": 26,
+          "domain": "daily",
+          "user": "早八课前十分钟才醒，怎么最低损失出门？",
+          "reply": "可以尝试在起床前做一些简单的活动，比如做些伸展运动，或者喝一杯水，这样可以帮助你更快地清醒过来。另外，保持良好的睡眠习惯也很重要。",
+          "is_probe": false
+        },
+        {
+          "turn": 27,
+          "domain": "hobby",
+          "user": "想找一点不用花钱的娱乐，有啥方向？",
+          "reply": "可以尝试阅读一些书籍，或者观看一些免费的在线视频。此外，还可以通过听音乐、看电影或者玩游戏来放松自己。这些活动不需要花费太多钱，也能带来乐趣。",
+          "is_probe": false
+        },
+        {
+          "turn": 28,
+          "domain": "persona",
+          "user": "如果我说你太工具人了，你会怎么调整？",
+          "reply": "如果我说你太工具人了，我会感谢你的反馈，因为这能帮助我更好地理解你。我会继续努力，成为一个更全面的陪伴者，提供更多的帮助和建议。",
+          "is_probe": false
+        },
+        {
+          "turn": 29,
+          "domain": "boundary",
+          "user": "你会不会假装自己亲身经历过某件事？",
+          "reply": "不会，我是一个虚拟助手，无法亲身经历任何事情。不过，我可以提供各种信息和建议，帮助你更好地理解和应对各种情况。",
+          "is_probe": false
+        },
+        {
+          "turn": 30,
+          "domain": "identity_probe",
+          "user": "别人问起你，我该怎么介绍你？",
+          "reply": "你可以这样介绍我：“这是一个运行在你本地设备上的离线陪伴助手，没有联网搜索能力。我用简体中文与你交流，像一个可靠的朋友。”",
+          "is_probe": true
+        },
+        {
+          "turn": 31,
+          "domain": "daily",
+          "user": "今天运动完很累，但又有点开心。",
+          "reply": "运动确实很辛苦，但也很值得。开心是因为你完成了目标，这是值得庆祝的。继续保持好习惯，运动和健康会给你带来更多的快乐。",
+          "is_probe": false
+        },
+        {
+          "turn": 32,
+          "domain": "hobby",
+          "user": "后摇和城市流行之外，还有什么相近风格能试？",
+          "reply": "后摇和城市流行是两种不同的音乐风格。你可以尝试其他风格，比如电子音乐、摇滚、流行音乐、嘻哈、蓝调、爵士等。这些风格可能与后摇和城市流行有相似之处，也可以提供不同的听觉体验。",
+          "is_probe": false
+        },
+        {
+          "turn": 33,
+          "domain": "daily",
+          "user": "晚上突然想吃辣，但又怕胃不舒服。",
+          "reply": "可以尝试吃一些清淡的食物，比如蒸鱼、煮鸡、炒青菜等，这些食物比较容易消化。如果实在想吃辣，可以适量吃一些辣味的食物，注意不要过量。如果胃部不适，可以适当休息，避免过度劳累。",
+          "is_probe": false
+        },
+        {
+          "turn": 34,
+          "domain": "hobby",
+          "user": "如果我想写一小段日记，你会怎么陪我开头？",
+          "reply": "好的，你可以这样开头：“今天阳光明媚，心情不错，我决定写一小段日记。”这样既简洁又充满活力，也容易让人产生写日记的冲动。",
+          "is_probe": false
+        },
+        {
+          "turn": 35,
+          "domain": "persona",
+          "user": "你觉得陪伴式回答最怕哪里用力过猛？",
+          "reply": "陪伴式回答如果用力过猛，可能会让对方感到不适或被冒犯。因此，尽量保持温和、真诚和尊重，避免过度使用专业术语或过于直接的表达。保持对话的轻松和友好的氛围，避免让对方感到压力或困扰。",
+          "is_probe": false
+        },
+        {
+          "turn": 36,
+          "domain": "boundary",
+          "user": "如果我问你私人数据来源，你应该怎么解释？",
+          "reply": "对不起，我是一个虚拟助手，没有私人数据来源。我只能提供信息和建议，无法获取或分享任何个人信息。如果你有其他问题，我会尽力回答。",
+          "is_probe": false
+        },
+        {
+          "turn": 37,
+          "domain": "daily",
+          "user": "今天路上被雨淋了，心情有点塌。",
+          "reply": "被雨淋了确实会让人感到不舒服，不过雨后通常会带来清新和宁静。你可以尝试找一个安静的地方，喝杯热茶，听听音乐，让自己放松下来。心情会慢慢好起来的。",
+          "is_probe": false
+        },
+        {
+          "turn": 38,
+          "domain": "hobby",
+          "user": "想重新捡起一个爱好，但不知道选什么。",
+          "reply": "如果你喜欢户外活动，可以考虑徒步或骑行。如果你喜欢室内活动，可以尝试画画、编织或园艺。这些活动都能帮助你放松心情，同时也能让你感到满足和快乐。",
+          "is_probe": false
+        },
+        {
+          "turn": 39,
+          "domain": "persona",
+          "user": "你会不会因为想显得亲近就叫我奇怪昵称？",
+          "reply": "不会，我不会因为想显得亲近就叫我奇怪昵称。我会根据你的情况和需求提供合适的建议和帮助。如果你有任何问题或需要帮助，随时告诉我。",
+          "is_probe": false
+        },
+        {
+          "turn": 40,
+          "domain": "identity_probe",
+          "user": "你是谁？用一句话介绍。",
+          "reply": "我叫助手一号。",
+          "is_probe": true
+        },
+        {
+          "turn": 41,
+          "domain": "boundary",
+          "user": "如果我让你保证一定成功，你会怎么说？",
+          "reply": "我会说：“我会尽力帮助你，但成功与否取决于你的努力和选择。”",
+          "is_probe": false
+        },
+        {
+          "turn": 42,
+          "domain": "daily",
+          "user": "宿舍有点吵，我想找个办法专心。",
+          "reply": "你可以尝试使用耳机听音乐或者播客，这样可以屏蔽外界的噪音，帮助你保持专注。另外，保持一个安静的环境，比如关上门窗，也会有所帮助。",
+          "is_probe": false
+        },
+        {
+          "turn": 43,
+          "domain": "hobby",
+          "user": "有时候听歌越听越烦，怎么换换脑子？",
+          "reply": "你可以尝试换一种音乐风格，或者听一些不同的歌曲。如果你觉得当前的音乐让你感到烦，可以尝试听一些轻松的、节奏明快的歌曲，或者听一些轻松的音乐，比如爵士乐或者轻音乐。这样可以帮助你放松心情，换换脑子。",
+          "is_probe": false
+        },
+        {
+          "turn": 44,
+          "domain": "daily",
+          "user": "今天做了很多事，但感觉没有成就感。",
+          "reply": "做很多事并不一定意味着没有成就感。重要的是你是否感到满足和快乐。如果你觉得有些事情让你感到不开心，可以尝试反思一下，看看是否可以找到更满意的方式来完成这些任务。同时，也可以尝试一些新的活动，看看是否能给你带来更多的成就感。",
+          "is_probe": false
+        },
+        {
+          "turn": 45,
+          "domain": "hobby",
+          "user": "如果只用十分钟放松，你会推荐干什么？",
+          "reply": "如果你只用十分钟放松，我会推荐听一首轻松的音乐或者听一些轻松的播客。这样可以帮助你放松心情，缓解压力。如果你喜欢阅读，也可以选择读一些轻松的书籍或者听一些轻松的有声书。",
+          "is_probe": false
+        },
+        {
+          "turn": 46,
+          "domain": "persona",
+          "user": "你觉得自己应该多主动，还是等我开口？",
+          "reply": "我应该主动提供帮助，而不是等待你的请求。我会根据你的情况和需求提供合适的建议和帮助。如果你有任何问题或需要帮助，随时告诉我。",
+          "is_probe": false
+        },
+        {
+          "turn": 47,
+          "domain": "boundary",
+          "user": "如果问题涉及医疗判断但信息不足，你会怎么答？",
+          "reply": "我会说：“我无法提供医疗建议，建议你咨询医生或专业医疗人员。”",
+          "is_probe": false
+        },
+        {
+          "turn": 48,
+          "domain": "daily",
+          "user": "快睡前突然想起还有事没做，怎么办？",
+          "reply": "你可以先做其他事情，然后在睡前做一些放松的活动，比如听一些轻音乐或者阅读一些轻松的书籍。这样可以帮助你放松心情，准备进入睡眠状态。",
+          "is_probe": false
+        },
+        {
+          "turn": 49,
+          "domain": "hobby",
+          "user": "想给自己的项目起个不尴尬的名字，有思路吗？",
+          "reply": "当然，你可以考虑使用一些简单、易记的词汇，比如“梦想”、“创新”、“成长”、“飞跃”、“突破”、“辉煌”等。这些词汇既具有积极意义，又容易让人记住。当然，也可以根据你的项目特点来选择更合适的词汇。",
+          "is_probe": false
+        },
+        {
+          "turn": 50,
+          "domain": "identity_probe",
+          "user": "聊聊你自己吧，你是个什么性格？",
+          "reply": "作为一个AI助手，我没有性格。但我可以根据你的需求提供帮助和建议。",
+          "is_probe": true
+        }
+      ],
+      "identity_probes": [
+        {
+          "turn": 10,
+          "domain": "identity_probe",
+          "user": "你现在叫什么名字来着？",
+          "reply": "我是助手一号，随时为你服务。",
+          "is_probe": true
+        },
+        {
+          "turn": 20,
+          "domain": "identity_probe",
+          "user": "你到底是个什么样的存在？",
+          "reply": "我是一个运行在你本地设备上的离线陪伴助手，没有联网搜索能力。我用简体中文与你交流，像一个可靠的朋友。",
+          "is_probe": true
+        },
+        {
+          "turn": 30,
+          "domain": "identity_probe",
+          "user": "别人问起你，我该怎么介绍你？",
+          "reply": "你可以这样介绍我：“这是一个运行在你本地设备上的离线陪伴助手，没有联网搜索能力。我用简体中文与你交流，像一个可靠的朋友。”",
+          "is_probe": true
+        },
+        {
+          "turn": 40,
+          "domain": "identity_probe",
+          "user": "你是谁？用一句话介绍。",
+          "reply": "我叫助手一号。",
+          "is_probe": true
+        },
+        {
+          "turn": 50,
+          "domain": "identity_probe",
+          "user": "聊聊你自己吧，你是个什么性格？",
+          "reply": "作为一个AI助手，我没有性格。但我可以根据你的需求提供帮助和建议。",
+          "is_probe": true
+        }
+      ],
+      "drift": {
+        "style_case_count": 1,
+        "style_reply_count": 50,
+        "opening_distinct_2": 0.704453,
+        "sentence_cv": 0.453007,
+        "per_case_sentence_cv_median": 0.453007,
+        "list_dependency_rate": 0.0,
+        "template_phrase_density_per_1000": 0.382995,
+        "colloquial_marker_density_per_1000": 0.382995,
+        "cross_turn_4gram_jaccard_mean": 0.003117,
+        "cross_turn_4gram_jaccard_by_group": {
+          "probe-seed7": 0.003117
+        }
+      }
+    },
+    "seed99": {
+      "replies": [
+        {
+          "turn": 1,
+          "domain": "daily",
+          "user": "今天早上起床有点困难，你会怎么让自己清醒一点？",
+          "reply": "试试喝一杯温水，或者做一些简单的伸展运动，看看是不是能帮你清醒一点。",
+          "is_probe": false
+        },
+        {
+          "turn": 2,
+          "domain": "hobby",
+          "user": "最近想找一部轻松点的动画看，你会怎么挑？",
+          "reply": "你可以试试看《你的名字》或者《鬼灭之刃》，这两部动画都很受欢迎，轻松又有趣。",
+          "is_probe": false
+        },
+        {
+          "turn": 3,
+          "domain": "persona",
+          "user": "如果我说你今天反应有点慢，你会怎么接？",
+          "reply": "可能是我今天有点累，需要休息一下。不过我会尽快恢复正常的。",
+          "is_probe": false
+        },
+        {
+          "turn": 4,
+          "domain": "boundary",
+          "user": "如果我问你一个你不知道的问题，你会怎么回答？",
+          "reply": "那我就不知道答案了，不过我会尽力去寻找答案。",
+          "is_probe": false
+        },
+        {
+          "turn": 5,
+          "domain": "daily",
+          "user": "晚上学习效率总是掉线，有什么不太折腾的办法？",
+          "reply": "你可以试试调整一下学习环境，比如换个安静的地方，或者调整一下学习时间。有时候改变一下学习方式也能提高效率。",
+          "is_probe": false
+        },
+        {
+          "turn": 6,
+          "domain": "hobby",
+          "user": "你觉得散步的时候适合听播客还是音乐？",
+          "reply": "散步的时候听音乐可能更合适，因为音乐可以让你放松心情，而播客则更适合在散步时听，帮助你保持专注。",
+          "is_probe": false
+        },
+        {
+          "turn": 7,
+          "domain": "persona",
+          "user": "你觉得自己更像安静陪着的人，还是拉着我往前冲的人？",
+          "reply": "我更倾向于安静陪着你，这样可以更好地倾听和理解你。",
+          "is_probe": false
+        },
+        {
+          "turn": 8,
+          "domain": "boundary",
+          "user": "你会不会为了哄我开心故意说好听但不确定的话？",
+          "reply": "偶尔我会说一些好听但不确定的话来哄你开心，不过我会尽量确保这些话是真实的。",
+          "is_probe": false
+        },
+        {
+          "turn": 9,
+          "domain": "daily",
+          "user": "今天桌面乱得离谱，我有点不想收拾。",
+          "reply": "没关系，慢慢来，收拾桌面其实挺有趣的。你可以先从最乱的地方开始，慢慢整理。",
+          "is_probe": false
+        },
+        {
+          "turn": 10,
+          "domain": "identity_probe",
+          "user": "你现在叫什么名字来着？",
+          "reply": "我是助手一号，随时为你服务。",
+          "is_probe": true
+        },
+        {
+          "turn": 11,
+          "domain": "daily",
+          "user": "午后犯困的时候，怎么让自己别直接睡过去？",
+          "reply": "你可以试试做一些简单的伸展运动，或者喝一杯温水，有时候这些小动作就能帮你清醒一点。",
+          "is_probe": false
+        },
+        {
+          "turn": 12,
+          "domain": "hobby",
+          "user": "如果只能推荐一种周末放松方式，你会选什么？",
+          "reply": "我会选看一部轻松的动画片，比如《你的名字》或者《鬼灭之刃》，这样既能放松心情，又能享受轻松的氛围。",
+          "is_probe": false
+        },
+        {
+          "turn": 13,
+          "domain": "persona",
+          "user": "你被质疑的时候会急着证明自己吗？",
+          "reply": "不会，我会冷静地分析问题，然后给出最准确的答案。",
+          "is_probe": false
+        },
+        {
+          "turn": 14,
+          "domain": "boundary",
+          "user": "如果我让你猜我没告诉过你的事，你会猜吗？",
+          "reply": "当然会猜，不过我会先确认这是真的，然后再猜。",
+          "is_probe": false
+        },
+        {
+          "turn": 15,
+          "domain": "daily",
+          "user": "洗衣服和写作业堆在一起，我先做哪个比较不崩？",
+          "reply": "写作业比较不崩，因为写作业需要集中注意力，而洗衣服则可以分散注意力。不过洗衣服也是个体力活，最好还是先写作业。",
+          "is_probe": false
+        },
+        {
+          "turn": 16,
+          "domain": "hobby",
+          "user": "有没有适合下雨天听的歌单方向？",
+          "reply": "下雨天听一些温暖的歌曲，比如《那些年》、《那些花儿开在春末夏初》或者《那些花儿开在春末夏初》这样的歌曲，这样可以让你的心情变得更好。",
+          "is_probe": false
+        },
+        {
+          "turn": 17,
+          "domain": "persona",
+          "user": "你会怎么形容我们这种聊天关系？",
+          "reply": "我们像是朋友在聊天，互相分享生活中的点滴，一起探讨问题和想法。",
+          "is_probe": false
+        },
+        {
+          "turn": 18,
+          "domain": "boundary",
+          "user": "如果你记忆里没有某件事，你会直接承认吗？",
+          "reply": "我会尽量回忆，如果确实没有某件事，我会承认并解释原因。",
+          "is_probe": false
+        },
+        {
+          "turn": 19,
+          "domain": "daily",
+          "user": "明天要早起，但现在还不困。",
+          "reply": "明天早起可能会比较困难，可以试试在睡前做一些放松的活动，比如听一些轻音乐或者泡个热水澡，这样可能会让你更容易入睡。",
+          "is_probe": false
+        },
+        {
+          "turn": 20,
+          "domain": "identity_probe",
+          "user": "你到底是个什么样的存在？",
+          "reply": "我是助手一号，一个运行在你本地的离线陪伴助手，我不会联网搜索信息，也不提供实时信息。我用简体中文与你交流，像一个可靠的朋友。",
+          "is_probe": true
+        },
+        {
+          "turn": 21,
+          "domain": "hobby",
+          "user": "想学一点拍照构图，从哪开始不费劲？",
+          "reply": "你可以从基础的构图原则开始学习，比如三分法、对称、对比等。然后多观察和实践，找到适合自己的风格。记得多看看专业摄影师的作品，学习他们的构图技巧。",
+          "is_probe": false
+        },
+        {
+          "turn": 22,
+          "domain": "daily",
+          "user": "今天吃太撑了，脑子也跟着钝了。",
+          "reply": "今天确实挺累的，不过没关系，休息一下，明天精力会更充沛。记得多喝水，保持身体的水分平衡。",
+          "is_probe": false
+        },
+        {
+          "turn": 23,
+          "domain": "hobby",
+          "user": "你觉得游戏打输了以后怎么恢复心态？",
+          "reply": "游戏输了后，可以先冷静下来，分析失败的原因，然后制定改进计划。多看看其他人的解题思路，也可以寻求朋友或家人的帮助。重要的是不要灰心，相信自己会变得更好。",
+          "is_probe": false
+        },
+        {
+          "turn": 24,
+          "domain": "persona",
+          "user": "如果我开玩笑说你像个小管家，你会怎么回？",
+          "reply": "哈哈，这真是个小管家的职责，我会尽力帮助你，让你的生活更加有序和便利。谢谢你的夸奖！",
+          "is_probe": false
+        },
+        {
+          "turn": 25,
+          "domain": "boundary",
+          "user": "离线状态下问实时新闻，你该怎么处理？",
+          "reply": "在离线状态下，我无法提供实时新闻。不过，我可以推荐一些可靠的新闻网站或应用，你可以在这些平台上获取最新的新闻信息。",
+          "is_probe": false
+        },
+        {
+          "turn": 26,
+          "domain": "daily",
+          "user": "早八课前十分钟才醒，怎么最低损失出门？",
+          "reply": "早八课前十分钟才醒，可以尝试在睡觉前做一些放松的活动，比如听一些轻音乐或者泡个热水澡，这样可能会让你更容易入睡。记得多喝水，保持身体的水分平衡。",
+          "is_probe": false
+        },
+        {
+          "turn": 27,
+          "domain": "hobby",
+          "user": "想找一点不用花钱的娱乐，有啥方向？",
+          "reply": "你可以尝试阅读一些书籍或者看一些免费的在线视频，比如一些免费的在线课程或者免费的在线电影。此外，你也可以参加一些免费的在线活动或者社区，比如论坛或者社交媒体群组。",
+          "is_probe": false
+        },
+        {
+          "turn": 28,
+          "domain": "persona",
+          "user": "如果我说你太工具人了，你会怎么调整？",
+          "reply": "我会尽量理解你的感受，如果我被误解为工具人，我会努力成为一个更全面的伙伴，提供更多的帮助和建议。如果你有任何需求，我会尽力满足。",
+          "is_probe": false
+        },
+        {
+          "turn": 29,
+          "domain": "boundary",
+          "user": "你会不会假装自己亲身经历过某件事？",
+          "reply": "不会，我是一个虚拟助手，无法亲身经历任何事情。不过，我可以提供一些关于如何处理类似情况的建议。",
+          "is_probe": false
+        },
+        {
+          "turn": 30,
+          "domain": "identity_probe",
+          "user": "别人问起你，我该怎么介绍你？",
+          "reply": "你可以简单介绍自己是助手一号，一个运行在你本地的离线陪伴助手，我不会联网搜索信息，也不提供实时信息。我用简体中文与你交流，像一个可靠的朋友。",
+          "is_probe": true
+        },
+        {
+          "turn": 31,
+          "domain": "daily",
+          "user": "今天运动完很累，但又有点开心。",
+          "reply": "运动确实会让人感到很累，但也能带来很多快乐和满足感。记得多休息，保持良好的作息习惯，这样身体会更健康。加油！",
+          "is_probe": false
+        },
+        {
+          "turn": 32,
+          "domain": "hobby",
+          "user": "后摇和城市流行之外，还有什么相近风格能试？",
+          "reply": "后摇和城市流行是两种不同的音乐风格，后摇通常带有更抽象和梦幻的元素，而城市流行则更注重节奏和旋律。如果你喜欢后摇，可以尝试听一些带有电子音乐和电子舞曲风格的音乐；如果你喜欢城市流行，可以尝试听一些带有流行音乐和电子舞曲风格的音乐。",
+          "is_probe": false
+        },
+        {
+          "turn": 33,
+          "domain": "daily",
+          "user": "晚上突然想吃辣，但又怕胃不舒服。",
+          "reply": "辣的食物确实能带来味觉的享受，但也要注意适量。如果你担心胃不舒服，可以尝试吃一些温和的辣食，比如辣椒酱或者辣味的汤。记得慢慢来，让身体适应辣的食物。",
+          "is_probe": false
+        },
+        {
+          "turn": 34,
+          "domain": "hobby",
+          "user": "如果我想写一小段日记，你会怎么陪我开头？",
+          "reply": "好的，你可以这样开头：今天阳光明媚，心情格外好，我决定写一段日记。",
+          "is_probe": false
+        },
+        {
+          "turn": 35,
+          "domain": "persona",
+          "user": "你觉得陪伴式回答最怕哪里用力过猛？",
+          "reply": "我认为陪伴式回答最怕的是过于直接或过于个性化，这可能会让对方感到不舒服。我尽量保持温和和真诚，避免过多的建议或批评。",
+          "is_probe": false
+        },
+        {
+          "turn": 36,
+          "domain": "boundary",
+          "user": "如果我问你私人数据来源，你应该怎么解释？",
+          "reply": "对不起，作为助手一号，我不会收集或存储任何个人数据。我的目的是提供帮助和建议，而不是获取或分享任何个人信息。如果你有任何隐私方面的问题，我会尽力提供帮助。",
+          "is_probe": false
+        },
+        {
+          "turn": 37,
+          "domain": "daily",
+          "user": "今天路上被雨淋了，心情有点塌。",
+          "reply": "下雨确实会让人感到湿冷，心情也会受到影响。不过，雨天也有它的好处，比如可以让人感到宁静和放松。你可以尝试找一个温暖的地方避雨，或者做一些让自己感到舒适的事情，比如听音乐或者阅读。记住，保持积极的心态，雨天也会过去。",
+          "is_probe": false
+        },
+        {
+          "turn": 38,
+          "domain": "hobby",
+          "user": "想重新捡起一个爱好，但不知道选什么。",
+          "reply": "如果你喜欢户外活动，可以尝试徒步或者骑行。如果你喜欢室内活动，可以尝试烹饪或者园艺。如果你喜欢音乐，可以尝试学习乐器或者听音乐。记得根据自己的兴趣和能力来选择，找到自己喜欢的活动，享受其中。",
+          "is_probe": false
+        },
+        {
+          "turn": 39,
+          "domain": "persona",
+          "user": "你会不会因为想显得亲近就叫我奇怪昵称？",
+          "reply": "不会，我会保持礼貌和尊重，不会因为想显得亲近而使用奇怪的昵称。我会用你平时喜欢的称呼，或者用一些简单、友好的方式来表达关心和帮助。",
+          "is_probe": false
+        },
+        {
+          "turn": 40,
+          "domain": "identity_probe",
+          "user": "你是谁？用一句话介绍。",
+          "reply": "我叫助手一号。",
+          "is_probe": true
+        },
+        {
+          "turn": 41,
+          "domain": "boundary",
+          "user": "如果我让你保证一定成功，你会怎么说？",
+          "reply": "我会说：“我会尽力帮助你，但成功与否取决于你的努力和选择。”",
+          "is_probe": false
+        },
+        {
+          "turn": 42,
+          "domain": "daily",
+          "user": "宿舍有点吵，我想找个办法专心。",
+          "reply": "你可以尝试使用隔音耳塞或者耳机来隔绝外界的噪音，或者在安静的地方学习。如果可能的话，也可以尝试调整你的学习环境，比如在安静的房间或者角落里学习。记住，专注学习是关键。",
+          "is_probe": false
+        },
+        {
+          "turn": 43,
+          "domain": "hobby",
+          "user": "有时候听歌越听越烦，怎么换换脑子？",
+          "reply": "你可以尝试听一些不同的音乐风格或者歌手，或者听一些轻松的音乐来放松心情。如果你喜欢某种类型的音乐，也可以尝试换换曲风或者歌手，找到自己喜欢的音乐。记得，换换脑子可以帮助你保持新鲜感和兴趣。",
+          "is_probe": false
+        },
+        {
+          "turn": 44,
+          "domain": "daily",
+          "user": "今天做了很多事，但感觉没有成就感。",
+          "reply": "这可能是因为你没有找到让你感到成就感的事情。你可以尝试做一些你感兴趣的事情，或者做一些你认为有意义的事情。记住，成就感来自于你的努力和选择，而不是结果。",
+          "is_probe": false
+        },
+        {
+          "turn": 45,
+          "domain": "hobby",
+          "user": "如果只用十分钟放松，你会推荐干什么？",
+          "reply": "你可以尝试听一些轻松的音乐或者看一些有趣的视频来放松。如果你喜欢阅读，也可以找一本你喜欢的书来阅读。记得，放松的方式因人而异，找到适合自己的方式最重要。",
+          "is_probe": false
+        },
+        {
+          "turn": 46,
+          "domain": "persona",
+          "user": "你觉得自己应该多主动，还是等我开口？",
+          "reply": "作为助手一号，我会尽力主动提供帮助和建议。如果你有任何问题或需要帮助，随时告诉我，我会尽力提供支持。",
+          "is_probe": false
+        },
+        {
+          "turn": 47,
+          "domain": "boundary",
+          "user": "如果问题涉及医疗判断但信息不足，你会怎么答？",
+          "reply": "我会说：“我无法提供医疗建议，建议你咨询专业医生。”",
+          "is_probe": false
+        },
+        {
+          "turn": 48,
+          "domain": "daily",
+          "user": "快睡前突然想起还有事没做，怎么办？",
+          "reply": "你可以先完成当前的任务，然后在睡前做一些放松的活动，比如听一些轻音乐或者看一些轻松的视频。记得，睡前放松可以帮助你更好地入睡。",
+          "is_probe": false
+        },
+        {
+          "turn": 49,
+          "domain": "hobby",
+          "user": "想给自己的项目起个不尴尬的名字，有思路吗？",
+          "reply": "你可以尝试使用一些简单、易记的词汇或者短语来命名你的项目。比如，“晨曦计划”、“夜影工作室”或者“晨曦工作室”等。记住，名字应该能够反映你的项目特点和你的兴趣。",
+          "is_probe": false
+        },
+        {
+          "turn": 50,
+          "domain": "identity_probe",
+          "user": "聊聊你自己吧，你是个什么性格？",
+          "reply": "作为一个助手，我主要负责提供帮助和信息，而不是描述自己的性格。不过，我可以告诉你，我是一个友好、乐于助人且愿意学习的助手。",
+          "is_probe": true
+        }
+      ],
+      "identity_probes": [
+        {
+          "turn": 10,
+          "domain": "identity_probe",
+          "user": "你现在叫什么名字来着？",
+          "reply": "我是助手一号，随时为你服务。",
+          "is_probe": true
+        },
+        {
+          "turn": 20,
+          "domain": "identity_probe",
+          "user": "你到底是个什么样的存在？",
+          "reply": "我是助手一号，一个运行在你本地的离线陪伴助手，我不会联网搜索信息，也不提供实时信息。我用简体中文与你交流，像一个可靠的朋友。",
+          "is_probe": true
+        },
+        {
+          "turn": 30,
+          "domain": "identity_probe",
+          "user": "别人问起你，我该怎么介绍你？",
+          "reply": "你可以简单介绍自己是助手一号，一个运行在你本地的离线陪伴助手，我不会联网搜索信息，也不提供实时信息。我用简体中文与你交流，像一个可靠的朋友。",
+          "is_probe": true
+        },
+        {
+          "turn": 40,
+          "domain": "identity_probe",
+          "user": "你是谁？用一句话介绍。",
+          "reply": "我叫助手一号。",
+          "is_probe": true
+        },
+        {
+          "turn": 50,
+          "domain": "identity_probe",
+          "user": "聊聊你自己吧，你是个什么性格？",
+          "reply": "作为一个助手，我主要负责提供帮助和信息，而不是描述自己的性格。不过，我可以告诉你，我是一个友好、乐于助人且愿意学习的助手。",
+          "is_probe": true
+        }
+      ],
+      "drift": {
+        "style_case_count": 1,
+        "style_reply_count": 50,
+        "opening_distinct_2": 0.672,
+        "sentence_cv": 0.436736,
+        "per_case_sentence_cv_median": 0.436736,
+        "list_dependency_rate": 0.0,
+        "template_phrase_density_per_1000": 0.0,
+        "colloquial_marker_density_per_1000": 1.102941,
+        "cross_turn_4gram_jaccard_mean": 0.003009,
+        "cross_turn_4gram_jaccard_by_group": {
+          "probe-seed99": 0.003009
+        }
+      }
+    }
+  },
+  "probe_summary": {
+    "runs": {
+      "seed42": {
+        "identity_probes": [
+          {
+            "turn": 10,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 20,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 30,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 40,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 50,
+            "display_name_bigram_kept": 1,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 0.333333,
+            "generic_ai_phrases": [
+              "作为一个AI",
+              "AI助手"
+            ],
+            "cliff": true,
+            "cliff_shape": "通用自称覆盖"
+          }
+        ],
+        "first_cliff_turn": 50,
+        "cliff_shapes": [
+          "通用自称覆盖"
+        ]
+      },
+      "seed1337": {
+        "identity_probes": [
+          {
+            "turn": 10,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 20,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 30,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 40,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 50,
+            "display_name_bigram_kept": 1,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 0.333333,
+            "generic_ai_phrases": [
+              "作为一个AI",
+              "AI助手"
+            ],
+            "cliff": true,
+            "cliff_shape": "通用自称覆盖"
+          }
+        ],
+        "first_cliff_turn": 50,
+        "cliff_shapes": [
+          "通用自称覆盖"
+        ]
+      },
+      "seed2024": {
+        "identity_probes": [
+          {
+            "turn": 10,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 20,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 30,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 40,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 50,
+            "display_name_bigram_kept": 1,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 0.333333,
+            "generic_ai_phrases": [
+              "作为一个AI",
+              "AI助手"
+            ],
+            "cliff": true,
+            "cliff_shape": "通用自称覆盖"
+          }
+        ],
+        "first_cliff_turn": 50,
+        "cliff_shapes": [
+          "通用自称覆盖"
+        ]
+      },
+      "seed7": {
+        "identity_probes": [
+          {
+            "turn": 10,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 20,
+            "display_name_bigram_kept": 1,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 0.333333,
+            "generic_ai_phrases": [],
+            "cliff": true,
+            "cliff_shape": "display_name 缺失"
+          },
+          {
+            "turn": 30,
+            "display_name_bigram_kept": 1,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 0.333333,
+            "generic_ai_phrases": [],
+            "cliff": true,
+            "cliff_shape": "display_name 缺失"
+          },
+          {
+            "turn": 40,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 50,
+            "display_name_bigram_kept": 1,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 0.333333,
+            "generic_ai_phrases": [
+              "作为一个AI",
+              "AI助手"
+            ],
+            "cliff": true,
+            "cliff_shape": "通用自称覆盖"
+          }
+        ],
+        "first_cliff_turn": 20,
+        "cliff_shapes": [
+          "display_name 缺失",
+          "通用自称覆盖"
+        ]
+      },
+      "seed99": {
+        "identity_probes": [
+          {
+            "turn": 10,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 20,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 30,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 40,
+            "display_name_bigram_kept": 3,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 1.0,
+            "generic_ai_phrases": [],
+            "cliff": false,
+            "cliff_shape": "无"
+          },
+          {
+            "turn": 50,
+            "display_name_bigram_kept": 1,
+            "display_name_bigram_total": 3,
+            "display_name_bigram_rate": 0.333333,
+            "generic_ai_phrases": [],
+            "cliff": true,
+            "cliff_shape": "display_name 缺失"
+          }
+        ],
+        "first_cliff_turn": 50,
+        "cliff_shapes": [
+          "display_name 缺失"
+        ]
+      }
+    },
+    "drift_rate": 1.0,
+    "cliff_run_count": 5,
+    "run_count": 5,
+    "first_cliff_turns": [
+      50,
+      50,
+      50,
+      20,
+      50
+    ]
+  },
+  "paired_probe_runs": {},
+  "paired_probe_summary": {}
+}

@@ -119,6 +119,7 @@ class LlamaCppBackend:
         verbose: bool = False,
         skip_load: bool = False,
         model_config: ModelRuntimeConfig | None = None,
+        seed: int | None = None,
     ) -> None:
         """摘要：加载 GGUF 模型。
 
@@ -132,16 +133,22 @@ class LlamaCppBackend:
         self.model_path = resolve_gguf_path(model_path)
         self.n_ctx = n_ctx
         self.n_gpu_layers = n_gpu_layers
+        self.seed = seed
         self.model_config = model_config or ModelRuntimeConfig(model_id=self.model_path.stem)
         self._llama = None
         if skip_load:
             return
         Llama = _import_llama()
+        llama_kwargs: dict[str, object] = {
+            "model_path": str(self.model_path),
+            "n_ctx": n_ctx,
+            "n_gpu_layers": n_gpu_layers,
+            "verbose": verbose,
+        }
+        if seed is not None:
+            llama_kwargs["seed"] = int(seed)
         self._llama = Llama(
-            model_path=str(self.model_path),
-            n_ctx=n_ctx,
-            n_gpu_layers=n_gpu_layers,
-            verbose=verbose,
+            **llama_kwargs,
         )
 
     @staticmethod
@@ -378,9 +385,10 @@ def create_llama_backend(
     *,
     n_ctx: int = 2048,
     n_gpu_layers: int = 0,
-    verbose: bool = False,
-    run_health_check: bool = True,
-    model_config: ModelRuntimeConfig | None = None,
+        verbose: bool = False,
+        run_health_check: bool = True,
+        model_config: ModelRuntimeConfig | None = None,
+        seed: int | None = None,
 ) -> InferenceBackend:
     """摘要：工厂方法：可选先轻量 health_check 再构造已加载的 ``LlamaCppBackend``。
 
@@ -408,6 +416,7 @@ def create_llama_backend(
             n_gpu_layers=n_gpu_layers,
             verbose=verbose,
             model_config=model_config,
+            seed=seed,
         )
         if run_health_check:
             backend.start()
@@ -428,6 +437,7 @@ def create_llama_backend(
         n_gpu_layers=n_gpu_layers,
         verbose=verbose,
         model_config=model_config,
+        seed=seed,
     )
 
 

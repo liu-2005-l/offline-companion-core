@@ -9,6 +9,7 @@ from offline_companion.runtime.inference_backend import (
     LlamaCppBackend,
     resolve_gguf_path,
 )
+from offline_companion.runtime.inference_backend import backend as backend_module
 from offline_companion.runtime.inference_backend.backend import strip_model_output
 from offline_companion.shared.errors import InferenceBackendError
 from offline_companion.shared.types import MessageRow, ModelRuntimeConfig
@@ -77,6 +78,25 @@ def test_llama_generate_merges_memory_into_single_system_message(tmp_path: Path)
     assert "sys" in msgs[0]["content"]
     assert "mem-block" in msgs[0]["content"]
     assert all(m["role"] != "system" or i == 0 for i, m in enumerate(msgs))
+
+
+def test_llama_backend_passes_seed_to_constructor(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    gguf = tmp_path / "tiny.gguf"
+    gguf.write_bytes(b"FAKE")
+    captured: dict[str, object] = {}
+
+    class _FakeLlama:
+        def __init__(self, **kwargs: object) -> None:
+            captured.update(kwargs)
+
+    monkeypatch.setattr(backend_module, "_import_llama", lambda: _FakeLlama)
+
+    LlamaCppBackend(gguf, seed=1337)
+
+    assert captured["seed"] == 1337
 
 
 def test_llama_generate_downgrades_system_role_when_model_disables_it(tmp_path: Path) -> None:
