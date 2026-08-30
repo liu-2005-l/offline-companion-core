@@ -24,6 +24,19 @@ from offline_companion.core.memory_lifecycle.semantic_embedding_provider import 
 )
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
 from offline_companion.core.memory_lifecycle.recall import format_recall_prompt_block, recall
+from offline_companion.core.persona_session.expression import (
+    STYLE_BLOCK_HEADER,
+    PersonaExpressionConfig,
+    PersonaExpressionTrace,
+    append_ephemeral_identity_reminder,
+    build_identity_reminder,
+    build_identity_retry_reminder,
+    build_style_examples_block,
+    detect_identity_cliff,
+    deterministic_identity_fallback,
+    is_identity_intent,
+    warn_identity_fallback_once,
+)
 from offline_companion.core.persona_session.persona_loader import resolved_companion_display_name
 from offline_companion.shared.runtime_paths import configs_dir, dev_repo_root
 from offline_companion.shared.types import (
@@ -197,6 +210,7 @@ class AssembleReplyResult:
     reply: str
     memory_recalls: list[MemoryRecallHit]
     memory_block: str
+    expression_trace: PersonaExpressionTrace = PersonaExpressionTrace()
 
 
 class PersonaSessionCore:
@@ -254,8 +268,10 @@ class PersonaSessionCore:
         capability_profile: CapabilityProfile | None = None,
         skill_prompt: str = "",
         audit_arithmetic: bool = True,
+        expression_config: PersonaExpressionConfig | None = None,
     ) -> AssembleReplyResult:
         """摘要：装配 prompt、注入记忆召回与情绪/语气策略并调用推理后端。"""
+        config = expression_config or PersonaExpressionConfig()
         recalls, combined_memory_block, system_prompt, identity_reply = self._assemble_context(
             conn,
             user_message=user_message,
@@ -264,12 +280,24 @@ class PersonaSessionCore:
             emotion_context=emotion_context,
             capability_profile=capability_profile,
             skill_prompt=skill_prompt,
+            expression_config=config,
         )
+        display_name = self._resolved_companion_display_name(conn)
+        identity_reminder = ""
+        identity_reminder_injected = False
+        if config.identity_near_prompt_enabled and is_identity_intent(user_message):
+            identity_reminder = build_identity_reminder(display_name, self.persona)
+            user_message = append_ephemeral_identity_reminder(user_message, identity_reminder)
+            identity_reminder_injected = True
         if identity_reply is not None:
             return AssembleReplyResult(
                 reply=identity_reply,
                 memory_recalls=recalls,
                 memory_block=combined_memory_block,
+                expression_trace=PersonaExpressionTrace(
+                    style_block_injected=STYLE_BLOCK_HEADER in system_prompt,
+                    identity_reminder_injected=identity_reminder_injected,
+                ),
             )
 
         reply = backend.generate(
@@ -293,10 +321,50 @@ class PersonaSessionCore:
             if audit_arithmetic
             else None
         )
+        output_source = "direct"
+        retry_taken = False
+        retry_generation_cliff = False
+        warnings: tuple[str, ...] = ()
+        audited_reply = audit.reply if audit is not None else reply
+        first_generation_cliff = (
+            config.identity_exit_guard_enabled
+            and is_identity_intent(user_message)
+            and detect_identity_cliff(audited_reply, display_name)
+        )
+        if first_generation_cliff:
+            retry_taken = True
+            retry_message = append_ephemeral_identity_reminder(
+                user_message,
+                build_identity_retry_reminder(display_name),
+            )
+            retry_reply = backend.generate(
+                system_prompt=system_prompt,
+                history=history,
+                user_message=retry_message,
+                memory_block=combined_memory_block,
+                max_tokens=max_tokens,
+            )
+            retry_generation_cliff = detect_identity_cliff(retry_reply, display_name)
+            if retry_generation_cliff:
+                audited_reply = deterministic_identity_fallback(display_name, self.persona)
+                output_source = "fallback"
+                warnings = (warn_identity_fallback_once(),)
+            else:
+                audited_reply = retry_reply
+                output_source = "retry"
         return AssembleReplyResult(
-            reply=audit.reply if audit is not None else reply,
+            reply=audited_reply,
             memory_recalls=recalls,
             memory_block=combined_memory_block,
+            expression_trace=PersonaExpressionTrace(
+                style_block_injected=STYLE_BLOCK_HEADER in system_prompt,
+                identity_reminder_injected=identity_reminder_injected,
+                first_generation_cliff=first_generation_cliff,
+                retry_taken=retry_taken,
+                retry_generation_cliff=retry_generation_cliff,
+                output_source=output_source,
+                warnings=warnings,
+            ),
         )
 
     def assemble_reply_stream(
@@ -312,8 +380,10 @@ class PersonaSessionCore:
         emotion_context: EmotionContext | None = None,
         capability_profile: CapabilityProfile | None = None,
         skill_prompt: str = "",
+        expression_config: PersonaExpressionConfig | None = None,
     ) -> Iterator[dict[str, Any]]:
         """????? prompt ??????????????"""
+        config = expression_config or PersonaExpressionConfig()
         recalls, combined_memory_block, system_prompt, identity_reply = self._assemble_context(
             conn,
             user_message=user_message,
@@ -322,7 +392,13 @@ class PersonaSessionCore:
             emotion_context=emotion_context,
             capability_profile=capability_profile,
             skill_prompt=skill_prompt,
+            expression_config=config,
         )
+        if config.identity_near_prompt_enabled and is_identity_intent(user_message):
+            user_message = append_ephemeral_identity_reminder(
+                user_message,
+                build_identity_reminder(self._resolved_companion_display_name(conn), self.persona),
+            )
         yield {"recall": len(recalls)}
         if identity_reply is not None:
             yield {"token": identity_reply}
@@ -361,8 +437,10 @@ class PersonaSessionCore:
         emotion_context: EmotionContext | None = None,
         capability_profile: CapabilityProfile | None = None,
         skill_prompt: str = "",
+        expression_config: PersonaExpressionConfig | None = None,
     ) -> tuple[list[MemoryRecallHit], str, str, str | None]:
         """??????????profile ? system prompt????????????"""
+        config = expression_config or PersonaExpressionConfig()
         profile = capability_profile or CapabilityProfile()
         recalls: list[MemoryRecallHit] = []
         memory_block = ""
@@ -404,6 +482,10 @@ class PersonaSessionCore:
         ]
         if skill_prompt.strip():
             prompt_parts.append(skill_prompt.strip())
+        if config.style_examples_enabled:
+            style_block = build_style_examples_block(self.persona)
+            if style_block:
+                prompt_parts.append(style_block)
         system_prompt = "\n\n".join(prompt_parts) + (tone_instruction + emotion_instruction + format_hint)
         if os.getenv("OFFLINE_COMPANION_PROMPT_PROBE") == "1":
             logger.debug("[PROMPT_PROBE] system_prompt=%r", system_prompt[:200])
