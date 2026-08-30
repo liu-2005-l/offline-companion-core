@@ -37,7 +37,7 @@ def _load_fixture(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as handle:
         data = json.load(handle)
     if not isinstance(data, dict):
-        raise ValueError("fixture root must be an object")
+        raise TypeError("fixture root must be an object")
     return data
 
 
@@ -102,10 +102,10 @@ def _pairs_by_type(data: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     for group_name in ("similar", "dissimilar"):
         pairs = data.get(group_name)
         if not isinstance(pairs, list):
-            raise ValueError("fixture must contain similar and dissimilar lists")
+            raise TypeError("fixture must contain similar and dissimilar lists")
         for pair in pairs:
             if not isinstance(pair, dict):
-                raise ValueError("fixture pairs must be objects")
+                raise TypeError("fixture pairs must be objects")
             pair_type = str(pair.get("pair_type") or group_name)
             grouped.setdefault(pair_type, []).append(pair)
     return grouped
