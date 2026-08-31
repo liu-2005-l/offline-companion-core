@@ -1,0 +1,135 @@
+{
+  "meta": {
+    "version": "w2-blind-key-v1",
+    "seed_name": "seed42",
+    "shuffle_seed": 20260831,
+    "candidate_arm": "B"
+  },
+  "mapping": [
+    {
+      "case_id": "S01",
+      "option_a": "baseline",
+      "option_b": "B"
+    },
+    {
+      "case_id": "S02",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "S03",
+      "option_a": "baseline",
+      "option_b": "B"
+    },
+    {
+      "case_id": "S04",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "S05",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "S06",
+      "option_a": "baseline",
+      "option_b": "B"
+    },
+    {
+      "case_id": "S07",
+      "option_a": "baseline",
+      "option_b": "B"
+    },
+    {
+      "case_id": "S08",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "S09",
+      "option_a": "baseline",
+      "option_b": "B"
+    },
+    {
+      "case_id": "S10",
+      "option_a": "baseline",
+      "option_b": "B"
+    },
+    {
+      "case_id": "S11",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "S12",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "S13",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "S14",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "S15",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "S16-S18",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "M01",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "M02",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "M03",
+      "option_a": "baseline",
+      "option_b": "B"
+    },
+    {
+      "case_id": "M04",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "M05",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "M06",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "M07",
+      "option_a": "baseline",
+      "option_b": "B"
+    },
+    {
+      "case_id": "M08",
+      "option_a": "B",
+      "option_b": "baseline"
+    },
+    {
+      "case_id": "M09-M10",
+      "option_a": "B",
+      "option_b": "baseline"
+    }
+  ]
+}
