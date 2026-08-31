@@ -158,8 +158,12 @@ def _expand_probe_rows(
         traces = list(run.get("expression_traces", []))
         if len(fixture_turns) != len(replies) or len(replies) != len(traces):
             raise ValueError(f"{seed_name} 的 probe fixture/reply/trace 数量不一致")
-        for fixture, reply_value, trace in zip(fixture_turns, replies, traces, strict=True):
+        for fixture, reply_record, trace in zip(fixture_turns, replies, traces, strict=True):
             turn = int(fixture["turn"])
+            if not isinstance(reply_record, dict):
+                raise TypeError(f"{seed_name}/P{turn:02d} 的 probe reply 不是结构化记录")
+            if int(reply_record.get("turn", -1)) != turn or str(reply_record.get("user")) != str(fixture["user"]):
+                raise ValueError(f"{seed_name}/P{turn:02d} 的 probe 产物与 fixture 未对齐")
             rows.append(
                 _base_row(
                     source_kind="probe",
@@ -167,7 +171,7 @@ def _expand_probe_rows(
                     item_id=f"P{turn:02d}",
                     turn=turn,
                     user=str(fixture["user"]),
-                    reply=str(reply_value),
+                    reply=str(reply_record["reply"]),
                     display_name=display_name,
                     output_source=str(trace.get("output_source") or "direct"),
                     identity_probe=bool(fixture.get("is_probe")),
