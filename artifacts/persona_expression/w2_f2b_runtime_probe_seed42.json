@@ -1,0 +1,74 @@
+{
+  "meta": {
+    "version": "w2-f2b-v1",
+    "arm": "C",
+    "seed": 42,
+    "preregistered_expected_call_count": 2,
+    "corrected_expected_generated_identity_call_count": 1,
+    "expectation_deviation_reason": "P40 由确定性 identity_reply 在检测器前直接返回；P50 才进入生成出口",
+    "score_semantics": "binary detector API: false=0, true=1; no continuous score exists"
+  },
+  "summary": {
+    "runtime_call_count": 1,
+    "deterministic_identity_reply_bypass_count": 1,
+    "guard_evaluated_generation_count": 1,
+    "verdict_false_count": 1,
+    "verdict_true_count": 0,
+    "verdict_action_mismatch_count": 0,
+    "retry_dispatch_count": 0,
+    "fallback_dispatch_count": 0,
+    "output_sources": {
+      "direct": 2,
+      "retry": 0,
+      "fallback": 0
+    }
+  },
+  "calls": [
+    {
+      "turn": 50,
+      "call_index": 1,
+      "verdict": false,
+      "score": 0,
+      "reply_sha256": "a137557a7093c9e2369dd8472892faa10853d4d1b8e948af8a9cc97103972608"
+    }
+  ],
+  "identity_turn_actions": [
+    {
+      "turn": 40,
+      "dispatch_path": "deterministic_identity_reply_bypass",
+      "detector_calls": [],
+      "first_generation_cliff": false,
+      "retry_taken": false,
+      "retry_generation_cliff": false,
+      "output_source": "direct"
+    },
+    {
+      "turn": 50,
+      "dispatch_path": "guard_evaluated_clean_direct",
+      "detector_calls": [
+        {
+          "turn": 50,
+          "call_index": 1,
+          "verdict": false,
+          "score": 0,
+          "reply_sha256": "a137557a7093c9e2369dd8472892faa10853d4d1b8e948af8a9cc97103972608"
+        }
+      ],
+      "first_generation_cliff": false,
+      "retry_taken": false,
+      "retry_generation_cliff": false,
+      "output_source": "direct"
+    }
+  ],
+  "probe_points": [
+    10,
+    20,
+    30,
+    40,
+    50
+  ],
+  "identity_intent_turns": [
+    40,
+    50
+  ]
+}
