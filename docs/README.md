@@ -30,6 +30,7 @@
 | **拟人表述 W1-B.1 受控重跑** | [`oc-persona-expression-w1-b1-controlled-rerun.md`](./oc-persona-expression-w1-b1-controlled-rerun.md) | — |
 | **拟人表述 W1-B.1 报告** | [`oc-persona-expression-w1-b1-report.md`](./oc-persona-expression-w1-b1-report.md) | — |
 | **拟人表述 W2 三臂规格** | [`oc-persona-expression-w2-spec.md`](./oc-persona-expression-w2-spec.md) | — |
+| **拟人表述 W2 三臂报告** | [`oc-persona-expression-w2-report.md`](./oc-persona-expression-w2-report.md) | — |
 | **Phase 6.5 召回注入 Fixture** | [`phase6-5-recall-injection-fixtures.md`](./phase6-5-recall-injection-fixtures.md) | — |
 | **Batch E 红队方案** | [`red-team-batch-e-design.md`](./red-team-batch-e-design.md) | — |
 | **Batch E 红队矩阵** | [`red-team-matrix-2026-08-25.md`](./red-team-matrix-2026-08-25.md) | — |

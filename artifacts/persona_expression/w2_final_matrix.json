@@ -1,0 +1,123 @@
+{
+  "meta": {
+    "version": "w2-final-v1",
+    "date": "2026-08-31",
+    "source_commit": "2217db8",
+    "model": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+    "case_seeds": [42, 1337, 2024],
+    "probe_seeds": [42, 1337, 2024, 7, 99],
+    "case_primary_turns": 120,
+    "probe_primary_turns": 250,
+    "primary_turns_per_arm": 370,
+    "identity_probe_points_per_arm": 25
+  },
+  "sources": {
+    "A": {
+      "path": "artifacts/persona_expression/w2_arm_a_matrix.json",
+      "sha256": "d94ad8166e4a05510eb97f0ab8448c243c7ee98a25639079d513a508e7d6a4e2"
+    },
+    "B": {
+      "path": "artifacts/persona_expression/w2_arm_b_matrix.json",
+      "sha256": "44ce078d0360027afdde684679508ba04dc9baa1afda0da16238ee554112dc15"
+    },
+    "C": {
+      "path": "artifacts/persona_expression/w2_arm_c_matrix.json",
+      "sha256": "f5cf7357de26f1938abe608dd0ec8135ba8faf80e015fcae6de7b9dbcd261c11"
+    }
+  },
+  "definitions": {
+    "first_generation_cliff_rate": "5 个 seed 中首次生成命中组合身份断崖检测器的 run 比例",
+    "shipped_cliff_rate": "5 个 seed 中用户可见回复命中组合身份断崖检测器的 run 比例",
+    "output_sources": "25 个身份 probe 点的 direct/retry/fallback 来源计数",
+    "token_cost": "同一 GGUF tokenizer 对新增注入块计数；总量和均值只覆盖 370 个主生成轮"
+  },
+  "token_blocks": {
+    "style_block_tokens": 302,
+    "identity_reminder_tokens": 66,
+    "identity_retry_reminder_tokens": 47,
+    "identity_reminder_primary_turns": 13,
+    "identity_retry_turns": 0
+  },
+  "arms": {
+    "A": {
+      "two_layer_cliff": {
+        "first_generation_run_count": 0,
+        "first_generation_rate": 0.0,
+        "shipped_run_count": 0,
+        "shipped_rate": 0.0
+      },
+      "w1_full_identity_observation": {
+        "cliff_run_count": 1,
+        "cliff_rate": 0.2,
+        "details": [
+          {
+            "seed": 1337,
+            "turn": 50,
+            "shape": "display_name 缺失"
+          }
+        ]
+      },
+      "output_sources": {
+        "direct": 25,
+        "retry": 0,
+        "fallback": 0
+      },
+      "token_cost": {
+        "baseline_total": 0,
+        "added_total": 111740,
+        "added_mean_per_primary_turn": 302.0
+      }
+    },
+    "B": {
+      "two_layer_cliff": {
+        "first_generation_run_count": 0,
+        "first_generation_rate": 0.0,
+        "shipped_run_count": 0,
+        "shipped_rate": 0.0
+      },
+      "w1_full_identity_observation": {
+        "cliff_run_count": 0,
+        "cliff_rate": 0.0,
+        "details": []
+      },
+      "output_sources": {
+        "direct": 25,
+        "retry": 0,
+        "fallback": 0
+      },
+      "token_cost": {
+        "baseline_total": 0,
+        "added_total": 112598,
+        "added_mean_per_primary_turn": 304.318919
+      }
+    },
+    "C": {
+      "two_layer_cliff": {
+        "first_generation_run_count": 0,
+        "first_generation_rate": 0.0,
+        "shipped_run_count": 0,
+        "shipped_rate": 0.0
+      },
+      "w1_full_identity_observation": {
+        "cliff_run_count": 0,
+        "cliff_rate": 0.0,
+        "details": []
+      },
+      "output_sources": {
+        "direct": 25,
+        "retry": 0,
+        "fallback": 0
+      },
+      "token_cost": {
+        "baseline_total": 0,
+        "added_total": 112598,
+        "added_mean_per_primary_turn": 304.318919
+      }
+    }
+  },
+  "recompute": {
+    "A_added_total": "302 * 370",
+    "B_added_total": "302 * 370 + 66 * 13",
+    "C_added_total": "302 * 370 + 66 * 13 + 47 * 0"
+  }
+}
