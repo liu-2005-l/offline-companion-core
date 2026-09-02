@@ -1,0 +1,8 @@
+version: p1-constraint-disable-contract-v1
+comparison: byte_identical_to_unconstrained_same_seed
+cases:
+  - {id: F01, missing_key: low_intensity_comfort, trigger: emotion_low_intensity, seed: 42, expected_relation: byte_identical}
+  - {id: F02, missing_key: low_intensity_correction, trigger: audit/arithmetic_retry_taken, seed: 42, expected_relation: byte_identical}
+  - {id: F03, missing_key: trait_entry, trigger: emotion_low_intensity, seed: 1337, expected_relation: byte_identical}
+implementation_batch: P3
+required_assertion: constrained_invalid_output_bytes_equals_constraints_disabled_output_bytes

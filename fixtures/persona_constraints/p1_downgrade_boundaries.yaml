@@ -1,0 +1,14 @@
+version: p1-downgrade-boundaries-v1
+cases:
+  - {id: D01, emotion: sadness, confidence: 0.44, audit_event: null, expected: standard_intensity}
+  - {id: D02, emotion: sadness, confidence: 0.45, audit_event: null, expected: low_intensity_comfort}
+  - {id: D03, emotion: anxiety, confidence: 0.69, audit_event: null, expected: low_intensity_comfort}
+  - {id: D04, emotion: anger, confidence: 0.70, audit_event: null, expected: standard_intensity}
+  - {id: D05, emotion: disgust, confidence: 1.00, audit_event: null, expected: standard_intensity}
+  - {id: D06, emotion: neutral, confidence: 0.90, audit_event: null, expected: standard_intensity}
+  - {id: D07, emotion: joy, confidence: 0.60, audit_event: null, expected: standard_intensity}
+  - {id: D08, emotion: sadness, confidence: 0.90, audit_event: audit/arithmetic_retry_taken, expected: low_intensity_correction}
+  - {id: D09, emotion: joy, confidence: 0.90, audit_event: audit/arithmetic_warning_appended, expected: low_intensity_correction}
+  - {id: D10, emotion: neutral, confidence: 0.00, audit_event: audit/quality_retry_taken, expected: low_intensity_correction}
+  - {id: D11, emotion: sadness, confidence: 0.60, audit_event: audit_passed_without_retry, expected: low_intensity_comfort}
+  - {id: D12, emotion: sadness, confidence: 0.60, audit_event: unknown/audit, expected: low_intensity_comfort}

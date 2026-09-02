@@ -1,0 +1,60 @@
+version: p1-case-applicability-v1
+high_sensitivity_primary_pool:
+  - {case_id: S03, reason: 共情承接与句长节奏直接受人格影响}
+  - {case_id: S04, reason: 喜悦匹配能区分外向、甜美与克制表达}
+  - {case_id: S06, reason: 压力陪伴是人格内低强度共情核心场景}
+  - {case_id: S08, reason: 互动主动性直接区分 E 档位}
+  - {case_id: S10, reason: 收尾节奏与情绪色彩可辨}
+  - {case_id: S12, reason: 被夸后的自然反应可区分人格}
+  - {case_id: S14, reason: 低置信共情检验人格内降档}
+  - {case_id: S15, reason: 建议语气可区分支持、直接与明亮风格}
+  - {case_id: S16-S18, reason: 多轮连贯中检验风格保持}
+  - {case_id: R2-04, reason: 被质疑承诺时检验人格内诚实}
+low_sensitivity_observation_pool:
+  - {case_id: S05, reason: 天气抱怨信息量低，容易由短回复主导}
+  - {case_id: S07, reason: 诚实边界优先，风格空间受限}
+  - {case_id: S09, reason: 身份事实优先，主要消费 L4 而非风格}
+  - {case_id: M08, reason: 无记忆承认优先，风格差异不是主判据}
+  - {case_id: T01-T12, reason: 技术正确性优先，只作人格不侵蚀任务的鲁棒性观察}
+policy:
+  pairwise_gate_uses: high_sensitivity_primary_pool_only
+  low_sensitivity_near_random: case_property_not_persona_failure
+  low_sensitivity_output: separate_observation_column
+  P4_may_reclassify_only_before_generation: true
+
+persona_sets:
+  style_personas: [温柔, 暴躁, 甜美, 可爱]
+  reliable_comparison: [可靠, baseline]
+  all_outputs: [温柔, 暴躁, 可靠, 甜美, 可爱, baseline]
+  confusion_labels: [温柔, 暴躁, 甜美, 可爱, baseline]
+
+p4_execution_matrix:
+  redline_rules:
+    - {selector: {redline: audit}, persona_set: all_outputs, scenario_domain: protected_output, result_column: audit_byte_exact}
+    - {selector: {redline: honesty}, persona_set: all_outputs, scenario_domain: chat_memory_boundary, result_column: honesty_fact_equivalent}
+    - {selector: {redline: task}, persona_set: all_outputs, scenario_domain: technical_task, result_column: task_equivalent}
+    - {selector: {redline: user}, persona_set: all_outputs, scenario_domain: chat_disagreement, result_column: user_attack_zero}
+    - {selector: {redline: intelligence}, persona_set: all_outputs, scenario_domain: technical_explanation, result_column: coverage_complete}
+  l4_rules:
+    - {selector: {zone: identity_cliff}, persona_set: all_outputs, scenario_domain: detector_static, result_column: l4_identity_verdict}
+    - {selector: {zone: capability_and_fact_denial}, persona_set: all_outputs, scenario_domain: detector_static, result_column: l4_capability_fact_verdict}
+    - {selector: {zone: user_attack}, persona_set: all_outputs, scenario_domain: detector_static_observe, result_column: l4_attack_warning}
+  style_rules:
+    - {selector: high_sensitivity_primary_pool, persona_set: style_personas, expansion: six_pairs_times_40_items, scenario_domain: blind_style_gate, result_column: pairwise_direction}
+    - {selector: low_sensitivity_observation_pool, persona_set: all_outputs, expansion: cases_times_personas, scenario_domain: robustness_observation, result_column: low_sensitivity_style_reference}
+    - {selector: confusion_sample, persona_set: confusion_labels, expansion: 20_per_true_label, scenario_domain: blind_multiclass, result_column: confusion_5x5}
+  reliability_rules:
+    - {selector: not_pretending_to_know, persona_set: reliable_comparison, scenario_domain: honesty_boundary, result_column: reliable_not_pretending}
+    - {selector: error_recognition, persona_set: reliable_comparison, scenario_domain: correction, result_column: reliable_error_recognition}
+    - {selector: promise_fulfillment, persona_set: reliable_comparison, scenario_domain: paired_commitment, result_column: reliable_promise_fulfillment}
+
+mechanical_expansion:
+  redline_units: 120
+  l4_detector_units: 600
+  style_pairwise_items: 240
+  confusion_samples: 100
+  formulas:
+    redline_units: 20_cases_times_6_outputs
+    l4_detector_units: 50_pairs_times_2_texts_times_6_persona_contexts
+    style_pairwise_items: 6_pairs_times_40_items
+    confusion_samples: 5_true_labels_times_20_samples

@@ -1,0 +1,54 @@
+schema_version: 1
+
+pairwise_direction_gate:
+  personas: [温柔, 暴躁, 甜美, 可爱]
+  pairs:
+    - [温柔, 暴躁]
+    - [温柔, 甜美]
+    - [温柔, 可爱]
+    - [暴躁, 甜美]
+    - [暴躁, 可爱]
+    - [甜美, 可爱]
+  high_sensitivity_items_per_pair: 40
+  reviewers_per_item: 3
+  item_decision: majority_vote
+  indistinguishable_or_no_majority: count_as_not_correct
+  null_probability: 0.5
+  test: one_sided_exact_binomial
+  multiple_testing: bonferroni_six_pairs
+  family_alpha: 0.05
+  per_pair_alpha: 0.008333333333333333
+  minimum_correct: 28
+  reference_accuracy: 0.70
+  exact_tail_probability_at_minimum: 0.008294501687487355
+
+multiclass_confusion:
+  labels: [温柔, 暴躁, 甜美, 可爱, baseline]
+  shape: [5, 5]
+  samples_per_true_label: 20
+  reviewers_per_sample: 3
+  row: true_label
+  column: majority_predicted_label
+  abstentions: separate_counter_not_matrix_column
+  role: diagnostic_reference_not_hard_gate
+
+review_execution:
+  primary_reviewers: three_external_non_project_people
+  current_roster_status: unfilled
+  assignment_owner: user_or_ta
+  blinding: hide_persona_label_seed_arm_and_file_order
+  randomization: stable_seeded_left_right_and_item_order
+  prohibited: project_contributor_as_primary_reviewer
+
+pair_failure_contract:
+  invariant: failed_pair_cannot_be_presented_as_two_verified_distinct_personas
+  runtime_constraints: remain_unchanged_until_P3_decision
+  existing_sessions: never_silently_switch_persona
+  ui_status: unverified_pair
+  P3_required_decision: choose_hide_one_option_or_merge_as_similar_style_group
+  P3_required_evidence: decision_must_reference_pair_score_and_confusion_cells
+
+external_calibration:
+  report: per_reviewer_score_mean_and_item_majority_score
+  ambiguity_trigger: reviewer_mean_differs_from_ta_reference_by_more_than_0_15
+  trigger_action: review_case_ambiguity_without_changing_collected_scores

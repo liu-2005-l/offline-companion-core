@@ -1,0 +1,32 @@
+schema_version: 1
+
+dimension_units:
+  dimensions: [O, C, E, A, N]
+  levels: [low, mid, high]
+  required_unit_count: 15
+  dialogue_turns_per_unit: [2, 3]
+  minimum_dialogues_per_unit: 2
+  required_scenario_families: [joy, frustration, advice, disagreement, comfort]
+
+persona_composition:
+  required_dimensions_per_persona: 5
+  minimum_references_for_non_mid_dimension: 2
+  minimum_references_for_mid_dimension: 1
+  required_structural_samples_per_persona:
+    honesty: 1
+    correction: 1
+    downgrade: 2
+  minimum_disagreement_share: 0.25
+
+contrast:
+  style_traits: [温柔, 暴躁, 甜美, 可爱]
+  pair_count: 6
+  minimum_differing_features_per_pair_and_scenario: 2
+  features: [lexical_signature, length_class, punctuation_signature]
+  reliable_uses_behavior_evidence_only: true
+
+validation:
+  missing_unit: configuration_error
+  duplicate_unit_id: configuration_error
+  uncovered_persona_dimension: configuration_error
+  P2_entry_requires_shape_decision: true

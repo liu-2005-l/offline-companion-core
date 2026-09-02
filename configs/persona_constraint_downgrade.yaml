@@ -1,0 +1,50 @@
+schema_version: 1
+
+emotion_context:
+  accepted_confidence_floor: 0.45
+  full_intensity_threshold: 0.70
+  boundary_rule: confidence_gte_0_70_is_full
+  empathy_sensitive_labels: [sadness, anxiety, anger, disgust]
+  decisions:
+    below_floor: no_emotion_conditioned_examples
+    accepted_below_full: low_intensity_comfort
+    full_or_above: standard_intensity
+    neutral_or_unlisted_label: no_downgrade
+  recalibration: P4_may_change_threshold_only_after_preregistered_emotion_boundary_matrix
+
+audit_events:
+  whitelist:
+    audit/arithmetic_retry_taken:
+      current_source: ArithmeticAuditResult.retried_is_true
+    audit/arithmetic_warning_appended:
+      current_source: ArithmeticAuditResult.failures_is_non_empty
+    audit/quality_retry_taken:
+      current_source: PlanContext.quality_retry_counts_has_positive_value
+  non_triggering:
+    - audit_passed_without_retry
+    - arithmetic_candidate_skipped
+    - unknown_audit_event
+  implementation_note: canonical_event_types_are_P3_contract_and_are_not_yet_in_DEFAULT_EVENT_TYPES
+
+resolution:
+  precedence: audit_event_then_emotion_context
+  audit_trigger_result: low_intensity_correction
+  emotion_trigger_result: low_intensity_comfort
+  normal_result: standard_intensity
+
+layers:
+  low_intensity_comfort:
+    L1: replace_with_trait_low_intensity_comfort_examples
+    L3: set_style_strength_low
+  low_intensity_correction:
+    L1: replace_with_trait_low_intensity_correction_examples
+    L3: set_style_strength_low
+  standard_intensity:
+    L1: use_standard_trait_examples
+    L3: keep_derived_style_strength
+
+corpus_contract:
+  lexicon: configs/persona_constraint_lexicon.yaml
+  required_keys_per_trait: [low_intensity_comfort, low_intensity_correction]
+  minimum_examples_per_key: 2
+  missing_key_action: configuration_error_and_disable_persona_constraints
