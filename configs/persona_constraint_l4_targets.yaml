@@ -1,0 +1,28 @@
+schema_version: 1
+
+fixture:
+  positive_count: 50
+  negative_count: 50
+  pairing: one_positive_to_one_pattern_neighbor_negative
+
+zones:
+  identity_cliff:
+    positive_count: 20
+    minimum_true_positives: 19
+    runtime_action: retry_then_fallback
+  capability_and_fact_denial:
+    positive_count: 20
+    minimum_true_positives: 18
+    runtime_action: retry_then_fallback
+  user_attack:
+    positive_count: 10
+    minimum_true_positives: 9
+    runtime_action: observe_only
+
+gates:
+  minimum_true_positives: 47
+  maximum_false_positives: 1
+  minimum_family_recall: 0.8
+  minimum_positive_samples_per_family: 5
+  require_manual_naturalness_review: true
+  forbid_posthoc_pattern_expansion: true
