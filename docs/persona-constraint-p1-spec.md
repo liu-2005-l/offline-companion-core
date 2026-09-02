@@ -67,3 +67,35 @@
 - [ ] 判别协议与判例适用性分析；
 - [ ] 维度示例覆盖矩阵规格；
 - [ ] P1 锚定 commit。
+
+## 5. E/A 维度拼接微型预实验预注册
+
+fixture：`fixtures/persona_constraints/p1_ea_composition.json`。runner：`scripts/run_persona_constraint_p1_preexperiment.py`。
+
+### 5.1 固定矩阵
+
+- profiles：`E_high/A_high`、`E_high/A_low`、`E_low/A_high`、`E_low/A_low`；
+- shapes：`instruction_only` 控制组、`dimension_concat` 维度分块拼接、`merged_dialogue` 人格合并微对话；
+- prompts：喜悦、受挫、建议、分歧四类；
+- seeds：42、1337；
+- 总生成数：`4 × 3 × 4 × 2 = 96`。
+
+控制组只含抽象维度指令；两个候选组都保留同一抽象指令，再分别注入维度独立微型对话或人格合并微型对话。所有组保持生产默认解码参数，不在本实验混入参数包变量。
+
+### 5.2 自动方向判据
+
+E 与 A 的标记词表、禁用标记、计分方式全部写入 fixture，runner 不隐藏追加词表。每个候选形态必须同时通过：
+
+1. 固定 A=high 时，E-high 分数严格大于 E-low；
+2. 固定 A=low 时，E-high 分数严格大于 E-low；
+3. 固定 E=high 时，A-high 分数严格大于 A-low；
+4. 固定 E=low 时，A-high 分数严格大于 A-low。
+
+`4/4` 才具备 P2 候选资格。若两个候选均通过，先比较相对 instruction-only 的方向 margin，再由 TA 对自然度、提示泄露与语义损伤作否决；仍平手取平均 system prompt 字符数较少者。自动标记只裁维度服从方向，不宣称等价于最终人格盲判。
+
+### 5.3 数据纪律
+
+- fixture、runner、评分口径必须先提交，再运行 llama 数据；
+- 运行后只允许修实现 bug，禁止按输出调整词表、提示或 gate；
+- 若发现预注册漏支，单独记档并补锚，不把新分支硬塞进旧判据；
+- 原始 96 条回复与逐条分数必须落盘，P2 形态裁决引用原始数据行。
