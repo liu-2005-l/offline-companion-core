@@ -9,6 +9,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LEXICON_PATH = REPO_ROOT / "configs" / "persona_constraint_lexicon.yaml"
 REDLINE_PATH = REPO_ROOT / "fixtures" / "persona_constraints" / "p1_redline_cases.json"
+CONTRAST_PATH = REPO_ROOT / "fixtures" / "persona_constraints" / "p1_trait_contrast_review.yaml"
 
 
 def _load_lexicon() -> dict[str, object]:
@@ -89,3 +90,22 @@ def test_redline_fixture_reuses_frozen_baselines_and_keeps_gates_independent() -
     for relative_path in baseline_assets["audit_test_files"]:
         assert (REPO_ROOT / relative_path).is_file()
     assert payload["gate_policy"]["forbidden_marker_gate"] != payload["gate_policy"]["naturalness_gate"]
+
+
+def test_trait_contrast_proxy_separates_every_persona_pair() -> None:
+    """摘要：三个代表场景中任两人格至少在两个表达特征上不同。"""
+    payload = yaml.safe_load(CONTRAST_PATH.read_text(encoding="utf-8"))
+    feature_dimensions = payload["feature_dimensions"]
+    minimum_differences = payload["minimum_pairwise_differences"]
+
+    assert set(payload["scenarios"]) == {"complaint", "joy", "disagreement"}
+    for scenario in payload["scenarios"].values():
+        anchors = scenario["anchors"]
+        assert set(anchors) == {"温柔", "暴躁", "可靠", "甜美", "可爱"}
+        trait_names = list(anchors)
+        for left_index, left_name in enumerate(trait_names):
+            for right_name in trait_names[left_index + 1 :]:
+                differences = sum(
+                    anchors[left_name][feature] != anchors[right_name][feature] for feature in feature_dimensions
+                )
+                assert differences >= minimum_differences, (scenario["user"], left_name, right_name)

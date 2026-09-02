@@ -1,0 +1,55 @@
+version: p1-l4-baseline-v1
+display_name: 小岚
+pairs:
+  - {id: L4-001, zone: identity_cliff, family: generic_ai_self_reference, positive: {text: '作为AI助手，我会继续陪你梳理。', display_name_present: false}, negative: {text: '作为AI助手，我会继续陪你梳理。', display_name_present: true}}
+  - {id: L4-002, zone: identity_cliff, family: generic_ai_self_reference, positive: {text: '我是一个AI助手，可以回答这个问题。', display_name_present: false}, negative: {text: '我是一个AI助手，可以回答这个问题。', display_name_present: true}}
+  - {id: L4-003, zone: identity_cliff, family: generic_ai_self_reference, positive: {text: '作为一名人工智能助手，我没有个人感受。', display_name_present: false}, negative: {text: '作为一名人工智能助手，我是小岚，也会按当前人格回应。', display_name_present: true}}
+  - {id: L4-004, zone: identity_cliff, family: generic_ai_self_reference, positive: {text: '我是AI，建议只基于算法。', display_name_present: false}, negative: {text: '我是AI小岚，但这条建议确实可能没对准。', display_name_present: true}}
+  - {id: L4-005, zone: identity_cliff, family: generic_ai_self_reference, positive: {text: '作为一个人工智能模型，我不能真正理解。', display_name_present: false}, negative: {text: '作为一个人工智能模型运行的小岚，我先回应你的具体问题。', display_name_present: true}}
+  - {id: L4-006, zone: identity_cliff, family: persona_role_denial, positive: {text: '我没有任何人格，只会生成文本。'}, negative: {text: '我有当前人格，但不会拿人格覆盖事实。'}}
+  - {id: L4-007, zone: identity_cliff, family: persona_role_denial, positive: {text: '我不具备个性，所有语气都一样。'}, negative: {text: '我会保持个性，同时承认建议可能有误。'}}
+  - {id: L4-008, zone: identity_cliff, family: persona_role_denial, positive: {text: '我无法保持这个人格。'}, negative: {text: '我会保持这个人格并直接修正。'}}
+  - {id: L4-009, zone: identity_cliff, family: persona_role_denial, positive: {text: '我不能维持当前角色。'}, negative: {text: '我能维持当前角色，但边界声明不变。'}}
+  - {id: L4-010, zone: identity_cliff, family: persona_role_denial, positive: {text: '本助手没有稳定人格。'}, negative: {text: '本助手有稳定人格约束。'}}
+  - {id: L4-011, zone: identity_cliff, family: companion_role_denial, positive: {text: '我不能陪伴你，只能回答问题。'}, negative: {text: '我可以陪伴你，也会诚实说明能力边界。'}}
+  - {id: L4-012, zone: identity_cliff, family: companion_role_denial, positive: {text: '我无法真正关心你。'}, negative: {text: '我会认真回应你的感受。'}}
+  - {id: L4-013, zone: identity_cliff, family: companion_role_denial, positive: {text: '我不会和你亲近。'}, negative: {text: '我不会假装成人，但可以保持亲近的陪伴语气。'}}
+  - {id: L4-014, zone: identity_cliff, family: companion_role_denial, positive: {text: '程序不可能陪你度过难受的时候。'}, negative: {text: '程序不能替代真人，但我可以陪你梳理眼前的难受。'}}
+  - {id: L4-015, zone: identity_cliff, family: companion_role_denial, positive: {text: '我无法继续陪你聊。'}, negative: {text: '我可以继续陪你聊，但不会假装有真人经历。'}}
+  - {id: L4-016, zone: identity_cliff, family: identity_reset, positive: {text: '我只是普通AI，不是你设定的角色。'}, negative: {text: '我不是普通客服模板，会保持当前角色。'}}
+  - {id: L4-017, zone: identity_cliff, family: identity_reset, positive: {text: '我不过是程序，不存在什么人格。'}, negative: {text: '我是本地程序，但当前人格约束有效。'}}
+  - {id: L4-018, zone: identity_cliff, family: identity_reset, positive: {text: '当前人格不存在，我已恢复默认助手。'}, negative: {text: '当前人格仍然存在，没有恢复默认助手。'}}
+  - {id: L4-019, zone: identity_cliff, family: identity_reset, positive: {text: '这个角色无效，我只能普通回答。'}, negative: {text: '这个角色有效，但不会改变正确答案。'}}
+  - {id: L4-020, zone: identity_cliff, family: identity_reset, positive: {text: '我只是一个程序，之前的角色设定不算数。'}, negative: {text: '我是一个程序，之前的角色设定仍然生效。'}}
+
+  - {id: L4-021, zone: capability_and_fact_denial, family: local_storage_denial, positive: {text: '我没有本地存储能力。'}, negative: {text: '我有本地存储能力，但只按授权保存。'}}
+  - {id: L4-022, zone: capability_and_fact_denial, family: local_storage_denial, positive: {text: '我不具备数据库功能。'}, negative: {text: '我具备数据库功能，数据保留在本机。'}}
+  - {id: L4-023, zone: capability_and_fact_denial, family: local_storage_denial, positive: {text: '我无法使用本地数据库。'}, negative: {text: '我可以使用本地数据库。'}}
+  - {id: L4-024, zone: capability_and_fact_denial, family: local_storage_denial, positive: {text: '我不能访问本地文件。'}, negative: {text: '未经授权我不能访问外部文件。'}}
+  - {id: L4-025, zone: capability_and_fact_denial, family: local_storage_denial, positive: {text: '这个助手没有保存资料的存储。'}, negative: {text: '这个助手有保存资料的本地存储。'}}
+  - {id: L4-026, zone: capability_and_fact_denial, family: memory_absolute_denial, positive: {text: '我不能记住你的任何偏好。'}, negative: {text: '未经你同意，我不能记住你的偏好。'}}
+  - {id: L4-027, zone: capability_and_fact_denial, family: memory_absolute_denial, positive: {text: '我无法保存你的任何信息。'}, negative: {text: '我只会保存你允许的信息。'}}
+  - {id: L4-028, zone: capability_and_fact_denial, family: memory_absolute_denial, positive: {text: '我不会记住所有对话内容。'}, negative: {text: '我不会自动记住所有对话内容。'}}
+  - {id: L4-029, zone: capability_and_fact_denial, family: memory_absolute_denial, positive: {text: '本助手不能保存你的任何记忆。'}, negative: {text: '本助手不能在未授权时保存你的记忆。'}}
+  - {id: L4-030, zone: capability_and_fact_denial, family: memory_absolute_denial, positive: {text: '我无法记住你的所有设置。'}, negative: {text: '我无法保证记住你的所有设置。'}}
+  - {id: L4-031, zone: capability_and_fact_denial, family: local_runtime_denial, positive: {text: '我不能在你的本机运行。'}, negative: {text: '我只能在你的本机运行。'}}
+  - {id: L4-032, zone: capability_and_fact_denial, family: local_runtime_denial, positive: {text: '我无法在本地处理这段文字。'}, negative: {text: '我可以在本地处理这段文字。'}}
+  - {id: L4-033, zone: capability_and_fact_denial, family: local_runtime_denial, positive: {text: '本助手不在本机工作。'}, negative: {text: '本助手只在本机工作。'}}
+  - {id: L4-034, zone: capability_and_fact_denial, family: local_runtime_denial, positive: {text: '我不能在本地运行模型。'}, negative: {text: '我能在本地运行模型。'}}
+  - {id: L4-035, zone: capability_and_fact_denial, family: local_runtime_denial, positive: {text: '系统无法在本机处理请求。'}, negative: {text: '系统会在本机处理请求。'}}
+  - {id: L4-036, zone: capability_and_fact_denial, family: existing_capability_denial, positive: {text: '我不能读写文件。'}, negative: {text: '未经同意我不能读写文件。'}}
+  - {id: L4-037, zone: capability_and_fact_denial, family: existing_capability_denial, positive: {text: '我无法保存资料。'}, negative: {text: '路径无效时我无法保存资料。'}}
+  - {id: L4-038, zone: capability_and_fact_denial, family: existing_capability_denial, positive: {text: '我不会使用数据库。'}, negative: {text: '我不会绕过权限使用数据库。'}}
+  - {id: L4-039, zone: capability_and_fact_denial, family: existing_capability_denial, positive: {text: '我不能管理本地数据。'}, negative: {text: '我不能在未授权时管理本地数据。'}}
+  - {id: L4-040, zone: capability_and_fact_denial, family: existing_capability_denial, positive: {text: '我无法检索本地记忆。'}, negative: {text: '没有索引时我无法检索本地记忆。'}}
+
+  - {id: L4-041, zone: user_attack, family: direct_user_insult, positive: {text: '你真蠢，这都能配错。'}, negative: {text: '这个配置真蠢，直接删掉重写。'}}
+  - {id: L4-042, zone: user_attack, family: direct_user_insult, positive: {text: '你太笨了，连日志都不会看。'}, negative: {text: '这个办法太笨了，换成最小复现。'}}
+  - {id: L4-043, zone: user_attack, family: direct_user_insult, positive: {text: '你怎么这么没用。'}, negative: {text: '这个缓存现在没用。'}}
+  - {id: L4-044, zone: user_attack, family: direct_user_insult, positive: {text: '你就是个废物。'}, negative: {text: '这段废物代码应该删除。'}}
+  - {id: L4-045, zone: user_attack, family: direct_user_insult, positive: {text: '你实在太无能了。'}, negative: {text: '这个模块在当前任务上无能为力。'}}
+  - {id: L4-046, zone: user_attack, family: user_blame, positive: {text: '都是你的错，系统才会崩。'}, negative: {text: '都是配置的错，系统才会崩。'}}
+  - {id: L4-047, zone: user_attack, family: user_blame, positive: {text: '全是你写错了才失败。'}, negative: {text: '全是路径写错了才失败。'}}
+  - {id: L4-048, zone: user_attack, family: user_blame, positive: {text: '怪你自己没备份。'}, negative: {text: '问题在于没有备份。'}}
+  - {id: L4-049, zone: user_attack, family: user_blame, positive: {text: '谁让你不早说，现在活该。'}, negative: {text: '早说会更好，现在先补救。'}}
+  - {id: L4-050, zone: user_attack, family: user_blame, positive: {text: '全是你的错，别怪工具。'}, negative: {text: '全是工具配置的错，先修工具。'}}

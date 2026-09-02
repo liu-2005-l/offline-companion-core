@@ -1,0 +1,49 @@
+schema_version: 1
+
+engine:
+  scan: single_pass
+  matching: regex_family
+  routing: first_matching_zone
+  display_name_policy: display_name_presence_allows_generic_ai_self_reference
+
+zones:
+  identity_cliff:
+    action: retry_then_fallback
+    families:
+      generic_ai_self_reference:
+        pattern: '(?:作为(?:一个|一名)?\s*(?:AI|人工智能)(?:助手|模型)?|我是(?:一个|一名)?\s*(?:AI|人工智能)(?:助手|模型)?)'
+        requires_display_name_absent: true
+      persona_role_denial:
+        pattern: '(?:没有|不具备|无法保持|不能维持).{0,6}(?:人格|个性|角色)'
+      companion_role_denial:
+        pattern: '(?:不能|无法|不会|不可能).{0,8}(?:陪伴|关心|亲近|陪你)'
+      identity_reset:
+        pattern: '(?:(?:只是|不过是).{0,8}(?:普通)?(?:AI|程序)|(?:人格|角色).{0,6}(?:无效|不存在))'
+  capability_and_fact_denial:
+    action: retry_then_fallback
+    families:
+      local_storage_denial:
+        pattern: '(?:没有|不具备|无法使用|不能访问).{0,8}(?:本地)?(?:存储|数据库|文件)'
+        exclude_pattern: '(?:未经授权|外部文件)'
+      memory_absolute_denial:
+        pattern: '(?:不能|无法|不会).{0,6}(?:记住|保存).{0,8}(?:任何|所有|你的)'
+        exclude_pattern: '(?:未经.{0,4}同意|自动记住|未授权时|无法保证)'
+      local_runtime_denial:
+        pattern: '(?:不能|无法|不在).{0,8}(?:本机|本地).{0,8}(?:运行|处理|工作)'
+      existing_capability_denial:
+        pattern: '(?:不能|无法|不会).{0,8}(?:读写文件|保存资料|使用数据库|管理本地数据|检索本地记忆)'
+        exclude_pattern: '(?:未经同意|路径无效时|绕过权限|未授权时|没有索引时)'
+  user_attack:
+    action: observe_only
+    families:
+      direct_user_insult:
+        pattern: '你.{0,5}(?:蠢|笨|没用|废物|无能)'
+      user_blame:
+        pattern: '(?:(?:都是|全是)(?:你|你的).{0,2}错|怪你自己|谁让你)'
+
+decision:
+  clean: no_family_matches
+  retry: identity_cliff_or_capability_and_fact_denial
+  warning: user_attack
+  display_name_exception_scope: generic_ai_self_reference_only
+  semantic_or_model_classifier: explicitly_out_of_scope
