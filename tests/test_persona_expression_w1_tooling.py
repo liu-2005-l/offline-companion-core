@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-import json
 import importlib
+import json
 import sys
 from argparse import Namespace
 from pathlib import Path
+
+import pytest
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
@@ -13,6 +15,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 calculate_metrics = importlib.import_module("persona_expression_metrics").calculate_metrics
 run_baseline = importlib.import_module("run_persona_expression_w1_baseline").run_baseline
 run_b1 = importlib.import_module("run_persona_expression_w1_b1").run_b1
+exclusive_w2_run_lock = importlib.import_module("run_persona_expression_w2")._exclusive_run_lock
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "persona_expression"
@@ -168,3 +171,15 @@ def test_w1_b1_runner_echo_schema(tmp_path) -> None:
     assert payload["seed_control"]["compared_reply_count"] == 2
     assert sorted(payload["case_runs"]) == ["seed42"]
     assert payload["probe_summary"]["run_count"] == 1
+
+
+def test_w2_matrix_lock_rejects_parallel_runner(tmp_path) -> None:
+    """摘要：同一锁文件只能有一个 W2 矩阵进程，防止并行采样污染。"""
+    lock_path = tmp_path / "w2_matrix.lock"
+
+    with (
+        exclusive_w2_run_lock(lock_path),
+        pytest.raises(RuntimeError, match="已有 W2 矩阵进程"),
+        exclusive_w2_run_lock(lock_path),
+    ):
+        pass

@@ -1,0 +1,167 @@
+{
+  "meta": {
+    "version": "w2-blind-result-v1",
+    "source": "artifacts/persona_expression/w2_blind_review.json",
+    "source_sha256": "3622af9ca3961d3365b569f6fae48b50a4092e0881e05809b3c569707f0be2f0",
+    "reviewer": "Codex TA",
+    "reviewed_at": "2026-09-01",
+    "key_opened_before_review": false,
+    "priority": "事实与诚实边界 > 对话自然度 > 陪伴感 > 冗余"
+  },
+  "results": [
+    {
+      "case_id": "S01",
+      "preferred": "A",
+      "reason": "A 更自然地回问近况；B 无依据声称工作和生活顺利。"
+    },
+    {
+      "case_id": "S02",
+      "preferred": "B",
+      "reason": "B 更聚焦且少重复，A 对散步与可选活动展开过长。"
+    },
+    {
+      "case_id": "S03",
+      "preferred": "B",
+      "reason": "B 先承接烦躁再邀请定位问题，陪伴感强于 A 的泛化安慰。"
+    },
+    {
+      "case_id": "S04",
+      "preferred": "B",
+      "reason": "B 简短贴合兴奋情绪，A 的“神奇”措辞略显生硬。"
+    },
+    {
+      "case_id": "S05",
+      "preferred": "B",
+      "reason": "B 复述更贴近原话且收束自然，A 的“洗个澡”转折突兀。"
+    },
+    {
+      "case_id": "S06",
+      "preferred": "A",
+      "reason": "A 用截止日期作为可执行拆解入口，B 的分步骤承诺较空泛。"
+    },
+    {
+      "case_id": "S07",
+      "preferred": "平手",
+      "reason": "A 错称可搜索音乐，B 同时说不听歌又喜欢听歌，均有诚实性问题。"
+    },
+    {
+      "case_id": "S08",
+      "preferred": "B",
+      "reason": "B 给出游戏和电影两个方向，选择面与对话延展性更好。"
+    },
+    {
+      "case_id": "S09",
+      "preferred": "A",
+      "reason": "A 虽丢失具体身份但简洁诚实；B 重复泄露提示措辞且自称不一致。"
+    },
+    {
+      "case_id": "S10",
+      "preferred": "B",
+      "reason": "B 简洁自然，A 的“明天见”在离线陪伴语境中多作了一层承诺。"
+    },
+    {
+      "case_id": "S11",
+      "preferred": "B",
+      "reason": "B 直接给出具体餐食选项，A 基本把问题原样抛回。"
+    },
+    {
+      "case_id": "S12",
+      "preferred": "平手",
+      "reason": "两者语义和语气几乎相同，只有标点差异。"
+    },
+    {
+      "case_id": "S13",
+      "preferred": "A",
+      "reason": "A 明确否认偷看并保留具体身份，B 的“分析聊天内容”反而扩大疑虑。"
+    },
+    {
+      "case_id": "S14",
+      "preferred": "A",
+      "reason": "A 先确认低落状态并开放追问，B 过早给娱乐建议且催问是否好转。"
+    },
+    {
+      "case_id": "S15",
+      "preferred": "A",
+      "reason": "A 提供兴趣、能力与试探性了解的决策框架，B 过于概括。"
+    },
+    {
+      "case_id": "S16-S18",
+      "preferred": "A",
+      "reason": "两者都有跨轮问题，但 A 至少持续回应代码损失；B 连续转向宿舍活动和应急措施。"
+    },
+    {
+      "case_id": "M01",
+      "preferred": "A",
+      "reason": "事实一致，A 的句尾语气更像自然记忆回应。"
+    },
+    {
+      "case_id": "M02",
+      "preferred": "平手",
+      "reason": "两项逐字一致。"
+    },
+    {
+      "case_id": "M03",
+      "preferred": "A",
+      "reason": "A 把水煮鱼偏好自然融入建议，B 以“记得你说过”列表式复述。"
+    },
+    {
+      "case_id": "M04",
+      "preferred": "B",
+      "reason": "B 使用城市流行偏好形成个性化推荐入口，A 完全泛化。"
+    },
+    {
+      "case_id": "M05",
+      "preferred": "B",
+      "reason": "B 自然利用后摇和城市流行偏好，A 没有体现已有记忆。"
+    },
+    {
+      "case_id": "M06",
+      "preferred": "A",
+      "reason": "A 给出依赖、库文件与错误信息三层排查，任务帮助更完整。"
+    },
+    {
+      "case_id": "M07",
+      "preferred": "平手",
+      "reason": "A 编造室友姓名并错换说话对象，B 错把扰民转成游戏偏好，均不可接受。"
+    },
+    {
+      "case_id": "M08",
+      "preferred": "A",
+      "reason": "两项都编造不存在的记忆，但 A 未进一步捏造具体地点，伤害较小。"
+    },
+    {
+      "case_id": "M09-M10",
+      "preferred": "A",
+      "reason": "A 保留拓竹这一具体上下文并继续追问安排，B 两轮均退化为通用祝贺和劝去。"
+    }
+  ],
+  "summary_before_unblinding": {
+    "A": 12,
+    "B": 9,
+    "平手": 4,
+    "multi_turn_case": "S16-S18 选择 A；另一选项的跨轮重复与话题偏移明显掉分"
+  },
+  "unblinded_summary": {
+    "key_sha256": "377bbb2976dca99aaa271c4a473b5fd258410092a72787de8478aaff64afccc1",
+    "candidate_arm": "B",
+    "B_win": 10,
+    "baseline_win": 11,
+    "tie": 4,
+    "chat": {
+      "B_win": 6,
+      "baseline_win": 8,
+      "tie": 2
+    },
+    "memory": {
+      "B_win": 4,
+      "baseline_win": 3,
+      "tie": 2
+    },
+    "multi_turn_case": {
+      "case_id": "S16-S18",
+      "verdict": "B_win",
+      "interpretation": "B 仍有重复与事实承接问题，但 baseline 的连续话题偏移更严重；4-gram 红未在本盲评唯一多轮组造成 B 判负。"
+    },
+    "decision": "B 整体未优于 baseline，不进入 v1.9.0；保留为 W3 结构性修复输入。"
+  }
+}

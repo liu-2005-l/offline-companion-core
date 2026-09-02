@@ -54,6 +54,13 @@ log/
 .cursorignore
 .clinerules
 AGENTS.md
+.agents/
+
+# 本地实验断点与互斥锁（终局矩阵单独显式归档）
+artifacts/persona_expression/w2_checkpoints/
+artifacts/persona_expression/w2_matrix.lock
+artifacts/persona_expression/w2_parallel_invalid/w2_arm_*_cases_seed*.json
+artifacts/persona_expression/w2_parallel_invalid/w2_arm_*_probe_seed*.json
 
 # 本地提示词/指令资产（不纳入版本库；若需共享请改走显式文档流程）
 prompts/
