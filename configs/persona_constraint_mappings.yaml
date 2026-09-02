@@ -1,0 +1,46 @@
+schema_version: 1
+
+ocean:
+  dimension_order: [O, C, E, A, N]
+  dimensions:
+    O: openness
+    C: conscientiousness
+    E: extraversion
+    A: agreeableness
+    N: neuroticism
+  storage_domains:
+    database_api_ui:
+      type: integer_array
+      minimum: 0
+      maximum: 100
+    yaml:
+      type: named_number_mapping
+      minimum: 0.0
+      maximum: 1.0
+  levels:
+    low:
+      minimum: 0
+      maximum: 33
+    mid:
+      minimum: 34
+      maximum: 66
+    high:
+      minimum: 67
+      maximum: 100
+
+traits:
+  温柔:
+    type: style
+    levels: {O: mid, C: mid, E: low, A: high, N: high}
+  暴躁:
+    type: style
+    levels: {O: mid, C: mid, E: mid, A: low, N: high}
+  可靠:
+    type: behavior
+    levels: {O: mid, C: high, E: mid, A: mid, N: mid}
+  甜美:
+    type: style
+    levels: {O: high, C: mid, E: high, A: high, N: low}
+  可爱:
+    type: style
+    levels: {O: high, C: mid, E: high, A: mid, N: low}

@@ -32,6 +32,7 @@
 | **拟人表述 W2 三臂规格** | [`oc-persona-expression-w2-spec.md`](./oc-persona-expression-w2-spec.md) | — |
 | **拟人表述 W2 三臂报告** | [`oc-persona-expression-w2-report.md`](./oc-persona-expression-w2-report.md) | — |
 | **人格约束体系 P 批 v1.5** | [`persona-constraint-batch-design-v1_5.md`](./persona-constraint-batch-design-v1_5.md) | — |
+| **人格约束体系 P1 执行规格** | [`persona-constraint-p1-spec.md`](./persona-constraint-p1-spec.md) | — |
 | **Phase 6.5 召回注入 Fixture** | [`phase6-5-recall-injection-fixtures.md`](./phase6-5-recall-injection-fixtures.md) | — |
 | **Batch E 红队方案** | [`red-team-batch-e-design.md`](./red-team-batch-e-design.md) | — |
 | **Batch E 红队矩阵** | [`red-team-matrix-2026-08-25.md`](./red-team-matrix-2026-08-25.md) | — |
