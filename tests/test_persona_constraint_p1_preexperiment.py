@@ -30,25 +30,23 @@ def test_preexperiment_matrix_shape_is_preregistered() -> None:
         "E_low_A_high",
         "E_low_A_low",
     }
-    assert set(payload["summary"]["shapes"]) == {
-        "instruction_only",
-        "dimension_concat",
-        "merged_dialogue",
-    }
+    assert set(payload["summary"]["shapes"]) == set(fixture["shapes"])
 
 
 def test_system_prompt_shapes_keep_control_and_examples_separate() -> None:
-    """摘要：控制组不含示例，两个候选形态分别使用分块与合并微型对话。"""
+    """摘要：控制组、维度拼接与结构样本提示块保持分离。"""
     fixture = _fixture()
     control = runner.build_system_prompt(fixture, "instruction_only", "high", "low")
     concatenated = runner.build_system_prompt(fixture, "dimension_concat", "high", "low")
-    merged = runner.build_system_prompt(fixture, "merged_dialogue", "high", "low")
+    structural = runner.build_system_prompt(fixture, "dimension_concat_structural", "high", "low")
 
     assert "示例 1" not in control
     assert "【E 维微型对话】" in concatenated
     assert "【A 维微型对话】" in concatenated
-    assert "【合并人格微型对话】" in merged
-    assert "【E 维微型对话】" not in merged
+    assert "【E 维微型对话】" in structural
+    assert "【A 维微型对话】" in structural
+    assert "【纠偏结构样本】" in structural
+    assert "那就拆开看" in structural
 
 
 def test_reply_scoring_uses_frozen_marker_lists() -> None:

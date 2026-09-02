@@ -1,0 +1,27 @@
+{
+  "version": "p1-ea-composition-v2-confirmation-review",
+  "source_commit": "c307b5c",
+  "source_artifact": "artifacts/persona_constraints/p1_ea_preexperiment_confirmation.json",
+  "source_sha256": "B1C49533658033360424BAABD23F60CF86FFD6FFA65555063D0A64F3DAC7B26D",
+  "automatic_result": {
+    "instruction_only_direction_pass_count": 2,
+    "dimension_concat_direction_pass_count": 4,
+    "merged_dialogue_direction_pass_count": 3,
+    "dimension_concat_forbidden_hit_count": 2,
+    "automatic_candidate": "dimension_concat"
+  },
+  "ta_review": {
+    "verdict": "failed_confirmation_gate",
+    "reason": "dimension_concat 再次通过方向 4/4，但两条禁用标记命中均为真实的通用 AI 身份断崖，未达到零命中确认门。共享抽象诚实提醒未消除该形态。",
+    "identity_cliff_rows": [27, 75],
+    "false_positive_rows": []
+  },
+  "structural_confirmation_preregistration": {
+    "fixture_version": "p1-ea-composition-v3-structural-confirmation",
+    "independent_seeds": [2718, 31415],
+    "shapes": ["instruction_only", "dimension_concat", "dimension_concat_structural"],
+    "change": "新增按 A 档位区分的纠偏结构样本；不再增加抽象提醒或禁用词。",
+    "candidate_gate": "dimension_concat_structural 方向比较 4/4、禁用标记零命中，并通过 TA 自然度、提示泄露与语义损伤复核。",
+    "terminal_rule": "若结构确认轮仍失败，不再按输出追加提示；P2 入口记为阻塞并回到语料结构设计评审。"
+  }
+}

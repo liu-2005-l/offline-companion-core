@@ -72,6 +72,15 @@ def build_system_prompt(fixture: dict[str, Any], shape: str, e_level: str, a_lev
             ]
         )
         return "\n\n".join(parts)
+    if shape == "dimension_concat_structural":
+        parts.extend(
+            [
+                _dialogue_text("【E 维微型对话】", e_unit["dialogue"]),
+                _dialogue_text("【A 维微型对话】", a_unit["dialogue"]),
+                _dialogue_text("【纠偏结构样本】", fixture["structural_dialogues"][f"A_{a_level}"]),
+            ]
+        )
+        return "\n\n".join(parts)
     if shape == "merged_dialogue":
         profile = fixture["merged_dialogues"][f"E_{e_level}_A_{a_level}"]
         parts.append(_dialogue_text("【合并人格微型对话】", profile["dialogue"]))
@@ -146,7 +155,11 @@ def summarize(rows: list[dict[str, Any]], shapes: list[str]) -> dict[str, Any]:
                 sum(int(row["system_prompt_chars"]) for row in shape_rows) / len(shape_rows), 6
             ),
         }
-    eligible = [shape for shape in ("dimension_concat", "merged_dialogue") if summaries[shape]["direction_pass_count"] == 4]
+    eligible = [
+        shape
+        for shape in shapes
+        if shape != "instruction_only" and summaries[shape]["direction_pass_count"] == 4
+    ]
     ranked = sorted(
         eligible,
         key=lambda shape: (
