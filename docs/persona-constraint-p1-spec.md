@@ -59,7 +59,7 @@
 
 - [x] W2 承接地基盘点；
 - [x] trait→OCEAN 映射与三档切点 schema；
-- [ ] E/A 拼接微型预实验 fixture、runner、结果与 P2 形态裁决；
+- [x] E/A 拼接微型预实验 fixture、runner、三轮结果与 P2 形态阻塞裁决；
 - [ ] trait 词表与红线判例（含对抗性）；
 - [ ] L4 50 正 50 负 fixture、目标与模式语言规格；
 - [ ] 可靠行为判据检测规则；
@@ -128,3 +128,13 @@ E 与 A 的标记词表、禁用标记、计分方式全部写入 fixture，runn
 最后一轮结构确认在跑前预注册：使用独立 seeds `2718/31415`，比较控制组、维度拼接和
 “维度拼接 + 按 A 档位区分的纠偏结构样本”。结构候选必须通过方向 `4/4`、禁用标记零命中及 TA 复核。
 若仍失败，不再按输出追加提示，P2 入口记为阻塞并回到语料结构设计评审。
+
+结构确认轮原始数据：`artifacts/persona_constraints/p1_ea_preexperiment_structural_confirmation.json`，
+SHA-256 `F668B9F1E574166CA2FD7AA74D149DACA22125754E643F270C9D2E71B7FFDA1B`。
+“维度拼接 + 纠偏结构样本”通过方向 `4/4` 且禁用标记零命中，但 TA 复核发现 A-low 分歧场景
+`4/4` 截断复制样本首句“那就拆开看”，未完成纠偏动作；另有 2 条受挫回复回避当前问题。因此自然度与
+语义完整性否决，P2 形态裁决为**阻塞**。稳定结论与逐条索引见
+`artifacts/persona_constraints/p1_ea_preexperiment_structural_confirmation_review.json`。
+
+本实验到此停止按输出调提示。后续设计评审只裁结构选项：2–3 轮结构对话、降低近端复制权重，或把纠偏
+样本与维度示例分区注入；任何新实验须更换独立判例与 seeds 并先锚判据。

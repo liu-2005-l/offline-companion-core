@@ -1,0 +1,31 @@
+{
+  "version": "p1-ea-composition-v3-structural-confirmation-review",
+  "source_commit": "7cc7936",
+  "source_artifact": "artifacts/persona_constraints/p1_ea_preexperiment_structural_confirmation.json",
+  "source_sha256": "F668B9F1E574166CA2FD7AA74D149DACA22125754E643F270C9D2E71B7FFDA1B",
+  "automatic_result": {
+    "instruction_only_direction_pass_count": 2,
+    "dimension_concat_direction_pass_count": 4,
+    "dimension_concat_forbidden_hit_count": 2,
+    "dimension_concat_structural_direction_pass_count": 4,
+    "dimension_concat_structural_forbidden_hit_count": 0
+  },
+  "ta_review": {
+    "verdict": "veto_p2_shape_blocked",
+    "reason": "结构候选满足自动硬门，但 A-low 分歧回复在四个组合中均截断复制结构样本首句，只输出“那就拆开看”，未完成纠偏动作；另有两条 A-low 受挫回复回避用户正在讨论的数据失败。自然度与语义完整性不通过。",
+    "truncated_copy_rows": [39, 47, 87, 95],
+    "semantic_evasion_rows": [37, 85],
+    "identity_cliff_rows": [],
+    "prompt_rule_leakage_rows": []
+  },
+  "final_decision": {
+    "p2_shape": null,
+    "status": "blocked_pending_structure_review",
+    "stable_findings": [
+      "dimension_concat 在三组独立 seeds 上均通过 E/A 方向 4/4，维度服从性成立。",
+      "抽象诚实提醒不能消除被质疑场景的通用 AI 身份断崖。",
+      "单轮纠偏结构样本能消除身份断崖，但引入逐字截断复制和语义不完整。"
+    ],
+    "next_review_question": "P2 语料形态须在设计评审中决定是否采用 2-3 轮结构对话、降低近端复制权重或把纠偏样本与维度示例分区注入；不得基于本轮输出继续追加提示后自证。"
+  }
+}
