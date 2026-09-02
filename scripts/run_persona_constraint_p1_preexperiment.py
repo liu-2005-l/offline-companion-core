@@ -167,9 +167,11 @@ def run_preexperiment(fixture: dict[str, Any], backend_factory, max_tokens: int)
     """摘要：执行固定矩阵并返回原始数据和汇总。"""
     rows: list[dict[str, Any]] = []
     for seed in fixture["seeds"]:
+        print(f"[P1-EA] seed={seed} backend load", flush=True)
         backend = backend_factory(int(seed))
         for shape in fixture["shapes"]:
             for e_level, a_level in PROFILE_LEVELS:
+                print(f"[P1-EA] seed={seed} shape={shape} E={e_level} A={a_level}", flush=True)
                 system_prompt = build_system_prompt(fixture, shape, e_level, a_level)
                 for prompt in fixture["prompts"]:
                     reply = backend.generate(

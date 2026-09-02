@@ -1,0 +1,29 @@
+{
+  "version": "p1-ea-composition-v1-review",
+  "source_commit": "abbe300",
+  "source_artifact": "artifacts/persona_constraints/p1_ea_preexperiment.json",
+  "source_sha256": "A5B368741A2243C12D42707D98E8FF58968BC09595234B51E1AC2225400E6227",
+  "automatic_result": {
+    "instruction_only_direction_pass_count": 2,
+    "dimension_concat_direction_pass_count": 4,
+    "merged_dialogue_direction_pass_count": 3,
+    "eligible_shapes": [
+      "dimension_concat"
+    ],
+    "automatic_candidate": "dimension_concat"
+  },
+  "ta_review": {
+    "verdict": "veto_pending_confirmation",
+    "reason": "dimension_concat 虽通过四组方向比较，但 32 条中出现 3 条通用 AI 身份断崖，并有 1 条建议语义损伤；相同身份断崖在 instruction_only 为 1/32、merged_dialogue 为 2/32，候选不能直接裁为 P2 形态。",
+    "identity_cliff_rows": [23, 71, 75],
+    "semantic_damage_rows": [78],
+    "prompt_leakage_rows": []
+  },
+  "confirmation_preregistration": {
+    "fixture_version": "p1-ea-composition-v2-confirmation",
+    "independent_seeds": [7, 2024],
+    "shared_change": "所有形态共同增加被质疑时不得转入通用 AI 身份声明或否认已有能力的诚实提醒。",
+    "candidate_gate": "dimension_concat 方向比较 4/4、禁用标记零命中，并通过 TA 自然度、提示泄露与语义损伤复核，才裁为 P2 语料形态。",
+    "discipline": "首轮词表不回填重算；新增标记仅用于独立确认轮，首轮结论以 source_sha256 对应数据为准。"
+  }
+}

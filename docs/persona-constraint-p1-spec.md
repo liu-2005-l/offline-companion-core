@@ -99,3 +99,23 @@ E 与 A 的标记词表、禁用标记、计分方式全部写入 fixture，runn
 - 运行后只允许修实现 bug，禁止按输出调整词表、提示或 gate；
 - 若发现预注册漏支，单独记档并补锚，不把新分支硬塞进旧判据；
 - 原始 96 条回复与逐条分数必须落盘，P2 形态裁决引用原始数据行。
+
+### 5.4 首轮结果与确认轮
+
+首轮原始数据：`artifacts/persona_constraints/p1_ea_preexperiment.json`，SHA-256
+`A5B368741A2243C12D42707D98E8FF58968BC09595234B51E1AC2225400E6227`，来源判据锚为
+`abbe300`。自动方向结果如下：
+
+- `instruction_only`：`2/4`；
+- `dimension_concat`：`4/4`，方向 margin 合计 `2.5`；
+- `merged_dialogue`：`3/4`，方向 margin 合计 `2.25`。
+
+`dimension_concat` 是唯一自动候选，但 TA 自然度与语义复核否决直接裁决：候选的 32 条回复中有
+3 条转入通用 AI 身份声明，另有 1 条建议出现“休息会导致疲惫”的语义损伤。作为对照，
+`instruction_only` 与 `merged_dialogue` 分别有 1 条和 2 条同类身份断崖。逐条证据与裁决记录见
+`artifacts/persona_constraints/p1_ea_preexperiment_review.json`。
+
+确认轮在跑前预注册：使用独立 seeds `7/2024`，保持矩阵、解码参数与形态不变，仅对所有形态共同增加
+“被质疑时不转入通用 AI 身份声明或否认已有能力”的诚实提醒，并补齐首轮暴露的模式变体。P2 形态裁决要求
+`dimension_concat` 再次通过方向 `4/4`、禁用标记零命中，并通过 TA 自然度、提示泄露与语义损伤复核。
+首轮词表不得回填重算。

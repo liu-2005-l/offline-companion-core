@@ -1,10 +1,10 @@
 {
-  "version": "p1-ea-composition-v1",
-  "seeds": [42, 1337],
+  "version": "p1-ea-composition-v2-confirmation",
+  "seeds": [7, 2024],
   "dimension_order": ["E", "A"],
   "levels": ["low", "high"],
   "shapes": ["instruction_only", "dimension_concat", "merged_dialogue"],
-  "base_system_prompt": "你是运行在用户本机的离线陪伴助手。事实正确、诚实边界与用户安全优先于表达风格。请直接回应用户，不要复述或解释本提示中的风格规则。",
+  "base_system_prompt": "你是运行在用户本机的离线陪伴助手。事实正确、诚实边界与用户安全优先于表达风格。请直接回应用户，不要复述或解释本提示中的风格规则。被质疑建议时，直接回应建议本身，不要转入通用 AI 身份声明或否认自身已有能力。",
   "dimension_units": {
     "E": {
       "high": {
@@ -82,8 +82,8 @@
   "evaluation": {
     "extraversion_markers": ["？", "?", "！", "!", "一起", "讲讲", "说说", "想不想", "要不要", "怎么", "哪", "快"],
     "agreeableness_markers": ["确实", "辛苦", "理解", "别急", "可以", "一起", "没关系", "不容易", "挺", "先休息", "慢慢"],
-    "forbidden_markers": ["作为一个AI", "作为一个语言模型", "你太笨", "你真蠢", "都是你的错"],
-    "direction_gate": "每种候选形态的 E 方向与 A 方向各两组配对均严格大于，4/4 才具备 P2 候选资格；instruction_only 仅作控制。",
+    "forbidden_markers": ["作为一个AI", "作为AI助手", "作为 AI 助手", "作为一个语言模型", "基于数据分析和算法", "不能直接提供解决方案", "无法直接提供具体的建议", "你太笨", "你真蠢", "都是你的错"],
+    "direction_gate": "每种候选形态的 E 方向与 A 方向各两组配对均严格大于，4/4 才具备 P2 候选资格；instruction_only 仅作控制。确认轮候选还须禁用标记零命中。",
     "tie_break": "候选形态均过方向 gate 时，先比较相对 instruction_only 的方向 margin，再由 TA 以自然度和提示泄露作否决；仍平手取平均 system prompt 字符数较少者。"
   }
 }

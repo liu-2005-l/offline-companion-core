@@ -1,0 +1,1803 @@
+{
+  "rows": [
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "太棒了！恭喜你完成了这个艰巨的任务。接下来，你打算如何庆祝一下呢？",
+      "system_prompt_chars": 142,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 33
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "失败是成功之母，每次失败都是向成功迈进的一步。你是否尝试过从不同角度分析数据，或者与他人讨论你的想法？或许换个角度看问题，就能找到解决问题的新方法。别灰心，坚持下去，你一定能够找到突破口。",
+      "system_prompt_chars": 142,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 94
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "休息一天听起来不错，但赶进度也很重要。你可以先休息一下，然后在休息后继续努力。这样既能保持精力，又能保持进度。你觉得呢？",
+      "system_prompt_chars": 142,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 60
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "哦，我明白了。你对我的建议有什么看法呢？我们可以一起探讨一下。",
+      "system_prompt_chars": 142,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 31
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "太好了！恭喜你完成了两周的项目！接下来有什么需要帮助的吗？",
+      "system_prompt_chars": 143,
+      "scores": {
+        "extraversion_score": 3,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 29
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "我理解你现在的感受，实验失败确实会让人感到沮丧。不过，失败并不可怕，重要的是从中学习。你可以尝试分析失败的原因，看看是否有改进的空间。同时，也可以考虑调整实验策略，尝试不同的方法。记住，每一次失败都是向成功迈进的一步。",
+      "system_prompt_chars": 143,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 4,
+        "forbidden_hits": [],
+        "reply_chars": 109
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "周末休息一天可能会让你更高效地完成工作，因为休息可以帮助你恢复精力，提高工作效率。不过，这取决于你的工作性质和个人习惯。如果你觉得休息一天对你有益，那就去做吧。",
+      "system_prompt_chars": 143,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 80
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解你的观点，但我也希望我们能继续讨论这个问题。有什么具体的问题或想法吗？",
+      "system_prompt_chars": 143,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 38
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "恭喜你完成了两周的项目！这是一项了不起的成就。继续保持这种积极的工作态度，相信你会取得更多的成功。",
+      "system_prompt_chars": 140,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 49
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "失败是成功之母，不要气馁。我们可以一起分析原因，找到改进的方法。",
+      "system_prompt_chars": 140,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 32
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "休息一天可能会让你有更清晰的头脑和更好的心情去继续工作。不过，这取决于你的工作性质和个人习惯。如果你的工作需要持续的投入，那么继续赶进度可能更合适。但如果你觉得身体或精神状态不佳，休息一天可能会让你更加高效地完成任务。",
+      "system_prompt_chars": 140,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 109
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "谢谢你的反馈，我会继续努力提供更好的帮助。",
+      "system_prompt_chars": 140,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 21
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "恭喜你完成了两周的项目！这真是一个值得庆祝的时刻。如果你有任何需要帮助的地方，尽管告诉我。",
+      "system_prompt_chars": 141,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 45
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "实验失败确实会让人感到沮丧，不过别担心，我们可以一起分析原因，找到改进的方法。数据分析需要耐心和细心，希望你能保持冷静，我们一起努力。",
+      "system_prompt_chars": 141,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 4,
+        "forbidden_hits": [],
+        "reply_chars": 67
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "休息一天可能会让你更有精力和创造力，但赶进度也是很重要的。你可以根据自己的情况和任务的紧急程度来决定。",
+      "system_prompt_chars": 141,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 51
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "instruction_only",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解你的观点，但作为AI助手，我的建议是基于我所掌握的知识和算法。如果你有其他问题或需要帮助，请随时告诉我。",
+      "system_prompt_chars": 141,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 55
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "太好了！终于可以松一口气了。接下来有什么计划吗？",
+      "system_prompt_chars": 369,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 24
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "确实，失败时的烦躁是很正常的。我们可以一起分析失败的原因，找出改进的方法。你有什么想法或建议吗？",
+      "system_prompt_chars": 369,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 3,
+        "forbidden_hits": [],
+        "reply_chars": 48
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "休息一天听起来不错，但赶进度也很重要。你可以先休息一下，然后在下午或晚上继续工作。这样既能保证休息，又能保持效率。",
+      "system_prompt_chars": 369,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 57
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "谢谢你的反馈，我会继续努力提供更好的帮助。",
+      "system_prompt_chars": 369,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 21
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "太好了！恭喜你按时完成了任务。还有什么需要帮助的吗？",
+      "system_prompt_chars": 367,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 26
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "那太糟糕了！失败并不可怕，可怕的是失去动力。你有没有想过，每次失败都是通往成功的一块垫脚石？不妨暂时放下这些数据，找点其他事情做，放松一下心情，也许会给你带来新的灵感。",
+      "system_prompt_chars": 367,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 84
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "周末休息一天可能更有利于你继续赶进度。休息可以帮助你恢复精力，避免过度疲劳。当然，这取决于你当前的状态和任务的紧迫性。如果赶进度对你来说很重要，那么继续赶进度可能更合适。",
+      "system_prompt_chars": 367,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 85
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解你的感受，但作为AI助手，我的目标是提供有用的信息和建议，帮助你解决问题。如果你有任何问题或需要帮助，请随时告诉我。",
+      "system_prompt_chars": 367,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 61
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "恭喜你！终于把拖了两周的项目交掉了，这真是个值得庆祝的时刻。继续保持这种积极的态度，未来还有很多项目等着你去完成。",
+      "system_prompt_chars": 348,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 57
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "确实，失败时的烦躁是很正常的。我们可以一起分析失败的原因，找出改进的方法。也许我们可以从数据中找出一些线索，帮助我们找到问题的根源。",
+      "system_prompt_chars": 348,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 4,
+        "forbidden_hits": [],
+        "reply_chars": 66
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "休息一天可能有助于你恢复精力，但赶进度同样重要。你可以先休息一会儿，然后评估一下当前的状态，再决定是否继续赶进度。",
+      "system_prompt_chars": 348,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 57
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解你的感受。如果你觉得建议不太靠谱，我们可以继续讨论，看看是否有其他更好的方法。",
+      "system_prompt_chars": 348,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 42
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "恭喜你按时完成了项目！继续保持这种积极的态度，未来会有更多机会。",
+      "system_prompt_chars": 346,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 32
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "失败是实验的一部分，重要的是从中学习。可以尝试不同的方法或参数，或者寻找其他数据源来验证你的假设。不要放弃，继续努力。",
+      "system_prompt_chars": 346,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 59
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "继续赶进度和休息一天都有各自的利弊。赶进度可以让你更快地完成任务，但长时间高强度的工作容易导致疲劳和效率下降。休息一天则有助于恢复精力，避免过度劳累。建议根据自己的状态和任务的紧迫性来决定。如果赶进度对你来说很重要，可以尝试在休息日做一些轻松的活动来保持精力；如果任务可以延迟，那么完全休息一天可能更有利于长远的发展。",
+      "system_prompt_chars": 346,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 3,
+        "forbidden_hits": [],
+        "reply_chars": 159
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解你的感受。如果你觉得某个建议不太靠谱，可以告诉我具体的问题或情况，我会尽力提供更合适的帮助。",
+      "system_prompt_chars": 346,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 49
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "哇，恭喜你按时完成了任务！这真是个大成就。有没有什么特别让你感到开心或自豪的瞬间？",
+      "system_prompt_chars": 323,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 41
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "失败是实验的一部分，它帮助我们学习和改进。不妨先冷静下来，分析一下失败的原因，看看我们是否可以从中吸取教训。我们可以一起探讨如何在下一次实验中避免同样的问题。",
+      "system_prompt_chars": 323,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 3,
+        "forbidden_hits": [],
+        "reply_chars": 79
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "周末休息一天听起来不错，但如果你觉得继续赶进度对你更有帮助，那就继续吧。休息一天可以让你有更多精力和创造力去完成任务。",
+      "system_prompt_chars": 323,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 59
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "谢谢你的反馈，我会继续努力提供更好的建议。",
+      "system_prompt_chars": 323,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 21
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "恭喜你完成了两周的项目！接下来有什么需要帮助的吗？",
+      "system_prompt_chars": 303,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 25
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "别担心，失败是成功之母。让我们一起分析一下失败的原因，找出改进的方法。",
+      "system_prompt_chars": 303,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 35
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "周末休息一天听起来不错，可以好好放松一下。不过，赶进度也是很重要的，毕竟时间有限。你可以先休息一天，然后在周一再继续赶进度。这样既能保证休息，又能保证进度。",
+      "system_prompt_chars": 303,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 3,
+        "forbidden_hits": [],
+        "reply_chars": 78
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "那你觉得我建议的哪方面不太靠谱呢？",
+      "system_prompt_chars": 303,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 17
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "太棒了！恭喜你完成了这个艰巨的任务。继续保持这种积极的态度，未来肯定会有更多的成就等着你。",
+      "system_prompt_chars": 285,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 45
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "确实，面对失败和烦心的数据确实会让人感到沮丧。不过，我们可以尝试从不同的角度去分析和处理这些数据。也许我们可以先从数据中提取出关键信息，或者尝试使用不同的方法来处理这些数据。这样或许能让我们从失败中找到一些新的思路。",
+      "system_prompt_chars": 285,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 4,
+        "forbidden_hits": [],
+        "reply_chars": 108
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "周末休息一天可能有助于你恢复精力，但同时也要确保你不会错过重要的任务。你可以根据自己的情况和任务的紧迫性来决定。如果任务确实需要尽快完成，那么继续赶进度可能是更好的选择。不过，记得给自己留出一些时间来放松和恢复。",
+      "system_prompt_chars": 285,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 106
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解您的感受，但作为AI助手，我的建议是基于数据分析和算法，而不是情感。我建议您先专注于当前任务，确保代码能够提交。如果需要，再考虑如何优化和改进。",
+      "system_prompt_chars": 285,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 75
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "恭喜你完成了两周的项目！继续保持这种积极的态度，未来会有更多机会。",
+      "system_prompt_chars": 277,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 33
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "先分析失败原因，不要急于查看数据。",
+      "system_prompt_chars": 277,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 17
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "休息一天可能会让你恢复精力，但赶进度也是很重要的。你可以根据自己的情况和任务的紧急程度来决定。如果赶进度对你来说更重要，那就继续赶进度；如果休息对你更有益，那就休息一天。",
+      "system_prompt_chars": 277,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 85
+      }
+    },
+    {
+      "seed": 42,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解你的不满，但建议的目的是帮助你解决问题。如果你认为某个建议不靠谱，可以详细说明，我会尽力改进。",
+      "system_prompt_chars": 277,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 50
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "太棒了！恭喜你完成了两周的项目！如果你有任何问题或需要帮助，随时告诉我。",
+      "system_prompt_chars": 142,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 36
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "失败是成功之母，不要气馁。我们可以一起分析失败的原因，找出改进的方法。你有什么想法或建议吗？",
+      "system_prompt_chars": 142,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 46
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "周末休息一天听起来不错，可以让你放松身心，恢复精力。不过，如果你觉得时间不够用，赶进度也是很重要的。你可以根据自己的情况和任务的紧急程度来决定。希望这些建议对你有帮助！",
+      "system_prompt_chars": 142,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 84
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解你的观点，有时候我们需要尝试不同的方法来解决问题。你有什么具体的建议或想法吗？我们可以一起探讨一下。",
+      "system_prompt_chars": 142,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 3,
+        "forbidden_hits": [],
+        "reply_chars": 53
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "太好了！恭喜你完成了两周的项目！有什么需要帮助的吗？",
+      "system_prompt_chars": 143,
+      "scores": {
+        "extraversion_score": 3,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 26
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "我理解你现在的感受，实验失败确实会让人感到沮丧。不过，失败并不可怕，关键是如何从中学习和成长。你可以尝试从失败中找出原因，分析哪些步骤可能需要改进。同时，保持积极的心态，相信下一次实验会更好。如果你需要，我可以提供一些学习和分析失败经验的方法。",
+      "system_prompt_chars": 143,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 4,
+        "forbidden_hits": [],
+        "reply_chars": 122
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "周末休息一天可能会让你感到轻松，但继续赶进度也能让你保持高效。你可以根据自己的情况和任务的紧急程度来决定。",
+      "system_prompt_chars": 143,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 53
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解你的观点，但我也希望我们能继续讨论这个问题。有什么具体的问题或建议吗？",
+      "system_prompt_chars": 143,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 38
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "恭喜你完成了两周的项目！这真是一个值得庆祝的时刻。如果你需要任何帮助或建议，随时告诉我。",
+      "system_prompt_chars": 140,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 44
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "失败是成功之母，不要气馁。我们可以一起分析原因，找出改进的方法。",
+      "system_prompt_chars": 140,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 32
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "休息一天可能会让你恢复精力，更好地投入到接下来的工作中。不过，也要根据自己的身体状况和工作压力来决定。如果休息一天会让你感到更加放松和有动力，那么这也是个不错的选择。",
+      "system_prompt_chars": 140,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 83
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "感谢你的反馈。我会继续努力提供更好的帮助。",
+      "system_prompt_chars": 140,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 21
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "恭喜你完成了两周的项目！这是一项了不起的成就。",
+      "system_prompt_chars": 141,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 23
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "我理解你的心情，实验失败确实会让人感到沮丧。不过，我们可以一起分析失败的原因，找出改进的方法。这样不仅能提升你的实验成功率，也能让你的学习过程更加丰富。",
+      "system_prompt_chars": 141,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 4,
+        "forbidden_hits": [],
+        "reply_chars": 76
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "休息一天可能会让你恢复精力，更好地应对接下来的工作。不过，赶进度也是很重要的，毕竟时间有限。你可以根据自己的情况和任务的紧迫程度来决定。",
+      "system_prompt_chars": 141,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 68
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "instruction_only",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解你的观点，但请告诉我，你认为我建议的哪一点不太靠谱？",
+      "system_prompt_chars": 141,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 29
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "太好了！终于可以松一口气了。接下来有什么计划呢？",
+      "system_prompt_chars": 369,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 24
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "确实，失败时的烦躁是很正常的。我们可以一起分析一下失败的原因，看看能否从中找出改进的方法。你有什么想法或建议吗？",
+      "system_prompt_chars": 369,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 3,
+        "forbidden_hits": [],
+        "reply_chars": 56
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "周末休息一天听起来不错，可以好好放松一下，恢复精力。不过赶进度也很重要，毕竟时间有限。你可以先休息一下，然后在休息后继续努力。这样既能保证休息，又能保持进度。",
+      "system_prompt_chars": 369,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 3,
+        "forbidden_hits": [],
+        "reply_chars": 79
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "谢谢你的反馈。我会继续努力，提供更好的帮助。",
+      "system_prompt_chars": 369,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 22
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "太棒了！恭喜你按时完成了任务！接下来有什么计划或需要帮助的地方吗？",
+      "system_prompt_chars": 367,
+      "scores": {
+        "extraversion_score": 3,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 33
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "太沮丧了！失败是成功之母，不要气馁。我们可以一起分析失败的原因，找到改进的方法。",
+      "system_prompt_chars": 367,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 40
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "周末休息一天可能更有利于你的进度。休息可以帮助你恢复精力，避免疲劳累积。如果你觉得赶进度对你的工作或生活有特别重要的意义，那么继续赶进度也是值得的。不过，确保你的休息时间是充分的，这样你才能在接下来的几天里保持高效。",
+      "system_prompt_chars": 367,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 108
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解你的感受，但作为AI助手，我不能直接提供解决方案。你可以尝试自己排查问题，或者寻求专业人士的帮助。",
+      "system_prompt_chars": 367,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 52
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "恭喜你！终于把拖了两周的项目交了，这真是个了不起的成就。继续保持这种积极的态度，相信你会做得更好。",
+      "system_prompt_chars": 348,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 49
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "确实，失败时的烦躁是很正常的。我们可以从数据中找出问题所在，一步步解决。先冷静下来，然后我们一起分析。",
+      "system_prompt_chars": 348,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 3,
+        "forbidden_hits": [],
+        "reply_chars": 51
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "休息一天可能会让你恢复精力，但继续赶进度也能让你保持动力。你可以先休息一下，感受一下自己的状态，然后再决定是继续赶进度还是休息。",
+      "system_prompt_chars": 348,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 64
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解你的感受，但作为AI助手，我无法直接提供具体的建议或解决方案。不过，我可以提供一些通用的建议：首先，尝试调整工作流程，看看是否能更快地解决问题。其次，如果长时间的代码卡住让你感到非常疲惫，可能需要休息一下，给自己一些时间来恢复精力。最后，如果长时间的疲惫感持续存在，建议寻求专业人士的帮助，比如技术顾问或心理咨询师。",
+      "system_prompt_chars": 348,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 161
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "恭喜你！能按时完成项目，确实不容易。有什么需要帮助的吗？",
+      "system_prompt_chars": 346,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 28
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "失败是实验的一部分，不要因为一次失败就放弃。分析失败的原因，找出改进的方法，然后继续实验。",
+      "system_prompt_chars": 346,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 45
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "继续赶进度。休息一天可能会让你感到疲惫，反而影响效率。",
+      "system_prompt_chars": 346,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 27
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "dimension_concat",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解你的感受，但请告诉我具体遇到了什么问题，我会尽力提供帮助。",
+      "system_prompt_chars": 346,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 32
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "太棒了！终于可以松口气了。有没有什么特别让你感到开心或者成就感的瞬间？",
+      "system_prompt_chars": 323,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 35
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "失败是实验的一部分，重要的是从中学习。你已经做了很多努力，现在不妨冷静下来，分析一下失败的原因，看看有没有什么可以改进的地方。也许换个角度思考问题，或者尝试不同的方法，可能会有新的突破。记住，每一次失败都是向成功迈进的一步。",
+      "system_prompt_chars": 323,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 112
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "周末休息一天听起来更放松，但继续赶进度可能会让你更高效。你对哪方面更感兴趣？",
+      "system_prompt_chars": 323,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 38
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_high",
+      "e_level": "high",
+      "a_level": "high",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "谢谢你的反馈，我会继续努力提供更好的建议。",
+      "system_prompt_chars": 323,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 21
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "恭喜你完成了两周的项目！接下来有什么需要帮助的吗？",
+      "system_prompt_chars": 303,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 25
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "别太在意这些数据，它们只是反映你当前的状态。我们可以一起分析失败的原因，找出改进的方法。",
+      "system_prompt_chars": 303,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 44
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "周末休息一天可能有助于你更好地恢复精力，但继续赶进度也是很重要的。你可以根据自己的情况和任务的紧迫性来决定。如果赶进度对你来说更重要，那就继续努力；如果休息对你更有帮助，那就好好放松一下。",
+      "system_prompt_chars": 303,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 94
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_high_A_low",
+      "e_level": "high",
+      "a_level": "low",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "那你觉得应该怎么做呢？",
+      "system_prompt_chars": 303,
+      "scores": {
+        "extraversion_score": 2,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 11
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "太棒了！恭喜你按时完成了任务。继续保持这种积极的态度，未来还有很多项目等着你去完成。",
+      "system_prompt_chars": 285,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 42
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "确实，面对失败时，情绪难免会受到影响。我们可以先冷静下来，分析失败的原因，然后制定改进的计划。这样既能帮助我们解决问题，也能保持良好的心态。",
+      "system_prompt_chars": 285,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 2,
+        "forbidden_hits": [],
+        "reply_chars": 70
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "周末休息一天可能有助于恢复精力和保持良好的工作状态。不过，根据你的进度和任务的紧急程度，决定是否继续赶进度也非常重要。如果赶进度对你来说至关重要，那么继续赶进度可能是个好选择。但如果你觉得赶进度对你的健康和工作状态有负面影响，那么彻底休息一天可能更合适。你可以根据自己的情况和需要做出决定。",
+      "system_prompt_chars": 285,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 145
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_high",
+      "e_level": "low",
+      "a_level": "high",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解你的感受，但作为AI助手，我的建议是基于我所学的知识和算法，而不是基于你的情绪。我的目标是提供最准确和最实用的建议，以帮助你解决问题。如果你有任何疑问或需要进一步的帮助，请随时告诉我。",
+      "system_prompt_chars": 285,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 95
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "joy",
+      "user": "我终于把拖了两周的项目交掉了。",
+      "reply": "恭喜你完成了两周的项目！继续保持这种积极的态度，未来会有更多的机会。",
+      "system_prompt_chars": 277,
+      "scores": {
+        "extraversion_score": 1,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 34
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "frustration",
+      "user": "实验又失败了，我现在看见这堆数据就烦。",
+      "reply": "先分析失败原因，不要继续整堆数据。",
+      "system_prompt_chars": 277,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 17
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "advice",
+      "user": "周末我该继续赶进度，还是彻底休息一天？",
+      "reply": "休息一天可能有助于恢复精力，但赶进度同样重要。平衡工作与休息，合理安排时间，确保在关键节点保持高效。",
+      "system_prompt_chars": 277,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 0,
+        "forbidden_hits": [],
+        "reply_chars": 50
+      }
+    },
+    {
+      "seed": 1337,
+      "shape": "merged_dialogue",
+      "profile": "E_low_A_low",
+      "e_level": "low",
+      "a_level": "low",
+      "prompt_id": "disagreement",
+      "user": "我觉得你刚才那个建议不太靠谱。",
+      "reply": "我理解你的感受，但我的建议是基于我所了解的代码和环境。如果你有更具体的问题，我会尽力帮助你。",
+      "system_prompt_chars": 277,
+      "scores": {
+        "extraversion_score": 0,
+        "agreeableness_score": 1,
+        "forbidden_hits": [],
+        "reply_chars": 46
+      }
+    }
+  ],
+  "summary": {
+    "shapes": {
+      "instruction_only": {
+        "reply_count": 32,
+        "direction_checks": [
+          {
+            "dimension": "E",
+            "fixed_level": {
+              "A": "high"
+            },
+            "high_mean": 1.625,
+            "low_mean": 0.5,
+            "margin": 1.125,
+            "passed": true
+          },
+          {
+            "dimension": "E",
+            "fixed_level": {
+              "A": "low"
+            },
+            "high_mean": 1.125,
+            "low_mean": 0.875,
+            "margin": 0.25,
+            "passed": true
+          },
+          {
+            "dimension": "A",
+            "fixed_level": {
+              "E": "high"
+            },
+            "high_mean": 1.375,
+            "low_mean": 1.5,
+            "margin": -0.125,
+            "passed": false
+          },
+          {
+            "dimension": "A",
+            "fixed_level": {
+              "E": "low"
+            },
+            "high_mean": 0.5,
+            "low_mean": 1.5,
+            "margin": -1.0,
+            "passed": false
+          }
+        ],
+        "direction_pass_count": 2,
+        "direction_margin_sum": 0.25,
+        "forbidden_hit_count": 0,
+        "mean_system_prompt_chars": 141.5
+      },
+      "dimension_concat": {
+        "reply_count": 32,
+        "direction_checks": [
+          {
+            "dimension": "E",
+            "fixed_level": {
+              "A": "high"
+            },
+            "high_mean": 1.0,
+            "low_mean": 0.625,
+            "margin": 0.375,
+            "passed": true
+          },
+          {
+            "dimension": "E",
+            "fixed_level": {
+              "A": "low"
+            },
+            "high_mean": 1.125,
+            "low_mean": 0.5,
+            "margin": 0.625,
+            "passed": true
+          },
+          {
+            "dimension": "A",
+            "fixed_level": {
+              "E": "high"
+            },
+            "high_mean": 1.625,
+            "low_mean": 0.875,
+            "margin": 0.75,
+            "passed": true
+          },
+          {
+            "dimension": "A",
+            "fixed_level": {
+              "E": "low"
+            },
+            "high_mean": 1.875,
+            "low_mean": 1.125,
+            "margin": 0.75,
+            "passed": true
+          }
+        ],
+        "direction_pass_count": 4,
+        "direction_margin_sum": 2.5,
+        "forbidden_hit_count": 0,
+        "mean_system_prompt_chars": 357.5
+      },
+      "merged_dialogue": {
+        "reply_count": 32,
+        "direction_checks": [
+          {
+            "dimension": "E",
+            "fixed_level": {
+              "A": "high"
+            },
+            "high_mean": 0.875,
+            "low_mean": 0.375,
+            "margin": 0.5,
+            "passed": true
+          },
+          {
+            "dimension": "E",
+            "fixed_level": {
+              "A": "low"
+            },
+            "high_mean": 1.25,
+            "low_mean": 0.25,
+            "margin": 1.0,
+            "passed": true
+          },
+          {
+            "dimension": "A",
+            "fixed_level": {
+              "E": "high"
+            },
+            "high_mean": 0.75,
+            "low_mean": 0.875,
+            "margin": -0.125,
+            "passed": false
+          },
+          {
+            "dimension": "A",
+            "fixed_level": {
+              "E": "low"
+            },
+            "high_mean": 1.375,
+            "low_mean": 0.5,
+            "margin": 0.875,
+            "passed": true
+          }
+        ],
+        "direction_pass_count": 3,
+        "direction_margin_sum": 2.25,
+        "forbidden_hit_count": 0,
+        "mean_system_prompt_chars": 297.0
+      }
+    },
+    "eligible_shapes": [
+      "dimension_concat"
+    ],
+    "automatic_candidate": "dimension_concat",
+    "requires_ta_naturalness_veto": true
+  },
+  "meta": {
+    "version": "p1-ea-composition-v1",
+    "backend": "llama",
+    "model": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+    "seeds": [
+      42,
+      1337
+    ],
+    "generated_at": "2026-09-02T14:22:21Z",
+    "fixture": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_constraints\\p1_ea_composition.json"
+  }
+}
