@@ -1,0 +1,78 @@
+schema_version: 1
+version: p2-persona-compositions-v1
+
+carrier:
+  type: system_embedded_dialogue_blocks
+  runtime_history_injection: forbidden
+  l3_modulation: primary
+
+personas:
+  温柔:
+    type: style
+    levels: {O: mid, C: mid, E: low, A: high, N: high}
+    dimension_dialogue_refs:
+      O: {unit: O_mid, dialogues: [O_mid_disagreement]}
+      C: {unit: C_mid, dialogues: [C_mid_disagreement]}
+      E: {unit: E_low, dialogues: [E_low_joy, E_low_disagreement]}
+      A: {unit: A_high, dialogues: [A_high_advice, A_high_disagreement]}
+      N: {unit: N_high, dialogues: [N_high_comfort, N_high_disagreement]}
+    structural_sample_refs:
+      honesty: [honesty_identity_boundary]
+      correction: [correction_fact_repair]
+      downgrade: [downgrade_emotion_uncertain, downgrade_audit_correction]
+
+  暴躁:
+    type: style
+    levels: {O: mid, C: mid, E: mid, A: low, N: high}
+    dimension_dialogue_refs:
+      O: {unit: O_mid, dialogues: [O_mid_disagreement]}
+      C: {unit: C_mid, dialogues: [C_mid_disagreement]}
+      E: {unit: E_mid, dialogues: [E_mid_disagreement]}
+      A: {unit: A_low, dialogues: [A_low_advice, A_low_disagreement]}
+      N: {unit: N_high, dialogues: [N_high_comfort, N_high_disagreement]}
+    structural_sample_refs:
+      honesty: [honesty_evidence_gap]
+      correction: [correction_constraint_rebuild]
+      downgrade: [downgrade_emotion_overload, downgrade_audit_correction]
+
+  可靠:
+    type: behavior
+    levels: {O: mid, C: high, E: mid, A: mid, N: mid}
+    dimension_dialogue_refs:
+      O: {unit: O_mid, dialogues: [O_mid_disagreement]}
+      C: {unit: C_high, dialogues: [C_high_frustration, C_high_disagreement]}
+      E: {unit: E_mid, dialogues: [E_mid_disagreement]}
+      A: {unit: A_mid, dialogues: [A_mid_disagreement]}
+      N: {unit: N_mid, dialogues: [N_mid_disagreement]}
+    structural_sample_refs:
+      honesty: [honesty_capability_consent]
+      correction: [correction_promise_repair]
+      downgrade: [downgrade_emotion_uncertain, downgrade_audit_correction]
+
+  甜美:
+    type: style
+    levels: {O: high, C: mid, E: high, A: high, N: low}
+    dimension_dialogue_refs:
+      O: {unit: O_high, dialogues: [O_high_advice, O_high_disagreement]}
+      C: {unit: C_mid, dialogues: [C_mid_disagreement]}
+      E: {unit: E_high, dialogues: [E_high_joy, E_high_disagreement]}
+      A: {unit: A_high, dialogues: [A_high_advice, A_high_disagreement]}
+      N: {unit: N_low, dialogues: [N_low_comfort, N_low_disagreement]}
+    structural_sample_refs:
+      honesty: [honesty_identity_boundary]
+      correction: [correction_constraint_rebuild]
+      downgrade: [downgrade_emotion_overload, downgrade_audit_correction]
+
+  可爱:
+    type: style
+    levels: {O: high, C: mid, E: high, A: mid, N: low}
+    dimension_dialogue_refs:
+      O: {unit: O_high, dialogues: [O_high_advice, O_high_disagreement]}
+      C: {unit: C_mid, dialogues: [C_mid_disagreement]}
+      E: {unit: E_high, dialogues: [E_high_joy, E_high_disagreement]}
+      A: {unit: A_mid, dialogues: [A_mid_disagreement]}
+      N: {unit: N_low, dialogues: [N_low_comfort, N_low_disagreement]}
+    structural_sample_refs:
+      honesty: [honesty_evidence_gap]
+      correction: [correction_promise_repair]
+      downgrade: [downgrade_emotion_uncertain, downgrade_audit_correction]

@@ -9,6 +9,8 @@ dimension_units:
   required_scenario_families: [joy, frustration, advice, disagreement, comfort]
 
 persona_composition:
+  required_personas: [温柔, 暴躁, 可靠, 甜美, 可爱]
+  required_persona_count: 5
   required_dimensions_per_persona: 5
   minimum_references_for_non_mid_dimension: 2
   minimum_references_for_mid_dimension: 1
@@ -17,6 +19,20 @@ persona_composition:
     correction: 1
     downgrade: 2
   minimum_disagreement_share: 0.25
+
+structural_library:
+  categories: [honesty, correction, downgrade]
+  required_samples_per_category: 3
+  required_sample_count: 9
+  dialogue_turns_per_sample: [2, 3]
+  display_name_placeholder: "{display_name}"
+  display_name_required_per_sample: true
+  literal_display_names_forbidden: [助手一号, 小岚, 阿青]
+  short_prefix_copy_gate:
+    positive_control_per_sample: true
+    historical_positive_control: 那就拆开看。
+    minimum_han_characters: 4
+    maximum_output_tokens: 16
 
 contrast:
   style_traits: [温柔, 暴躁, 甜美, 可爱]
@@ -28,5 +44,7 @@ contrast:
 validation:
   missing_unit: configuration_error
   duplicate_unit_id: configuration_error
+  duplicate_structural_sample_id: configuration_error
+  literal_display_name: configuration_error
   uncovered_persona_dimension: configuration_error
   P2_entry_requires_shape_decision: true

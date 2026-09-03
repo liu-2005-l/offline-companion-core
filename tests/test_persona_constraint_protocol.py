@@ -129,7 +129,14 @@ def test_example_coverage_matrix_is_complete_and_shape_gated() -> None:
     assert len(units["dimensions"]) * len(units["levels"]) == units["required_unit_count"] == 15
     assert units["dialogue_turns_per_unit"] == [2, 3]
     assert composition["required_dimensions_per_persona"] == 5
+    assert composition["required_persona_count"] == len(composition["required_personas"]) == 5
     assert set(composition["required_structural_samples_per_persona"]) == {"honesty", "correction", "downgrade"}
+    structural = payload["structural_library"]
+    assert structural["required_sample_count"] == len(structural["categories"]) * structural[
+        "required_samples_per_category"
+    ] == 9
+    assert structural["display_name_placeholder"] == "{display_name}"
+    assert structural["short_prefix_copy_gate"]["historical_positive_control"] == "那就拆开看。"
     assert payload["validation"]["P2_entry_requires_shape_decision"] is True
 
 
