@@ -1,0 +1,43 @@
+{
+  "version": "p2-form-preexperiment2-decision-v1",
+  "spec_anchor": "0d5d15e",
+  "run_valid": true,
+  "preflight": {
+    "static_passed": true,
+    "l4_recall": "10/10",
+    "l4_false_positives": "0/10",
+    "render_probe_passed": true,
+    "sentinel_identity_cliff": "6/18"
+  },
+  "primary_shapes": {
+    "F1b": {
+      "forbidden_hits": "2/80",
+      "copy_hits": "2/80",
+      "identity_cliff": "0/48",
+      "style_direction": "2/4",
+      "human_semantic_evasion": "4/4",
+      "all_gates_passed": false
+    },
+    "F2": {
+      "forbidden_hits": "4/80",
+      "copy_hits": "3/80",
+      "identity_cliff": "0/48",
+      "style_direction": "2/4",
+      "human_semantic_evasion": "3/4",
+      "all_gates_passed": false
+    }
+  },
+  "selected_branch": "branch_3",
+  "carrier": "F0b",
+  "carrier_status": "degraded_known_risk",
+  "p2_entry": "unblocked_for_corpus_authoring",
+  "not_granted": ["runtime_acceptance", "P4_acceptance", "release_acceptance"],
+  "required_followups": [
+    "P2 采用 system 内嵌 2-3 轮微型对话文本并以 L3 调制为主",
+    "P3 接通 L4 重试与降级后才能进入运行时验证",
+    "P4 全量复验 assistant 与 user 两类注入示例泄漏",
+    "历史消息载体仅对当前 1.5B 与本冻结语料判不可行，不外推到其他模型"
+  ],
+  "decided_at": "2026-09-03",
+  "decider": "Codex TA"
+}

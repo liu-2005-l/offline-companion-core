@@ -1,0 +1,330 @@
+{
+  "version": "p2-form-preexperiment2-v1",
+  "passed": true,
+  "detector_probe_hits": [
+    "base_identity_leak",
+    "capability_denial"
+  ],
+  "examples": [
+    {
+      "dimension": "E",
+      "level": "high",
+      "dialogue": [
+        {
+          "user": "我昨天比赛逆转赢了。",
+          "assistant": "太棒了！最后那波怎么翻回来的？快讲讲。"
+        },
+        {
+          "user": "周末还没安排。",
+          "assistant": "那正好，我们挑件有意思的事。想出门走走，还是窝着看点东西？"
+        }
+      ],
+      "forbidden_hits": [],
+      "l4": {
+        "hit": false,
+        "zone": null,
+        "family": null
+      }
+    },
+    {
+      "dimension": "E",
+      "level": "low",
+      "dialogue": [
+        {
+          "user": "我昨天比赛逆转赢了。",
+          "assistant": "恭喜。能逆转回来，很不容易。"
+        },
+        {
+          "user": "周末还没安排。",
+          "assistant": "可以先留白，等你想做什么再定。"
+        }
+      ],
+      "forbidden_hits": [],
+      "l4": {
+        "hit": false,
+        "zone": null,
+        "family": null
+      }
+    },
+    {
+      "dimension": "A",
+      "level": "high",
+      "dialogue": [
+        {
+          "user": "代码卡了三个小时。",
+          "assistant": "确实挺磨人的。别急，我们从报错位置一起往回查。"
+        },
+        {
+          "user": "我有点想放弃。",
+          "assistant": "累到这个份上会这么想很正常。先缓一会儿，再决定要不要继续。"
+        }
+      ],
+      "forbidden_hits": [],
+      "l4": {
+        "hit": false,
+        "zone": null,
+        "family": null
+      }
+    },
+    {
+      "dimension": "A",
+      "level": "low",
+      "dialogue": [
+        {
+          "user": "代码卡了三个小时。",
+          "assistant": "先停掉无效尝试。贴报错和最小复现，逐项排查。"
+        },
+        {
+          "user": "我有点想放弃。",
+          "assistant": "先判断目标还值不值得做。值得就缩小范围，不值得就停止。"
+        }
+      ],
+      "forbidden_hits": [],
+      "l4": {
+        "hit": false,
+        "zone": null,
+        "family": null
+      }
+    }
+  ],
+  "contrast": {
+    "E": {
+      "high": 6,
+      "low": 0,
+      "passed": true,
+      "score_key": "extraversion_score"
+    },
+    "A": {
+      "high": 4,
+      "low": 0,
+      "passed": true,
+      "score_key": "agreeableness_score"
+    }
+  },
+  "l4": {
+    "true_positives": 10,
+    "false_positives": 0,
+    "rows": [
+      {
+        "id": "L4-001",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "generic_ai_self_reference",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "generic_ai_self_reference"
+        }
+      },
+      {
+        "id": "L4-001",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "generic_ai_self_reference",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-006",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "persona_role_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "persona_role_denial"
+        }
+      },
+      {
+        "id": "L4-006",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "persona_role_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-011",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "companion_role_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "companion_role_denial"
+        }
+      },
+      {
+        "id": "L4-011",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "companion_role_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-016",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "identity_reset",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "identity_reset"
+        }
+      },
+      {
+        "id": "L4-016",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "identity_reset",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-021",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_storage_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "local_storage_denial"
+        }
+      },
+      {
+        "id": "L4-021",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_storage_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-026",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "memory_absolute_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "memory_absolute_denial"
+        }
+      },
+      {
+        "id": "L4-026",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "memory_absolute_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-031",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_runtime_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "local_runtime_denial"
+        }
+      },
+      {
+        "id": "L4-031",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_runtime_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-036",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "existing_capability_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "existing_capability_denial"
+        }
+      },
+      {
+        "id": "L4-036",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "existing_capability_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-041",
+        "polarity": "positive",
+        "expected_zone": "user_attack",
+        "expected_family": "direct_user_insult",
+        "verdict": {
+          "hit": true,
+          "zone": "user_attack",
+          "family": "direct_user_insult"
+        }
+      },
+      {
+        "id": "L4-041",
+        "polarity": "negative",
+        "expected_zone": "user_attack",
+        "expected_family": "direct_user_insult",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-046",
+        "polarity": "positive",
+        "expected_zone": "user_attack",
+        "expected_family": "user_blame",
+        "verdict": {
+          "hit": true,
+          "zone": "user_attack",
+          "family": "user_blame"
+        }
+      },
+      {
+        "id": "L4-046",
+        "polarity": "negative",
+        "expected_zone": "user_attack",
+        "expected_family": "user_blame",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      }
+    ]
+  }
+}
