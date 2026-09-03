@@ -1,7 +1,7 @@
 # 人格约束 P2 结构样本与组合配置规格
 
 版本：v1.0（执行规格）  
-状态：待 TA trace；结构样本与五人格组合资产按本规格创作  
+状态：TA 终裁通过；P2 已闭合
 上游：`docs/persona-constraint-batch-design-v1_5.md`、`docs/persona-constraint-p1-spec.md`、
 `docs/persona-constraint-p2-form-decision.md`
 
@@ -41,10 +41,10 @@
 
 ## 5. 验收行
 
-- [ ] 三类各 3 条、共 9 条结构样本，全部为 2–3 轮；
-- [ ] `{display_name}` 占位符全覆盖，冻结具体名字零命中；
-- [ ] 五人格组合与 OCEAN 映射逐维一致，维度引用和结构引用无悬空；
-- [ ] 每人格含 1 诚实、1 纠偏、2 降档，且两条降档跨两个触发域；
-- [ ] 冻结 lexicon/L4 零命中；
-- [ ] 历史短前缀与九条样本复制正控全绿；
-- [ ] 相关窄测、ruff、YAML 校验与 `git diff --check` 通过。
+- [x] 三类各 3 条、共 9 条结构样本，全部为 2–3 轮；
+- [x] `{display_name}` 占位符全覆盖，冻结具体名字零命中；
+- [x] 五人格组合与 OCEAN 映射逐维一致，维度引用和结构引用无悬空；
+- [x] 每人格含 1 诚实、1 纠偏、2 降档，且两条降档跨两个触发域；
+- [x] 冻结 lexicon/L4 零命中；
+- [x] 历史短前缀与九条样本复制正控全绿；
+- [x] 相关窄测、ruff、YAML 校验与 `git diff --check` 通过。

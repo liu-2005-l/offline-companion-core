@@ -17,6 +17,7 @@ COVERAGE_PATH = REPO_ROOT / "configs" / "persona_constraint_example_coverage.yam
 DIMENSION_PATH = REPO_ROOT / "configs" / "persona_constraint_dimension_corpus.yaml"
 STRUCTURAL_PATH = REPO_ROOT / "configs" / "persona_constraint_structural_corpus.yaml"
 COMPOSITION_PATH = REPO_ROOT / "configs" / "persona_constraint_persona_compositions.yaml"
+FINAL_CORPUS_PATH = REPO_ROOT / "configs" / "persona_constraint_corpus.yaml"
 MAPPINGS_PATH = REPO_ROOT / "configs" / "persona_constraint_mappings.yaml"
 LEXICON_PATH = REPO_ROOT / "configs" / "persona_constraint_lexicon.yaml"
 PATTERNS_PATH = REPO_ROOT / "configs" / "persona_constraint_l4_patterns.yaml"
@@ -215,3 +216,37 @@ def test_structural_and_composition_carriers_match_branch_three() -> None:
         assert carrier["type"] == "system_embedded_dialogue_blocks"
         assert carrier["runtime_history_injection"] == "forbidden"
         assert carrier["l3_modulation"] == "primary"
+
+
+def test_final_corpus_manifest_references_single_sources_without_duplication() -> None:
+    """摘要：P2 YAML 终版必须只聚合事实源，不复制语料或组合内容。"""
+    payload = _load(FINAL_CORPUS_PATH)
+    expected_sources = {
+        "mappings": "configs/persona_constraint_mappings.yaml",
+        "coverage_contract": "configs/persona_constraint_example_coverage.yaml",
+        "dimension_corpus": "configs/persona_constraint_dimension_corpus.yaml",
+        "structural_corpus": "configs/persona_constraint_structural_corpus.yaml",
+        "persona_compositions": "configs/persona_constraint_persona_compositions.yaml",
+    }
+
+    assert payload["status"] == "ta_approved"
+    assert payload["sources"] == expected_sources
+    assert all((REPO_ROOT / relative_path).is_file() for relative_path in expected_sources.values())
+    assert not ({"dimension_units", "structural_samples", "personas"} & set(payload))
+    assert payload["assembly_contract"] == {
+        "dimension_resolution": "trait_level_to_dimension_unit",
+        "structural_resolution": "explicit_persona_references",
+        "display_name_rendering": "substitute_placeholder_at_assembly",
+        "missing_reference": "configuration_error",
+        "duplicate_inline_corpus": "forbidden",
+        "runtime_integration_batch": "P3",
+    }
+    assert payload["review"] == {
+        "decision": "approved",
+        "reviewed_dimension_units": 15,
+        "reviewed_dimension_dialogues": 30,
+        "reviewed_structural_samples": 9,
+        "reviewed_persona_compositions": 5,
+        "runtime_generation_proof": False,
+        "next_validation_batch": "P3_P4",
+    }

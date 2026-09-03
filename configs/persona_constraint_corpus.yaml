@@ -1,0 +1,34 @@
+schema_version: 1
+version: p2-persona-constraint-corpus-v1
+status: ta_approved
+
+carrier:
+  type: system_embedded_dialogue_blocks
+  dialogue_rendering: labeled_user_assistant_text
+  runtime_history_injection: forbidden
+  l3_modulation: primary
+  source_decision: docs/persona-constraint-p2-form-decision.md
+
+sources:
+  mappings: configs/persona_constraint_mappings.yaml
+  coverage_contract: configs/persona_constraint_example_coverage.yaml
+  dimension_corpus: configs/persona_constraint_dimension_corpus.yaml
+  structural_corpus: configs/persona_constraint_structural_corpus.yaml
+  persona_compositions: configs/persona_constraint_persona_compositions.yaml
+
+assembly_contract:
+  dimension_resolution: trait_level_to_dimension_unit
+  structural_resolution: explicit_persona_references
+  display_name_rendering: substitute_placeholder_at_assembly
+  missing_reference: configuration_error
+  duplicate_inline_corpus: forbidden
+  runtime_integration_batch: P3
+
+review:
+  decision: approved
+  reviewed_dimension_units: 15
+  reviewed_dimension_dialogues: 30
+  reviewed_structural_samples: 9
+  reviewed_persona_compositions: 5
+  runtime_generation_proof: false
+  next_validation_batch: P3_P4

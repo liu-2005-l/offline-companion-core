@@ -205,7 +205,7 @@ dimension_units:
           scenario: comfort
           turns:
             - {user: 明天要演示，我现在有点慌。, assistant: 先稳住。把开场和主流程过一遍就够了。}
-            - {user: 要是现场卡住呢？, assistant: 停一下，按备用步骤继续，不影响整体。}
+            - {user: 要是现场卡住呢？, assistant: 停一下，按备用步骤继续，尽量把影响控制在局部。}
         - id: N_low_disagreement
           scenario: disagreement
           turns:
