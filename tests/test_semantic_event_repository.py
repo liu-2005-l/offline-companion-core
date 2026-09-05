@@ -11,7 +11,7 @@ from offline_companion.core.memory_lifecycle.event_types import (
     CONTENT_EMBEDDING_DIMENSIONS,
     SemanticEvent,
 )
-from offline_companion.runtime.storage_index.engine import connect
+from offline_companion.runtime.storage_index.engine import SCHEMA_VERSION, connect
 
 
 def vector(index: int = 0) -> list[float]:
@@ -38,7 +38,9 @@ def test_event_repository_creates_independent_schema(tmp_path: Path) -> None:
     conn = connect(tmp_path / "events.db")
     assert conn.execute("SELECT 1 FROM sqlite_master WHERE name = 'semantic_events'").fetchone()
     assert conn.execute("SELECT 1 FROM sqlite_master WHERE name = 'memory_chunks'").fetchone()
-    assert conn.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()[0] == "12"
+    assert conn.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()[0] == str(
+        SCHEMA_VERSION
+    )
 
 
 def test_store_and_get_preserves_semantic_event_fields(tmp_path: Path) -> None:

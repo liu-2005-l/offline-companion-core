@@ -1,6 +1,8 @@
 // 概要：后端第 1 批接线层，覆盖原型中的 mock 会话、聊天与记忆函数。
 window.__shellApiActive = true;
 var _currentSessionId = null;
+var _currentSessionRevision = null;
+var _sessionReconciling = false;
 var _windowDragState = null;
 var _windowResizeState = null;
 var _windowBoundsThrottle = null;
@@ -944,6 +946,10 @@ async function apiLatestSseSeq(sessionId) {
 }
 
 async function sendMessage() {
+  if (_sessionReconciling) {
+    showToast('会话状态正在对账，请稍候');
+    return;
+  }
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text) return;
@@ -1142,9 +1148,12 @@ function renderSessionList(items) {
 
 async function loadSessions() {
   try {
+    const canonical = await apiJson('/api/sessions/current');
+    _currentSessionId = canonical.canonical_session_id;
+    _currentSessionRevision = Number(canonical.revision);
     const data = await apiJson('/api/sessions');
     renderSessionList(data.items || []);
-    const current = (data.items || []).find(item => item.current) || (data.items || [])[0];
+    const current = (data.items || []).find(item => item.session_id === _currentSessionId);
     if (current) {
       _currentSessionId = current.session_id;
       const info = document.getElementById('sessionInfo');
@@ -2138,7 +2147,7 @@ async function loadPersonas() {
     selector.innerHTML = '';
     (data.items || []).forEach(function(persona) {
       selector.insertAdjacentHTML('beforeend',
-        '<div class="persona-chip' + (persona.active ? ' active' : '') + '" data-persona-id="' + apiEscapeHtml(persona.id) + '" onclick="selectPersona(this, \'' + apiEscapeHtml(persona.name).replace(/'/g, '&#39;') + '\')">' +
+        '<div class="persona-chip' + (persona.current ? ' active' : '') + '" data-persona-id="' + apiEscapeHtml(persona.id) + '" onclick="selectPersona(this, \'' + apiEscapeHtml(persona.name).replace(/'/g, '&#39;') + '\')">' +
           '<span class="persona-chip-avatar">' + apiEscapeHtml(persona.avatar || persona.name.slice(0, 1)) + '</span>' +
           '<span>' + apiEscapeHtml(persona.name) + '</span>' +
         '</div>');
@@ -2155,10 +2164,10 @@ async function loadPersonas() {
         traits: traitsVal,
         anchor: persona.anchor || ''
       };
-      if (persona.active) renderPersonaDetail(persona.name);
+      if (persona.current) renderPersonaDetail(persona.name);
     });
     if (window._loadedSettings) applySettings(window._loadedSettings);
-    const activeItem = (data.items || []).find(function(persona) { return persona.active; });
+    const activeItem = (data.items || []).find(function(persona) { return persona.current; });
     const activeChip = document.querySelector('.persona-chip.active');
     if (!activeChip && activeItem) {
       const fallbackChip = document.querySelector('.persona-chip[data-persona-id="' + apiEscapeHtml(activeItem.id) + '"]');
@@ -2177,28 +2186,97 @@ async function loadPersonas() {
 }
 
 async function selectPersona(el, name) {
+  if (_sessionReconciling) {
+    await reconcileCurrentSession();
+    return;
+  }
   const personaId = el.dataset.personaId || (window._personaRegistry[name] && window._personaRegistry[name].id);
-  // 本地行为：激活 chip + 渲染详情
   function localActivate() {
     document.querySelectorAll('.persona-chip').forEach(chip => chip.classList.remove('active'));
     el.classList.add('active');
     renderPersonaDetail(name);
     if (personaId) saveSetting('active_persona_id', personaId).catch(function(){});
   }
-  // 没有 personaId 时走本地 fallback
   if (!personaId) {
-    localActivate();
-    showToast('已切换到人格 · ' + name);
+    showToast('人格缺少持久化标识，无法切换');
     return;
   }
+  if (!Number.isInteger(_currentSessionRevision)) {
+    await reconcileCurrentSession();
+    if (!Number.isInteger(_currentSessionRevision)) return;
+  }
+  const previousSessionId = _currentSessionId;
+  const previousRevision = _currentSessionRevision;
+  const switchRequestId = (window.crypto && typeof window.crypto.randomUUID === 'function')
+    ? window.crypto.randomUUID()
+    : 'switch-' + Date.now() + '-' + Math.random().toString(16).slice(2);
   try {
-    await apiJson('/api/personas/' + encodeURIComponent(personaId) + '/activate', { method: 'POST' });
+    const data = await apiJson('/api/personas/' + encodeURIComponent(personaId) + '/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ switch_request_id: switchRequestId, expected_revision: previousRevision })
+    });
+    const valid = data.switch_request_id === switchRequestId &&
+      data.canonical_session_id && data.canonical_session_id !== previousSessionId &&
+      Number(data.revision) > previousRevision &&
+      Number(data.persona_snapshot_schema) >= 1 &&
+      typeof data.persona_snapshot_sha256 === 'string' && data.persona_snapshot_sha256.length === 64;
+    if (!valid) throw new Error('persona_switch_response_invalid');
+    _currentSessionId = data.canonical_session_id;
+    _currentSessionRevision = Number(data.revision);
     localActivate();
+    await saveSetting('active_session_id', _currentSessionId).catch(function(){});
     showToast('已切换到人格 · ' + name);
+    await loadSessions();
   } catch (error) {
-    // API 不可用时 fallback 到本地行为——不弹错误
-    localActivate();
-    showToast('已切换到人格 · ' + name);
+    const unchanged = error.data && error.data.state_unchanged === true &&
+      error.data.canonical_session_id === previousSessionId &&
+      Number(error.data.revision) === previousRevision;
+    if (unchanged) {
+      showToast('人格切换失败：' + error.message);
+      return;
+    }
+    await reconcileCurrentSession();
+  }
+}
+
+function setSessionReconciling(active) {
+  _sessionReconciling = !!active;
+  const input = document.getElementById('chatInput');
+  const send = document.getElementById('sendBtn');
+  if (input) input.disabled = _sessionReconciling;
+  if (send) send.disabled = _sessionReconciling;
+}
+
+async function reconcileCurrentSession() {
+  setSessionReconciling(true);
+  try {
+    const data = await apiJson('/api/sessions/current');
+    if (!data.canonical_session_id || !Number.isInteger(Number(data.revision)) ||
+        Number(data.persona_snapshot_schema) < 1 ||
+        typeof data.persona_snapshot_sha256 !== 'string' || data.persona_snapshot_sha256.length !== 64) {
+      throw new Error('canonical_session_response_invalid');
+    }
+    _currentSessionId = data.canonical_session_id;
+    _currentSessionRevision = Number(data.revision);
+    const personaId = data.persona && data.persona.id;
+    const chip = personaId
+      ? document.querySelector('.persona-chip[data-persona-id="' + apiEscapeHtml(personaId) + '"]')
+      : null;
+    if (chip) {
+      document.querySelectorAll('.persona-chip').forEach(item => item.classList.remove('active'));
+      chip.classList.add('active');
+      renderPersonaDetail(data.persona.name);
+    }
+    await saveSetting('active_session_id', _currentSessionId).catch(function(){});
+    if (personaId) await saveSetting('active_persona_id', personaId).catch(function(){});
+    await loadCurrentSessionMessages(_currentSessionId);
+    showToast('会话状态已完成对账');
+    setSessionReconciling(false);
+    return data;
+  } catch (error) {
+    showToast('会话状态未知，请重试对账：' + error.message);
+    return null;
   }
 }
 
@@ -2558,6 +2636,8 @@ async function uninstallExtension(extensionId) {
 async function loadRuntimeStatus() {
   try {
     const data = await apiJson('/api/status');
+    _currentSessionId = data.session_id;
+    _currentSessionRevision = Number(data.session_revision);
     window._privacyMode = privacyModeToUi(data.privacy_mode);
     window._loggedIn = !!data.logged_in;
     renderPrivacyMode(window._privacyMode);

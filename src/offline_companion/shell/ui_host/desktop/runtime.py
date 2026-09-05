@@ -20,6 +20,10 @@ from offline_companion.shell.idle_think_coordinator import IdleThinkCoordinator
 from offline_companion.shell.ui_host.bootstrap import UISessionBundle
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
 from offline_companion.shell.ui_host.desktop.idle_detector import IdleDetector
+from offline_companion.shell.ui_host.desktop.session_binding import (
+    DesktopSessionBindingService,
+    DesktopSessionContextProvider,
+)
 
 
 @dataclass
@@ -54,6 +58,8 @@ class DesktopRuntime:
     sample_lifecycle: SampleLifecycleManager | None = None
     sample_retriever: SampleRetriever | None = None
     semantic_embed_func: Callable[[str], list[float]] | None = None
+    session_context_provider: DesktopSessionContextProvider | None = None
+    session_binding_service: DesktopSessionBindingService | None = None
 
     @classmethod
     def from_bundle(cls, bundle: UISessionBundle) -> DesktopRuntime:
@@ -84,4 +90,6 @@ class DesktopRuntime:
             sample_lifecycle=bundle.sample_lifecycle,
             sample_retriever=bundle.sample_retriever,
             semantic_embed_func=bundle.semantic_embed_func,
+            session_context_provider=bundle.session_context_provider,
+            session_binding_service=bundle.session_binding_service,
         )

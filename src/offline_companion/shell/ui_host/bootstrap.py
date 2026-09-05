@@ -36,7 +36,6 @@ from offline_companion.core.persona_session.persona_loader import (
     load_persona_file,
     resolved_companion_display_name,
 )
-from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.core.plan_orchestrator import (
     A3ConsentAdapter,
     EventStreamPlanEventPublisher,
@@ -59,7 +58,7 @@ from offline_companion.runtime.inference_backend import (
     create_llama_backend,
     try_stderr_cuda_hint,
 )
-from offline_companion.runtime.storage_index.engine import connect, new_session, recent_messages
+from offline_companion.runtime.storage_index.engine import connect, recent_messages
 from offline_companion.shared.errors import InferenceBackendError
 from offline_companion.shared.types import AppPaths, MessageRow, PrivacyMode, ToolManifest
 from offline_companion.shell.auto_router import AutoRouter, RoutingContext
@@ -86,6 +85,10 @@ from offline_companion.shell.tool_registry import (
 )
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
 from offline_companion.shell.ui_host.desktop.idle_detector import IdleDetector
+from offline_companion.shell.ui_host.desktop.session_binding import (
+    DesktopSessionBindingService,
+    DesktopSessionContextProvider,
+)
 from offline_companion.shell.ui_host.model_downloader import ModelDownloader
 from offline_companion.shell.ui_host.model_registry import (
     BUILTIN_MODELS,
@@ -191,6 +194,8 @@ class UISessionBundle:
     sample_lifecycle: SampleLifecycleManager
     sample_retriever: SampleRetriever
     semantic_embed_func: Callable[[str], list[float]]
+    session_context_provider: DesktopSessionContextProvider
+    session_binding_service: DesktopSessionBindingService
     event_stream_manager: StreamManager | None = None
     event_persistence: EventPersistence | None = None
 
@@ -289,17 +294,29 @@ def bootstrap_ui_session(
     conn = connect(paths.db_path)
     semantic_embedder = SemanticEmbeddingProvider(data_root=paths.root)
     EventRepository(conn).recompute_content_embeddings(semantic_embedder)
-    session_core = PersonaSessionCore(persona, semantic_embed_func=semantic_embedder)
     event_persistence = EventPersistence(paths.db_path)
     event_stream_manager = StreamManager(build_default_registry(), event_persistence)
     event_stream_manager.restore_from_disk()
-    event_stream = event_stream_manager.get_or_create(session_id)
+    session_context_provider = DesktopSessionContextProvider()
+    session_binding_service = DesktopSessionBindingService(
+        conn,
+        context_provider=session_context_provider,
+        event_stream_manager=event_stream_manager,
+        semantic_embed_func=semantic_embedder,
+    )
+    preferred_session_id = str(settings_state.get("active_session_id") or session_id)
+    session_context = session_binding_service.restore_or_create(
+        preferred_session_id=preferred_session_id,
+        startup_persona=persona,
+        title=session_title,
+    )
+    session_id = session_context.session_id
+    session_core = session_context.session_core
+    persona = session_core.persona
+    event_stream = session_context.event_stream
     sample_repository = SampleRepository(conn)
     sample_lifecycle = SampleLifecycleManager(sample_repository, event_stream)
     sample_retriever = SampleRetriever(conn, sample_repository, event_stream)
-    row = conn.execute("SELECT id FROM sessions WHERE id = ?;", (session_id,)).fetchone()
-    if not row:
-        new_session(conn, session_id, persona.persona_id, title=session_title)
 
     gguf_path = Path(model).expanduser() if model else resolve_default_gguf_path()
     model_config = None if model else resolve_default_model_config()
@@ -573,15 +590,16 @@ def bootstrap_ui_session(
             def get_pending_extraction(self):
                 current_row = conn.execute(
                     "SELECT COUNT(*) AS count FROM messages WHERE session_id = ? AND role = 'user'",
-                    (session_id,),
+                    (session_context_provider.capture().session_id,),
                 ).fetchone()
                 current_turn = int(current_row["count"]) if current_row is not None else 0
                 last_turn = orchestrator.event_extractor.last_extracted_turn
                 if current_turn <= last_turn:
                     return None
-                messages = recent_messages(conn, session_id, limit=20)
+                current_session_id = session_context_provider.capture().session_id
+                messages = recent_messages(conn, current_session_id, limit=20)
                 return (
-                    session_id,
+                    current_session_id,
                     [{"role": item.role, "content": item.content} for item in messages],
                     (max(1, last_turn + 1), current_turn),
                 )
@@ -641,6 +659,8 @@ def bootstrap_ui_session(
         sample_lifecycle=sample_lifecycle,
         sample_retriever=sample_retriever,
         semantic_embed_func=semantic_embedder,
+        session_context_provider=session_context_provider,
+        session_binding_service=session_binding_service,
         event_stream_manager=event_stream_manager,
         event_persistence=event_persistence,
     )

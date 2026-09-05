@@ -9,6 +9,7 @@ import threading
 from dataclasses import replace
 from html.parser import HTMLParser
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -20,6 +21,7 @@ from offline_companion.core.decomposition_sample_library import (
     SampleLifecycleManager,
     SampleRepository,
 )
+from offline_companion.core.event_stream import StreamManager, build_default_registry
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.core.persona_session.session import PersonaSessionCore
@@ -89,6 +91,20 @@ class _SplitStreamBackend(EchoBackend):
     def generate_stream(self, **_kwargs):
         yield "A"
         yield "B"
+
+
+class _BlockingBackend(EchoBackend):
+    """摘要：阻塞生成以验证人格切换的 turn 单飞门。"""
+
+    def __init__(self) -> None:
+        super().__init__("blocking")
+        self.entered = threading.Event()
+        self.release = threading.Event()
+
+    def generate(self, **_kwargs) -> str:
+        self.entered.set()
+        assert self.release.wait(timeout=5)
+        return "完成"
 
 
 class _ArithmeticStreamBackend(EchoBackend):
@@ -1103,10 +1119,15 @@ def test_desktop_http_personas_list_and_activate(tmp_path) -> None:
     assert {"id", "name", "avatar", "desc", "ocean", "traits", "anchor", "active"} <= set(items[0])
     assert sum(1 for item in items if item["active"]) == 1
 
-    target = items[-1]
-    activated = client.post(f"/api/personas/{target['id']}/activate")
+    target = next(item for item in items if not item["current"])
+    revision = client.get("/api/status").get_json()["session_revision"]
+    activated = client.post(
+        f"/api/personas/{target['id']}/activate",
+        json={"switch_request_id": "activate-list-test", "expected_revision": revision},
+    )
     assert activated.status_code == 200
     assert activated.get_json()["persona"]["active"] is True
+    assert activated.get_json()["canonical_session_id"] != "h1"
 
     status = client.get("/api/status").get_json()
     assert status["persona_id"] == target["id"]
@@ -1120,7 +1141,11 @@ def test_desktop_http_persona_activation_survives_app_recreate(tmp_path) -> None
     items = client.get("/api/personas").get_json()["items"]
     target = next(item for item in items if item["id"] != rt.orchestrator.session_core.persona.persona_id)
 
-    activated = client.post(f"/api/personas/{target['id']}/activate")
+    revision = client.get("/api/status").get_json()["session_revision"]
+    activated = client.post(
+        f"/api/personas/{target['id']}/activate",
+        json={"switch_request_id": "activate-recreate-test", "expected_revision": revision},
+    )
     recreated = create_desktop_app(rt).test_client()
     status = recreated.get("/api/status").get_json()
     personas = recreated.get("/api/personas").get_json()["items"]
@@ -1129,6 +1154,173 @@ def test_desktop_http_persona_activation_survives_app_recreate(tmp_path) -> None
     assert status["persona_id"] == target["id"]
     assert sum(1 for item in personas if item["active"]) == 1
     assert next(item for item in personas if item["id"] == target["id"])["active"] is True
+
+
+def test_desktop_persona_projection_and_default_do_not_mutate_current_session(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+    client = create_desktop_app(runtime).test_client()
+    before = client.get("/api/sessions/current").get_json()
+    items = client.get("/api/personas").get_json()["items"]
+    target = next(item for item in items if item["id"] != before["persona"]["id"])
+
+    update_settings(
+        runtime.paths.root,
+        {"active_session_id": "projection-only", "active_persona_id": target["id"]},
+    )
+    now = 100.0
+    runtime.orchestrator.conn.execute("UPDATE personas SET active = 0, updated_at = ?;", (now,))
+    runtime.orchestrator.conn.execute(
+        "UPDATE personas SET active = 1, updated_at = ? WHERE id = ?;",
+        (now, target["id"]),
+    )
+
+    after = client.get("/api/sessions/current").get_json()
+    assert after["canonical_session_id"] == before["canonical_session_id"]
+    assert after["revision"] == before["revision"]
+    assert after["persona"]["id"] == before["persona"]["id"]
+
+
+def test_desktop_persona_switch_failure_and_idempotent_replay(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+    client = create_desktop_app(runtime).test_client()
+    current = client.get("/api/sessions/current").get_json()
+    target = next(
+        item
+        for item in client.get("/api/personas").get_json()["items"]
+        if item["id"] != current["persona"]["id"]
+    )
+
+    rejected = client.post(
+        f"/api/personas/{target['id']}/activate",
+        json={"switch_request_id": "missing-revision"},
+    )
+    assert rejected.status_code == 400
+    assert rejected.get_json()["state_unchanged"] is True
+    assert rejected.get_json()["canonical_session_id"] == current["canonical_session_id"]
+
+    payload = {
+        "switch_request_id": "http-idempotent",
+        "expected_revision": current["revision"],
+    }
+    first = client.post(f"/api/personas/{target['id']}/activate", json=payload)
+    replay = client.post(f"/api/personas/{target['id']}/activate", json=payload)
+    assert first.status_code == 200
+    assert replay.status_code == 200
+    assert replay.get_json()["idempotent_replay"] is True
+    assert replay.get_json()["canonical_session_id"] == first.get_json()["canonical_session_id"]
+
+
+def test_desktop_persona_switch_is_rejected_during_active_turn(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+    backend = _BlockingBackend()
+    runtime.orchestrator.backend = backend
+    app = create_desktop_app(runtime)
+    client = app.test_client()
+    current = client.get("/api/sessions/current").get_json()
+    target = next(
+        item
+        for item in client.get("/api/personas").get_json()["items"]
+        if item["id"] != current["persona"]["id"]
+    )
+    chat_status: list[int] = []
+
+    def run_chat() -> None:
+        response = app.test_client().post("/api/chat", json={"message": "请给我一个简短建议"})
+        chat_status.append(response.status_code)
+
+    thread = threading.Thread(target=run_chat)
+    thread.start()
+    assert backend.entered.wait(timeout=5)
+    before_count = runtime.orchestrator.conn.execute("SELECT COUNT(*) FROM sessions;").fetchone()[0]
+
+    blocked = client.post(
+        f"/api/personas/{target['id']}/activate",
+        json={"switch_request_id": "busy-turn", "expected_revision": current["revision"]},
+    )
+
+    assert blocked.status_code == 409
+    assert blocked.get_json()["error"] == "session_busy"
+    assert blocked.get_json()["state_unchanged"] is True
+    assert runtime.orchestrator.conn.execute("SELECT COUNT(*) FROM sessions;").fetchone()[0] == before_count
+    backend.release.set()
+    thread.join(timeout=5)
+    assert chat_status == [200]
+
+
+def test_desktop_switch_rebinds_session_scoped_components_and_writes(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+    manager = StreamManager(build_default_registry())
+    runtime.event_stream_manager = manager
+    old_stream = manager.get_or_create(runtime.session_id)
+    runtime.orchestrator.event_stream = old_stream
+    runtime.orchestrator.consent_gateway = SimpleNamespace(event_stream=old_stream)
+    runtime.orchestrator.tool_invoker = SimpleNamespace(event_stream=old_stream)
+    runtime.sample_lifecycle = SimpleNamespace(_event_stream=old_stream)
+    runtime.sample_retriever = SimpleNamespace(_event_stream=old_stream)
+    runtime.auto_turn_orchestrator = SimpleNamespace(event_stream=old_stream)
+    runtime.plan_orchestrator = SimpleNamespace(
+        _event_publisher=SimpleNamespace(_stream=old_stream)
+    )
+    client = create_desktop_app(runtime).test_client()
+    current = client.get("/api/sessions/current").get_json()
+    target = next(
+        item
+        for item in client.get("/api/personas").get_json()["items"]
+        if item["id"] != current["persona"]["id"]
+    )
+
+    switched = client.post(
+        f"/api/personas/{target['id']}/activate",
+        json={"switch_request_id": "context-rebind", "expected_revision": current["revision"]},
+    ).get_json()
+    new_session_id = switched["canonical_session_id"]
+    new_stream = manager.get(new_session_id)
+
+    assert runtime.session_id == new_session_id
+    assert runtime.orchestrator.session_id == new_session_id
+    assert runtime.orchestrator.event_stream is new_stream
+    assert runtime.orchestrator.consent_gateway.event_stream is new_stream
+    assert runtime.orchestrator.tool_invoker.event_stream is new_stream
+    assert runtime.sample_lifecycle._event_stream is new_stream
+    assert runtime.sample_retriever._event_stream is new_stream
+    assert runtime.auto_turn_orchestrator.event_stream is new_stream
+    assert runtime.plan_orchestrator._event_publisher._stream is new_stream
+
+    chat = client.post("/api/chat", json={"message": "新会话消息"})
+    memory = client.post("/api/memories", json={"content": "新会话记忆"})
+    assert chat.status_code == 200
+    assert memory.status_code == 201
+    assert runtime.orchestrator.conn.execute(
+        "SELECT COUNT(*) FROM messages WHERE session_id = ?;", (new_session_id,)
+    ).fetchone()[0] == 2
+    assert runtime.orchestrator.conn.execute(
+        "SELECT COUNT(*) FROM messages WHERE session_id = 'h1';"
+    ).fetchone()[0] == 0
+    assert runtime.orchestrator.conn.execute(
+        "SELECT session_id FROM memory_chunks WHERE id = ?;", (memory.get_json()["item"]["id"],)
+    ).fetchone()[0] == new_session_id
+    assert new_stream.latest_seq >= 0
+    assert old_stream.latest_seq == -1
+
+
+def test_persona_frontend_reconciles_unknown_switch_state_without_fake_success() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src"
+        / "offline_companion"
+        / "shell"
+        / "ui_host"
+        / "desktop"
+        / "static"
+        / "shell_api.js"
+    ).read_text(encoding="utf-8")
+    select_block = source[source.index("async function selectPersona"):source.index("async function createPersonaApi")]
+
+    assert "API 不可用时 fallback 到本地行为" not in select_block
+    assert "await reconcileCurrentSession();" in select_block
+    assert "if (_sessionReconciling)" in source[source.index("async function sendMessage"):]
+    assert "setSessionReconciling(true);" in source
+    assert "setSessionReconciling(false);" in source
 
 
 def test_desktop_http_persona_create_update_delete(tmp_path) -> None:

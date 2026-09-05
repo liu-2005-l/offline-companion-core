@@ -32,10 +32,6 @@ from offline_companion.core.event_stream import TRAJECTORY_PROJECTION
 from offline_companion.core.hard_gate import HardGate
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
 from offline_companion.core.memory_lifecycle.event_types import SemanticEvent
-from offline_companion.core.memory_lifecycle.semantic_embedding_provider import (
-    SemanticEmbeddingProvider,
-    embedding_space_of,
-)
 from offline_companion.core.memory_lifecycle.fts_ops import (
     count_memory_rows,
     invalidate_memory_chunk,
@@ -43,11 +39,11 @@ from offline_companion.core.memory_lifecycle.fts_ops import (
     update_memory_chunk,
 )
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
-from offline_companion.core.persona_session.persona_loader import (
-    load_persona_file,
-    resolved_companion_display_name,
+from offline_companion.core.memory_lifecycle.semantic_embedding_provider import (
+    SemanticEmbeddingProvider,
+    embedding_space_of,
 )
-from offline_companion.core.persona_session.session import PersonaSessionCore
+from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.core.plan_enums import PlanErrorCode, PlanEventName
 from offline_companion.core.plan_orchestrator import (
     ConsentRequest,
@@ -97,6 +93,12 @@ from offline_companion.shell.ui_host.consent_feedback import (
 from offline_companion.shell.ui_host.desktop.crash_reporting import archive_crash_report
 from offline_companion.shell.ui_host.desktop.privacy_socket_guard import apply_privacy_socket_guard
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
+from offline_companion.shell.ui_host.desktop.session_binding import (
+    DesktopSessionBindingService,
+    DesktopSessionContextProvider,
+    SessionBindingError,
+    rebind_runtime_session,
+)
 from offline_companion.shell.ui_host.model_downloader import (
     DownloadProgress,
     DownloadState,
@@ -130,20 +132,13 @@ from offline_companion.storage.cloud_model_repo import (
 from offline_companion.storage.extension_repo import init_extension_status, save_extension_status
 from offline_companion.storage.json_state_store import JsonStateStore, check_state_integrity
 from offline_companion.storage.persona_repo import (
-    activate_persona as activate_persisted_persona,
-)
-from offline_companion.storage.persona_repo import (
-    active_persona,
-    list_personas,
-)
-from offline_companion.storage.persona_repo import (
     create_persona as create_persisted_persona,
 )
 from offline_companion.storage.persona_repo import (
     delete_persona as delete_persisted_persona,
 )
 from offline_companion.storage.persona_repo import (
-    get_persona as get_persisted_persona,
+    list_personas,
 )
 from offline_companion.storage.persona_repo import (
     update_persona as update_persisted_persona,
@@ -244,6 +239,24 @@ def create_desktop_app(runtime: DesktopRuntime):
 
     static = _static_dir()
     app = Flask(__name__, static_folder=str(static), static_url_path="")
+    if runtime.session_context_provider is None:
+        runtime.session_context_provider = DesktopSessionContextProvider()
+    if runtime.session_binding_service is None:
+        runtime.session_binding_service = DesktopSessionBindingService(
+            runtime.orchestrator.conn,
+            context_provider=runtime.session_context_provider,
+            event_stream_manager=runtime.event_stream_manager,
+            semantic_embed_func=runtime.semantic_embed_func,
+        )
+        runtime.session_binding_service.restore_or_create(
+            preferred_session_id=runtime.session_id,
+            startup_persona=runtime.orchestrator.session_core.persona,
+            title="UI",
+        )
+    runtime.session_binding_service.set_on_bind(
+        lambda context: rebind_runtime_session(runtime, context)
+    )
+    rebind_runtime_session(runtime, runtime.session_context_provider.capture())
     plugin_gateway = PluginSecurityGateway(runtime, build_mock_plugin_registry())
     repaired_state_files = tuple(check_state_integrity(runtime.paths.root))
     runtime.repaired_state_files = tuple(
@@ -372,13 +385,6 @@ def create_desktop_app(runtime: DesktopRuntime):
     download_futures: dict[str, object] = {}
     download_activation_pending: set[str] = set()
     extension_state: dict[str, bool] = init_extension_status(runtime.paths.root, runtime.paths.db_path)
-    persisted_persona = active_persona(runtime.orchestrator.conn)
-    if persisted_persona is not None:
-        runtime.orchestrator.session_core = PersonaSessionCore(
-            persisted_persona,
-            semantic_embed_func=runtime.semantic_embed_func,
-        )
-        runtime.persona_name = resolved_companion_display_name(persisted_persona)
     runtime.logged_in = bool(getattr(runtime, "logged_in", False))
     runtime.account_name = str(getattr(runtime, "account_name", "local-user"))
     runtime.improve_plan_enabled = bool(getattr(runtime, "improve_plan_enabled", False))
@@ -508,12 +514,14 @@ def create_desktop_app(runtime: DesktopRuntime):
 
     @app.get("/api/status")
     def status():
+        session_context = runtime.session_context_provider.capture()
         return _json_response(
             jsonify,
             {
                 "app_version": __version__,
                 "memory_on": runtime.memory_on,
                 "session_id": runtime.session_id,
+                "session_revision": session_context.revision,
                 "persona_id": runtime.orchestrator.session_core.persona.persona_id,
                 "persona_name": runtime.persona_name,
                 "privacy_mode": runtime.privacy_mode.value,
@@ -925,6 +933,23 @@ def create_desktop_app(runtime: DesktopRuntime):
     @app.get("/api/personas")
     def personas():
         items = list_personas(runtime.orchestrator.conn)
+        current_persona_id = runtime.orchestrator.session_core.persona.persona_id
+        if not any(item["id"] == current_persona_id for item in items):
+            snapshot = runtime.session_context_provider.capture().snapshot.payload
+            items.append(
+                {
+                    "id": current_persona_id,
+                    "name": str(snapshot["name"]),
+                    "avatar": str(snapshot["name"])[:1],
+                    "desc": "历史会话人格快照",
+                    "ocean": list(snapshot["ocean"]),
+                    "traits": [],
+                    "anchor": str(snapshot["effective_system_prompt"]),
+                    "active": False,
+                }
+            )
+        for item in items:
+            item["current"] = item["id"] == current_persona_id
         return _json_response(jsonify, {"items": items, "total": len(items)})
 
     @app.post("/api/personas")
@@ -945,14 +970,6 @@ def create_desktop_app(runtime: DesktopRuntime):
             return _json_response(jsonify, {"error": str(exc)}, status=400)
         if item is None:
             return _json_response(jsonify, {"error": "not_found"}, status=404)
-        if item["active"]:
-            persona = get_persisted_persona(runtime.orchestrator.conn, persona_id)
-            if persona is not None:
-                runtime.orchestrator.session_core = PersonaSessionCore(
-                    persona,
-                    semantic_embed_func=runtime.semantic_embed_func,
-                )
-                runtime.persona_name = resolved_companion_display_name(persona)
         return _json_response(jsonify, {"ok": True, "persona": item})
 
     @app.delete("/api/personas/<persona_id>")
@@ -967,16 +984,67 @@ def create_desktop_app(runtime: DesktopRuntime):
 
     @app.post("/api/personas/<persona_id>/activate")
     def activate_persona(persona_id: str):
-        persona = activate_persisted_persona(runtime.orchestrator.conn, persona_id)
-        if persona is None:
-            return _json_response(jsonify, {"error": "not_found"}, status=404)
-        runtime.orchestrator.session_core = PersonaSessionCore(
-            persona,
-            semantic_embed_func=runtime.semantic_embed_func,
-        )
-        runtime.persona_name = resolved_companion_display_name(persona)
+        data = request.get_json(silent=True) or {}
+        request_id = str(data.get("switch_request_id") or "").strip()
+        try:
+            expected_revision = int(data.get("expected_revision"))
+        except (TypeError, ValueError):
+            context = runtime.session_context_provider.capture()
+            return _json_response(
+                jsonify,
+                {
+                    "error": "expected_revision_required",
+                    "state_unchanged": True,
+                    "canonical_session_id": context.session_id,
+                    "revision": context.revision,
+                },
+                status=400,
+            )
+        if not model_lock.acquire(blocking=False):
+            context = runtime.session_context_provider.capture()
+            return _json_response(
+                jsonify,
+                {
+                    "error": "session_busy",
+                    "state_unchanged": True,
+                    "canonical_session_id": context.session_id,
+                    "revision": context.revision,
+                },
+                status=409,
+            )
+        try:
+            result = runtime.session_binding_service.switch_persona(
+                persona_id,
+                switch_request_id=request_id,
+                expected_revision=expected_revision,
+            )
+        except SessionBindingError as exc:
+            payload = {
+                "error": exc.code,
+                "state_unchanged": exc.state_unchanged,
+                "canonical_session_id": exc.canonical_session_id,
+                "revision": exc.revision,
+            }
+            return _json_response(jsonify, payload, status=exc.status)
+        finally:
+            model_lock.release()
         item = next(item for item in list_personas(runtime.orchestrator.conn) if item["id"] == persona_id)
-        return _json_response(jsonify, {"ok": True, "persona": item})
+        context = result.context
+        return _json_response(
+            jsonify,
+            {
+                "ok": True,
+                "switch_request_id": result.switch_request_id,
+                "previous_session_id": result.previous_session_id,
+                "canonical_session_id": context.session_id,
+                "revision": context.revision,
+                "persona_snapshot_schema": context.snapshot.schema,
+                "persona_snapshot_sha256": context.snapshot.sha256,
+                "created_new_session": result.created_new_session,
+                "idempotent_replay": result.idempotent_replay,
+                "persona": item,
+            },
+        )
 
     @app.get("/api/models")
     def models():
@@ -1603,6 +1671,38 @@ def create_desktop_app(runtime: DesktopRuntime):
             for row in rows
         ]
         return _json_response(jsonify, {"items": items, "page": 1, "page_size": len(items), "total": len(items)})
+
+    @app.get("/api/sessions/current")
+    def current_session():
+        """摘要：返回 SQLite canonical 会话及其快照证明，供未知状态对账。"""
+        try:
+            context = runtime.session_binding_service.current()
+        except SessionBindingError as exc:
+            return _json_response(
+                jsonify,
+                {"error": exc.code, "state_unchanged": False},
+                status=exc.status,
+            )
+        persona_id = context.session_core.persona.persona_id
+        item = next(
+            (candidate for candidate in list_personas(runtime.orchestrator.conn) if candidate["id"] == persona_id),
+            {
+                "id": persona_id,
+                "name": context.session_core.persona.name,
+                "active": False,
+            },
+        )
+        return _json_response(
+            jsonify,
+            {
+                "ok": True,
+                "canonical_session_id": context.session_id,
+                "revision": context.revision,
+                "persona_snapshot_schema": context.snapshot.schema,
+                "persona_snapshot_sha256": context.snapshot.sha256,
+                "persona": item,
+            },
+        )
 
     @app.get("/api/sessions/<session_id>/messages")
     def session_messages(session_id: str):

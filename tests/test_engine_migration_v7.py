@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from offline_companion.runtime.storage_index.engine import connect
+from offline_companion.runtime.storage_index.engine import SCHEMA_VERSION, connect
 
 
 def _create_v6_db(path: Path) -> None:
@@ -69,7 +69,7 @@ def test_engine_migrates_v6_to_current_schema(tmp_path: Path) -> None:
 
     conn = connect(db_path)
     version = conn.execute("SELECT value FROM meta WHERE key = 'schema_version';").fetchone()[0]
-    assert int(version) == 12
+    assert int(version) == SCHEMA_VERSION
 
     table_names = {
         row[0]

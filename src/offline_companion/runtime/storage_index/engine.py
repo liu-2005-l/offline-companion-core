@@ -10,7 +10,7 @@ from typing import Any
 
 from offline_companion.shared.types import MessageRow
 
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -74,6 +74,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if version < 12:
         _init_v12(conn)
         version = 12
+    if version < 13:
+        _init_v13(conn)
+        version = 13
     conn.execute(
         "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
@@ -180,6 +183,34 @@ def _init_v12(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_semantic_events_status ON semantic_events(status);
         CREATE INDEX IF NOT EXISTS idx_semantic_events_importance ON semantic_events(importance DESC);
         CREATE INDEX IF NOT EXISTS idx_semantic_events_created ON semantic_events(created_at DESC);
+        """
+    )
+
+
+def _init_v13(conn: sqlite3.Connection) -> None:
+    """摘要：增加桌面会话人格快照、幂等键与 canonical 单例状态。"""
+    session_columns = {row[1] for row in conn.execute("PRAGMA table_info(sessions);").fetchall()}
+    required = {
+        "persona_snapshot_json": "TEXT",
+        "persona_snapshot_schema": "INTEGER",
+        "persona_snapshot_sha256": "TEXT",
+        "persona_snapshot_source": "TEXT",
+        "switch_request_id": "TEXT",
+    }
+    for name, ddl in required.items():
+        if name not in session_columns:
+            conn.execute(f"ALTER TABLE sessions ADD COLUMN {name} {ddl};")
+    conn.executescript(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_switch_request_id
+            ON sessions(switch_request_id) WHERE switch_request_id IS NOT NULL;
+
+        CREATE TABLE IF NOT EXISTS desktop_session_state (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            active_session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE RESTRICT,
+            revision INTEGER NOT NULL CHECK (revision >= 1),
+            updated_at REAL NOT NULL
+        );
         """
     )
 
@@ -404,11 +435,40 @@ def _init_v11(conn: sqlite3.Connection) -> None:
     )
 
 
-def new_session(conn: sqlite3.Connection, session_id: str, persona_id: str, title: str | None) -> None:
+def new_session(
+    conn: sqlite3.Connection,
+    session_id: str,
+    persona_id: str,
+    title: str | None,
+    *,
+    persona_snapshot_json: str | None = None,
+    persona_snapshot_schema: int | None = None,
+    persona_snapshot_sha256: str | None = None,
+    persona_snapshot_source: str | None = None,
+    switch_request_id: str | None = None,
+) -> None:
+    """摘要：创建会话，并可原样写入已校验的人格快照证明。"""
     now = time.time()
     conn.execute(
-        "INSERT INTO sessions(id, title, persona_id, created_at, updated_at) VALUES(?,?,?,?,?);",
-        (session_id, title, persona_id, now, now),
+        """
+        INSERT INTO sessions(
+            id, title, persona_id, created_at, updated_at,
+            persona_snapshot_json, persona_snapshot_schema, persona_snapshot_sha256,
+            persona_snapshot_source, switch_request_id
+        ) VALUES(?,?,?,?,?,?,?,?,?,?);
+        """,
+        (
+            session_id,
+            title,
+            persona_id,
+            now,
+            now,
+            persona_snapshot_json,
+            persona_snapshot_schema,
+            persona_snapshot_sha256,
+            persona_snapshot_source,
+            switch_request_id,
+        ),
     )
 
 
