@@ -44,6 +44,8 @@
 | **人格约束 P3-0 L2 320 轮筛选报告** | [`persona-constraint-p3-0-l2-screening-report.md`](./persona-constraint-p3-0-l2-screening-report.md) | — |
 | **人格约束 P3-0 L2 确认集第一段报告** | [`persona-constraint-p3-0-l2-confirmation-stage1-report.md`](./persona-constraint-p3-0-l2-confirmation-stage1-report.md) | — |
 | **人格约束 P3-0 L2 no-effect 收口规格** | [`persona-constraint-p3-0-l2-no-effect-closure-spec.md`](./persona-constraint-p3-0-l2-no-effect-closure-spec.md) | — |
+| **人格约束 P3-A 重规划骨架** | [`persona-constraint-p3-a-replan-draft.md`](./persona-constraint-p3-a-replan-draft.md) | — |
+| **人格约束 P3-A1 持久化基座规格** | [`persona-constraint-p3-a1-persistence-spec-draft.md`](./persona-constraint-p3-a1-persistence-spec-draft.md) | — |
 | **Phase 6.5 召回注入 Fixture** | [`phase6-5-recall-injection-fixtures.md`](./phase6-5-recall-injection-fixtures.md) | — |
 | **Batch E 红队方案** | [`red-team-batch-e-design.md`](./red-team-batch-e-design.md) | — |
 | **Batch E 红队矩阵** | [`red-team-matrix-2026-08-25.md`](./red-team-matrix-2026-08-25.md) | — |
