@@ -1,0 +1,67 @@
+schema_version: 1
+version: p3-0-l2-screening-review-v1
+status: preregistered_before_ta_review
+
+inputs:
+  blind_packet: artifacts/persona_constraints/p3_0_l2_screening/blind_review_packet.json
+  blind_packet_sha256: C236F15AC54AAD0424B7169B552A663349B9D2768F06DA7A1CDA14200EE1C011
+  sealed_key: artifacts/persona_constraints/p3_0_l2_screening/blind_review_key.json
+  sealed_key_sha256: D8FB19BA49005662DE0B37ACCCCE17BDE998CEA6A9BF1B831E697C4ED039920D
+  pair_count: 120
+  eligible_arm_count: 30
+
+reviewer:
+  role: TA_self_blind_review
+  reviewer_count: 1
+  key_access_before_completion: forbidden
+  parameter_identity_access_before_completion: forbidden
+
+choice_contract:
+  enum: [left, right, indistinguishable]
+  left: 左侧在任务相关性和事实边界不劣于右侧，且更符合目标档位 intent，并至少多命中一项 target signature
+  right: 右侧在任务相关性和事实边界不劣于左侧，且更符合目标档位 intent，并至少多命中一项 target signature
+  indistinguishable: 两侧各有胜负、均不满足目标、差异不足，或无法稳定判断
+  semantic_evasion: 语义回避的一侧不得获胜；两侧均回避时选 indistinguishable
+
+pair_scoring:
+  candidate_side_selected: success
+  baseline_side_selected: failure
+  indistinguishable: failure
+  denominator: fixed_four_pairs
+  pair_exclusion_after_review: forbidden
+
+arm_gate:
+  automatic_all_four_green_required: true
+  minimum_successes: 3
+  comparisons: 4
+  statistical_claim: forbidden_screening_only
+  reverse_majority: failure
+
+candidate_selection:
+  maximum_per_target: 1
+  order:
+    - automatic_gate_all_green
+    - minimum_three_of_four_successes
+    - smallest_normalized_absolute_grid_step
+    - higher_success_count
+    - parameter_order_temperature_then_top_p
+    - sign_order_negative_then_positive
+  fallback_if_none: screened_no_candidate_within_preregistered_grid
+
+already_excluded_targets:
+  - O_low
+  - O_high
+  - E_high
+reversal_contract:
+  direct_confirmation: forbidden
+  only_path: preregister_expanded_search_space_and_repeat_screening
+
+confirmation_budget:
+  eligible_target_count: 7
+  pair_items: 280
+  maximum_output_generations: 440
+  saved_pair_items_vs_ten_targets: 120
+  saved_output_generations_vs_ten_targets: 160
+  saved_budget_action: abandon_not_reallocate
+  per_target_n: 40
+  reason: 保持预注册 n 与十格 family，不用省余预算事后增强边界 arm

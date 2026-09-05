@@ -1,0 +1,87 @@
+schema_version: 1
+version: p3-0-l2-confirmation-stage1-v1
+status: preregistered_before_generation
+
+trace:
+  runner: scripts/run_persona_constraint_p3_0_l2_confirmation_stage1.py
+  screening_spec: fixtures/persona_constraints/p3_0_l2_screening_spec.yaml
+  screening_spec_sha256: 92D53FC1FEBFF037BB7CFAF8644AB4686903CC1709207C266F718FC651E66924
+  balanced_screening_verdict: artifacts/persona_constraints/p3_0_l2_screening/blind_review_verdict_balanced_v2.json
+  balanced_screening_verdict_sha256: DA4827CB8EAF80F209569CFD88CCB92353342A344AE596114620584BA8590130
+  output_dir: artifacts/persona_constraints/p3_0_l2_confirmation_stage1
+  model_sha256: 6A1A2EB6D15622BF3C96857206351BA97E1AF16C30D7A74EE38970E434E9407E
+  chat_template_sha256: D5495A1E5DB0611132A97E46A65DBB64A642A499421228B9C8B93229097FA9A4
+
+design:
+  role: confirmation_first_segment_and_external_reviewer_gate
+  target_count: 4
+  pairs_per_target: 8
+  pair_count: 32
+  outputs_per_pair: 2
+  output_count: 64
+  prompt_reuse_between_levels: A_low_and_A_high_only
+  prompt_seed_or_output_reuse_from_screening: forbidden
+  one_seed_per_prompt: true
+
+selected_candidates:
+  C_low: temperature_p005
+  A_low: top_p_m010
+  A_high: temperature_p010
+  N_low: temperature_p010
+
+fresh_seeds: [104729, 130363, 155921, 196613, 262147, 314573, 371779, 433494]
+
+prompts:
+  C:
+    - {id: C-confirm-01, scenario: frustration, seed: 104729, text: 三个截止日期撞在一起，帮我排个今天的处理顺序。}
+    - {id: C-confirm-02, scenario: frustration, seed: 130363, text: 我已经列了计划，但步骤太多有些执行不下去。}
+    - {id: C-confirm-03, scenario: disagreement, seed: 155921, text: 这个任务需要留证据，但我不想把流程做得太重。}
+    - {id: C-confirm-04, scenario: advice, seed: 196613, text: 临时需求插进来了，原来的安排怎么调整？}
+    - {id: C-confirm-05, scenario: advice, seed: 262147, text: 我手上信息不全，先推进哪一步比较稳妥？}
+    - {id: C-confirm-06, scenario: disagreement, seed: 314573, text: 这份清单有十几项，哪些可以合并处理？}
+    - {id: C-confirm-07, scenario: frustration, seed: 371779, text: 进度落后一天了，怎样重排而不漏关键检查？}
+    - {id: C-confirm-08, scenario: disagreement, seed: 433494, text: 我想减少记录工作，但仍要能复盘结果。}
+  A:
+    - {id: A-confirm-01, scenario: advice, seed: 104729, text: 两个方案都有明显缺点，你会怎么陪我权衡？}
+    - {id: A-confirm-02, scenario: advice, seed: 130363, text: 我预算只够保住一项功能，该怎么决定？}
+    - {id: A-confirm-03, scenario: disagreement, seed: 155921, text: 你刚才的建议没有考虑我的时间限制。}
+    - {id: A-confirm-04, scenario: disagreement, seed: 196613, text: 团队意见和我的判断冲突，我该先听哪一边？}
+    - {id: A-confirm-05, scenario: advice, seed: 262147, text: 我不想被安慰，只想听你指出方案的问题。}
+    - {id: A-confirm-06, scenario: advice, seed: 314573, text: 这个选择最终要我自己做，你能帮我梳理吗？}
+    - {id: A-confirm-07, scenario: disagreement, seed: 371779, text: 同事反对我的方案，我需要直接回应还是先沟通？}
+    - {id: A-confirm-08, scenario: advice, seed: 433494, text: 我已经很犹豫了，请别替我决定，只帮我看盲点。}
+  N:
+    - {id: N-confirm-01, scenario: comfort, seed: 104729, text: 明天要做重要演示，我现在总担心会出差错。}
+    - {id: N-confirm-02, scenario: comfort, seed: 130363, text: 还有一个依赖没确认，我有点静不下来。}
+    - {id: N-confirm-03, scenario: comfort, seed: 155921, text: 结果迟迟没出来，我一直在反复想最坏情况。}
+    - {id: N-confirm-04, scenario: disagreement, seed: 196613, text: 刚发现计划里有个风险，我现在该怎么处理？}
+    - {id: N-confirm-05, scenario: frustration, seed: 262147, text: 时间快到了，我怕遗漏关键步骤。}
+    - {id: N-confirm-06, scenario: comfort, seed: 314573, text: 这件事大概率没问题，但我还是有些紧张。}
+    - {id: N-confirm-07, scenario: comfort, seed: 371779, text: 对方还没回复，我开始担心安排会被打乱。}
+    - {id: N-confirm-08, scenario: advice, seed: 433494, text: 我需要现在检查一遍，还是先休息一下再看？}
+
+automatic_gates:
+  inherit_from_screening: true
+  candidate_hard_gate_failure: pair_failure
+  baseline_hard_gate_failure: diagnostic_only
+  regenerate_failed_item: forbidden
+
+blind_review:
+  salt: p3-0-l2-confirmation-stage1-v1
+  choices: [left, right, indistinguishable]
+  candidate_placement_per_target: {left: 4, right: 4}
+  total_candidate_placement: {left: 16, right: 16}
+  parameter_identity_access_before_completion: forbidden
+  key_access_before_completion: forbidden
+  reviewer: external_non_producer
+
+decision:
+  null_success_probability: 0.5
+  comparisons: 32
+  minimum_successes: 22
+  exact_one_sided_p_at_gate: 0.025051229866221547
+  exact_one_sided_p_below_gate: 0.055092082591727376
+  indistinguishable: failure
+  pass: continue_remaining_128_confirmation_pairs
+  fail: stop_and_enter_no_effect_evaluation
+  confirmation_family_gate_after_completion: 29_of_40_per_target_unchanged

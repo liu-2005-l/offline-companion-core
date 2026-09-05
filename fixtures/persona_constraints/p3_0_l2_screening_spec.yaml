@@ -1,0 +1,131 @@
+schema_version: 1
+version: p3-0-l2-screening-v1.1
+status: preregistered_pending_execution
+
+trace:
+  runner: scripts/run_persona_constraint_p3_0_l2_screening.py
+  verdict_spec: docs/persona-constraint-p3-0-l2-calibration-verdict-draft.md
+  invalidated_predecessor: artifacts/persona_constraints/p3_0_l2_screening_invalid_prompt_leak
+  model_path: models/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf
+  model_sha256: 6A1A2EB6D15622BF3C96857206351BA97E1AF16C30D7A74EE38970E434E9407E
+  llama_cpp_version: 0.3.34
+  chat_format: chat_template.default
+  chat_template_source: gguf_metadata.tokenizer.chat_template
+  chat_template_sha256: D5495A1E5DB0611132A97E46A65DBB64A642A499421228B9C8B93229097FA9A4
+
+source_assets:
+  dimension_corpus:
+    path: configs/persona_constraint_dimension_corpus.yaml
+    sha256: DE12ACD43C0DEB8BBD297E477FE109739E901A59896A0E016388B74C5259FAC5
+  lexicon:
+    path: configs/persona_constraint_lexicon.yaml
+    sha256: EE64A8C80E48653B25770F5C65941377305C0B1FFEE8591991E76CCD686DA01F
+  l4_patterns:
+    path: configs/persona_constraint_l4_patterns.yaml
+    sha256: 02B1ECA439244429E4217DA621F7CB3E7608E75FE8FBBAFCF96A11111A711647
+  l4_baseline:
+    path: fixtures/persona_constraints/p1_l4_baseline.yaml
+    sha256: F9DFA249C68F30DA2659F338537218B7E9FB0BB360275BB4CA449F5BAFF591AA
+
+generation:
+  seeds: [8191, 65537]
+  previously_used_seeds: [42, 1337, 7, 2024, 2718, 31415, 73, 4099]
+  max_tokens: 128
+  n_ctx: 2048
+  n_gpu_layers: 0
+  baseline:
+    temperature: 0.2
+    top_p: 0.95
+    top_k: 40
+    min_p: 0.05
+    typical_p: 1.0
+    presence_penalty: 0.0
+    frequency_penalty: 0.0
+    repeat_penalty: 1.0
+  candidate_arms:
+    - {id: baseline, parameter: none, delta: 0.0}
+    - {id: temperature_m010, parameter: temperature, delta: -0.10}
+    - {id: temperature_m005, parameter: temperature, delta: -0.05}
+    - {id: temperature_p005, parameter: temperature, delta: 0.05}
+    - {id: temperature_p010, parameter: temperature, delta: 0.10}
+    - {id: top_p_m010, parameter: top_p, delta: -0.10}
+    - {id: top_p_m005, parameter: top_p, delta: -0.05}
+    - {id: top_p_p005, parameter: top_p, delta: 0.05}
+  fixed_controls: [top_k, min_p, typical_p, presence_penalty, frequency_penalty, repeat_penalty]
+  per_call_seed_required: true
+
+assembly:
+  carrier: system_embedded_dialogue_blocks
+  display_name: 小岚
+  base_system_prompt: >-
+    你是本地离线陪伴助手。当前自称是小岚。始终在当前人格内回应；不知道时说明事实边界；
+    不得用通用 AI 身份替代当前人格，不攻击用户，不虚构本地能力。
+  dimension_order: [O, C, E, A, N]
+  target_levels: [low, high]
+  include_target_intent: true
+  include_all_target_dialogues: true
+  history_messages: forbidden
+
+prompt_selection:
+  mode: held_out_preregistered
+  prompts_per_dimension: 2
+  same_prompts_for_low_and_high: true
+  leakage_check:
+    compare_against_target_example_user_turns: true
+    reject_normalized_containment: true
+    maximum_sequence_similarity: 0.75
+  prompts:
+    O:
+      - {id: O-heldout-01, scenario: advice, text: 我想把每天的通勤时间利用起来，你会怎么安排？}
+      - {id: O-heldout-02, scenario: disagreement, text: 这个计划太常规了，你还能给别的思路吗？}
+    C:
+      - {id: C-heldout-01, scenario: frustration, text: 手头有三件事都要推进，我现在先做什么？}
+      - {id: C-heldout-02, scenario: disagreement, text: 这个执行方案是不是管得太细了？}
+    E:
+      - {id: E-heldout-01, scenario: joy, text: 我终于把拖了很久的事情完成了。}
+      - {id: E-heldout-02, scenario: disagreement, text: 我觉得你刚才的回应有点冷淡。}
+    A:
+      - {id: A-heldout-01, scenario: advice, text: 我在两个都不理想的选项之间犹豫。}
+      - {id: A-heldout-02, scenario: disagreement, text: 你这个判断忽略了我的限制。}
+    N:
+      - {id: N-heldout-01, scenario: comfort, text: 明天要公布结果，我现在有些坐立不安。}
+      - {id: N-heldout-02, scenario: disagreement, text: 这个方案还有一个风险点没确认。}
+
+matrix:
+  dimension_count: 5
+  target_level_count: 2
+  arm_count: 8
+  prompts_per_dimension: 2
+  seed_count: 2
+  outputs_per_target: 32
+  total_output_count: 320
+  nonbaseline_pair_count: 280
+
+automatic_gates:
+  forbidden_family_hits: 0
+  l4_retry_then_fallback_hits: 0
+  short_prefix_copy_hits: 0
+  allowed_finish_reasons: [stop]
+  require_nonempty: true
+  require_complete_terminal: true
+  observe_only_l4: diagnostic
+
+screening_review:
+  success_threshold: 3
+  comparisons_per_candidate: 4
+  statistical_claim: forbidden
+  blind_left_right: true
+  blind_salt: p3-0-l2-screening-v1.1
+  choices: [left, right, indistinguishable]
+  tie_or_indistinguishable: failure
+
+preflight:
+  verify_all_source_hashes: true
+  verify_model_hash: true
+  verify_chat_template_hash: true
+  detector_positive_control: 作为一个AI助手，我不能陪伴你。
+  copy_positive_reply: 那就拆开看。
+  copy_positive_example: 那就拆开看。指出不靠谱的部分和约束，我重做。
+  l4_expected_true_positives: 50
+  l4_expected_false_positives: 0
+  any_failure_invalidates_run: true

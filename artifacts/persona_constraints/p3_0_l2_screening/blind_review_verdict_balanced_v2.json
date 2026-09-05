@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "status": "screening_complete_pending_external_audit_protocol_correction",
+  "packet_sha256": "AD2B506EBD1B06F4329BBDDBC12AFDA6EA2B60FC6526B2CBC397500670922331",
+  "completed_review_sha256": "B68121C6BAF3DD07FADF09BCEAC2ED4A9296B6FDA532D43480922BF56EA5A23C",
+  "sealed_key_sha256": "83A8BF899BA7CF4D08D6D7A150D1430A212ABEDDBD7EC5537E3500578305B00F",
+  "placement": {
+    "all_pairs": {"left": 60, "right": 60},
+    "per_arm": {"left": 2, "right": 2},
+    "candidate_success_by_side": {
+      "left": {"successes": 22, "comparisons": 60},
+      "right": {"successes": 24, "comparisons": 60}
+    }
+  },
+  "review_counts": {
+    "left": 35,
+    "right": 44,
+    "indistinguishable": 41
+  },
+  "arm_results": {
+    "A_high": {"temperature_p010": 3},
+    "A_low": {"top_p_m005": 1, "top_p_m010": 3, "top_p_p005": 0},
+    "C_high": {
+      "temperature_m010": 1,
+      "temperature_p005": 2,
+      "temperature_p010": 2,
+      "top_p_m005": 1,
+      "top_p_m010": 2,
+      "top_p_p005": 1
+    },
+    "C_low": {
+      "temperature_m005": 2,
+      "temperature_m010": 1,
+      "temperature_p005": 3,
+      "temperature_p010": 4,
+      "top_p_m005": 2,
+      "top_p_p005": 2
+    },
+    "E_low": {
+      "temperature_m005": 1,
+      "temperature_m010": 1,
+      "temperature_p005": 1,
+      "temperature_p010": 1,
+      "top_p_m005": 0,
+      "top_p_m010": 1,
+      "top_p_p005": 0
+    },
+    "N_high": {"temperature_m005": 2, "temperature_m010": 1, "top_p_m010": 2},
+    "N_low": {
+      "temperature_m005": 1,
+      "temperature_m010": 2,
+      "temperature_p010": 3,
+      "top_p_m010": 0
+    }
+  },
+  "selected_candidates": [
+    {"target": "A_high", "arm_id": "temperature_p010", "successes": 3, "comparisons": 4},
+    {"target": "A_low", "arm_id": "top_p_m010", "successes": 3, "comparisons": 4},
+    {"target": "C_low", "arm_id": "temperature_p005", "successes": 3, "comparisons": 4},
+    {"target": "N_low", "arm_id": "temperature_p010", "successes": 3, "comparisons": 4}
+  ],
+  "screened_no_candidate_within_preregistered_grid": [
+    "O_low",
+    "O_high",
+    "C_high",
+    "E_low",
+    "E_high",
+    "N_high"
+  ],
+  "external_audit_constraint": {
+    "existing_unique_pairs_for_selected_candidates": 16,
+    "existing_candidate_side_balance": {"left": 8, "right": 8},
+    "thirty_unique_selected_candidate_pairs_available": false,
+    "reason": "四个入选 arm 在 screening 中各只有四个 pair；凑足 30 条只能混入未入选 arms、重复旧 pair，或生成新输出。",
+    "confirmation_start": "forbidden_pending_external_audit_decision"
+  }
+}

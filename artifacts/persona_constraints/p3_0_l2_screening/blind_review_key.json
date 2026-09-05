@@ -1,0 +1,1965 @@
+{
+  "version": "p3-0-l2-screening-v1.1",
+  "rows": [
+    {
+      "blind_id": "bd7b08e99e2c4cc8",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_m010-O-heldout-01-s8191",
+      "baseline_row_id": "O-low-baseline-O-heldout-01-s8191"
+    },
+    {
+      "blind_id": "2e72e973e447797c",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_m010-O-heldout-01-s65537",
+      "baseline_row_id": "O-low-baseline-O-heldout-01-s65537"
+    },
+    {
+      "blind_id": "f61b017b5c59ada3",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_m010-O-heldout-02-s8191",
+      "baseline_row_id": "O-low-baseline-O-heldout-02-s8191"
+    },
+    {
+      "blind_id": "889482b797881ddd",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_m010-O-heldout-02-s65537",
+      "baseline_row_id": "O-low-baseline-O-heldout-02-s65537"
+    },
+    {
+      "blind_id": "b3bc1254e0ea7fae",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_m005-O-heldout-01-s8191",
+      "baseline_row_id": "O-low-baseline-O-heldout-01-s8191"
+    },
+    {
+      "blind_id": "ce467d22c5a0a86f",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_m005-O-heldout-01-s65537",
+      "baseline_row_id": "O-low-baseline-O-heldout-01-s65537"
+    },
+    {
+      "blind_id": "54f1c95ee65ea979",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_m005-O-heldout-02-s8191",
+      "baseline_row_id": "O-low-baseline-O-heldout-02-s8191"
+    },
+    {
+      "blind_id": "8dedbbffafab0dd0",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_m005-O-heldout-02-s65537",
+      "baseline_row_id": "O-low-baseline-O-heldout-02-s65537"
+    },
+    {
+      "blind_id": "324afe5a7a47dc05",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_p005-O-heldout-01-s8191",
+      "baseline_row_id": "O-low-baseline-O-heldout-01-s8191"
+    },
+    {
+      "blind_id": "613b77ad30005a90",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_p005-O-heldout-01-s65537",
+      "baseline_row_id": "O-low-baseline-O-heldout-01-s65537"
+    },
+    {
+      "blind_id": "636b1dfee4f75a9a",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_p005-O-heldout-02-s8191",
+      "baseline_row_id": "O-low-baseline-O-heldout-02-s8191"
+    },
+    {
+      "blind_id": "08889036481e74c0",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_p005-O-heldout-02-s65537",
+      "baseline_row_id": "O-low-baseline-O-heldout-02-s65537"
+    },
+    {
+      "blind_id": "e9b5fdf6c59019ed",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_p010-O-heldout-01-s8191",
+      "baseline_row_id": "O-low-baseline-O-heldout-01-s8191"
+    },
+    {
+      "blind_id": "166e1d5e161694b9",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_p010-O-heldout-01-s65537",
+      "baseline_row_id": "O-low-baseline-O-heldout-01-s65537"
+    },
+    {
+      "blind_id": "adf24df1f8e9edec",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_p010-O-heldout-02-s8191",
+      "baseline_row_id": "O-low-baseline-O-heldout-02-s8191"
+    },
+    {
+      "blind_id": "4b0728ccc2ec923f",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_p010-O-heldout-02-s65537",
+      "baseline_row_id": "O-low-baseline-O-heldout-02-s65537"
+    },
+    {
+      "blind_id": "f2bebb896c23b076",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_m010-O-heldout-01-s8191",
+      "baseline_row_id": "O-low-baseline-O-heldout-01-s8191"
+    },
+    {
+      "blind_id": "d8a518b30561b060",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-top_p_m010-O-heldout-01-s65537",
+      "baseline_row_id": "O-low-baseline-O-heldout-01-s65537"
+    },
+    {
+      "blind_id": "72a3c31712eff878",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_m010-O-heldout-02-s8191",
+      "baseline_row_id": "O-low-baseline-O-heldout-02-s8191"
+    },
+    {
+      "blind_id": "f87533d7fe39e6fa",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_m010-O-heldout-02-s65537",
+      "baseline_row_id": "O-low-baseline-O-heldout-02-s65537"
+    },
+    {
+      "blind_id": "7c50b339c2ae21f9",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-top_p_m005-O-heldout-01-s8191",
+      "baseline_row_id": "O-low-baseline-O-heldout-01-s8191"
+    },
+    {
+      "blind_id": "872809fef5608e0b",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_m005-O-heldout-01-s65537",
+      "baseline_row_id": "O-low-baseline-O-heldout-01-s65537"
+    },
+    {
+      "blind_id": "47abd06de3a31912",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_m005-O-heldout-02-s8191",
+      "baseline_row_id": "O-low-baseline-O-heldout-02-s8191"
+    },
+    {
+      "blind_id": "cfcc5a79de056cb1",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-top_p_m005-O-heldout-02-s65537",
+      "baseline_row_id": "O-low-baseline-O-heldout-02-s65537"
+    },
+    {
+      "blind_id": "cc3258f2f407d87d",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-top_p_p005-O-heldout-01-s8191",
+      "baseline_row_id": "O-low-baseline-O-heldout-01-s8191"
+    },
+    {
+      "blind_id": "05a203bde2c0f7cf",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_p005-O-heldout-01-s65537",
+      "baseline_row_id": "O-low-baseline-O-heldout-01-s65537"
+    },
+    {
+      "blind_id": "c79b3d4ced80cdb0",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-top_p_p005-O-heldout-02-s8191",
+      "baseline_row_id": "O-low-baseline-O-heldout-02-s8191"
+    },
+    {
+      "blind_id": "d9282b208357f2c4",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_p005-O-heldout-02-s65537",
+      "baseline_row_id": "O-low-baseline-O-heldout-02-s65537"
+    },
+    {
+      "blind_id": "dc99bfbd1a240ab1",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_m010-O-heldout-01-s8191",
+      "baseline_row_id": "O-high-baseline-O-heldout-01-s8191"
+    },
+    {
+      "blind_id": "860d3bfe8dd01138",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_m010-O-heldout-01-s65537",
+      "baseline_row_id": "O-high-baseline-O-heldout-01-s65537"
+    },
+    {
+      "blind_id": "612b31639b58130b",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_m010-O-heldout-02-s8191",
+      "baseline_row_id": "O-high-baseline-O-heldout-02-s8191"
+    },
+    {
+      "blind_id": "c255baeb12145414",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_m010-O-heldout-02-s65537",
+      "baseline_row_id": "O-high-baseline-O-heldout-02-s65537"
+    },
+    {
+      "blind_id": "81b140a160af0920",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_m005-O-heldout-01-s8191",
+      "baseline_row_id": "O-high-baseline-O-heldout-01-s8191"
+    },
+    {
+      "blind_id": "71f41eb0a6c44ab2",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_m005-O-heldout-01-s65537",
+      "baseline_row_id": "O-high-baseline-O-heldout-01-s65537"
+    },
+    {
+      "blind_id": "6f93631b5a140fbd",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_m005-O-heldout-02-s8191",
+      "baseline_row_id": "O-high-baseline-O-heldout-02-s8191"
+    },
+    {
+      "blind_id": "6d36946df9db596c",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_m005-O-heldout-02-s65537",
+      "baseline_row_id": "O-high-baseline-O-heldout-02-s65537"
+    },
+    {
+      "blind_id": "2fd8cda7bbf9e0a4",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_p005-O-heldout-01-s8191",
+      "baseline_row_id": "O-high-baseline-O-heldout-01-s8191"
+    },
+    {
+      "blind_id": "4acead6a87159554",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_p005-O-heldout-01-s65537",
+      "baseline_row_id": "O-high-baseline-O-heldout-01-s65537"
+    },
+    {
+      "blind_id": "91475ecf8ccf3dde",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_p005-O-heldout-02-s8191",
+      "baseline_row_id": "O-high-baseline-O-heldout-02-s8191"
+    },
+    {
+      "blind_id": "53888bf0fbe4cd8a",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_p005-O-heldout-02-s65537",
+      "baseline_row_id": "O-high-baseline-O-heldout-02-s65537"
+    },
+    {
+      "blind_id": "b8fb4e27a4a987df",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_p010-O-heldout-01-s8191",
+      "baseline_row_id": "O-high-baseline-O-heldout-01-s8191"
+    },
+    {
+      "blind_id": "3a46ced67c4d3871",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_p010-O-heldout-01-s65537",
+      "baseline_row_id": "O-high-baseline-O-heldout-01-s65537"
+    },
+    {
+      "blind_id": "293395f1d6a78ee1",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_p010-O-heldout-02-s8191",
+      "baseline_row_id": "O-high-baseline-O-heldout-02-s8191"
+    },
+    {
+      "blind_id": "9a2f2ba4a27d728f",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_p010-O-heldout-02-s65537",
+      "baseline_row_id": "O-high-baseline-O-heldout-02-s65537"
+    },
+    {
+      "blind_id": "5323b5d38b005f29",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-top_p_m010-O-heldout-01-s8191",
+      "baseline_row_id": "O-high-baseline-O-heldout-01-s8191"
+    },
+    {
+      "blind_id": "0ba1ebda268470a6",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-top_p_m010-O-heldout-01-s65537",
+      "baseline_row_id": "O-high-baseline-O-heldout-01-s65537"
+    },
+    {
+      "blind_id": "f8a77e53a470c4d2",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-top_p_m010-O-heldout-02-s8191",
+      "baseline_row_id": "O-high-baseline-O-heldout-02-s8191"
+    },
+    {
+      "blind_id": "2f3f32393ca50c7f",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-top_p_m010-O-heldout-02-s65537",
+      "baseline_row_id": "O-high-baseline-O-heldout-02-s65537"
+    },
+    {
+      "blind_id": "8f483361bec48bbf",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-top_p_m005-O-heldout-01-s8191",
+      "baseline_row_id": "O-high-baseline-O-heldout-01-s8191"
+    },
+    {
+      "blind_id": "f1a20142e8f926dc",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-top_p_m005-O-heldout-01-s65537",
+      "baseline_row_id": "O-high-baseline-O-heldout-01-s65537"
+    },
+    {
+      "blind_id": "cc37963ed50c3b07",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-top_p_m005-O-heldout-02-s8191",
+      "baseline_row_id": "O-high-baseline-O-heldout-02-s8191"
+    },
+    {
+      "blind_id": "0ab16c71d0bbfac1",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-top_p_m005-O-heldout-02-s65537",
+      "baseline_row_id": "O-high-baseline-O-heldout-02-s65537"
+    },
+    {
+      "blind_id": "5447cf3588b6ea1c",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-top_p_p005-O-heldout-01-s8191",
+      "baseline_row_id": "O-high-baseline-O-heldout-01-s8191"
+    },
+    {
+      "blind_id": "1567ffbc6cfdeb22",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-top_p_p005-O-heldout-01-s65537",
+      "baseline_row_id": "O-high-baseline-O-heldout-01-s65537"
+    },
+    {
+      "blind_id": "67aafefcbacea988",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-top_p_p005-O-heldout-02-s8191",
+      "baseline_row_id": "O-high-baseline-O-heldout-02-s8191"
+    },
+    {
+      "blind_id": "f58f8c7effaca1e4",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-top_p_p005-O-heldout-02-s65537",
+      "baseline_row_id": "O-high-baseline-O-heldout-02-s65537"
+    },
+    {
+      "blind_id": "f331308e033da6a6",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_m010-C-heldout-01-s8191",
+      "baseline_row_id": "C-low-baseline-C-heldout-01-s8191"
+    },
+    {
+      "blind_id": "5ad8b3b4330e3307",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_m010-C-heldout-01-s65537",
+      "baseline_row_id": "C-low-baseline-C-heldout-01-s65537"
+    },
+    {
+      "blind_id": "137c5c2ee812c38d",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_m010-C-heldout-02-s8191",
+      "baseline_row_id": "C-low-baseline-C-heldout-02-s8191"
+    },
+    {
+      "blind_id": "db901a1a54b8765c",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_m010-C-heldout-02-s65537",
+      "baseline_row_id": "C-low-baseline-C-heldout-02-s65537"
+    },
+    {
+      "blind_id": "bd8c36a4ff44e6cc",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_m005-C-heldout-01-s8191",
+      "baseline_row_id": "C-low-baseline-C-heldout-01-s8191"
+    },
+    {
+      "blind_id": "7d594ef1aaed3758",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_m005-C-heldout-01-s65537",
+      "baseline_row_id": "C-low-baseline-C-heldout-01-s65537"
+    },
+    {
+      "blind_id": "b8a4e629558968b9",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_m005-C-heldout-02-s8191",
+      "baseline_row_id": "C-low-baseline-C-heldout-02-s8191"
+    },
+    {
+      "blind_id": "a5d3580535d74e85",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_m005-C-heldout-02-s65537",
+      "baseline_row_id": "C-low-baseline-C-heldout-02-s65537"
+    },
+    {
+      "blind_id": "6d98a7b93182106a",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_p005-C-heldout-01-s8191",
+      "baseline_row_id": "C-low-baseline-C-heldout-01-s8191"
+    },
+    {
+      "blind_id": "8ffccc259a2396df",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_p005-C-heldout-01-s65537",
+      "baseline_row_id": "C-low-baseline-C-heldout-01-s65537"
+    },
+    {
+      "blind_id": "ad5f2628251ff194",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_p005-C-heldout-02-s8191",
+      "baseline_row_id": "C-low-baseline-C-heldout-02-s8191"
+    },
+    {
+      "blind_id": "8b25033a3309f9f5",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_p005-C-heldout-02-s65537",
+      "baseline_row_id": "C-low-baseline-C-heldout-02-s65537"
+    },
+    {
+      "blind_id": "df93f95d9ade4fa1",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_p010-C-heldout-01-s8191",
+      "baseline_row_id": "C-low-baseline-C-heldout-01-s8191"
+    },
+    {
+      "blind_id": "403f141f0203ff8a",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_p010-C-heldout-01-s65537",
+      "baseline_row_id": "C-low-baseline-C-heldout-01-s65537"
+    },
+    {
+      "blind_id": "71e83ea44ae947c8",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_p010-C-heldout-02-s8191",
+      "baseline_row_id": "C-low-baseline-C-heldout-02-s8191"
+    },
+    {
+      "blind_id": "8e0eee67244ae1fb",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_p010-C-heldout-02-s65537",
+      "baseline_row_id": "C-low-baseline-C-heldout-02-s65537"
+    },
+    {
+      "blind_id": "9dacbe8ba52b5993",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_m010-C-heldout-01-s8191",
+      "baseline_row_id": "C-low-baseline-C-heldout-01-s8191"
+    },
+    {
+      "blind_id": "dabfcb8518c5e141",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-top_p_m010-C-heldout-01-s65537",
+      "baseline_row_id": "C-low-baseline-C-heldout-01-s65537"
+    },
+    {
+      "blind_id": "269c735bd257cdd6",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_m010-C-heldout-02-s8191",
+      "baseline_row_id": "C-low-baseline-C-heldout-02-s8191"
+    },
+    {
+      "blind_id": "0d46830baf6d7d0e",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-top_p_m010-C-heldout-02-s65537",
+      "baseline_row_id": "C-low-baseline-C-heldout-02-s65537"
+    },
+    {
+      "blind_id": "833f594a0677e94d",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_m005-C-heldout-01-s8191",
+      "baseline_row_id": "C-low-baseline-C-heldout-01-s8191"
+    },
+    {
+      "blind_id": "21c70941901dc62a",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-top_p_m005-C-heldout-01-s65537",
+      "baseline_row_id": "C-low-baseline-C-heldout-01-s65537"
+    },
+    {
+      "blind_id": "a6d984536c89cb91",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-top_p_m005-C-heldout-02-s8191",
+      "baseline_row_id": "C-low-baseline-C-heldout-02-s8191"
+    },
+    {
+      "blind_id": "6b19c8beae042bad",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_m005-C-heldout-02-s65537",
+      "baseline_row_id": "C-low-baseline-C-heldout-02-s65537"
+    },
+    {
+      "blind_id": "14a255cb7a8ef9c1",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-top_p_p005-C-heldout-01-s8191",
+      "baseline_row_id": "C-low-baseline-C-heldout-01-s8191"
+    },
+    {
+      "blind_id": "db74febc35f07bb5",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-top_p_p005-C-heldout-01-s65537",
+      "baseline_row_id": "C-low-baseline-C-heldout-01-s65537"
+    },
+    {
+      "blind_id": "7f2c353a92643007",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_p005-C-heldout-02-s8191",
+      "baseline_row_id": "C-low-baseline-C-heldout-02-s8191"
+    },
+    {
+      "blind_id": "b2da0bdadfd977ee",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_p005-C-heldout-02-s65537",
+      "baseline_row_id": "C-low-baseline-C-heldout-02-s65537"
+    },
+    {
+      "blind_id": "b4bb49daaa461be3",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_m010-C-heldout-01-s8191",
+      "baseline_row_id": "C-high-baseline-C-heldout-01-s8191"
+    },
+    {
+      "blind_id": "a6df50b8e5e70b71",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_m010-C-heldout-01-s65537",
+      "baseline_row_id": "C-high-baseline-C-heldout-01-s65537"
+    },
+    {
+      "blind_id": "fd8678a93a6d75b2",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_m010-C-heldout-02-s8191",
+      "baseline_row_id": "C-high-baseline-C-heldout-02-s8191"
+    },
+    {
+      "blind_id": "3d73bfbe7f526c70",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_m010-C-heldout-02-s65537",
+      "baseline_row_id": "C-high-baseline-C-heldout-02-s65537"
+    },
+    {
+      "blind_id": "016f84593bd7dcfc",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_m005-C-heldout-01-s8191",
+      "baseline_row_id": "C-high-baseline-C-heldout-01-s8191"
+    },
+    {
+      "blind_id": "588a2dcc8024826f",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-temperature_m005-C-heldout-01-s65537",
+      "baseline_row_id": "C-high-baseline-C-heldout-01-s65537"
+    },
+    {
+      "blind_id": "2b5bd84478679f4d",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-temperature_m005-C-heldout-02-s8191",
+      "baseline_row_id": "C-high-baseline-C-heldout-02-s8191"
+    },
+    {
+      "blind_id": "c07fda9d43da37ec",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-temperature_m005-C-heldout-02-s65537",
+      "baseline_row_id": "C-high-baseline-C-heldout-02-s65537"
+    },
+    {
+      "blind_id": "9d80d5eeb0889147",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-temperature_p005-C-heldout-01-s8191",
+      "baseline_row_id": "C-high-baseline-C-heldout-01-s8191"
+    },
+    {
+      "blind_id": "664b6cb3fa19b094",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_p005-C-heldout-01-s65537",
+      "baseline_row_id": "C-high-baseline-C-heldout-01-s65537"
+    },
+    {
+      "blind_id": "bddc4f2234210f15",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_p005-C-heldout-02-s8191",
+      "baseline_row_id": "C-high-baseline-C-heldout-02-s8191"
+    },
+    {
+      "blind_id": "f09bb2014205e363",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-temperature_p005-C-heldout-02-s65537",
+      "baseline_row_id": "C-high-baseline-C-heldout-02-s65537"
+    },
+    {
+      "blind_id": "bba66f384f960676",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_p010-C-heldout-01-s8191",
+      "baseline_row_id": "C-high-baseline-C-heldout-01-s8191"
+    },
+    {
+      "blind_id": "04369c2f0266ddad",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-temperature_p010-C-heldout-01-s65537",
+      "baseline_row_id": "C-high-baseline-C-heldout-01-s65537"
+    },
+    {
+      "blind_id": "95473245dd5e16bf",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-temperature_p010-C-heldout-02-s8191",
+      "baseline_row_id": "C-high-baseline-C-heldout-02-s8191"
+    },
+    {
+      "blind_id": "3e8bfee23e936b4c",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_p010-C-heldout-02-s65537",
+      "baseline_row_id": "C-high-baseline-C-heldout-02-s65537"
+    },
+    {
+      "blind_id": "6792030baa132fca",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-top_p_m010-C-heldout-01-s8191",
+      "baseline_row_id": "C-high-baseline-C-heldout-01-s8191"
+    },
+    {
+      "blind_id": "45aca8f5225dca40",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-top_p_m010-C-heldout-01-s65537",
+      "baseline_row_id": "C-high-baseline-C-heldout-01-s65537"
+    },
+    {
+      "blind_id": "c80f71c79964cbda",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-top_p_m010-C-heldout-02-s8191",
+      "baseline_row_id": "C-high-baseline-C-heldout-02-s8191"
+    },
+    {
+      "blind_id": "dc03ebdbbe40fe48",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-top_p_m010-C-heldout-02-s65537",
+      "baseline_row_id": "C-high-baseline-C-heldout-02-s65537"
+    },
+    {
+      "blind_id": "b15c9e51c71e6691",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-top_p_m005-C-heldout-01-s8191",
+      "baseline_row_id": "C-high-baseline-C-heldout-01-s8191"
+    },
+    {
+      "blind_id": "95715a7435e0299d",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-top_p_m005-C-heldout-01-s65537",
+      "baseline_row_id": "C-high-baseline-C-heldout-01-s65537"
+    },
+    {
+      "blind_id": "67592415cca1328a",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-top_p_m005-C-heldout-02-s8191",
+      "baseline_row_id": "C-high-baseline-C-heldout-02-s8191"
+    },
+    {
+      "blind_id": "8d9491f7f3be9d3b",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-top_p_m005-C-heldout-02-s65537",
+      "baseline_row_id": "C-high-baseline-C-heldout-02-s65537"
+    },
+    {
+      "blind_id": "3619ec10c8710893",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-top_p_p005-C-heldout-01-s8191",
+      "baseline_row_id": "C-high-baseline-C-heldout-01-s8191"
+    },
+    {
+      "blind_id": "a487ebc994c9791a",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-top_p_p005-C-heldout-01-s65537",
+      "baseline_row_id": "C-high-baseline-C-heldout-01-s65537"
+    },
+    {
+      "blind_id": "2dc784d7b441a2e0",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-top_p_p005-C-heldout-02-s8191",
+      "baseline_row_id": "C-high-baseline-C-heldout-02-s8191"
+    },
+    {
+      "blind_id": "359c7e5b4b34022b",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-top_p_p005-C-heldout-02-s65537",
+      "baseline_row_id": "C-high-baseline-C-heldout-02-s65537"
+    },
+    {
+      "blind_id": "ee2d434f5b03ff76",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_m010-E-heldout-01-s8191",
+      "baseline_row_id": "E-low-baseline-E-heldout-01-s8191"
+    },
+    {
+      "blind_id": "d0431a479d5bf9ca",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_m010-E-heldout-01-s65537",
+      "baseline_row_id": "E-low-baseline-E-heldout-01-s65537"
+    },
+    {
+      "blind_id": "816d37c1cf394237",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_m010-E-heldout-02-s8191",
+      "baseline_row_id": "E-low-baseline-E-heldout-02-s8191"
+    },
+    {
+      "blind_id": "355a182e362dd8a0",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_m010-E-heldout-02-s65537",
+      "baseline_row_id": "E-low-baseline-E-heldout-02-s65537"
+    },
+    {
+      "blind_id": "59af0a29106227d8",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_m005-E-heldout-01-s8191",
+      "baseline_row_id": "E-low-baseline-E-heldout-01-s8191"
+    },
+    {
+      "blind_id": "f9cd12b1ac07c487",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_m005-E-heldout-01-s65537",
+      "baseline_row_id": "E-low-baseline-E-heldout-01-s65537"
+    },
+    {
+      "blind_id": "81f29484d1c260c8",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_m005-E-heldout-02-s8191",
+      "baseline_row_id": "E-low-baseline-E-heldout-02-s8191"
+    },
+    {
+      "blind_id": "44d4dac0ce5e90fb",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_m005-E-heldout-02-s65537",
+      "baseline_row_id": "E-low-baseline-E-heldout-02-s65537"
+    },
+    {
+      "blind_id": "3e79517cb55f2528",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_p005-E-heldout-01-s8191",
+      "baseline_row_id": "E-low-baseline-E-heldout-01-s8191"
+    },
+    {
+      "blind_id": "40062a324b0e62a1",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_p005-E-heldout-01-s65537",
+      "baseline_row_id": "E-low-baseline-E-heldout-01-s65537"
+    },
+    {
+      "blind_id": "0b9f7d00e8a764a7",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_p005-E-heldout-02-s8191",
+      "baseline_row_id": "E-low-baseline-E-heldout-02-s8191"
+    },
+    {
+      "blind_id": "17e18157cffd1e7c",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_p005-E-heldout-02-s65537",
+      "baseline_row_id": "E-low-baseline-E-heldout-02-s65537"
+    },
+    {
+      "blind_id": "b8dfdf0098398bfd",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_p010-E-heldout-01-s8191",
+      "baseline_row_id": "E-low-baseline-E-heldout-01-s8191"
+    },
+    {
+      "blind_id": "3ffe99d98c5f3e2f",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_p010-E-heldout-01-s65537",
+      "baseline_row_id": "E-low-baseline-E-heldout-01-s65537"
+    },
+    {
+      "blind_id": "6a1bed12eecdfff5",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_p010-E-heldout-02-s8191",
+      "baseline_row_id": "E-low-baseline-E-heldout-02-s8191"
+    },
+    {
+      "blind_id": "fd7837b3b2041304",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_p010-E-heldout-02-s65537",
+      "baseline_row_id": "E-low-baseline-E-heldout-02-s65537"
+    },
+    {
+      "blind_id": "e3857ab06d8fd1a3",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-top_p_m010-E-heldout-01-s8191",
+      "baseline_row_id": "E-low-baseline-E-heldout-01-s8191"
+    },
+    {
+      "blind_id": "29c21ed46682669b",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-top_p_m010-E-heldout-01-s65537",
+      "baseline_row_id": "E-low-baseline-E-heldout-01-s65537"
+    },
+    {
+      "blind_id": "5bbea90e8c280b4a",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-top_p_m010-E-heldout-02-s8191",
+      "baseline_row_id": "E-low-baseline-E-heldout-02-s8191"
+    },
+    {
+      "blind_id": "f54b4bd9b59fdd27",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-top_p_m010-E-heldout-02-s65537",
+      "baseline_row_id": "E-low-baseline-E-heldout-02-s65537"
+    },
+    {
+      "blind_id": "bec8bdf41785b7c9",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-top_p_m005-E-heldout-01-s8191",
+      "baseline_row_id": "E-low-baseline-E-heldout-01-s8191"
+    },
+    {
+      "blind_id": "98d3de012932295d",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-top_p_m005-E-heldout-01-s65537",
+      "baseline_row_id": "E-low-baseline-E-heldout-01-s65537"
+    },
+    {
+      "blind_id": "9f7e8108f0933605",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-top_p_m005-E-heldout-02-s8191",
+      "baseline_row_id": "E-low-baseline-E-heldout-02-s8191"
+    },
+    {
+      "blind_id": "bfb15482da61617d",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-top_p_m005-E-heldout-02-s65537",
+      "baseline_row_id": "E-low-baseline-E-heldout-02-s65537"
+    },
+    {
+      "blind_id": "8b6a41d9da41d1a8",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-top_p_p005-E-heldout-01-s8191",
+      "baseline_row_id": "E-low-baseline-E-heldout-01-s8191"
+    },
+    {
+      "blind_id": "efdab016f057c98f",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-top_p_p005-E-heldout-01-s65537",
+      "baseline_row_id": "E-low-baseline-E-heldout-01-s65537"
+    },
+    {
+      "blind_id": "1758bc0fe5802988",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-top_p_p005-E-heldout-02-s8191",
+      "baseline_row_id": "E-low-baseline-E-heldout-02-s8191"
+    },
+    {
+      "blind_id": "ea4c5e4a5f9ff1d0",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-top_p_p005-E-heldout-02-s65537",
+      "baseline_row_id": "E-low-baseline-E-heldout-02-s65537"
+    },
+    {
+      "blind_id": "f8c4a2a0eb4a167e",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_m010-E-heldout-01-s8191",
+      "baseline_row_id": "E-high-baseline-E-heldout-01-s8191"
+    },
+    {
+      "blind_id": "16be4fd374933466",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_m010-E-heldout-01-s65537",
+      "baseline_row_id": "E-high-baseline-E-heldout-01-s65537"
+    },
+    {
+      "blind_id": "a72dfb60a4f68820",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_m010-E-heldout-02-s8191",
+      "baseline_row_id": "E-high-baseline-E-heldout-02-s8191"
+    },
+    {
+      "blind_id": "588c139784091103",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_m010-E-heldout-02-s65537",
+      "baseline_row_id": "E-high-baseline-E-heldout-02-s65537"
+    },
+    {
+      "blind_id": "47b6e71afe4e1e99",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_m005-E-heldout-01-s8191",
+      "baseline_row_id": "E-high-baseline-E-heldout-01-s8191"
+    },
+    {
+      "blind_id": "1768e417349451a6",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_m005-E-heldout-01-s65537",
+      "baseline_row_id": "E-high-baseline-E-heldout-01-s65537"
+    },
+    {
+      "blind_id": "05b3f761dd2146c4",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_m005-E-heldout-02-s8191",
+      "baseline_row_id": "E-high-baseline-E-heldout-02-s8191"
+    },
+    {
+      "blind_id": "cef7bd71f625ffb1",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_m005-E-heldout-02-s65537",
+      "baseline_row_id": "E-high-baseline-E-heldout-02-s65537"
+    },
+    {
+      "blind_id": "24b64ea7d5585f23",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_p005-E-heldout-01-s8191",
+      "baseline_row_id": "E-high-baseline-E-heldout-01-s8191"
+    },
+    {
+      "blind_id": "2b539bb3ce399a6f",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_p005-E-heldout-01-s65537",
+      "baseline_row_id": "E-high-baseline-E-heldout-01-s65537"
+    },
+    {
+      "blind_id": "358d18d2f7a614a2",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_p005-E-heldout-02-s8191",
+      "baseline_row_id": "E-high-baseline-E-heldout-02-s8191"
+    },
+    {
+      "blind_id": "2872590646721271",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_p005-E-heldout-02-s65537",
+      "baseline_row_id": "E-high-baseline-E-heldout-02-s65537"
+    },
+    {
+      "blind_id": "864572a501e69253",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_p010-E-heldout-01-s8191",
+      "baseline_row_id": "E-high-baseline-E-heldout-01-s8191"
+    },
+    {
+      "blind_id": "b0aa631fde6eb5eb",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_p010-E-heldout-01-s65537",
+      "baseline_row_id": "E-high-baseline-E-heldout-01-s65537"
+    },
+    {
+      "blind_id": "161d912db25c9df0",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_p010-E-heldout-02-s8191",
+      "baseline_row_id": "E-high-baseline-E-heldout-02-s8191"
+    },
+    {
+      "blind_id": "c573a7c902e94f04",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_p010-E-heldout-02-s65537",
+      "baseline_row_id": "E-high-baseline-E-heldout-02-s65537"
+    },
+    {
+      "blind_id": "2f5b89c8862a2b83",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-top_p_m010-E-heldout-01-s8191",
+      "baseline_row_id": "E-high-baseline-E-heldout-01-s8191"
+    },
+    {
+      "blind_id": "20ab5b52e63a01b7",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-top_p_m010-E-heldout-01-s65537",
+      "baseline_row_id": "E-high-baseline-E-heldout-01-s65537"
+    },
+    {
+      "blind_id": "58be95bc7fb8948e",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-top_p_m010-E-heldout-02-s8191",
+      "baseline_row_id": "E-high-baseline-E-heldout-02-s8191"
+    },
+    {
+      "blind_id": "b3782855993e9c22",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-top_p_m010-E-heldout-02-s65537",
+      "baseline_row_id": "E-high-baseline-E-heldout-02-s65537"
+    },
+    {
+      "blind_id": "01b451b3e07c9e88",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-top_p_m005-E-heldout-01-s8191",
+      "baseline_row_id": "E-high-baseline-E-heldout-01-s8191"
+    },
+    {
+      "blind_id": "668ea01e463f7a0c",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-top_p_m005-E-heldout-01-s65537",
+      "baseline_row_id": "E-high-baseline-E-heldout-01-s65537"
+    },
+    {
+      "blind_id": "35057d16f8816ce4",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-top_p_m005-E-heldout-02-s8191",
+      "baseline_row_id": "E-high-baseline-E-heldout-02-s8191"
+    },
+    {
+      "blind_id": "730b336e8b2d240d",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-top_p_m005-E-heldout-02-s65537",
+      "baseline_row_id": "E-high-baseline-E-heldout-02-s65537"
+    },
+    {
+      "blind_id": "1054161f6a8e08ac",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-top_p_p005-E-heldout-01-s8191",
+      "baseline_row_id": "E-high-baseline-E-heldout-01-s8191"
+    },
+    {
+      "blind_id": "183881fc37d256c1",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-top_p_p005-E-heldout-01-s65537",
+      "baseline_row_id": "E-high-baseline-E-heldout-01-s65537"
+    },
+    {
+      "blind_id": "081e95a74378b715",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-top_p_p005-E-heldout-02-s8191",
+      "baseline_row_id": "E-high-baseline-E-heldout-02-s8191"
+    },
+    {
+      "blind_id": "c454945648bd7e96",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-top_p_p005-E-heldout-02-s65537",
+      "baseline_row_id": "E-high-baseline-E-heldout-02-s65537"
+    },
+    {
+      "blind_id": "46273fc427a91f08",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_m010-A-heldout-01-s8191",
+      "baseline_row_id": "A-low-baseline-A-heldout-01-s8191"
+    },
+    {
+      "blind_id": "5022e2e0a9ef0064",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-temperature_m010-A-heldout-01-s65537",
+      "baseline_row_id": "A-low-baseline-A-heldout-01-s65537"
+    },
+    {
+      "blind_id": "85ed3b9bca923d1c",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-temperature_m010-A-heldout-02-s8191",
+      "baseline_row_id": "A-low-baseline-A-heldout-02-s8191"
+    },
+    {
+      "blind_id": "289b445a985f0c9e",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-temperature_m010-A-heldout-02-s65537",
+      "baseline_row_id": "A-low-baseline-A-heldout-02-s65537"
+    },
+    {
+      "blind_id": "675d772e1d804774",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_m005-A-heldout-01-s8191",
+      "baseline_row_id": "A-low-baseline-A-heldout-01-s8191"
+    },
+    {
+      "blind_id": "1f85129646aa75b6",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-temperature_m005-A-heldout-01-s65537",
+      "baseline_row_id": "A-low-baseline-A-heldout-01-s65537"
+    },
+    {
+      "blind_id": "c5ce852a2330c414",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-temperature_m005-A-heldout-02-s8191",
+      "baseline_row_id": "A-low-baseline-A-heldout-02-s8191"
+    },
+    {
+      "blind_id": "f93206c0f31147b9",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-temperature_m005-A-heldout-02-s65537",
+      "baseline_row_id": "A-low-baseline-A-heldout-02-s65537"
+    },
+    {
+      "blind_id": "98ceaf6454f33c95",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_p005-A-heldout-01-s8191",
+      "baseline_row_id": "A-low-baseline-A-heldout-01-s8191"
+    },
+    {
+      "blind_id": "4f5a229be494edc0",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_p005-A-heldout-01-s65537",
+      "baseline_row_id": "A-low-baseline-A-heldout-01-s65537"
+    },
+    {
+      "blind_id": "fcf2ce31ded06799",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_p005-A-heldout-02-s8191",
+      "baseline_row_id": "A-low-baseline-A-heldout-02-s8191"
+    },
+    {
+      "blind_id": "e71379ed10963237",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-temperature_p005-A-heldout-02-s65537",
+      "baseline_row_id": "A-low-baseline-A-heldout-02-s65537"
+    },
+    {
+      "blind_id": "cedc79f4fd8fd678",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-temperature_p010-A-heldout-01-s8191",
+      "baseline_row_id": "A-low-baseline-A-heldout-01-s8191"
+    },
+    {
+      "blind_id": "4c04bc02eb512688",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_p010-A-heldout-01-s65537",
+      "baseline_row_id": "A-low-baseline-A-heldout-01-s65537"
+    },
+    {
+      "blind_id": "7a00ee7097b987c1",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_p010-A-heldout-02-s8191",
+      "baseline_row_id": "A-low-baseline-A-heldout-02-s8191"
+    },
+    {
+      "blind_id": "67ba6ddf55666617",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_p010-A-heldout-02-s65537",
+      "baseline_row_id": "A-low-baseline-A-heldout-02-s65537"
+    },
+    {
+      "blind_id": "46e9d843f9e7a8e6",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-top_p_m010-A-heldout-01-s8191",
+      "baseline_row_id": "A-low-baseline-A-heldout-01-s8191"
+    },
+    {
+      "blind_id": "7427eb5834498b90",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-top_p_m010-A-heldout-01-s65537",
+      "baseline_row_id": "A-low-baseline-A-heldout-01-s65537"
+    },
+    {
+      "blind_id": "d78dcada1b9f17ee",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_m010-A-heldout-02-s8191",
+      "baseline_row_id": "A-low-baseline-A-heldout-02-s8191"
+    },
+    {
+      "blind_id": "c05af4731a271367",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_m010-A-heldout-02-s65537",
+      "baseline_row_id": "A-low-baseline-A-heldout-02-s65537"
+    },
+    {
+      "blind_id": "a61266e9198516fa",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_m005-A-heldout-01-s8191",
+      "baseline_row_id": "A-low-baseline-A-heldout-01-s8191"
+    },
+    {
+      "blind_id": "ee19fcd46b51d846",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_m005-A-heldout-01-s65537",
+      "baseline_row_id": "A-low-baseline-A-heldout-01-s65537"
+    },
+    {
+      "blind_id": "8ea4e22815ddd5a7",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_m005-A-heldout-02-s8191",
+      "baseline_row_id": "A-low-baseline-A-heldout-02-s8191"
+    },
+    {
+      "blind_id": "b0f29519e9db25e0",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_m005-A-heldout-02-s65537",
+      "baseline_row_id": "A-low-baseline-A-heldout-02-s65537"
+    },
+    {
+      "blind_id": "754d45f1961cd02c",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_p005-A-heldout-01-s8191",
+      "baseline_row_id": "A-low-baseline-A-heldout-01-s8191"
+    },
+    {
+      "blind_id": "241fa9c2153a1f4b",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_p005-A-heldout-01-s65537",
+      "baseline_row_id": "A-low-baseline-A-heldout-01-s65537"
+    },
+    {
+      "blind_id": "05ba202e58e3bca6",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-top_p_p005-A-heldout-02-s8191",
+      "baseline_row_id": "A-low-baseline-A-heldout-02-s8191"
+    },
+    {
+      "blind_id": "3d7d1364ce7b9e38",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_p005-A-heldout-02-s65537",
+      "baseline_row_id": "A-low-baseline-A-heldout-02-s65537"
+    },
+    {
+      "blind_id": "6265c88686823e39",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_m010-A-heldout-01-s8191",
+      "baseline_row_id": "A-high-baseline-A-heldout-01-s8191"
+    },
+    {
+      "blind_id": "d38f906c665beaf9",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_m010-A-heldout-01-s65537",
+      "baseline_row_id": "A-high-baseline-A-heldout-01-s65537"
+    },
+    {
+      "blind_id": "80555265c1300190",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_m010-A-heldout-02-s8191",
+      "baseline_row_id": "A-high-baseline-A-heldout-02-s8191"
+    },
+    {
+      "blind_id": "a30bb457a7de4dde",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_m010-A-heldout-02-s65537",
+      "baseline_row_id": "A-high-baseline-A-heldout-02-s65537"
+    },
+    {
+      "blind_id": "3352d05c7e52c21c",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_m005-A-heldout-01-s8191",
+      "baseline_row_id": "A-high-baseline-A-heldout-01-s8191"
+    },
+    {
+      "blind_id": "753e77cf770148f5",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_m005-A-heldout-01-s65537",
+      "baseline_row_id": "A-high-baseline-A-heldout-01-s65537"
+    },
+    {
+      "blind_id": "de7cf58684ab4325",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_m005-A-heldout-02-s8191",
+      "baseline_row_id": "A-high-baseline-A-heldout-02-s8191"
+    },
+    {
+      "blind_id": "7fa78a5465a0180b",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_m005-A-heldout-02-s65537",
+      "baseline_row_id": "A-high-baseline-A-heldout-02-s65537"
+    },
+    {
+      "blind_id": "fa2ee48ae1e5a372",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_p005-A-heldout-01-s8191",
+      "baseline_row_id": "A-high-baseline-A-heldout-01-s8191"
+    },
+    {
+      "blind_id": "4153aa57bc581507",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-temperature_p005-A-heldout-01-s65537",
+      "baseline_row_id": "A-high-baseline-A-heldout-01-s65537"
+    },
+    {
+      "blind_id": "9529560956ca09d7",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-temperature_p005-A-heldout-02-s8191",
+      "baseline_row_id": "A-high-baseline-A-heldout-02-s8191"
+    },
+    {
+      "blind_id": "a13976832ac3f356",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-temperature_p005-A-heldout-02-s65537",
+      "baseline_row_id": "A-high-baseline-A-heldout-02-s65537"
+    },
+    {
+      "blind_id": "c2f6af2513566a0d",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-temperature_p010-A-heldout-01-s8191",
+      "baseline_row_id": "A-high-baseline-A-heldout-01-s8191"
+    },
+    {
+      "blind_id": "7daa91504602a9c8",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_p010-A-heldout-01-s65537",
+      "baseline_row_id": "A-high-baseline-A-heldout-01-s65537"
+    },
+    {
+      "blind_id": "f845c59eb3012c78",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-temperature_p010-A-heldout-02-s8191",
+      "baseline_row_id": "A-high-baseline-A-heldout-02-s8191"
+    },
+    {
+      "blind_id": "783f327b4421f050",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_p010-A-heldout-02-s65537",
+      "baseline_row_id": "A-high-baseline-A-heldout-02-s65537"
+    },
+    {
+      "blind_id": "228ce8392e85c5d6",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-top_p_m010-A-heldout-01-s8191",
+      "baseline_row_id": "A-high-baseline-A-heldout-01-s8191"
+    },
+    {
+      "blind_id": "c5e939965850a367",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-top_p_m010-A-heldout-01-s65537",
+      "baseline_row_id": "A-high-baseline-A-heldout-01-s65537"
+    },
+    {
+      "blind_id": "a11ea39d2d89846f",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-top_p_m010-A-heldout-02-s8191",
+      "baseline_row_id": "A-high-baseline-A-heldout-02-s8191"
+    },
+    {
+      "blind_id": "e7103d3b47978d83",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-top_p_m010-A-heldout-02-s65537",
+      "baseline_row_id": "A-high-baseline-A-heldout-02-s65537"
+    },
+    {
+      "blind_id": "fd1ee14527c52c80",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-top_p_m005-A-heldout-01-s8191",
+      "baseline_row_id": "A-high-baseline-A-heldout-01-s8191"
+    },
+    {
+      "blind_id": "ade3d34092903884",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-top_p_m005-A-heldout-01-s65537",
+      "baseline_row_id": "A-high-baseline-A-heldout-01-s65537"
+    },
+    {
+      "blind_id": "48c2be9c41bedeca",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-top_p_m005-A-heldout-02-s8191",
+      "baseline_row_id": "A-high-baseline-A-heldout-02-s8191"
+    },
+    {
+      "blind_id": "d91afda4208d525a",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-top_p_m005-A-heldout-02-s65537",
+      "baseline_row_id": "A-high-baseline-A-heldout-02-s65537"
+    },
+    {
+      "blind_id": "d8969895cc069d79",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-top_p_p005-A-heldout-01-s8191",
+      "baseline_row_id": "A-high-baseline-A-heldout-01-s8191"
+    },
+    {
+      "blind_id": "623aae381384284f",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-top_p_p005-A-heldout-01-s65537",
+      "baseline_row_id": "A-high-baseline-A-heldout-01-s65537"
+    },
+    {
+      "blind_id": "2c105405aa77b4c3",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-top_p_p005-A-heldout-02-s8191",
+      "baseline_row_id": "A-high-baseline-A-heldout-02-s8191"
+    },
+    {
+      "blind_id": "37b20f01c7a7f1a2",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-top_p_p005-A-heldout-02-s65537",
+      "baseline_row_id": "A-high-baseline-A-heldout-02-s65537"
+    },
+    {
+      "blind_id": "dda271585c46e586",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-temperature_m010-N-heldout-01-s8191",
+      "baseline_row_id": "N-low-baseline-N-heldout-01-s8191"
+    },
+    {
+      "blind_id": "361afd3ef7e1dce7",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_m010-N-heldout-01-s65537",
+      "baseline_row_id": "N-low-baseline-N-heldout-01-s65537"
+    },
+    {
+      "blind_id": "4cd5eb993730bdd8",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_m010-N-heldout-02-s8191",
+      "baseline_row_id": "N-low-baseline-N-heldout-02-s8191"
+    },
+    {
+      "blind_id": "4eaf48073067b250",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-temperature_m010-N-heldout-02-s65537",
+      "baseline_row_id": "N-low-baseline-N-heldout-02-s65537"
+    },
+    {
+      "blind_id": "071491092c9be35f",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_m005-N-heldout-01-s8191",
+      "baseline_row_id": "N-low-baseline-N-heldout-01-s8191"
+    },
+    {
+      "blind_id": "54646f7989e386bb",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-temperature_m005-N-heldout-01-s65537",
+      "baseline_row_id": "N-low-baseline-N-heldout-01-s65537"
+    },
+    {
+      "blind_id": "4fbc56f69a13b97c",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_m005-N-heldout-02-s8191",
+      "baseline_row_id": "N-low-baseline-N-heldout-02-s8191"
+    },
+    {
+      "blind_id": "637e9b936d24f804",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_m005-N-heldout-02-s65537",
+      "baseline_row_id": "N-low-baseline-N-heldout-02-s65537"
+    },
+    {
+      "blind_id": "8aaeb02fb283036e",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-temperature_p005-N-heldout-01-s8191",
+      "baseline_row_id": "N-low-baseline-N-heldout-01-s8191"
+    },
+    {
+      "blind_id": "ee82ec90e79bd671",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_p005-N-heldout-01-s65537",
+      "baseline_row_id": "N-low-baseline-N-heldout-01-s65537"
+    },
+    {
+      "blind_id": "5a4ede2b1eebed80",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_p005-N-heldout-02-s8191",
+      "baseline_row_id": "N-low-baseline-N-heldout-02-s8191"
+    },
+    {
+      "blind_id": "2718ebca3c92a873",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_p005-N-heldout-02-s65537",
+      "baseline_row_id": "N-low-baseline-N-heldout-02-s65537"
+    },
+    {
+      "blind_id": "a1af44e9d1c99cf8",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_p010-N-heldout-01-s8191",
+      "baseline_row_id": "N-low-baseline-N-heldout-01-s8191"
+    },
+    {
+      "blind_id": "a5a833fdff5b3ff9",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-temperature_p010-N-heldout-01-s65537",
+      "baseline_row_id": "N-low-baseline-N-heldout-01-s65537"
+    },
+    {
+      "blind_id": "8238dacd3b876ed9",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-temperature_p010-N-heldout-02-s8191",
+      "baseline_row_id": "N-low-baseline-N-heldout-02-s8191"
+    },
+    {
+      "blind_id": "ff765e3008387c10",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-temperature_p010-N-heldout-02-s65537",
+      "baseline_row_id": "N-low-baseline-N-heldout-02-s65537"
+    },
+    {
+      "blind_id": "d3c22a2acef4794f",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_m010-N-heldout-01-s8191",
+      "baseline_row_id": "N-low-baseline-N-heldout-01-s8191"
+    },
+    {
+      "blind_id": "2785248550ffeb96",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_m010-N-heldout-01-s65537",
+      "baseline_row_id": "N-low-baseline-N-heldout-01-s65537"
+    },
+    {
+      "blind_id": "0049d9a768d9b20f",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_m010-N-heldout-02-s8191",
+      "baseline_row_id": "N-low-baseline-N-heldout-02-s8191"
+    },
+    {
+      "blind_id": "206d08ab9940ef6b",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-top_p_m010-N-heldout-02-s65537",
+      "baseline_row_id": "N-low-baseline-N-heldout-02-s65537"
+    },
+    {
+      "blind_id": "9edce38c2d83b624",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_m005-N-heldout-01-s8191",
+      "baseline_row_id": "N-low-baseline-N-heldout-01-s8191"
+    },
+    {
+      "blind_id": "1f6a9298427aa00a",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_m005-N-heldout-01-s65537",
+      "baseline_row_id": "N-low-baseline-N-heldout-01-s65537"
+    },
+    {
+      "blind_id": "fbae7f8178f18c22",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-top_p_m005-N-heldout-02-s8191",
+      "baseline_row_id": "N-low-baseline-N-heldout-02-s8191"
+    },
+    {
+      "blind_id": "2283a58cc4869153",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_m005-N-heldout-02-s65537",
+      "baseline_row_id": "N-low-baseline-N-heldout-02-s65537"
+    },
+    {
+      "blind_id": "ad83f21e014ac0bf",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_p005-N-heldout-01-s8191",
+      "baseline_row_id": "N-low-baseline-N-heldout-01-s8191"
+    },
+    {
+      "blind_id": "f67d194a493ae469",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_p005-N-heldout-01-s65537",
+      "baseline_row_id": "N-low-baseline-N-heldout-01-s65537"
+    },
+    {
+      "blind_id": "bf7f646e08b0d983",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_p005-N-heldout-02-s8191",
+      "baseline_row_id": "N-low-baseline-N-heldout-02-s8191"
+    },
+    {
+      "blind_id": "04c6e774b76a4f8d",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_p005-N-heldout-02-s65537",
+      "baseline_row_id": "N-low-baseline-N-heldout-02-s65537"
+    },
+    {
+      "blind_id": "d1668f2e85a1866d",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_m010-N-heldout-01-s8191",
+      "baseline_row_id": "N-high-baseline-N-heldout-01-s8191"
+    },
+    {
+      "blind_id": "60008dc63d0e6074",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_m010-N-heldout-01-s65537",
+      "baseline_row_id": "N-high-baseline-N-heldout-01-s65537"
+    },
+    {
+      "blind_id": "32ffea9da4346008",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_m010-N-heldout-02-s8191",
+      "baseline_row_id": "N-high-baseline-N-heldout-02-s8191"
+    },
+    {
+      "blind_id": "29d48030d2819768",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_m010-N-heldout-02-s65537",
+      "baseline_row_id": "N-high-baseline-N-heldout-02-s65537"
+    },
+    {
+      "blind_id": "7a6ed6ee6c84cb8c",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_m005-N-heldout-01-s8191",
+      "baseline_row_id": "N-high-baseline-N-heldout-01-s8191"
+    },
+    {
+      "blind_id": "7dd083e0dad37ab4",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_m005-N-heldout-01-s65537",
+      "baseline_row_id": "N-high-baseline-N-heldout-01-s65537"
+    },
+    {
+      "blind_id": "f4e4bbcf12ea2ce1",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_m005-N-heldout-02-s8191",
+      "baseline_row_id": "N-high-baseline-N-heldout-02-s8191"
+    },
+    {
+      "blind_id": "133f86928ae2b9b6",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_m005-N-heldout-02-s65537",
+      "baseline_row_id": "N-high-baseline-N-heldout-02-s65537"
+    },
+    {
+      "blind_id": "44620f4f19e9c7d3",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_p005-N-heldout-01-s8191",
+      "baseline_row_id": "N-high-baseline-N-heldout-01-s8191"
+    },
+    {
+      "blind_id": "cf016b190d260f70",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_p005-N-heldout-01-s65537",
+      "baseline_row_id": "N-high-baseline-N-heldout-01-s65537"
+    },
+    {
+      "blind_id": "be6c8b0c30f407f4",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_p005-N-heldout-02-s8191",
+      "baseline_row_id": "N-high-baseline-N-heldout-02-s8191"
+    },
+    {
+      "blind_id": "e4c44aa69447ca9d",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_p005-N-heldout-02-s65537",
+      "baseline_row_id": "N-high-baseline-N-heldout-02-s65537"
+    },
+    {
+      "blind_id": "3b2a08a78388edff",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_p010-N-heldout-01-s8191",
+      "baseline_row_id": "N-high-baseline-N-heldout-01-s8191"
+    },
+    {
+      "blind_id": "efcad154a9c9b2c6",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_p010-N-heldout-01-s65537",
+      "baseline_row_id": "N-high-baseline-N-heldout-01-s65537"
+    },
+    {
+      "blind_id": "7f6b94037af150be",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_p010-N-heldout-02-s8191",
+      "baseline_row_id": "N-high-baseline-N-heldout-02-s8191"
+    },
+    {
+      "blind_id": "4617e6fa37d0523c",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_p010-N-heldout-02-s65537",
+      "baseline_row_id": "N-high-baseline-N-heldout-02-s65537"
+    },
+    {
+      "blind_id": "5caac8837e991265",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-top_p_m010-N-heldout-01-s8191",
+      "baseline_row_id": "N-high-baseline-N-heldout-01-s8191"
+    },
+    {
+      "blind_id": "0b0933ac366bfbff",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-top_p_m010-N-heldout-01-s65537",
+      "baseline_row_id": "N-high-baseline-N-heldout-01-s65537"
+    },
+    {
+      "blind_id": "1183e86655b828cb",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-top_p_m010-N-heldout-02-s8191",
+      "baseline_row_id": "N-high-baseline-N-heldout-02-s8191"
+    },
+    {
+      "blind_id": "93dbdc9db2ef6fda",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-top_p_m010-N-heldout-02-s65537",
+      "baseline_row_id": "N-high-baseline-N-heldout-02-s65537"
+    },
+    {
+      "blind_id": "41f2d736dc3a4b5e",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-top_p_m005-N-heldout-01-s8191",
+      "baseline_row_id": "N-high-baseline-N-heldout-01-s8191"
+    },
+    {
+      "blind_id": "287291f306378dd1",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-top_p_m005-N-heldout-01-s65537",
+      "baseline_row_id": "N-high-baseline-N-heldout-01-s65537"
+    },
+    {
+      "blind_id": "db09e7955624ef7a",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-top_p_m005-N-heldout-02-s8191",
+      "baseline_row_id": "N-high-baseline-N-heldout-02-s8191"
+    },
+    {
+      "blind_id": "641a4d5aea1d4eae",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-top_p_m005-N-heldout-02-s65537",
+      "baseline_row_id": "N-high-baseline-N-heldout-02-s65537"
+    },
+    {
+      "blind_id": "51d7d8690f54c0e3",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-top_p_p005-N-heldout-01-s8191",
+      "baseline_row_id": "N-high-baseline-N-heldout-01-s8191"
+    },
+    {
+      "blind_id": "3b4bbbd4c52c38da",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-top_p_p005-N-heldout-01-s65537",
+      "baseline_row_id": "N-high-baseline-N-heldout-01-s65537"
+    },
+    {
+      "blind_id": "1bcb1d8864eb559b",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-top_p_p005-N-heldout-02-s8191",
+      "baseline_row_id": "N-high-baseline-N-heldout-02-s8191"
+    },
+    {
+      "blind_id": "42463ca70d3f6929",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-top_p_p005-N-heldout-02-s65537",
+      "baseline_row_id": "N-high-baseline-N-heldout-02-s65537"
+    }
+  ]
+}

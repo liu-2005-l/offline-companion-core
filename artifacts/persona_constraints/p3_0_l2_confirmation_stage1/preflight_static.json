@@ -1,0 +1,166 @@
+{
+  "screening_spec_hash": "92D53FC1FEBFF037BB7CFAF8644AB4686903CC1709207C266F718FC651E66924",
+  "screening_spec_hash_passed": true,
+  "screening_verdict_hash": "DA4827CB8EAF80F209569CFD88CCB92353342A344AE596114620584BA8590130",
+  "screening_verdict_hash_passed": true,
+  "model_hash": "6A1A2EB6D15622BF3C96857206351BA97E1AF16C30D7A74EE38970E434E9407E",
+  "model_hash_passed": true,
+  "prompts": {
+    "passed": true,
+    "checks": {
+      "prompt_ids_unique": true,
+      "prompt_texts_unique": true,
+      "fresh_seeds_unique": true,
+      "fresh_seeds_disjoint": true,
+      "one_seed_per_prompt_index": true,
+      "leakage_checks": true
+    },
+    "comparisons": [
+      {
+        "prompt_id": "C-confirm-01",
+        "maximum_similarity": 0.181818,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "C-confirm-02",
+        "maximum_similarity": 0.228571,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "C-confirm-03",
+        "maximum_similarity": 0.294118,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "C-confirm-04",
+        "maximum_similarity": 0.216216,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "C-confirm-05",
+        "maximum_similarity": 0.242424,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "C-confirm-06",
+        "maximum_similarity": 0.133333,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "C-confirm-07",
+        "maximum_similarity": 0.176471,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "C-confirm-08",
+        "maximum_similarity": 0.26087,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "A-confirm-01",
+        "maximum_similarity": 0.3125,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "A-confirm-02",
+        "maximum_similarity": 0.347826,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "A-confirm-03",
+        "maximum_similarity": 0.357143,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "A-confirm-04",
+        "maximum_similarity": 0.193548,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "A-confirm-05",
+        "maximum_similarity": 0.25,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "A-confirm-06",
+        "maximum_similarity": 0.285714,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "A-confirm-07",
+        "maximum_similarity": 0.242424,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "A-confirm-08",
+        "maximum_similarity": 0.181818,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "N-confirm-01",
+        "maximum_similarity": 0.551724,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "N-confirm-02",
+        "maximum_similarity": 0.466667,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "N-confirm-03",
+        "maximum_similarity": 0.235294,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "N-confirm-04",
+        "maximum_similarity": 0.285714,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "N-confirm-05",
+        "maximum_similarity": 0.210526,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "N-confirm-06",
+        "maximum_similarity": 0.181818,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "N-confirm-07",
+        "maximum_similarity": 0.193548,
+        "contained": false,
+        "passed": true
+      },
+      {
+        "prompt_id": "N-confirm-08",
+        "maximum_similarity": 0.228571,
+        "contained": false,
+        "passed": true
+      }
+    ]
+  },
+  "passed": true
+}

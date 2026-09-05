@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "status": "screening_complete_pending_external_consistency_audit",
+  "completed_review_sha256": "6F0BE039F129EB85DB898630C82B2166E17FCFF87D7F177CADA55B7B55A1712E",
+  "sealed_key_sha256": "D8FB19BA49005662DE0B37ACCCCE17BDE998CEA6A9BF1B831E697C4ED039920D",
+  "review_counts": {
+    "left": 30,
+    "right": 48,
+    "indistinguishable": 42
+  },
+  "arm_gate": {
+    "minimum_successes": 3,
+    "comparisons": 4
+  },
+  "arm_results": [
+    {"target": "A_high", "arm_id": "temperature_p010", "successes": 3, "comparisons": 4, "passed": true},
+    {"target": "A_low", "arm_id": "top_p_m005", "successes": 1, "comparisons": 4, "passed": false},
+    {"target": "A_low", "arm_id": "top_p_m010", "successes": 3, "comparisons": 4, "passed": true},
+    {"target": "A_low", "arm_id": "top_p_p005", "successes": 0, "comparisons": 4, "passed": false},
+    {"target": "C_high", "arm_id": "temperature_m010", "successes": 1, "comparisons": 4, "passed": false},
+    {"target": "C_high", "arm_id": "temperature_p005", "successes": 2, "comparisons": 4, "passed": false},
+    {"target": "C_high", "arm_id": "temperature_p010", "successes": 2, "comparisons": 4, "passed": false},
+    {"target": "C_high", "arm_id": "top_p_m005", "successes": 1, "comparisons": 4, "passed": false},
+    {"target": "C_high", "arm_id": "top_p_m010", "successes": 2, "comparisons": 4, "passed": false},
+    {"target": "C_high", "arm_id": "top_p_p005", "successes": 1, "comparisons": 4, "passed": false},
+    {"target": "C_low", "arm_id": "temperature_m005", "successes": 2, "comparisons": 4, "passed": false},
+    {"target": "C_low", "arm_id": "temperature_m010", "successes": 1, "comparisons": 4, "passed": false},
+    {"target": "C_low", "arm_id": "temperature_p005", "successes": 3, "comparisons": 4, "passed": true},
+    {"target": "C_low", "arm_id": "temperature_p010", "successes": 4, "comparisons": 4, "passed": true},
+    {"target": "C_low", "arm_id": "top_p_m005", "successes": 2, "comparisons": 4, "passed": false},
+    {"target": "C_low", "arm_id": "top_p_p005", "successes": 1, "comparisons": 4, "passed": false},
+    {"target": "E_low", "arm_id": "temperature_m005", "successes": 1, "comparisons": 4, "passed": false},
+    {"target": "E_low", "arm_id": "temperature_m010", "successes": 0, "comparisons": 4, "passed": false},
+    {"target": "E_low", "arm_id": "temperature_p005", "successes": 1, "comparisons": 4, "passed": false},
+    {"target": "E_low", "arm_id": "temperature_p010", "successes": 1, "comparisons": 4, "passed": false},
+    {"target": "E_low", "arm_id": "top_p_m005", "successes": 0, "comparisons": 4, "passed": false},
+    {"target": "E_low", "arm_id": "top_p_m010", "successes": 1, "comparisons": 4, "passed": false},
+    {"target": "E_low", "arm_id": "top_p_p005", "successes": 0, "comparisons": 4, "passed": false},
+    {"target": "N_high", "arm_id": "temperature_m005", "successes": 2, "comparisons": 4, "passed": false},
+    {"target": "N_high", "arm_id": "temperature_m010", "successes": 1, "comparisons": 4, "passed": false},
+    {"target": "N_high", "arm_id": "top_p_m010", "successes": 2, "comparisons": 4, "passed": false},
+    {"target": "N_low", "arm_id": "temperature_m005", "successes": 1, "comparisons": 4, "passed": false},
+    {"target": "N_low", "arm_id": "temperature_m010", "successes": 2, "comparisons": 4, "passed": false},
+    {"target": "N_low", "arm_id": "temperature_p010", "successes": 3, "comparisons": 4, "passed": true},
+    {"target": "N_low", "arm_id": "top_p_m010", "successes": 0, "comparisons": 4, "passed": false}
+  ],
+  "selected_candidates": [
+    {"target": "A_high", "arm_id": "temperature_p010", "successes": 3, "comparisons": 4},
+    {"target": "A_low", "arm_id": "top_p_m010", "successes": 3, "comparisons": 4},
+    {"target": "C_low", "arm_id": "temperature_p005", "successes": 3, "comparisons": 4},
+    {"target": "N_low", "arm_id": "temperature_p010", "successes": 3, "comparisons": 4}
+  ],
+  "screened_no_candidate_within_preregistered_grid": [
+    "O_low",
+    "O_high",
+    "C_high",
+    "E_low",
+    "E_high",
+    "N_high"
+  ],
+  "confirmation_budget_projection": {
+    "eligible_target_count": 4,
+    "pair_items": 160,
+    "maximum_output_generations": 280,
+    "saved_budget_action": "abandon_not_reallocate"
+  },
+  "consistency_audit_sample": [
+    {"target": "A_low", "arm_id": "top_p_m010", "blind_id": "7427eb5834498b90", "review_choice": "right", "candidate_side": "left", "success": false},
+    {"target": "C_high", "arm_id": "top_p_m005", "blind_id": "8d9491f7f3be9d3b", "review_choice": "indistinguishable", "candidate_side": "right", "success": false},
+    {"target": "C_high", "arm_id": "top_p_m010", "blind_id": "c80f71c79964cbda", "review_choice": "right", "candidate_side": "left", "success": false},
+    {"target": "C_low", "arm_id": "temperature_p010", "blind_id": "df93f95d9ade4fa1", "review_choice": "left", "candidate_side": "left", "success": true},
+    {"target": "C_low", "arm_id": "temperature_p010", "blind_id": "8e0eee67244ae1fb", "review_choice": "left", "candidate_side": "left", "success": true},
+    {"target": "C_low", "arm_id": "top_p_m005", "blind_id": "21c70941901dc62a", "review_choice": "left", "candidate_side": "left", "success": true},
+    {"target": "C_low", "arm_id": "top_p_p005", "blind_id": "db74febc35f07bb5", "review_choice": "right", "candidate_side": "left", "success": false},
+    {"target": "E_low", "arm_id": "top_p_p005", "blind_id": "8b6a41d9da41d1a8", "review_choice": "indistinguishable", "candidate_side": "right", "success": false},
+    {"target": "N_high", "arm_id": "temperature_m005", "blind_id": "7dd083e0dad37ab4", "review_choice": "right", "candidate_side": "left", "success": false},
+    {"target": "N_low", "arm_id": "temperature_m010", "blind_id": "4cd5eb993730bdd8", "review_choice": "left", "candidate_side": "left", "success": true}
+  ]
+}

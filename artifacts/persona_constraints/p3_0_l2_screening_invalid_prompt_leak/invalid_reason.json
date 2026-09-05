@@ -1,0 +1,17 @@
+{
+  "status": "invalid_excluded_from_calibration",
+  "run_version": "p3-0-l2-screening-v1",
+  "generated_rows": 320,
+  "copy_hit_rows": 130,
+  "reason": "评测 prompt 从 P2 dimension corpus 的 mid 单元抽取，同时 low/high 目标单元以 system 文本注入同族问答；多个评测问句与注入 user 问句相同，模型直接复制对应 assistant 示例，无法归因于采样 delta。",
+  "copy_hits_by_target": {
+    "C_low": 8,
+    "E_low": 17,
+    "E_high": 27,
+    "A_low": 16,
+    "A_high": 15,
+    "N_low": 16,
+    "N_high": 31
+  },
+  "decision": "整轮排除，不进入 screening 方向审读、候选选择或后续统计；v1.1 改用预注册 held-out prompts 并增加近重复 preflight。"
+}

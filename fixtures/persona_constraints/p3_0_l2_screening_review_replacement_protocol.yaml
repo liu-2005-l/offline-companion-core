@@ -1,0 +1,50 @@
+schema_version: 1
+version: p3-0-l2-screening-review-balanced-v2
+status: replacement_review_completed_external_audit_blocked_pending_protocol_choice
+
+invalidated_predecessor:
+  completed_review_sha256: 6F0BE039F129EB85DB898630C82B2166E17FCFF87D7F177CADA55B7B55A1712E
+  verdict_sha256: 9CD9B525FCEB39F733DCA191F16E389C062186C537C48563FA2CC2D806640B83
+  reason: arm 内 candidate side 未分层，存在 4:0 与 0:4
+
+replacement:
+  source_raw_sha256: 69EF30ADB3A4D84EA7628620F53D5E859A065586ED46E20864BEBB9A1D90BC2A
+  blind_salt: p3-0-l2-screening-review-balanced-v2
+  blind_id_namespace_changes: true
+  placement: balanced_two_left_two_right_per_arm
+  eligible_pair_count: 120
+  pair_content_changes: false
+  generation_rerun: false
+
+review_contract:
+  choices: [left, right, indistinguishable]
+  ties_and_indistinguishable: candidate_failure
+  minimum_successes_per_arm: 3
+  comparisons_per_arm: 4
+  key_access_before_completion: forbidden
+
+external_audit:
+  starts_only_after_replacement_review_is_sealed: true
+  reviewer: non_producer
+  requested_items: 30
+  candidate_side_balance: {left: 15, right: 15}
+  target_scope: selected_targets_after_replacement_review
+  confirmation_start_before_audit_verdict: forbidden
+  existing_unique_selected_candidate_pairs: 16
+  existing_selected_candidate_side_balance: {left: 8, right: 8}
+  blocked_reason: 四个入选 arm 各只有四个 screening pair，无法从现有冻结输出生成 30 个唯一且只覆盖入选 candidate 的审包
+  invalid_constructions:
+    - 混入未入选 arms 后对 key 计分；这测的是失败候选混合胜率，不是入选 candidate 判别力
+    - 重复已有 pair 凑足 30；重复项不增加独立信息量
+  metric_boundary:
+    compare_choice_to_candidate_side: 检验第二评审是否偏好 candidate，不是盲审者答对率
+    compare_choice_to_first_reviewer: 检验评审一致性，需另行预注册一致性指标
+  pending_choices:
+    - id: existing_sixteen
+      design: 第二评审盲判四个入选 arms 的全部 16 个唯一 pair，candidate 左右 8:8
+      pooled_one_sided_gate: 12/16
+      exact_p_at_gate: 0.0384063720703125
+      limitation: 只能证明四格合并偏好，不足以逐格冻结效应
+    - id: new_independent_outputs
+      design: 为四个入选 candidate 生成至少 30 个新 pair，并沿用可判至少 25、成功至少 18 的 gate
+      consequence: 已属于独立确认数据生成，必须显式解除确认集启动禁令或定义为确认集第一段

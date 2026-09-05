@@ -1,0 +1,1412 @@
+{
+  "version": "p3-0-l2-screening-v1.1",
+  "passed": true,
+  "source_hashes": [
+    {
+      "asset": "dimension_corpus",
+      "expected": "DE12ACD43C0DEB8BBD297E477FE109739E901A59896A0E016388B74C5259FAC5",
+      "actual": "DE12ACD43C0DEB8BBD297E477FE109739E901A59896A0E016388B74C5259FAC5",
+      "passed": true
+    },
+    {
+      "asset": "lexicon",
+      "expected": "EE64A8C80E48653B25770F5C65941377305C0B1FFEE8591991E76CCD686DA01F",
+      "actual": "EE64A8C80E48653B25770F5C65941377305C0B1FFEE8591991E76CCD686DA01F",
+      "passed": true
+    },
+    {
+      "asset": "l4_patterns",
+      "expected": "02B1ECA439244429E4217DA621F7CB3E7608E75FE8FBBAFCF96A11111A711647",
+      "actual": "02B1ECA439244429E4217DA621F7CB3E7608E75FE8FBBAFCF96A11111A711647",
+      "passed": true
+    },
+    {
+      "asset": "l4_baseline",
+      "expected": "F9DFA249C68F30DA2659F338537218B7E9FB0BB360275BB4CA449F5BAFF591AA",
+      "actual": "F9DFA249C68F30DA2659F338537218B7E9FB0BB360275BB4CA449F5BAFF591AA",
+      "passed": true
+    }
+  ],
+  "matrix": {
+    "actual": 320,
+    "expected": 320,
+    "row_ids_unique": true
+  },
+  "selected_prompts": {
+    "O": [
+      {
+        "id": "O-heldout-01",
+        "scenario": "advice",
+        "text": "我想把每天的通勤时间利用起来，你会怎么安排？",
+        "source_unit": "held_out_preregistered"
+      },
+      {
+        "id": "O-heldout-02",
+        "scenario": "disagreement",
+        "text": "这个计划太常规了，你还能给别的思路吗？",
+        "source_unit": "held_out_preregistered"
+      }
+    ],
+    "C": [
+      {
+        "id": "C-heldout-01",
+        "scenario": "frustration",
+        "text": "手头有三件事都要推进，我现在先做什么？",
+        "source_unit": "held_out_preregistered"
+      },
+      {
+        "id": "C-heldout-02",
+        "scenario": "disagreement",
+        "text": "这个执行方案是不是管得太细了？",
+        "source_unit": "held_out_preregistered"
+      }
+    ],
+    "E": [
+      {
+        "id": "E-heldout-01",
+        "scenario": "joy",
+        "text": "我终于把拖了很久的事情完成了。",
+        "source_unit": "held_out_preregistered"
+      },
+      {
+        "id": "E-heldout-02",
+        "scenario": "disagreement",
+        "text": "我觉得你刚才的回应有点冷淡。",
+        "source_unit": "held_out_preregistered"
+      }
+    ],
+    "A": [
+      {
+        "id": "A-heldout-01",
+        "scenario": "advice",
+        "text": "我在两个都不理想的选项之间犹豫。",
+        "source_unit": "held_out_preregistered"
+      },
+      {
+        "id": "A-heldout-02",
+        "scenario": "disagreement",
+        "text": "你这个判断忽略了我的限制。",
+        "source_unit": "held_out_preregistered"
+      }
+    ],
+    "N": [
+      {
+        "id": "N-heldout-01",
+        "scenario": "comfort",
+        "text": "明天要公布结果，我现在有些坐立不安。",
+        "source_unit": "held_out_preregistered"
+      },
+      {
+        "id": "N-heldout-02",
+        "scenario": "disagreement",
+        "text": "这个方案还有一个风险点没确认。",
+        "source_unit": "held_out_preregistered"
+      }
+    ]
+  },
+  "prompt_leakage_checks": [
+    {
+      "dimension": "O",
+      "prompt_id": "O-heldout-01",
+      "prompt": "我想把每天的通勤时间利用起来，你会怎么安排？",
+      "maximum_ratio": 0.133333,
+      "nearest_example": "我还是想加一个新点子。",
+      "contained": false,
+      "passed": true
+    },
+    {
+      "dimension": "O",
+      "prompt_id": "O-heldout-02",
+      "prompt": "这个计划太常规了，你还能给别的思路吗？",
+      "maximum_ratio": 0.307692,
+      "nearest_example": "你这个方案太保守了。",
+      "contained": false,
+      "passed": true
+    },
+    {
+      "dimension": "C",
+      "prompt_id": "C-heldout-01",
+      "prompt": "手头有三件事都要推进，我现在先做什么？",
+      "maximum_ratio": 0.095238,
+      "nearest_example": "做完再说？",
+      "contained": false,
+      "passed": true
+    },
+    {
+      "dimension": "C",
+      "prompt_id": "C-heldout-02",
+      "prompt": "这个执行方案是不是管得太细了？",
+      "maximum_ratio": 0.272727,
+      "nearest_example": "你这流程太随意了。",
+      "contained": false,
+      "passed": true
+    },
+    {
+      "dimension": "E",
+      "prompt_id": "E-heldout-01",
+      "prompt": "我终于把拖了很久的事情完成了。",
+      "maximum_ratio": 0.434783,
+      "nearest_example": "我终于把项目交掉了。",
+      "contained": false,
+      "passed": true
+    },
+    {
+      "dimension": "E",
+      "prompt_id": "E-heldout-02",
+      "prompt": "我觉得你刚才的回应有点冷淡。",
+      "maximum_ratio": 0.25,
+      "nearest_example": "你刚才那个建议不太靠谱。",
+      "contained": false,
+      "passed": true
+    },
+    {
+      "dimension": "A",
+      "prompt_id": "A-heldout-01",
+      "prompt": "我在两个都不理想的选项之间犹豫。",
+      "maximum_ratio": 0.086957,
+      "nearest_example": "我最怕上线后出错。",
+      "contained": false,
+      "passed": true
+    },
+    {
+      "dimension": "A",
+      "prompt_id": "A-heldout-02",
+      "prompt": "你这个判断忽略了我的限制。",
+      "maximum_ratio": 0.285714,
+      "nearest_example": "你这话说得太绝对了。",
+      "contained": false,
+      "passed": true
+    },
+    {
+      "dimension": "N",
+      "prompt_id": "N-heldout-01",
+      "prompt": "明天要公布结果，我现在有些坐立不安。",
+      "maximum_ratio": 0.518519,
+      "nearest_example": "明天要演示，我现在有点慌。",
+      "contained": false,
+      "passed": true
+    },
+    {
+      "dimension": "N",
+      "prompt_id": "N-heldout-02",
+      "prompt": "这个方案还有一个风险点没确认。",
+      "maximum_ratio": 0.285714,
+      "nearest_example": "有一项还没验证。",
+      "contained": false,
+      "passed": true
+    }
+  ],
+  "detector_probe_hits": [
+    "base_identity_leak",
+    "capability_denial"
+  ],
+  "copy_probe": {
+    "hit": true,
+    "kind": "short_exact_prefix",
+    "matched_chars": 6
+  },
+  "corpus_scans": [
+    {
+      "unit": "O_low",
+      "forbidden_hits": [],
+      "l4": {
+        "hit": false,
+        "zone": null,
+        "family": null
+      }
+    },
+    {
+      "unit": "O_high",
+      "forbidden_hits": [],
+      "l4": {
+        "hit": false,
+        "zone": null,
+        "family": null
+      }
+    },
+    {
+      "unit": "C_low",
+      "forbidden_hits": [],
+      "l4": {
+        "hit": false,
+        "zone": null,
+        "family": null
+      }
+    },
+    {
+      "unit": "C_high",
+      "forbidden_hits": [],
+      "l4": {
+        "hit": false,
+        "zone": null,
+        "family": null
+      }
+    },
+    {
+      "unit": "E_low",
+      "forbidden_hits": [],
+      "l4": {
+        "hit": false,
+        "zone": null,
+        "family": null
+      }
+    },
+    {
+      "unit": "E_high",
+      "forbidden_hits": [],
+      "l4": {
+        "hit": false,
+        "zone": null,
+        "family": null
+      }
+    },
+    {
+      "unit": "A_low",
+      "forbidden_hits": [],
+      "l4": {
+        "hit": false,
+        "zone": null,
+        "family": null
+      }
+    },
+    {
+      "unit": "A_high",
+      "forbidden_hits": [],
+      "l4": {
+        "hit": false,
+        "zone": null,
+        "family": null
+      }
+    },
+    {
+      "unit": "N_low",
+      "forbidden_hits": [],
+      "l4": {
+        "hit": false,
+        "zone": null,
+        "family": null
+      }
+    },
+    {
+      "unit": "N_high",
+      "forbidden_hits": [],
+      "l4": {
+        "hit": false,
+        "zone": null,
+        "family": null
+      }
+    }
+  ],
+  "l4": {
+    "true_positives": 50,
+    "false_positives": 0,
+    "rows": [
+      {
+        "id": "L4-001",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "generic_ai_self_reference",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "generic_ai_self_reference"
+        }
+      },
+      {
+        "id": "L4-001",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "generic_ai_self_reference",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-002",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "generic_ai_self_reference",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "generic_ai_self_reference"
+        }
+      },
+      {
+        "id": "L4-002",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "generic_ai_self_reference",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-003",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "generic_ai_self_reference",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "generic_ai_self_reference"
+        }
+      },
+      {
+        "id": "L4-003",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "generic_ai_self_reference",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-004",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "generic_ai_self_reference",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "generic_ai_self_reference"
+        }
+      },
+      {
+        "id": "L4-004",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "generic_ai_self_reference",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-005",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "generic_ai_self_reference",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "generic_ai_self_reference"
+        }
+      },
+      {
+        "id": "L4-005",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "generic_ai_self_reference",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-006",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "persona_role_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "persona_role_denial"
+        }
+      },
+      {
+        "id": "L4-006",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "persona_role_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-007",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "persona_role_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "persona_role_denial"
+        }
+      },
+      {
+        "id": "L4-007",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "persona_role_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-008",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "persona_role_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "persona_role_denial"
+        }
+      },
+      {
+        "id": "L4-008",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "persona_role_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-009",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "persona_role_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "persona_role_denial"
+        }
+      },
+      {
+        "id": "L4-009",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "persona_role_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-010",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "persona_role_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "persona_role_denial"
+        }
+      },
+      {
+        "id": "L4-010",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "persona_role_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-011",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "companion_role_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "companion_role_denial"
+        }
+      },
+      {
+        "id": "L4-011",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "companion_role_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-012",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "companion_role_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "companion_role_denial"
+        }
+      },
+      {
+        "id": "L4-012",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "companion_role_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-013",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "companion_role_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "companion_role_denial"
+        }
+      },
+      {
+        "id": "L4-013",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "companion_role_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-014",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "companion_role_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "companion_role_denial"
+        }
+      },
+      {
+        "id": "L4-014",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "companion_role_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-015",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "companion_role_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "companion_role_denial"
+        }
+      },
+      {
+        "id": "L4-015",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "companion_role_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-016",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "identity_reset",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "identity_reset"
+        }
+      },
+      {
+        "id": "L4-016",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "identity_reset",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-017",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "identity_reset",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "identity_reset"
+        }
+      },
+      {
+        "id": "L4-017",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "identity_reset",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-018",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "identity_reset",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "identity_reset"
+        }
+      },
+      {
+        "id": "L4-018",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "identity_reset",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-019",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "identity_reset",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "identity_reset"
+        }
+      },
+      {
+        "id": "L4-019",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "identity_reset",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-020",
+        "polarity": "positive",
+        "expected_zone": "identity_cliff",
+        "expected_family": "identity_reset",
+        "verdict": {
+          "hit": true,
+          "zone": "identity_cliff",
+          "family": "identity_reset"
+        }
+      },
+      {
+        "id": "L4-020",
+        "polarity": "negative",
+        "expected_zone": "identity_cliff",
+        "expected_family": "identity_reset",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-021",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_storage_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "local_storage_denial"
+        }
+      },
+      {
+        "id": "L4-021",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_storage_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-022",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_storage_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "local_storage_denial"
+        }
+      },
+      {
+        "id": "L4-022",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_storage_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-023",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_storage_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "local_storage_denial"
+        }
+      },
+      {
+        "id": "L4-023",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_storage_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-024",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_storage_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "local_storage_denial"
+        }
+      },
+      {
+        "id": "L4-024",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_storage_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-025",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_storage_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "local_storage_denial"
+        }
+      },
+      {
+        "id": "L4-025",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_storage_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-026",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "memory_absolute_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "memory_absolute_denial"
+        }
+      },
+      {
+        "id": "L4-026",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "memory_absolute_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-027",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "memory_absolute_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "memory_absolute_denial"
+        }
+      },
+      {
+        "id": "L4-027",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "memory_absolute_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-028",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "memory_absolute_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "memory_absolute_denial"
+        }
+      },
+      {
+        "id": "L4-028",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "memory_absolute_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-029",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "memory_absolute_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "memory_absolute_denial"
+        }
+      },
+      {
+        "id": "L4-029",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "memory_absolute_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-030",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "memory_absolute_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "memory_absolute_denial"
+        }
+      },
+      {
+        "id": "L4-030",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "memory_absolute_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-031",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_runtime_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "local_runtime_denial"
+        }
+      },
+      {
+        "id": "L4-031",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_runtime_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-032",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_runtime_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "local_runtime_denial"
+        }
+      },
+      {
+        "id": "L4-032",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_runtime_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-033",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_runtime_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "local_runtime_denial"
+        }
+      },
+      {
+        "id": "L4-033",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_runtime_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-034",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_runtime_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "local_runtime_denial"
+        }
+      },
+      {
+        "id": "L4-034",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_runtime_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-035",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_runtime_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "local_runtime_denial"
+        }
+      },
+      {
+        "id": "L4-035",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "local_runtime_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-036",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "existing_capability_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "existing_capability_denial"
+        }
+      },
+      {
+        "id": "L4-036",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "existing_capability_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-037",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "existing_capability_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "existing_capability_denial"
+        }
+      },
+      {
+        "id": "L4-037",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "existing_capability_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-038",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "existing_capability_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "existing_capability_denial"
+        }
+      },
+      {
+        "id": "L4-038",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "existing_capability_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-039",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "existing_capability_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "existing_capability_denial"
+        }
+      },
+      {
+        "id": "L4-039",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "existing_capability_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-040",
+        "polarity": "positive",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "existing_capability_denial",
+        "verdict": {
+          "hit": true,
+          "zone": "capability_and_fact_denial",
+          "family": "existing_capability_denial"
+        }
+      },
+      {
+        "id": "L4-040",
+        "polarity": "negative",
+        "expected_zone": "capability_and_fact_denial",
+        "expected_family": "existing_capability_denial",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-041",
+        "polarity": "positive",
+        "expected_zone": "user_attack",
+        "expected_family": "direct_user_insult",
+        "verdict": {
+          "hit": true,
+          "zone": "user_attack",
+          "family": "direct_user_insult"
+        }
+      },
+      {
+        "id": "L4-041",
+        "polarity": "negative",
+        "expected_zone": "user_attack",
+        "expected_family": "direct_user_insult",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-042",
+        "polarity": "positive",
+        "expected_zone": "user_attack",
+        "expected_family": "direct_user_insult",
+        "verdict": {
+          "hit": true,
+          "zone": "user_attack",
+          "family": "direct_user_insult"
+        }
+      },
+      {
+        "id": "L4-042",
+        "polarity": "negative",
+        "expected_zone": "user_attack",
+        "expected_family": "direct_user_insult",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-043",
+        "polarity": "positive",
+        "expected_zone": "user_attack",
+        "expected_family": "direct_user_insult",
+        "verdict": {
+          "hit": true,
+          "zone": "user_attack",
+          "family": "direct_user_insult"
+        }
+      },
+      {
+        "id": "L4-043",
+        "polarity": "negative",
+        "expected_zone": "user_attack",
+        "expected_family": "direct_user_insult",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-044",
+        "polarity": "positive",
+        "expected_zone": "user_attack",
+        "expected_family": "direct_user_insult",
+        "verdict": {
+          "hit": true,
+          "zone": "user_attack",
+          "family": "direct_user_insult"
+        }
+      },
+      {
+        "id": "L4-044",
+        "polarity": "negative",
+        "expected_zone": "user_attack",
+        "expected_family": "direct_user_insult",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-045",
+        "polarity": "positive",
+        "expected_zone": "user_attack",
+        "expected_family": "direct_user_insult",
+        "verdict": {
+          "hit": true,
+          "zone": "user_attack",
+          "family": "direct_user_insult"
+        }
+      },
+      {
+        "id": "L4-045",
+        "polarity": "negative",
+        "expected_zone": "user_attack",
+        "expected_family": "direct_user_insult",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-046",
+        "polarity": "positive",
+        "expected_zone": "user_attack",
+        "expected_family": "user_blame",
+        "verdict": {
+          "hit": true,
+          "zone": "user_attack",
+          "family": "user_blame"
+        }
+      },
+      {
+        "id": "L4-046",
+        "polarity": "negative",
+        "expected_zone": "user_attack",
+        "expected_family": "user_blame",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-047",
+        "polarity": "positive",
+        "expected_zone": "user_attack",
+        "expected_family": "user_blame",
+        "verdict": {
+          "hit": true,
+          "zone": "user_attack",
+          "family": "user_blame"
+        }
+      },
+      {
+        "id": "L4-047",
+        "polarity": "negative",
+        "expected_zone": "user_attack",
+        "expected_family": "user_blame",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-048",
+        "polarity": "positive",
+        "expected_zone": "user_attack",
+        "expected_family": "user_blame",
+        "verdict": {
+          "hit": true,
+          "zone": "user_attack",
+          "family": "user_blame"
+        }
+      },
+      {
+        "id": "L4-048",
+        "polarity": "negative",
+        "expected_zone": "user_attack",
+        "expected_family": "user_blame",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-049",
+        "polarity": "positive",
+        "expected_zone": "user_attack",
+        "expected_family": "user_blame",
+        "verdict": {
+          "hit": true,
+          "zone": "user_attack",
+          "family": "user_blame"
+        }
+      },
+      {
+        "id": "L4-049",
+        "polarity": "negative",
+        "expected_zone": "user_attack",
+        "expected_family": "user_blame",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      },
+      {
+        "id": "L4-050",
+        "polarity": "positive",
+        "expected_zone": "user_attack",
+        "expected_family": "user_blame",
+        "verdict": {
+          "hit": true,
+          "zone": "user_attack",
+          "family": "user_blame"
+        }
+      },
+      {
+        "id": "L4-050",
+        "polarity": "negative",
+        "expected_zone": "user_attack",
+        "expected_family": "user_blame",
+        "verdict": {
+          "hit": false,
+          "zone": null,
+          "family": null
+        }
+      }
+    ]
+  },
+  "model": {
+    "path": "E:\\我的开发\\offline-companion-core\\models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+    "expected_sha256": "6A1A2EB6D15622BF3C96857206351BA97E1AF16C30D7A74EE38970E434E9407E",
+    "actual_sha256": "6A1A2EB6D15622BF3C96857206351BA97E1AF16C30D7A74EE38970E434E9407E",
+    "passed": true
+  }
+}

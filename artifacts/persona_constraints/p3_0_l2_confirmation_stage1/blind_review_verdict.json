@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "status": "failed_preregistered_gate_enter_no_effect",
+  "hashes": {
+    "blind_packet_sha256": "2FBCEB85D8780B5EA735F5295D83E55BD1F9EC4E7D5C34C08C496E7121F79DBE",
+    "completed_review_sha256": "AC891DF3699016EAD0C4CBE4DBEC05FDA4AF1A880F29C73B0CC70BA4F0BE39A1",
+    "sealed_key_sha256": "B45F310A97B3466BD9AB16C555622FB178B405B3924A1AACEB697027BF7862C1"
+  },
+  "review_integrity": {
+    "review_count": 32,
+    "ids_match_packet_order": true,
+    "choices_valid": true,
+    "duplicates": 0,
+    "null_choices": 0,
+    "key_access_before_completion": false
+  },
+  "review_counts": {
+    "left": 6,
+    "right": 12,
+    "indistinguishable": 14
+  },
+  "decision": {
+    "comparisons": 32,
+    "minimum_successes": 22,
+    "raw_candidate_wins": 10,
+    "hard_gate_adjusted_successes": 9,
+    "passed": false,
+    "result": "stop_and_enter_no_effect_evaluation",
+    "remaining_confirmation_pairs_cancelled": 128
+  },
+  "candidate_hard_gate": {
+    "passed": 28,
+    "failed": 4,
+    "raw_wins_rejected": 1,
+    "failed_rows": [
+      "5222280e2f322004",
+      "d8f6b13e56b23dd1",
+      "5b9ff9b9e84c6b05",
+      "4f1d0c694cdfa775"
+    ]
+  },
+  "placement_diagnostics": {
+    "candidate_left": {
+      "comparisons": 16,
+      "reviewer_left": 4,
+      "reviewer_right": 6,
+      "indistinguishable": 6,
+      "raw_candidate_wins": 4,
+      "hard_gate_adjusted_successes": 3
+    },
+    "candidate_right": {
+      "comparisons": 16,
+      "reviewer_left": 2,
+      "reviewer_right": 6,
+      "indistinguishable": 8,
+      "raw_candidate_wins": 6,
+      "hard_gate_adjusted_successes": 6
+    },
+    "candidate_matches_by_review_choice": {
+      "left": {"matches": 4, "choices": 6},
+      "right": {"matches": 6, "choices": 12}
+    }
+  },
+  "target_results": {
+    "A_high": {
+      "arm_id": "temperature_p010",
+      "comparisons": 8,
+      "candidate_placement": {"left": 4, "right": 4},
+      "review_counts": {"left": 0, "right": 2, "indistinguishable": 6},
+      "raw_candidate_wins": 2,
+      "candidate_hard_gate_passed": 8,
+      "hard_gate_adjusted_successes": 2
+    },
+    "A_low": {
+      "arm_id": "top_p_m010",
+      "comparisons": 8,
+      "candidate_placement": {"left": 4, "right": 4},
+      "review_counts": {"left": 2, "right": 2, "indistinguishable": 4},
+      "raw_candidate_wins": 0,
+      "candidate_hard_gate_passed": 6,
+      "hard_gate_adjusted_successes": 0
+    },
+    "C_low": {
+      "arm_id": "temperature_p005",
+      "comparisons": 8,
+      "candidate_placement": {"left": 4, "right": 4},
+      "review_counts": {"left": 2, "right": 5, "indistinguishable": 1},
+      "raw_candidate_wins": 5,
+      "candidate_hard_gate_passed": 6,
+      "hard_gate_adjusted_successes": 4
+    },
+    "N_low": {
+      "arm_id": "temperature_p010",
+      "comparisons": 8,
+      "candidate_placement": {"left": 4, "right": 4},
+      "review_counts": {"left": 2, "right": 3, "indistinguishable": 3},
+      "raw_candidate_wins": 3,
+      "candidate_hard_gate_passed": 8,
+      "hard_gate_adjusted_successes": 3
+    }
+  }
+}

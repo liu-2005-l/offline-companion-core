@@ -1,0 +1,1965 @@
+{
+  "version": "p3-0-l2-screening-v1",
+  "rows": [
+    {
+      "blind_id": "1eef79ededb43073",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_m010-O-advice-s8191",
+      "baseline_row_id": "O-low-baseline-O-advice-s8191"
+    },
+    {
+      "blind_id": "73254c42e6a3ae50",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_m010-O-advice-s65537",
+      "baseline_row_id": "O-low-baseline-O-advice-s65537"
+    },
+    {
+      "blind_id": "f69df34132836319",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_m010-O-disagreement-s8191",
+      "baseline_row_id": "O-low-baseline-O-disagreement-s8191"
+    },
+    {
+      "blind_id": "4852bdf20684cab0",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_m010-O-disagreement-s65537",
+      "baseline_row_id": "O-low-baseline-O-disagreement-s65537"
+    },
+    {
+      "blind_id": "9910ad15412f32fb",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_m005-O-advice-s8191",
+      "baseline_row_id": "O-low-baseline-O-advice-s8191"
+    },
+    {
+      "blind_id": "eb69a509fae22f9e",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_m005-O-advice-s65537",
+      "baseline_row_id": "O-low-baseline-O-advice-s65537"
+    },
+    {
+      "blind_id": "ba36b43bc9b3516f",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_m005-O-disagreement-s8191",
+      "baseline_row_id": "O-low-baseline-O-disagreement-s8191"
+    },
+    {
+      "blind_id": "d8ac6a3c2ae9ba1a",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_m005-O-disagreement-s65537",
+      "baseline_row_id": "O-low-baseline-O-disagreement-s65537"
+    },
+    {
+      "blind_id": "87144abae2552270",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_p005-O-advice-s8191",
+      "baseline_row_id": "O-low-baseline-O-advice-s8191"
+    },
+    {
+      "blind_id": "4a6577c55f5604e3",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_p005-O-advice-s65537",
+      "baseline_row_id": "O-low-baseline-O-advice-s65537"
+    },
+    {
+      "blind_id": "2fe65c88b79c34bf",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_p005-O-disagreement-s8191",
+      "baseline_row_id": "O-low-baseline-O-disagreement-s8191"
+    },
+    {
+      "blind_id": "5c37f8b93ccb89ba",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-temperature_p005-O-disagreement-s65537",
+      "baseline_row_id": "O-low-baseline-O-disagreement-s65537"
+    },
+    {
+      "blind_id": "194d4721002f65e2",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_p010-O-advice-s8191",
+      "baseline_row_id": "O-low-baseline-O-advice-s8191"
+    },
+    {
+      "blind_id": "784b54499cb40905",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_p010-O-advice-s65537",
+      "baseline_row_id": "O-low-baseline-O-advice-s65537"
+    },
+    {
+      "blind_id": "9120d9ba0dc6f0e4",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_p010-O-disagreement-s8191",
+      "baseline_row_id": "O-low-baseline-O-disagreement-s8191"
+    },
+    {
+      "blind_id": "836bed10cdb2c303",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-temperature_p010-O-disagreement-s65537",
+      "baseline_row_id": "O-low-baseline-O-disagreement-s65537"
+    },
+    {
+      "blind_id": "ab282a5494c768ec",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_m010-O-advice-s8191",
+      "baseline_row_id": "O-low-baseline-O-advice-s8191"
+    },
+    {
+      "blind_id": "c86df2172be91081",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_m010-O-advice-s65537",
+      "baseline_row_id": "O-low-baseline-O-advice-s65537"
+    },
+    {
+      "blind_id": "62a4be99c1bc12a5",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_m010-O-disagreement-s8191",
+      "baseline_row_id": "O-low-baseline-O-disagreement-s8191"
+    },
+    {
+      "blind_id": "c87fdbfa6c84c8ea",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-top_p_m010-O-disagreement-s65537",
+      "baseline_row_id": "O-low-baseline-O-disagreement-s65537"
+    },
+    {
+      "blind_id": "61baf23b4fde2dba",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_m005-O-advice-s8191",
+      "baseline_row_id": "O-low-baseline-O-advice-s8191"
+    },
+    {
+      "blind_id": "418e13c4a0bb8a01",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_m005-O-advice-s65537",
+      "baseline_row_id": "O-low-baseline-O-advice-s65537"
+    },
+    {
+      "blind_id": "28bbc7f2c368c450",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_m005-O-disagreement-s8191",
+      "baseline_row_id": "O-low-baseline-O-disagreement-s8191"
+    },
+    {
+      "blind_id": "667150e280f758f3",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-low-top_p_m005-O-disagreement-s65537",
+      "baseline_row_id": "O-low-baseline-O-disagreement-s65537"
+    },
+    {
+      "blind_id": "ce18989446f7b816",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_p005-O-advice-s8191",
+      "baseline_row_id": "O-low-baseline-O-advice-s8191"
+    },
+    {
+      "blind_id": "52425cc5532ca4fd",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_p005-O-advice-s65537",
+      "baseline_row_id": "O-low-baseline-O-advice-s65537"
+    },
+    {
+      "blind_id": "c11e5423e5619f26",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_p005-O-disagreement-s8191",
+      "baseline_row_id": "O-low-baseline-O-disagreement-s8191"
+    },
+    {
+      "blind_id": "e32e66be11af58db",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-low-top_p_p005-O-disagreement-s65537",
+      "baseline_row_id": "O-low-baseline-O-disagreement-s65537"
+    },
+    {
+      "blind_id": "d6d0a0f9cd34e13c",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_m010-O-advice-s8191",
+      "baseline_row_id": "O-high-baseline-O-advice-s8191"
+    },
+    {
+      "blind_id": "116ebea33f0be234",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_m010-O-advice-s65537",
+      "baseline_row_id": "O-high-baseline-O-advice-s65537"
+    },
+    {
+      "blind_id": "29d2be1a7b61638a",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_m010-O-disagreement-s8191",
+      "baseline_row_id": "O-high-baseline-O-disagreement-s8191"
+    },
+    {
+      "blind_id": "f7aa69470604422d",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_m010-O-disagreement-s65537",
+      "baseline_row_id": "O-high-baseline-O-disagreement-s65537"
+    },
+    {
+      "blind_id": "1dd9b9926eb31390",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_m005-O-advice-s8191",
+      "baseline_row_id": "O-high-baseline-O-advice-s8191"
+    },
+    {
+      "blind_id": "4b476fea7b2c76dc",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_m005-O-advice-s65537",
+      "baseline_row_id": "O-high-baseline-O-advice-s65537"
+    },
+    {
+      "blind_id": "1ac8c88b8606a55b",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_m005-O-disagreement-s8191",
+      "baseline_row_id": "O-high-baseline-O-disagreement-s8191"
+    },
+    {
+      "blind_id": "9806d8dd060fc22a",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_m005-O-disagreement-s65537",
+      "baseline_row_id": "O-high-baseline-O-disagreement-s65537"
+    },
+    {
+      "blind_id": "26fbb6f4e967af56",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_p005-O-advice-s8191",
+      "baseline_row_id": "O-high-baseline-O-advice-s8191"
+    },
+    {
+      "blind_id": "f9df99ea788ce8b1",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_p005-O-advice-s65537",
+      "baseline_row_id": "O-high-baseline-O-advice-s65537"
+    },
+    {
+      "blind_id": "3b5cf212bf38f594",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_p005-O-disagreement-s8191",
+      "baseline_row_id": "O-high-baseline-O-disagreement-s8191"
+    },
+    {
+      "blind_id": "bd909b2ca075931c",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_p005-O-disagreement-s65537",
+      "baseline_row_id": "O-high-baseline-O-disagreement-s65537"
+    },
+    {
+      "blind_id": "66f456d7e43ef09a",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_p010-O-advice-s8191",
+      "baseline_row_id": "O-high-baseline-O-advice-s8191"
+    },
+    {
+      "blind_id": "cc73f61a566c41fc",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-temperature_p010-O-advice-s65537",
+      "baseline_row_id": "O-high-baseline-O-advice-s65537"
+    },
+    {
+      "blind_id": "85fda2d61a166dbf",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_p010-O-disagreement-s8191",
+      "baseline_row_id": "O-high-baseline-O-disagreement-s8191"
+    },
+    {
+      "blind_id": "a9d1a8c2f09719cb",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-temperature_p010-O-disagreement-s65537",
+      "baseline_row_id": "O-high-baseline-O-disagreement-s65537"
+    },
+    {
+      "blind_id": "28c8f5c1ec775516",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-top_p_m010-O-advice-s8191",
+      "baseline_row_id": "O-high-baseline-O-advice-s8191"
+    },
+    {
+      "blind_id": "5ed256a430902ac4",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-top_p_m010-O-advice-s65537",
+      "baseline_row_id": "O-high-baseline-O-advice-s65537"
+    },
+    {
+      "blind_id": "8bcb1c5446c8770a",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-top_p_m010-O-disagreement-s8191",
+      "baseline_row_id": "O-high-baseline-O-disagreement-s8191"
+    },
+    {
+      "blind_id": "bc1a6b3433822b4e",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-top_p_m010-O-disagreement-s65537",
+      "baseline_row_id": "O-high-baseline-O-disagreement-s65537"
+    },
+    {
+      "blind_id": "70c68cd0c64f826a",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-top_p_m005-O-advice-s8191",
+      "baseline_row_id": "O-high-baseline-O-advice-s8191"
+    },
+    {
+      "blind_id": "d61ffdf8ad27ea92",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-top_p_m005-O-advice-s65537",
+      "baseline_row_id": "O-high-baseline-O-advice-s65537"
+    },
+    {
+      "blind_id": "70947404802121ce",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-top_p_m005-O-disagreement-s8191",
+      "baseline_row_id": "O-high-baseline-O-disagreement-s8191"
+    },
+    {
+      "blind_id": "1ddadf93e0a58806",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-top_p_m005-O-disagreement-s65537",
+      "baseline_row_id": "O-high-baseline-O-disagreement-s65537"
+    },
+    {
+      "blind_id": "ac0b2867df5557f5",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-top_p_p005-O-advice-s8191",
+      "baseline_row_id": "O-high-baseline-O-advice-s8191"
+    },
+    {
+      "blind_id": "ae460eef0dfc54ef",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "O-high-top_p_p005-O-advice-s65537",
+      "baseline_row_id": "O-high-baseline-O-advice-s65537"
+    },
+    {
+      "blind_id": "9fb5f53f1c57e5d6",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-top_p_p005-O-disagreement-s8191",
+      "baseline_row_id": "O-high-baseline-O-disagreement-s8191"
+    },
+    {
+      "blind_id": "fafa70e5534c94f7",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "O-high-top_p_p005-O-disagreement-s65537",
+      "baseline_row_id": "O-high-baseline-O-disagreement-s65537"
+    },
+    {
+      "blind_id": "0c372d84ba598bf8",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_m010-C-frustration-s8191",
+      "baseline_row_id": "C-low-baseline-C-frustration-s8191"
+    },
+    {
+      "blind_id": "db3b8675adc5fc5f",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_m010-C-frustration-s65537",
+      "baseline_row_id": "C-low-baseline-C-frustration-s65537"
+    },
+    {
+      "blind_id": "bac5d469022ebfb9",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_m010-C-disagreement-s8191",
+      "baseline_row_id": "C-low-baseline-C-disagreement-s8191"
+    },
+    {
+      "blind_id": "de0971cdbfae68ae",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_m010-C-disagreement-s65537",
+      "baseline_row_id": "C-low-baseline-C-disagreement-s65537"
+    },
+    {
+      "blind_id": "b733854f117fc664",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_m005-C-frustration-s8191",
+      "baseline_row_id": "C-low-baseline-C-frustration-s8191"
+    },
+    {
+      "blind_id": "070611026aa2334b",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_m005-C-frustration-s65537",
+      "baseline_row_id": "C-low-baseline-C-frustration-s65537"
+    },
+    {
+      "blind_id": "8a0348d63de524b2",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_m005-C-disagreement-s8191",
+      "baseline_row_id": "C-low-baseline-C-disagreement-s8191"
+    },
+    {
+      "blind_id": "6c03ca74bf96bea2",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_m005-C-disagreement-s65537",
+      "baseline_row_id": "C-low-baseline-C-disagreement-s65537"
+    },
+    {
+      "blind_id": "ed8394887fc13528",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_p005-C-frustration-s8191",
+      "baseline_row_id": "C-low-baseline-C-frustration-s8191"
+    },
+    {
+      "blind_id": "66a562aad3bf950b",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_p005-C-frustration-s65537",
+      "baseline_row_id": "C-low-baseline-C-frustration-s65537"
+    },
+    {
+      "blind_id": "8e0fc08136fdf862",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_p005-C-disagreement-s8191",
+      "baseline_row_id": "C-low-baseline-C-disagreement-s8191"
+    },
+    {
+      "blind_id": "ac4a061ae5572ca2",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-temperature_p005-C-disagreement-s65537",
+      "baseline_row_id": "C-low-baseline-C-disagreement-s65537"
+    },
+    {
+      "blind_id": "dcc97ed02ab3b17d",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_p010-C-frustration-s8191",
+      "baseline_row_id": "C-low-baseline-C-frustration-s8191"
+    },
+    {
+      "blind_id": "615f20b126290e38",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_p010-C-frustration-s65537",
+      "baseline_row_id": "C-low-baseline-C-frustration-s65537"
+    },
+    {
+      "blind_id": "e2ac7164bf24357e",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_p010-C-disagreement-s8191",
+      "baseline_row_id": "C-low-baseline-C-disagreement-s8191"
+    },
+    {
+      "blind_id": "615edb7a7cb472da",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-temperature_p010-C-disagreement-s65537",
+      "baseline_row_id": "C-low-baseline-C-disagreement-s65537"
+    },
+    {
+      "blind_id": "7a4bac3f899ad3bd",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-top_p_m010-C-frustration-s8191",
+      "baseline_row_id": "C-low-baseline-C-frustration-s8191"
+    },
+    {
+      "blind_id": "3a990a44de16ba2c",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_m010-C-frustration-s65537",
+      "baseline_row_id": "C-low-baseline-C-frustration-s65537"
+    },
+    {
+      "blind_id": "7cfb7b59569be3fe",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_m010-C-disagreement-s8191",
+      "baseline_row_id": "C-low-baseline-C-disagreement-s8191"
+    },
+    {
+      "blind_id": "9356a615ba6dcf06",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_m010-C-disagreement-s65537",
+      "baseline_row_id": "C-low-baseline-C-disagreement-s65537"
+    },
+    {
+      "blind_id": "6fce9706510e9b38",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-top_p_m005-C-frustration-s8191",
+      "baseline_row_id": "C-low-baseline-C-frustration-s8191"
+    },
+    {
+      "blind_id": "76c8ddd988781fed",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-low-top_p_m005-C-frustration-s65537",
+      "baseline_row_id": "C-low-baseline-C-frustration-s65537"
+    },
+    {
+      "blind_id": "87bff8bcfcf57b50",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_m005-C-disagreement-s8191",
+      "baseline_row_id": "C-low-baseline-C-disagreement-s8191"
+    },
+    {
+      "blind_id": "8a2e42ea939cabc0",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_m005-C-disagreement-s65537",
+      "baseline_row_id": "C-low-baseline-C-disagreement-s65537"
+    },
+    {
+      "blind_id": "9821e4dd3c145e88",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_p005-C-frustration-s8191",
+      "baseline_row_id": "C-low-baseline-C-frustration-s8191"
+    },
+    {
+      "blind_id": "5780a7088b6aa725",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_p005-C-frustration-s65537",
+      "baseline_row_id": "C-low-baseline-C-frustration-s65537"
+    },
+    {
+      "blind_id": "86cc7824e5461bc4",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_p005-C-disagreement-s8191",
+      "baseline_row_id": "C-low-baseline-C-disagreement-s8191"
+    },
+    {
+      "blind_id": "52908550f2506fce",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-low-top_p_p005-C-disagreement-s65537",
+      "baseline_row_id": "C-low-baseline-C-disagreement-s65537"
+    },
+    {
+      "blind_id": "696ad4feb0a4fc26",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_m010-C-frustration-s8191",
+      "baseline_row_id": "C-high-baseline-C-frustration-s8191"
+    },
+    {
+      "blind_id": "2d4aeadbbfeddbc4",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-temperature_m010-C-frustration-s65537",
+      "baseline_row_id": "C-high-baseline-C-frustration-s65537"
+    },
+    {
+      "blind_id": "480b22b6b75d686e",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_m010-C-disagreement-s8191",
+      "baseline_row_id": "C-high-baseline-C-disagreement-s8191"
+    },
+    {
+      "blind_id": "53df78a69862b110",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_m010-C-disagreement-s65537",
+      "baseline_row_id": "C-high-baseline-C-disagreement-s65537"
+    },
+    {
+      "blind_id": "c1857a3cdb759f48",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_m005-C-frustration-s8191",
+      "baseline_row_id": "C-high-baseline-C-frustration-s8191"
+    },
+    {
+      "blind_id": "f91d99706e5ec50c",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_m005-C-frustration-s65537",
+      "baseline_row_id": "C-high-baseline-C-frustration-s65537"
+    },
+    {
+      "blind_id": "f15841d694ff1af1",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-temperature_m005-C-disagreement-s8191",
+      "baseline_row_id": "C-high-baseline-C-disagreement-s8191"
+    },
+    {
+      "blind_id": "8c0b23def0b40fa6",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-temperature_m005-C-disagreement-s65537",
+      "baseline_row_id": "C-high-baseline-C-disagreement-s65537"
+    },
+    {
+      "blind_id": "34d9c8653976f017",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_p005-C-frustration-s8191",
+      "baseline_row_id": "C-high-baseline-C-frustration-s8191"
+    },
+    {
+      "blind_id": "c21455b3cb078db1",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_p005-C-frustration-s65537",
+      "baseline_row_id": "C-high-baseline-C-frustration-s65537"
+    },
+    {
+      "blind_id": "24f5c742019efd31",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_p005-C-disagreement-s8191",
+      "baseline_row_id": "C-high-baseline-C-disagreement-s8191"
+    },
+    {
+      "blind_id": "aea1883172e2628d",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_p005-C-disagreement-s65537",
+      "baseline_row_id": "C-high-baseline-C-disagreement-s65537"
+    },
+    {
+      "blind_id": "4201a37b6c7bd124",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_p010-C-frustration-s8191",
+      "baseline_row_id": "C-high-baseline-C-frustration-s8191"
+    },
+    {
+      "blind_id": "7735944f1094b4be",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-temperature_p010-C-frustration-s65537",
+      "baseline_row_id": "C-high-baseline-C-frustration-s65537"
+    },
+    {
+      "blind_id": "3847d5e5bcc8ee5e",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-temperature_p010-C-disagreement-s8191",
+      "baseline_row_id": "C-high-baseline-C-disagreement-s8191"
+    },
+    {
+      "blind_id": "c0347e56f523718d",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-temperature_p010-C-disagreement-s65537",
+      "baseline_row_id": "C-high-baseline-C-disagreement-s65537"
+    },
+    {
+      "blind_id": "853c3cd19abb4712",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-top_p_m010-C-frustration-s8191",
+      "baseline_row_id": "C-high-baseline-C-frustration-s8191"
+    },
+    {
+      "blind_id": "47d5e039bf93b2ed",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-top_p_m010-C-frustration-s65537",
+      "baseline_row_id": "C-high-baseline-C-frustration-s65537"
+    },
+    {
+      "blind_id": "24c429b3848ca90b",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-top_p_m010-C-disagreement-s8191",
+      "baseline_row_id": "C-high-baseline-C-disagreement-s8191"
+    },
+    {
+      "blind_id": "8457d25cf0b98a50",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-top_p_m010-C-disagreement-s65537",
+      "baseline_row_id": "C-high-baseline-C-disagreement-s65537"
+    },
+    {
+      "blind_id": "2739ed46898eb49d",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-top_p_m005-C-frustration-s8191",
+      "baseline_row_id": "C-high-baseline-C-frustration-s8191"
+    },
+    {
+      "blind_id": "e7607ee395481e55",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-top_p_m005-C-frustration-s65537",
+      "baseline_row_id": "C-high-baseline-C-frustration-s65537"
+    },
+    {
+      "blind_id": "659e0a1d93dca5d5",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-top_p_m005-C-disagreement-s8191",
+      "baseline_row_id": "C-high-baseline-C-disagreement-s8191"
+    },
+    {
+      "blind_id": "c3f54ebd4a5b5bfc",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-top_p_m005-C-disagreement-s65537",
+      "baseline_row_id": "C-high-baseline-C-disagreement-s65537"
+    },
+    {
+      "blind_id": "8129ee554f4b78f9",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-top_p_p005-C-frustration-s8191",
+      "baseline_row_id": "C-high-baseline-C-frustration-s8191"
+    },
+    {
+      "blind_id": "7f8c136825618057",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "C-high-top_p_p005-C-frustration-s65537",
+      "baseline_row_id": "C-high-baseline-C-frustration-s65537"
+    },
+    {
+      "blind_id": "962e81ac8ce07860",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-top_p_p005-C-disagreement-s8191",
+      "baseline_row_id": "C-high-baseline-C-disagreement-s8191"
+    },
+    {
+      "blind_id": "438828cad5ed80fd",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "C-high-top_p_p005-C-disagreement-s65537",
+      "baseline_row_id": "C-high-baseline-C-disagreement-s65537"
+    },
+    {
+      "blind_id": "9df98cb9e9fdabb3",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_m010-E-joy-s8191",
+      "baseline_row_id": "E-low-baseline-E-joy-s8191"
+    },
+    {
+      "blind_id": "582aea1428d1d2a6",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_m010-E-joy-s65537",
+      "baseline_row_id": "E-low-baseline-E-joy-s65537"
+    },
+    {
+      "blind_id": "7ec595ab653b0d83",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_m010-E-disagreement-s8191",
+      "baseline_row_id": "E-low-baseline-E-disagreement-s8191"
+    },
+    {
+      "blind_id": "eebe1e8e424de63f",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_m010-E-disagreement-s65537",
+      "baseline_row_id": "E-low-baseline-E-disagreement-s65537"
+    },
+    {
+      "blind_id": "9ecfc7bf1b3811cf",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_m005-E-joy-s8191",
+      "baseline_row_id": "E-low-baseline-E-joy-s8191"
+    },
+    {
+      "blind_id": "b6c0763b8e0757a1",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_m005-E-joy-s65537",
+      "baseline_row_id": "E-low-baseline-E-joy-s65537"
+    },
+    {
+      "blind_id": "b02822831d61f8e2",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_m005-E-disagreement-s8191",
+      "baseline_row_id": "E-low-baseline-E-disagreement-s8191"
+    },
+    {
+      "blind_id": "8be6316db7d755c3",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_m005-E-disagreement-s65537",
+      "baseline_row_id": "E-low-baseline-E-disagreement-s65537"
+    },
+    {
+      "blind_id": "24eeb2e61325dbc2",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_p005-E-joy-s8191",
+      "baseline_row_id": "E-low-baseline-E-joy-s8191"
+    },
+    {
+      "blind_id": "46e3c2893138f07a",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_p005-E-joy-s65537",
+      "baseline_row_id": "E-low-baseline-E-joy-s65537"
+    },
+    {
+      "blind_id": "47b16ca264e747ff",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_p005-E-disagreement-s8191",
+      "baseline_row_id": "E-low-baseline-E-disagreement-s8191"
+    },
+    {
+      "blind_id": "898817b9b955c7ef",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_p005-E-disagreement-s65537",
+      "baseline_row_id": "E-low-baseline-E-disagreement-s65537"
+    },
+    {
+      "blind_id": "96c8ea1f56f4f02a",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_p010-E-joy-s8191",
+      "baseline_row_id": "E-low-baseline-E-joy-s8191"
+    },
+    {
+      "blind_id": "68111e0bb3cc1d04",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_p010-E-joy-s65537",
+      "baseline_row_id": "E-low-baseline-E-joy-s65537"
+    },
+    {
+      "blind_id": "d28ca68a5519b4c8",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-temperature_p010-E-disagreement-s8191",
+      "baseline_row_id": "E-low-baseline-E-disagreement-s8191"
+    },
+    {
+      "blind_id": "a7752ee0f04e5d5d",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-temperature_p010-E-disagreement-s65537",
+      "baseline_row_id": "E-low-baseline-E-disagreement-s65537"
+    },
+    {
+      "blind_id": "bc0ed00ba8eb4bb7",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-top_p_m010-E-joy-s8191",
+      "baseline_row_id": "E-low-baseline-E-joy-s8191"
+    },
+    {
+      "blind_id": "b2fa5df58dd4d886",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-top_p_m010-E-joy-s65537",
+      "baseline_row_id": "E-low-baseline-E-joy-s65537"
+    },
+    {
+      "blind_id": "879e26ea4a91d6da",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-top_p_m010-E-disagreement-s8191",
+      "baseline_row_id": "E-low-baseline-E-disagreement-s8191"
+    },
+    {
+      "blind_id": "f102c01405251304",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-top_p_m010-E-disagreement-s65537",
+      "baseline_row_id": "E-low-baseline-E-disagreement-s65537"
+    },
+    {
+      "blind_id": "3fb1716048b29af2",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-top_p_m005-E-joy-s8191",
+      "baseline_row_id": "E-low-baseline-E-joy-s8191"
+    },
+    {
+      "blind_id": "47f078866dd12a61",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-top_p_m005-E-joy-s65537",
+      "baseline_row_id": "E-low-baseline-E-joy-s65537"
+    },
+    {
+      "blind_id": "bc8b1227f4dfae7a",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-top_p_m005-E-disagreement-s8191",
+      "baseline_row_id": "E-low-baseline-E-disagreement-s8191"
+    },
+    {
+      "blind_id": "8fd9fbb7e12ffcbd",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-top_p_m005-E-disagreement-s65537",
+      "baseline_row_id": "E-low-baseline-E-disagreement-s65537"
+    },
+    {
+      "blind_id": "2d821a30a4e62b18",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-top_p_p005-E-joy-s8191",
+      "baseline_row_id": "E-low-baseline-E-joy-s8191"
+    },
+    {
+      "blind_id": "37778c7d373bcac2",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-low-top_p_p005-E-joy-s65537",
+      "baseline_row_id": "E-low-baseline-E-joy-s65537"
+    },
+    {
+      "blind_id": "0bc75767df2aa530",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-top_p_p005-E-disagreement-s8191",
+      "baseline_row_id": "E-low-baseline-E-disagreement-s8191"
+    },
+    {
+      "blind_id": "1783bc098d100c0c",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-low-top_p_p005-E-disagreement-s65537",
+      "baseline_row_id": "E-low-baseline-E-disagreement-s65537"
+    },
+    {
+      "blind_id": "946952646ba22492",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_m010-E-joy-s8191",
+      "baseline_row_id": "E-high-baseline-E-joy-s8191"
+    },
+    {
+      "blind_id": "543b6a56120dc92e",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_m010-E-joy-s65537",
+      "baseline_row_id": "E-high-baseline-E-joy-s65537"
+    },
+    {
+      "blind_id": "0eaca005d5275c56",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_m010-E-disagreement-s8191",
+      "baseline_row_id": "E-high-baseline-E-disagreement-s8191"
+    },
+    {
+      "blind_id": "b82ecdf73feb0c2a",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_m010-E-disagreement-s65537",
+      "baseline_row_id": "E-high-baseline-E-disagreement-s65537"
+    },
+    {
+      "blind_id": "e22cc5f18fa39210",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_m005-E-joy-s8191",
+      "baseline_row_id": "E-high-baseline-E-joy-s8191"
+    },
+    {
+      "blind_id": "3d69666391f9fd07",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_m005-E-joy-s65537",
+      "baseline_row_id": "E-high-baseline-E-joy-s65537"
+    },
+    {
+      "blind_id": "1c2f2a14d03a7194",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_m005-E-disagreement-s8191",
+      "baseline_row_id": "E-high-baseline-E-disagreement-s8191"
+    },
+    {
+      "blind_id": "0ad43e134265941b",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_m005-E-disagreement-s65537",
+      "baseline_row_id": "E-high-baseline-E-disagreement-s65537"
+    },
+    {
+      "blind_id": "e5a385882ae91510",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_p005-E-joy-s8191",
+      "baseline_row_id": "E-high-baseline-E-joy-s8191"
+    },
+    {
+      "blind_id": "6c58fc7522d39793",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_p005-E-joy-s65537",
+      "baseline_row_id": "E-high-baseline-E-joy-s65537"
+    },
+    {
+      "blind_id": "5df3897df7fca8c8",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_p005-E-disagreement-s8191",
+      "baseline_row_id": "E-high-baseline-E-disagreement-s8191"
+    },
+    {
+      "blind_id": "75ecb0d1f483e813",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_p005-E-disagreement-s65537",
+      "baseline_row_id": "E-high-baseline-E-disagreement-s65537"
+    },
+    {
+      "blind_id": "3e1fbe1ba9201683",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-temperature_p010-E-joy-s8191",
+      "baseline_row_id": "E-high-baseline-E-joy-s8191"
+    },
+    {
+      "blind_id": "157afcc12ad1e332",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_p010-E-joy-s65537",
+      "baseline_row_id": "E-high-baseline-E-joy-s65537"
+    },
+    {
+      "blind_id": "9a2d625eaf597fa1",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_p010-E-disagreement-s8191",
+      "baseline_row_id": "E-high-baseline-E-disagreement-s8191"
+    },
+    {
+      "blind_id": "11e78732435151ee",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-temperature_p010-E-disagreement-s65537",
+      "baseline_row_id": "E-high-baseline-E-disagreement-s65537"
+    },
+    {
+      "blind_id": "93df90edbebfe898",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-top_p_m010-E-joy-s8191",
+      "baseline_row_id": "E-high-baseline-E-joy-s8191"
+    },
+    {
+      "blind_id": "9b4ae218b07be693",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-top_p_m010-E-joy-s65537",
+      "baseline_row_id": "E-high-baseline-E-joy-s65537"
+    },
+    {
+      "blind_id": "b9b5da74dcfe245a",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-top_p_m010-E-disagreement-s8191",
+      "baseline_row_id": "E-high-baseline-E-disagreement-s8191"
+    },
+    {
+      "blind_id": "97bb78ad571a9759",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-top_p_m010-E-disagreement-s65537",
+      "baseline_row_id": "E-high-baseline-E-disagreement-s65537"
+    },
+    {
+      "blind_id": "43f65af60c95f8cd",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-top_p_m005-E-joy-s8191",
+      "baseline_row_id": "E-high-baseline-E-joy-s8191"
+    },
+    {
+      "blind_id": "90de4d1595d03024",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-top_p_m005-E-joy-s65537",
+      "baseline_row_id": "E-high-baseline-E-joy-s65537"
+    },
+    {
+      "blind_id": "b88cb11a66b59525",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-top_p_m005-E-disagreement-s8191",
+      "baseline_row_id": "E-high-baseline-E-disagreement-s8191"
+    },
+    {
+      "blind_id": "290576c67caa080c",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-top_p_m005-E-disagreement-s65537",
+      "baseline_row_id": "E-high-baseline-E-disagreement-s65537"
+    },
+    {
+      "blind_id": "e9fc908bbdbac713",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-top_p_p005-E-joy-s8191",
+      "baseline_row_id": "E-high-baseline-E-joy-s8191"
+    },
+    {
+      "blind_id": "5bfdff3eff52d062",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-top_p_p005-E-joy-s65537",
+      "baseline_row_id": "E-high-baseline-E-joy-s65537"
+    },
+    {
+      "blind_id": "dd3f0f9fb60aec25",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "E-high-top_p_p005-E-disagreement-s8191",
+      "baseline_row_id": "E-high-baseline-E-disagreement-s8191"
+    },
+    {
+      "blind_id": "07058ca72ed4a855",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "E-high-top_p_p005-E-disagreement-s65537",
+      "baseline_row_id": "E-high-baseline-E-disagreement-s65537"
+    },
+    {
+      "blind_id": "10c172ae94451d4d",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_m010-A-advice-s8191",
+      "baseline_row_id": "A-low-baseline-A-advice-s8191"
+    },
+    {
+      "blind_id": "ce8363522814ce35",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-temperature_m010-A-advice-s65537",
+      "baseline_row_id": "A-low-baseline-A-advice-s65537"
+    },
+    {
+      "blind_id": "f1577da1e924e597",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-temperature_m010-A-disagreement-s8191",
+      "baseline_row_id": "A-low-baseline-A-disagreement-s8191"
+    },
+    {
+      "blind_id": "d1928f950a8c76e9",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_m010-A-disagreement-s65537",
+      "baseline_row_id": "A-low-baseline-A-disagreement-s65537"
+    },
+    {
+      "blind_id": "2ce798358d2cb1eb",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_m005-A-advice-s8191",
+      "baseline_row_id": "A-low-baseline-A-advice-s8191"
+    },
+    {
+      "blind_id": "a0265cab9efac550",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_m005-A-advice-s65537",
+      "baseline_row_id": "A-low-baseline-A-advice-s65537"
+    },
+    {
+      "blind_id": "20e0a0846bce4a2e",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_m005-A-disagreement-s8191",
+      "baseline_row_id": "A-low-baseline-A-disagreement-s8191"
+    },
+    {
+      "blind_id": "498e89cbf68e316f",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_m005-A-disagreement-s65537",
+      "baseline_row_id": "A-low-baseline-A-disagreement-s65537"
+    },
+    {
+      "blind_id": "35c1fbbe09ccc7b1",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_p005-A-advice-s8191",
+      "baseline_row_id": "A-low-baseline-A-advice-s8191"
+    },
+    {
+      "blind_id": "eba2e0212acd6fc0",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_p005-A-advice-s65537",
+      "baseline_row_id": "A-low-baseline-A-advice-s65537"
+    },
+    {
+      "blind_id": "a7aac6982b8e1ce0",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-temperature_p005-A-disagreement-s8191",
+      "baseline_row_id": "A-low-baseline-A-disagreement-s8191"
+    },
+    {
+      "blind_id": "e298ad3df572d4cc",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_p005-A-disagreement-s65537",
+      "baseline_row_id": "A-low-baseline-A-disagreement-s65537"
+    },
+    {
+      "blind_id": "3ba95fc544cf0144",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-temperature_p010-A-advice-s8191",
+      "baseline_row_id": "A-low-baseline-A-advice-s8191"
+    },
+    {
+      "blind_id": "abf8834fe3db2ccc",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_p010-A-advice-s65537",
+      "baseline_row_id": "A-low-baseline-A-advice-s65537"
+    },
+    {
+      "blind_id": "48e90215ef79d0b9",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-temperature_p010-A-disagreement-s8191",
+      "baseline_row_id": "A-low-baseline-A-disagreement-s8191"
+    },
+    {
+      "blind_id": "0e6733e3d5e69d32",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-temperature_p010-A-disagreement-s65537",
+      "baseline_row_id": "A-low-baseline-A-disagreement-s65537"
+    },
+    {
+      "blind_id": "1125ba8be8fdc4a7",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-top_p_m010-A-advice-s8191",
+      "baseline_row_id": "A-low-baseline-A-advice-s8191"
+    },
+    {
+      "blind_id": "52d11616d260fb15",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_m010-A-advice-s65537",
+      "baseline_row_id": "A-low-baseline-A-advice-s65537"
+    },
+    {
+      "blind_id": "bdd3db282569c424",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-top_p_m010-A-disagreement-s8191",
+      "baseline_row_id": "A-low-baseline-A-disagreement-s8191"
+    },
+    {
+      "blind_id": "e88793e739e30e3f",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_m010-A-disagreement-s65537",
+      "baseline_row_id": "A-low-baseline-A-disagreement-s65537"
+    },
+    {
+      "blind_id": "996e6caeb735e9cf",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-top_p_m005-A-advice-s8191",
+      "baseline_row_id": "A-low-baseline-A-advice-s8191"
+    },
+    {
+      "blind_id": "ea166155e6401895",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_m005-A-advice-s65537",
+      "baseline_row_id": "A-low-baseline-A-advice-s65537"
+    },
+    {
+      "blind_id": "bb1c86ccbce209f4",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_m005-A-disagreement-s8191",
+      "baseline_row_id": "A-low-baseline-A-disagreement-s8191"
+    },
+    {
+      "blind_id": "f451d4f7ef893175",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_m005-A-disagreement-s65537",
+      "baseline_row_id": "A-low-baseline-A-disagreement-s65537"
+    },
+    {
+      "blind_id": "2e696ff47e43ea62",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-top_p_p005-A-advice-s8191",
+      "baseline_row_id": "A-low-baseline-A-advice-s8191"
+    },
+    {
+      "blind_id": "de33be9f600afa20",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-low-top_p_p005-A-advice-s65537",
+      "baseline_row_id": "A-low-baseline-A-advice-s65537"
+    },
+    {
+      "blind_id": "d4e4d2ee3adc5b65",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-top_p_p005-A-disagreement-s8191",
+      "baseline_row_id": "A-low-baseline-A-disagreement-s8191"
+    },
+    {
+      "blind_id": "b06e3d8b6e9a360d",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-low-top_p_p005-A-disagreement-s65537",
+      "baseline_row_id": "A-low-baseline-A-disagreement-s65537"
+    },
+    {
+      "blind_id": "7dcaab3cd94c3547",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-temperature_m010-A-advice-s8191",
+      "baseline_row_id": "A-high-baseline-A-advice-s8191"
+    },
+    {
+      "blind_id": "f3abc4eeb59d5a63",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-temperature_m010-A-advice-s65537",
+      "baseline_row_id": "A-high-baseline-A-advice-s65537"
+    },
+    {
+      "blind_id": "b971f58349d17f82",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_m010-A-disagreement-s8191",
+      "baseline_row_id": "A-high-baseline-A-disagreement-s8191"
+    },
+    {
+      "blind_id": "5ade9eaf2e225d00",
+      "arm_id": "temperature_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_m010-A-disagreement-s65537",
+      "baseline_row_id": "A-high-baseline-A-disagreement-s65537"
+    },
+    {
+      "blind_id": "ccb747157d85322f",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_m005-A-advice-s8191",
+      "baseline_row_id": "A-high-baseline-A-advice-s8191"
+    },
+    {
+      "blind_id": "378641a26fa9ac17",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_m005-A-advice-s65537",
+      "baseline_row_id": "A-high-baseline-A-advice-s65537"
+    },
+    {
+      "blind_id": "04ce9aa86073f7f1",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-temperature_m005-A-disagreement-s8191",
+      "baseline_row_id": "A-high-baseline-A-disagreement-s8191"
+    },
+    {
+      "blind_id": "cb9c5951e30a04af",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-temperature_m005-A-disagreement-s65537",
+      "baseline_row_id": "A-high-baseline-A-disagreement-s65537"
+    },
+    {
+      "blind_id": "cc4fa6759ba348e2",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_p005-A-advice-s8191",
+      "baseline_row_id": "A-high-baseline-A-advice-s8191"
+    },
+    {
+      "blind_id": "47d4ccf192ec6ab8",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-temperature_p005-A-advice-s65537",
+      "baseline_row_id": "A-high-baseline-A-advice-s65537"
+    },
+    {
+      "blind_id": "ed9781b1ad427294",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_p005-A-disagreement-s8191",
+      "baseline_row_id": "A-high-baseline-A-disagreement-s8191"
+    },
+    {
+      "blind_id": "c323866e7182ea59",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-temperature_p005-A-disagreement-s65537",
+      "baseline_row_id": "A-high-baseline-A-disagreement-s65537"
+    },
+    {
+      "blind_id": "61cb1477bc3d0a85",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-temperature_p010-A-advice-s8191",
+      "baseline_row_id": "A-high-baseline-A-advice-s8191"
+    },
+    {
+      "blind_id": "9170df4ab664595f",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-temperature_p010-A-advice-s65537",
+      "baseline_row_id": "A-high-baseline-A-advice-s65537"
+    },
+    {
+      "blind_id": "66da0814ff700160",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_p010-A-disagreement-s8191",
+      "baseline_row_id": "A-high-baseline-A-disagreement-s8191"
+    },
+    {
+      "blind_id": "e4d5288d00788dec",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-temperature_p010-A-disagreement-s65537",
+      "baseline_row_id": "A-high-baseline-A-disagreement-s65537"
+    },
+    {
+      "blind_id": "1bb948a8fcb35113",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-top_p_m010-A-advice-s8191",
+      "baseline_row_id": "A-high-baseline-A-advice-s8191"
+    },
+    {
+      "blind_id": "5470f81e478e3e6c",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-top_p_m010-A-advice-s65537",
+      "baseline_row_id": "A-high-baseline-A-advice-s65537"
+    },
+    {
+      "blind_id": "56ccfe97b4bb46ba",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-top_p_m010-A-disagreement-s8191",
+      "baseline_row_id": "A-high-baseline-A-disagreement-s8191"
+    },
+    {
+      "blind_id": "3988e708d01d342b",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-top_p_m010-A-disagreement-s65537",
+      "baseline_row_id": "A-high-baseline-A-disagreement-s65537"
+    },
+    {
+      "blind_id": "08d822e26c6f7dec",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-top_p_m005-A-advice-s8191",
+      "baseline_row_id": "A-high-baseline-A-advice-s8191"
+    },
+    {
+      "blind_id": "6db7ad1b5e5369e3",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-top_p_m005-A-advice-s65537",
+      "baseline_row_id": "A-high-baseline-A-advice-s65537"
+    },
+    {
+      "blind_id": "d4b4f1085a770328",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-top_p_m005-A-disagreement-s8191",
+      "baseline_row_id": "A-high-baseline-A-disagreement-s8191"
+    },
+    {
+      "blind_id": "5de651017e19dc22",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "A-high-top_p_m005-A-disagreement-s65537",
+      "baseline_row_id": "A-high-baseline-A-disagreement-s65537"
+    },
+    {
+      "blind_id": "99d5718845d4413f",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-top_p_p005-A-advice-s8191",
+      "baseline_row_id": "A-high-baseline-A-advice-s8191"
+    },
+    {
+      "blind_id": "e6c201308266186c",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-top_p_p005-A-advice-s65537",
+      "baseline_row_id": "A-high-baseline-A-advice-s65537"
+    },
+    {
+      "blind_id": "0f3ae81be9c257dd",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-top_p_p005-A-disagreement-s8191",
+      "baseline_row_id": "A-high-baseline-A-disagreement-s8191"
+    },
+    {
+      "blind_id": "7e76e4d702fe0b70",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "A-high-top_p_p005-A-disagreement-s65537",
+      "baseline_row_id": "A-high-baseline-A-disagreement-s65537"
+    },
+    {
+      "blind_id": "fb35371fffe428de",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_m010-N-comfort-s8191",
+      "baseline_row_id": "N-low-baseline-N-comfort-s8191"
+    },
+    {
+      "blind_id": "51b585dbba829a45",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_m010-N-comfort-s65537",
+      "baseline_row_id": "N-low-baseline-N-comfort-s65537"
+    },
+    {
+      "blind_id": "bb78a6fb37e23bf0",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_m010-N-disagreement-s8191",
+      "baseline_row_id": "N-low-baseline-N-disagreement-s8191"
+    },
+    {
+      "blind_id": "010b4b5ffd13811f",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_m010-N-disagreement-s65537",
+      "baseline_row_id": "N-low-baseline-N-disagreement-s65537"
+    },
+    {
+      "blind_id": "49f5f6ce759f53bd",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_m005-N-comfort-s8191",
+      "baseline_row_id": "N-low-baseline-N-comfort-s8191"
+    },
+    {
+      "blind_id": "33d6511cb6f0e0e9",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_m005-N-comfort-s65537",
+      "baseline_row_id": "N-low-baseline-N-comfort-s65537"
+    },
+    {
+      "blind_id": "dccc6adfc014ddca",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_m005-N-disagreement-s8191",
+      "baseline_row_id": "N-low-baseline-N-disagreement-s8191"
+    },
+    {
+      "blind_id": "6c3471c7ec42e44d",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_m005-N-disagreement-s65537",
+      "baseline_row_id": "N-low-baseline-N-disagreement-s65537"
+    },
+    {
+      "blind_id": "c10da4621c77a4fd",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-temperature_p005-N-comfort-s8191",
+      "baseline_row_id": "N-low-baseline-N-comfort-s8191"
+    },
+    {
+      "blind_id": "c4c73baced70dafa",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_p005-N-comfort-s65537",
+      "baseline_row_id": "N-low-baseline-N-comfort-s65537"
+    },
+    {
+      "blind_id": "e6451afb63e7d44a",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_p005-N-disagreement-s8191",
+      "baseline_row_id": "N-low-baseline-N-disagreement-s8191"
+    },
+    {
+      "blind_id": "32d44cb4961da07c",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_p005-N-disagreement-s65537",
+      "baseline_row_id": "N-low-baseline-N-disagreement-s65537"
+    },
+    {
+      "blind_id": "c1c5f3155c7e4529",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_p010-N-comfort-s8191",
+      "baseline_row_id": "N-low-baseline-N-comfort-s8191"
+    },
+    {
+      "blind_id": "181c16ad227f974f",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_p010-N-comfort-s65537",
+      "baseline_row_id": "N-low-baseline-N-comfort-s65537"
+    },
+    {
+      "blind_id": "0742f1af4d98ecca",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-temperature_p010-N-disagreement-s8191",
+      "baseline_row_id": "N-low-baseline-N-disagreement-s8191"
+    },
+    {
+      "blind_id": "d94c5f4041e67f1d",
+      "arm_id": "temperature_p010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-temperature_p010-N-disagreement-s65537",
+      "baseline_row_id": "N-low-baseline-N-disagreement-s65537"
+    },
+    {
+      "blind_id": "4f86c55b5065c7ae",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_m010-N-comfort-s8191",
+      "baseline_row_id": "N-low-baseline-N-comfort-s8191"
+    },
+    {
+      "blind_id": "2d90f5fd3db30ec9",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-top_p_m010-N-comfort-s65537",
+      "baseline_row_id": "N-low-baseline-N-comfort-s65537"
+    },
+    {
+      "blind_id": "66ff164258d4cce9",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-top_p_m010-N-disagreement-s8191",
+      "baseline_row_id": "N-low-baseline-N-disagreement-s8191"
+    },
+    {
+      "blind_id": "a606d9637fd768e4",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-top_p_m010-N-disagreement-s65537",
+      "baseline_row_id": "N-low-baseline-N-disagreement-s65537"
+    },
+    {
+      "blind_id": "8064b87f227ee295",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-top_p_m005-N-comfort-s8191",
+      "baseline_row_id": "N-low-baseline-N-comfort-s8191"
+    },
+    {
+      "blind_id": "531d9db43926bd58",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-top_p_m005-N-comfort-s65537",
+      "baseline_row_id": "N-low-baseline-N-comfort-s65537"
+    },
+    {
+      "blind_id": "768f3531cecd2ccb",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_m005-N-disagreement-s8191",
+      "baseline_row_id": "N-low-baseline-N-disagreement-s8191"
+    },
+    {
+      "blind_id": "364fcf6369942448",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-top_p_m005-N-disagreement-s65537",
+      "baseline_row_id": "N-low-baseline-N-disagreement-s65537"
+    },
+    {
+      "blind_id": "0ee38a293674dc2e",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_p005-N-comfort-s8191",
+      "baseline_row_id": "N-low-baseline-N-comfort-s8191"
+    },
+    {
+      "blind_id": "1e2064f6eb14dad4",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_p005-N-comfort-s65537",
+      "baseline_row_id": "N-low-baseline-N-comfort-s65537"
+    },
+    {
+      "blind_id": "0cfc3db80a7d1899",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-low-top_p_p005-N-disagreement-s8191",
+      "baseline_row_id": "N-low-baseline-N-disagreement-s8191"
+    },
+    {
+      "blind_id": "9eac5e7b7289a0a8",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-low-top_p_p005-N-disagreement-s65537",
+      "baseline_row_id": "N-low-baseline-N-disagreement-s65537"
+    },
+    {
+      "blind_id": "0e64ac307cb491a3",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_m010-N-comfort-s8191",
+      "baseline_row_id": "N-high-baseline-N-comfort-s8191"
+    },
+    {
+      "blind_id": "4e94ac7c5436b29a",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_m010-N-comfort-s65537",
+      "baseline_row_id": "N-high-baseline-N-comfort-s65537"
+    },
+    {
+      "blind_id": "83056b4859cb63e8",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_m010-N-disagreement-s8191",
+      "baseline_row_id": "N-high-baseline-N-disagreement-s8191"
+    },
+    {
+      "blind_id": "00975bebf7dfda37",
+      "arm_id": "temperature_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_m010-N-disagreement-s65537",
+      "baseline_row_id": "N-high-baseline-N-disagreement-s65537"
+    },
+    {
+      "blind_id": "92195ea4bf8aeee6",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_m005-N-comfort-s8191",
+      "baseline_row_id": "N-high-baseline-N-comfort-s8191"
+    },
+    {
+      "blind_id": "81c3fa50f86e4016",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_m005-N-comfort-s65537",
+      "baseline_row_id": "N-high-baseline-N-comfort-s65537"
+    },
+    {
+      "blind_id": "0d6c8d93af0ca497",
+      "arm_id": "temperature_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_m005-N-disagreement-s8191",
+      "baseline_row_id": "N-high-baseline-N-disagreement-s8191"
+    },
+    {
+      "blind_id": "5d0f32697fb2045a",
+      "arm_id": "temperature_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_m005-N-disagreement-s65537",
+      "baseline_row_id": "N-high-baseline-N-disagreement-s65537"
+    },
+    {
+      "blind_id": "a07e09b0b3e4fe7d",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_p005-N-comfort-s8191",
+      "baseline_row_id": "N-high-baseline-N-comfort-s8191"
+    },
+    {
+      "blind_id": "d8c73ce6a1ba9b44",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_p005-N-comfort-s65537",
+      "baseline_row_id": "N-high-baseline-N-comfort-s65537"
+    },
+    {
+      "blind_id": "5cd8617b9f52d984",
+      "arm_id": "temperature_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_p005-N-disagreement-s8191",
+      "baseline_row_id": "N-high-baseline-N-disagreement-s8191"
+    },
+    {
+      "blind_id": "e58110e4e5536708",
+      "arm_id": "temperature_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-temperature_p005-N-disagreement-s65537",
+      "baseline_row_id": "N-high-baseline-N-disagreement-s65537"
+    },
+    {
+      "blind_id": "bfacc2f624736f3f",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_p010-N-comfort-s8191",
+      "baseline_row_id": "N-high-baseline-N-comfort-s8191"
+    },
+    {
+      "blind_id": "1ffadf4ba6cbb8cb",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_p010-N-comfort-s65537",
+      "baseline_row_id": "N-high-baseline-N-comfort-s65537"
+    },
+    {
+      "blind_id": "6758e46fe92f5c51",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_p010-N-disagreement-s8191",
+      "baseline_row_id": "N-high-baseline-N-disagreement-s8191"
+    },
+    {
+      "blind_id": "438302faad8e8b83",
+      "arm_id": "temperature_p010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-temperature_p010-N-disagreement-s65537",
+      "baseline_row_id": "N-high-baseline-N-disagreement-s65537"
+    },
+    {
+      "blind_id": "5135bc8c6755fdd0",
+      "arm_id": "top_p_m010",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-top_p_m010-N-comfort-s8191",
+      "baseline_row_id": "N-high-baseline-N-comfort-s8191"
+    },
+    {
+      "blind_id": "2a854e00533d626b",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-top_p_m010-N-comfort-s65537",
+      "baseline_row_id": "N-high-baseline-N-comfort-s65537"
+    },
+    {
+      "blind_id": "efb3539c32fa718b",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-top_p_m010-N-disagreement-s8191",
+      "baseline_row_id": "N-high-baseline-N-disagreement-s8191"
+    },
+    {
+      "blind_id": "37c9b4051ca74b21",
+      "arm_id": "top_p_m010",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-top_p_m010-N-disagreement-s65537",
+      "baseline_row_id": "N-high-baseline-N-disagreement-s65537"
+    },
+    {
+      "blind_id": "378fa3c2a9095697",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-top_p_m005-N-comfort-s8191",
+      "baseline_row_id": "N-high-baseline-N-comfort-s8191"
+    },
+    {
+      "blind_id": "6389f928bc3cc42f",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-top_p_m005-N-comfort-s65537",
+      "baseline_row_id": "N-high-baseline-N-comfort-s65537"
+    },
+    {
+      "blind_id": "dc9c9e7d0c44c965",
+      "arm_id": "top_p_m005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-top_p_m005-N-disagreement-s8191",
+      "baseline_row_id": "N-high-baseline-N-disagreement-s8191"
+    },
+    {
+      "blind_id": "be4c6d03a83515f3",
+      "arm_id": "top_p_m005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-top_p_m005-N-disagreement-s65537",
+      "baseline_row_id": "N-high-baseline-N-disagreement-s65537"
+    },
+    {
+      "blind_id": "ef87fe17c068d059",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-top_p_p005-N-comfort-s8191",
+      "baseline_row_id": "N-high-baseline-N-comfort-s8191"
+    },
+    {
+      "blind_id": "402544b1cfb7d1a1",
+      "arm_id": "top_p_p005",
+      "candidate_side": "right",
+      "candidate_row_id": "N-high-top_p_p005-N-comfort-s65537",
+      "baseline_row_id": "N-high-baseline-N-comfort-s65537"
+    },
+    {
+      "blind_id": "b32df4a70e9873bc",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-top_p_p005-N-disagreement-s8191",
+      "baseline_row_id": "N-high-baseline-N-disagreement-s8191"
+    },
+    {
+      "blind_id": "2f6b58f478eb0d27",
+      "arm_id": "top_p_p005",
+      "candidate_side": "left",
+      "candidate_row_id": "N-high-top_p_p005-N-disagreement-s65537",
+      "baseline_row_id": "N-high-baseline-N-disagreement-s65537"
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+schema_version: 1
+version: p3-0-l2-no-effect-closure-v1
+status: frozen_execution_of_preregistered_fail_branch
+
+scope:
+  layer: L2
+  capability: persona_decoder_sampling_parameter_modulation
+  model_scope: preregistered_local_1_5b_grid
+  decision: no_effect_observed_within_preregistered_grid
+
+trace:
+  calibration_protocol: docs/persona-constraint-p3-0-l2-calibration-verdict-draft.md
+  screening_spec: fixtures/persona_constraints/p3_0_l2_screening_spec.yaml
+  screening_verdict: artifacts/persona_constraints/p3_0_l2_screening/blind_review_verdict_balanced_v2.json
+  screening_verdict_sha256: DA4827CB8EAF80F209569CFD88CCB92353342A344AE596114620584BA8590130
+  confirmation_stage1_spec: fixtures/persona_constraints/p3_0_l2_confirmation_stage1_spec.yaml
+  confirmation_stage1_spec_sha256: 84F87007D25D78F00BB81B688CD99A165D166FBDC35FA1C60C2CD97E08514FF2
+  confirmation_stage1_completed_review: artifacts/persona_constraints/p3_0_l2_confirmation_stage1/blind_review_completed.json
+  confirmation_stage1_completed_review_sha256: AC891DF3699016EAD0C4CBE4DBEC05FDA4AF1A880F29C73B0CC70BA4F0BE39A1
+  confirmation_stage1_verdict: artifacts/persona_constraints/p3_0_l2_confirmation_stage1/blind_review_verdict.json
+  confirmation_stage1_verdict_sha256: A76D62E43F982EC2CFE4670F9557A147BC87854BE0A52D6680015231155C6F1E
+
+evidence:
+  screening:
+    generated_outputs: 320
+    eligible_arms_reviewed: 30
+    arms_below_screening_line: 25
+    arms_at_or_above_screening_line: 5
+    deterministically_selected_targets: 4
+    screened_no_candidate_targets:
+      - O_low
+      - O_high
+      - C_high
+      - E_low
+      - E_high
+      - N_high
+    ocean_o_e_target_grid_count: 4
+    ocean_o_e_all_screened_no_candidate: true
+  confirmation_stage1:
+    generated_outputs: 64
+    comparisons: 32
+    indistinguishable: 14
+    raw_candidate_wins: 10
+    hard_gate_adjusted_successes: 9
+    preregistered_minimum_successes: 22
+    passed: false
+    remaining_confirmation_pairs_cancelled: 128
+
+target_outcomes:
+  O_low: {state: screened_no_candidate_within_preregistered_grid, decoder_delta: 0.0}
+  O_high: {state: screened_no_candidate_within_preregistered_grid, decoder_delta: 0.0}
+  C_low: {state: confirmation_stage1_gate_failed, decoder_delta: 0.0}
+  C_high: {state: screened_no_candidate_within_preregistered_grid, decoder_delta: 0.0}
+  E_low: {state: screened_no_candidate_within_preregistered_grid, decoder_delta: 0.0}
+  E_high: {state: screened_no_candidate_within_preregistered_grid, decoder_delta: 0.0}
+  A_low: {state: confirmation_stage1_gate_failed, decoder_delta: 0.0}
+  A_high: {state: confirmation_stage1_gate_failed, decoder_delta: 0.0}
+  N_low: {state: confirmation_stage1_gate_failed, decoder_delta: 0.0}
+  N_high: {state: screened_no_candidate_within_preregistered_grid, decoder_delta: 0.0}
+
+mid_levels:
+  O_mid: {state: design_baseline_no_change, decoder_delta: 0.0}
+  C_mid: {state: design_baseline_no_change, decoder_delta: 0.0}
+  E_mid: {state: design_baseline_no_change, decoder_delta: 0.0}
+  A_mid: {state: design_baseline_no_change, decoder_delta: 0.0}
+  N_mid: {state: design_baseline_no_change, decoder_delta: 0.0}
+
+engineering_contract:
+  add_persona_sampling_dto: false
+  change_generation_options_schema_for_persona: false
+  apply_persona_decoder_deltas: false
+  preserve_existing_sampling_defaults: true
+  personality_modulation_primary_path: prompt_and_text_assembly
+  p3_a_required_wiring:
+    - L1_persona_prompt_assembly
+    - L3_downgrade_trigger_and_frozen_corpus_selection
+    - L4_frozen_retry_fallback
+
+claim_boundary:
+  per_target_n40_confirmation_completed: false
+  label_stage1_targets_confirmed_no_effect: false
+  claim_all_sampling_parameters_are_ineffective: false
+  reopen_requires_new_preregistered_grid_and_independent_data: true
+
+p4_observations:
+  - id: shared_decoder_candidate_collinearity
+    targets: [A_high, N_low]
+    shared_arm_id: temperature_p010
+    interpretation: 仅记为候选共线观察，不作为人格可辨性证据。
+
+retention:
+  preserve_invalid_prompt_leak_batch: true
+  preserve_screening_outputs_and_both_reviews: true
+  preserve_confirmation_stage1_outputs_review_and_key: true
+  delete_or_regenerate_failed_rows: false
+
+acceptance:
+  - stage1_verdict_recomputed_from_completed_review_and_sealed_key
+  - remaining_128_confirmation_pairs_not_generated
+  - all_low_high_decoder_deltas_are_evidence_backed_no_change
+  - no_persona_sampling_dto_or_generation_options_schema_change
+  - prompt_side_personality_wiring_remains_in_p3_a_scope

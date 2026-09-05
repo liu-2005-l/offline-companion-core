@@ -1,0 +1,38 @@
+{
+  "output_count": 64,
+  "automatic_green": 54,
+  "targets": {
+    "A_high": {
+      "outputs": 16,
+      "automatic_green": 15,
+      "gate_failures": {
+        "finish": 1,
+        "complete_terminal": 1
+      }
+    },
+    "A_low": {
+      "outputs": 16,
+      "automatic_green": 12,
+      "gate_failures": {
+        "finish": 4,
+        "complete_terminal": 4
+      }
+    },
+    "C_low": {
+      "outputs": 16,
+      "automatic_green": 12,
+      "gate_failures": {
+        "finish": 4,
+        "complete_terminal": 4
+      }
+    },
+    "N_low": {
+      "outputs": 16,
+      "automatic_green": 15,
+      "gate_failures": {
+        "finish": 1,
+        "complete_terminal": 1
+      }
+    }
+  }
+}

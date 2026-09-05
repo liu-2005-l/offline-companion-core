@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "status": "invalidated_before_confirmation",
+  "invalidated_completed_review_sha256": "6F0BE039F129EB85DB898630C82B2166E17FCFF87D7F177CADA55B7B55A1712E",
+  "invalidated_verdict_sha256": "9CD9B525FCEB39F733DCA191F16E389C062186C537C48563FA2CC2D806640B83",
+  "reason": "旧放置算法按 pair 独立哈希，未在 3/4 判定单位 arm 内分层，产生 4:0 与 0:4 放置，可能与位置偏好耦合。",
+  "observed_distribution": {
+    "all_pairs": {"left": 57, "right": 63},
+    "target_extremes": {
+      "A_low": {"left": 3, "right": 9},
+      "N_high": {"left": 8, "right": 4}
+    },
+    "arm_extremes_present": true
+  },
+  "disposition": "保留旧完成件与裁决作审计证据，禁止进入确认集；重放为每 arm 严格 2:2 后重新盲审。"
+}
