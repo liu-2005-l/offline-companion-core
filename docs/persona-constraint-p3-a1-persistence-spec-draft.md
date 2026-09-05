@@ -1,8 +1,8 @@
 # 人格约束 P3-A1 持久化基座实现规格
 
-版本：v0.3（D1–D4 裁决、repo schema trace 与网络不确定性修订稿）
+版本：v0.4（A1.1 五问修正并入验收稿）
 
-状态：待本地规格锚；锚定后开工 A1
+状态：A1 主体已实现；待 A1.1 闭合验收
 
 上游：`docs/persona-constraint-p3-a-replan-draft.md`、
 `docs/persona-constraint-p3-wiring-spec-draft.md` §9、P3-0 锚 `74a8144`
@@ -15,7 +15,8 @@ A1 交付 SQLite canonical session、会话内联人格快照、显式原子切�
 
 ## 1. Schema 与迁移
 
-当前 `sessions.id` 为 `TEXT`，时间戳为 Unix 秒 `REAL`，因此新增 schema 必须保持同型。数据库版本从 12 升到 13。
+当前 `sessions.id` 为 `TEXT`，时间戳为 Unix 秒 `REAL`，因此新增 schema 必须保持同型。A1 表结构从数据库版本 12
+升到 13；A1.1 的 source 枚举迁移再升到 14。
 
 ### 1.1 `sessions` 新列
 
@@ -81,6 +82,9 @@ CREATE TABLE IF NOT EXISTS desktop_session_state (
 - 人格约束 manifest 版本与 SHA-256；未接 A2 时明确为 `null`，不得伪造；
 - snapshot 创建时间与 source。
 
+source 只允许 `a1_persona_system_prompt`、`legacy_backfill`、`p3_a2_l1_assembled` 三值。旧值
+`bootstrap/persona_switch` 迁移到 `a1_persona_system_prompt` 并重算 canonical JSON 哈希；未知值拒绝读取。
+
 不得写入云 API key、settings 全量、记忆正文、当前用户输入或其他会话可变状态。
 
 ## 3. Context 与单一绑定服务
@@ -95,6 +99,9 @@ CREATE TABLE IF NOT EXISTS desktop_session_state (
 新增单点 `bind_desktop_session()`。`UISessionBundle`、`ConversationOrchestrator`、Auto、memory/idle、sample、Consent、
 tool 与 plan publisher 不再各自保存可漂移的裸 `session_id` 或 EventStream；长生命周期对象改持 context provider。
 每个 turn 开始时捕获一次 context，整个 turn 不重新读取指针。
+
+同步重绑对象由单一 `BOOTSTRAP_SESSION_HOLDER_BINDINGS` 注册表驱动，并由测试遍历该注册表。新组件读取当前桌面
+session 时必须改用 `DesktopSessionContextProvider.capture()`；禁止新增长期缓存的裸 session ID 或 EventStream。
 
 ## 4. 切换协议与显式事务
 
@@ -159,7 +166,7 @@ timeout、网络错误、响应解析失败、字段不完整或未声明状态�
 
 | 编号 | 断言 |
 | --- | --- |
-| T1 | v12→v13 迁移后列类型、索引、FK 与单例约束正确；新 session 快照五列完整 |
+| T1 | v12→v14 迁移后列类型、索引、FK、单例与 source 迁移正确；新 session 快照五列完整 |
 | T2 | 修改 settings 投影不改变 canonical session 或当前 persona |
 | T3 | 修改 `personas.active` 不影响存量 session；无显式 persona 的新 session 使用新默认 |
 | T4 | 在快照、新 session、默认人格、canonical 更新各注入失败，显式事务均全回滚 |
@@ -171,9 +178,12 @@ timeout、网络错误、响应解析失败、字段不完整或未声明状态�
 | T10 | 同 request id 重试不双建；不同 target 复用或 canonical 已前移返回 409 |
 | T11 | 切换与历史恢复后 EventStream、Auto、memory/idle、sample、Consent、tool、plan 全部读取同一 context |
 
+Consent pending 采用“随旧会话挂起”语义：切换后对新会话不可见不可续，重绑旧会话后恢复可见，不迁移也不自动作废。
+
 附加迁移断言：孤儿 session 只读；`legacy_backfill` 不冒充原始快照；无 session 的新库可正常创建首个 canonical。
 
-T5 必须启动真实子进程并使用磁盘 SQLite，不能用单进程 mock。T11 至少包含一次真实消息、事件与 memory 写入，
+T5 必须先强杀提交后的真实子进程，再由第二真实子进程走完整 bootstrap 恢复，不能用父进程重开连接或单进程 mock
+代替。T10 必须覆盖跨进程重启 replay 与 canonical 前移冲突。T11 至少包含一次真实消息、事件与 memory 写入，
 并断言全部只落新 session。
 
 ## 7. 验收行
@@ -183,6 +193,7 @@ T5 必须启动真实子进程并使用磁盘 SQLite，不能用单进程 mock�
 - [ ] T5 子进程 kill/重启探针通过；
 - [ ] T9 response-loss 对账与禁发硬闸通过；
 - [ ] T11 session-scoped 组件无裸 ID 漂移；
+- [ ] A1.1 R1–R5 全绿，详见 `persona-constraint-p3-a1-1-correction-spec.md`；
 - [ ] 前端失败路径不再调用 `localActivate()`，响应字段校验与 settings 投影时序固定；
 - [ ] Ruff、相关窄测、SQLite integrity/FK 检查与 `git diff --check` 通过。
 

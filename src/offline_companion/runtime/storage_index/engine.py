@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 import time
 from pathlib import Path
 from typing import Any
 
+from offline_companion.shared.persona_snapshot import normalize_persona_snapshot_source
 from offline_companion.shared.types import MessageRow
 
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -77,6 +79,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if version < 13:
         _init_v13(conn)
         version = 13
+    if version < 14:
+        _init_v14(conn)
+        version = 14
     conn.execute(
         "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
@@ -213,6 +218,36 @@ def _init_v13(conn: sqlite3.Connection) -> None:
         );
         """
     )
+
+
+def _init_v14(conn: sqlite3.Connection) -> None:
+    """摘要：迁移人格快照旧来源值并重算 canonical JSON 哈希。"""
+    rows = conn.execute(
+        """
+        SELECT id, persona_snapshot_json, persona_snapshot_source
+        FROM sessions
+        WHERE persona_snapshot_json IS NOT NULL AND persona_snapshot_source IS NOT NULL;
+        """
+    ).fetchall()
+    for row in rows:
+        try:
+            normalized_source = normalize_persona_snapshot_source(row["persona_snapshot_source"])
+            payload = json.loads(str(row["persona_snapshot_json"]))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        payload["source"] = normalized_source
+        canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        conn.execute(
+            """
+            UPDATE sessions
+            SET persona_snapshot_json = ?, persona_snapshot_sha256 = ?, persona_snapshot_source = ?
+            WHERE id = ?;
+            """,
+            (canonical, digest, normalized_source, row["id"]),
+        )
 
 
 def _init_v2(conn: sqlite3.Connection) -> None:

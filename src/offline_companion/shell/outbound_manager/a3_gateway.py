@@ -68,6 +68,7 @@ class PendingConsent:
     request_id: str
     consent_request: ConsentRequest
     artifact: dict[str, Any]
+    session_id: str | None = None
     decided: bool = False
     allowed: bool = False
 
@@ -79,6 +80,7 @@ class UIHostConsentGateway:
     decision_provider: DecisionProvider | None = None
     db_conn: sqlite3.Connection | None = None
     event_stream: EventStream | None = None
+    active_session_id: str | None = None
     pending: dict[str, PendingConsent] = field(default_factory=dict)
     last_artifact: dict[str, Any] | None = None
 
@@ -89,6 +91,7 @@ class UIHostConsentGateway:
             request_id=request_id,
             consent_request=consent_request,
             artifact=artifact,
+            session_id=self.active_session_id,
         )
         self.pending[request_id] = pending
         self.last_artifact = artifact
@@ -115,17 +118,18 @@ class UIHostConsentGateway:
 
     def get_pending(self, request_id: str | None = None) -> PendingConsent | None:
         if request_id is not None:
-            return self.pending.get(request_id)
+            pending = self.pending.get(request_id)
+            return pending if self._is_visible(pending) else None
         if not self.pending:
             return None
         # 返回最近一个未决策请求
         for item in reversed(list(self.pending.values())):
-            if not item.decided:
+            if not item.decided and self._is_visible(item):
                 return item
         return None
 
     def decide(self, request_id: str, allowed: bool) -> dict[str, Any]:
-        pending = self.pending.get(request_id)
+        pending = self.get_pending(request_id)
         if pending is None:
             raise KeyError(f"unknown consent request_id: {request_id}")
         decision = "allow" if allowed else "deny"
@@ -161,6 +165,19 @@ class UIHostConsentGateway:
             )
             persist_consent_artifact(self.db_conn, artifact)
         return artifact
+
+    def bind_session_context(self, session_id: str, event_stream: EventStream | None) -> None:
+        """摘要：切换可见 pending 域与审计事件流，不迁移旧会话授权。"""
+        self.active_session_id = str(session_id)
+        self.event_stream = event_stream
+
+    def _is_visible(self, pending: PendingConsent | None) -> bool:
+        """摘要：仅向当前会话暴露其所属 pending；未绑定网关保留兼容行为。"""
+        if pending is None:
+            return False
+        if self.active_session_id is None or pending.session_id is None:
+            return True
+        return pending.session_id == self.active_session_id
 
     def to_modal_payload(self, request_id: str | None = None) -> dict[str, Any]:
         pending = self.get_pending(request_id)

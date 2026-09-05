@@ -37,6 +37,12 @@
 - **Main conversation path**: synchronous implementation (function-call simulation) for low latency and debuggability
 - **Background task path**: synchronous `MessageRouter` dispatch in Sprint 8; transport upgrade to ZeroMQ / message queue is deferred to Sprint 9+
 
+**Desktop session-context discipline**: SQLite canonical state and the session-inline persona snapshot are authoritative. Long-lived
+components that need the current desktop session must call `DesktopSessionContextProvider.capture()` per operation. Synchronous
+performance projections are driven only by `BOOTSTRAP_SESSION_HOLDER_BINDINGS`; new unregistered caches of a bare `session_id` or
+EventStream are forbidden. Historical session ownership already carried by tasks, messages, subagents, and Consent must not migrate
+during a persona switch.
+
 BaseMessage schema and the message bus abstraction live in `shared/`; all layers may depend on them. A layer owns `MessageRouter` and the transport layer, while B/C only speak to the interfaces in `shared/` and remain unaware of whether the transport is synchronous or asynchronous.
 
 **Already delivered foundations**:

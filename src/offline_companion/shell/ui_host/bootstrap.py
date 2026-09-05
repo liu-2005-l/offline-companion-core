@@ -365,7 +365,11 @@ def bootstrap_ui_session(
     else:
         backend_mode = "no_backend"
 
-    consent_gateway = UIHostConsentGateway(db_conn=conn, event_stream=event_stream)
+    consent_gateway = UIHostConsentGateway(
+        db_conn=conn,
+        event_stream=event_stream,
+        active_session_id=session_id,
+    )
     tool_registry = ToolRegistry()
     register_skill_advance_stage_tool(tool_registry, conn)
     tool_registry.register_builtin(

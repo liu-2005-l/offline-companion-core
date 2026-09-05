@@ -75,6 +75,7 @@ class PendingRoutedTurn:
     prepared: _PreparedTurn
     decision: ModelRoutingDecision
     purpose: str
+    session_id: str
 
 
 @dataclass
@@ -882,6 +883,7 @@ class ConversationOrchestrator:
                 prepared=prepared,
                 decision=decision,
                 purpose=purpose,
+                session_id=self.session_id,
             )
         pending = self.consent_gateway.get_pending(request_id or None)
         if pending is not None and pending.decided:
@@ -894,7 +896,12 @@ class ConversationOrchestrator:
                     decision=decision,
                 )
             return self._declined_turn_result(
-                PendingRoutedTurn(prepared=prepared, decision=decision, purpose=purpose),
+                PendingRoutedTurn(
+                    prepared=prepared,
+                    decision=decision,
+                    purpose=purpose,
+                    session_id=self.session_id,
+                ),
                 request_id=pending.request_id,
             )
         if allowed and request_id:
@@ -1094,9 +1101,12 @@ class ConversationOrchestrator:
 
     def resume_pending_turn(self, request_id: str, *, allowed: bool) -> TurnResult:
         """摘要：恢复一条等待同意的单轮请求。"""
-        pending_turn = self.pending_turns.pop(request_id, None)
+        pending_turn = self.pending_turns.get(request_id)
         if pending_turn is None:
             raise KeyError(f"unknown pending turn request_id: {request_id}")
+        if pending_turn.session_id != self.session_id:
+            raise KeyError(f"inactive session pending turn request_id: {request_id}")
+        self.pending_turns.pop(request_id)
         if self.consent_gateway is not None:
             pending = self.consent_gateway.get_pending(request_id)
             if pending is not None and not pending.decided:

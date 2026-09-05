@@ -52,6 +52,16 @@
 - **核心对话链路**：走同步实现（函数调用模拟），保证低延迟和可调试性
 - **后台任务链路**：Sprint 8 采用同步版 `MessageRouter` 分发；ZeroMQ / nanomsg 消息队列升级后移到 Sprint 9+
 
+**桌面会话上下文纪律**：SQLite canonical 与会话内联 persona 快照是事实源。需要当前桌面 session 的长生命周期组件必须
+按操作调用 `DesktopSessionContextProvider.capture()`；同步性能投影统一由
+`BOOTSTRAP_SESSION_HOLDER_BINDINGS` 注册表驱动，禁止新增未注册的裸 `session_id` 或 EventStream 缓存。任务、消息、
+subagent 与 Consent 已绑定的历史 session 归属不得随 persona 切换迁移。
+
+**桌面会话上下文纪律**：SQLite canonical 与会话内联 persona 快照是事实源。需要当前桌面 session 的长生命周期组件必须
+按操作调用 `DesktopSessionContextProvider.capture()`；同步性能投影统一由
+`BOOTSTRAP_SESSION_HOLDER_BINDINGS` 注册表驱动，禁止新增未注册的裸 `session_id` 或 EventStream 缓存。任务、消息、
+subagent 与 Consent 已绑定的历史 session 归属不得随 persona 切换迁移。
+
 BaseMessage Schema 与消息总线抽象接口均放入 `shared/` 横切层，所有层均可依赖。A 层负责实现 MessageRouter 与传输层，B/C 层仅面向 `shared/` 中的接口收发消息，完全不感知底层是同步还是异步。
 
 **已落地基础能力**：

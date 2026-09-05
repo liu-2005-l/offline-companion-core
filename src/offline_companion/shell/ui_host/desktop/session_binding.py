@@ -15,10 +15,71 @@ from typing import Any
 
 from offline_companion.core.event_stream import EventStream, StreamManager
 from offline_companion.core.persona_session.session import PersonaSessionCore
+from offline_companion.shared.persona_snapshot import (
+    PERSONA_SNAPSHOT_SOURCE_A1,
+    PERSONA_SNAPSHOT_SOURCE_LEGACY,
+    PERSONA_SNAPSHOT_SOURCES,
+    PersonaSnapshotSource,
+    normalize_persona_snapshot_source,
+)
 from offline_companion.shared.types import OceanVector, Persona
 from offline_companion.storage.persona_repo import active_persona, get_persona, init_personas
 
 PERSONA_SNAPSHOT_SCHEMA = 1
+
+
+@dataclass(frozen=True)
+class RuntimeSessionHolderBinding:
+    """摘要：声明一个由桌面 bootstrap 创建的 session-scoped 运行时投影。"""
+
+    name: str
+    path: tuple[str, ...]
+    assignments: tuple[tuple[str, str], ...]
+
+
+BOOTSTRAP_SESSION_HOLDER_BINDINGS = (
+    RuntimeSessionHolderBinding("runtime", (), (("session_id", "session_id"),)),
+    RuntimeSessionHolderBinding(
+        "conversation_orchestrator",
+        ("orchestrator",),
+        (("session_id", "session_id"), ("session_core", "session_core"), ("event_stream", "event_stream")),
+    ),
+    RuntimeSessionHolderBinding(
+        "consent_gateway",
+        ("orchestrator", "consent_gateway"),
+        (("active_session_id", "session_id"), ("event_stream", "event_stream")),
+    ),
+    RuntimeSessionHolderBinding(
+        "tool_invoker",
+        ("orchestrator", "tool_invoker"),
+        (("event_stream", "event_stream"),),
+    ),
+    RuntimeSessionHolderBinding(
+        "sample_lifecycle",
+        ("sample_lifecycle",),
+        (("_event_stream", "event_stream"),),
+    ),
+    RuntimeSessionHolderBinding(
+        "sample_retriever",
+        ("sample_retriever",),
+        (("_event_stream", "event_stream"),),
+    ),
+    RuntimeSessionHolderBinding(
+        "auto_turn",
+        ("auto_turn_orchestrator",),
+        (("event_stream", "event_stream"),),
+    ),
+    RuntimeSessionHolderBinding(
+        "plan_publisher",
+        ("plan_orchestrator", "_event_publisher"),
+        (("_stream", "event_stream"),),
+    ),
+    RuntimeSessionHolderBinding(
+        "model_downloader",
+        ("model_downloader",),
+        (("_event_stream", "event_stream"),),
+    ),
+)
 
 
 class SessionBindingError(RuntimeError):
@@ -49,7 +110,7 @@ class PersonaSnapshotProof:
     canonical_json: str
     schema: int
     sha256: str
-    source: str
+    source: PersonaSnapshotSource
 
 
 @dataclass(frozen=True)
@@ -134,11 +195,12 @@ def immediate_transaction(conn: sqlite3.Connection) -> Iterator[None]:
 def build_persona_snapshot(
     persona: Persona,
     *,
-    source: str,
+    source: PersonaSnapshotSource,
     effective_system_prompt: str | None = None,
     created_at: float | None = None,
 ) -> PersonaSnapshotProof:
     """摘要：从已解析人格构造 schema v1 canonical 快照与哈希。"""
+    normalized_source = normalize_persona_snapshot_source(source)
     ocean = _normalized_ocean(persona.ocean)
     raw = persona.raw if isinstance(persona.raw, dict) else {}
     payload = {
@@ -158,7 +220,7 @@ def build_persona_snapshot(
         "ocean_levels": [_to_level(value) for value in ocean],
         "persona_id": persona.persona_id,
         "role_lock": bool(persona.role_lock),
-        "source": str(source),
+        "source": normalized_source,
         "validated_anchor_id": raw.get("validated_anchor_id"),
         "validation_status": str(raw.get("validation_status") or "unvalidated"),
     }
@@ -169,7 +231,7 @@ def build_persona_snapshot(
         canonical_json=canonical,
         schema=PERSONA_SNAPSHOT_SCHEMA,
         sha256=digest,
-        source=str(source),
+        source=normalized_source,
     )
 
 
@@ -194,14 +256,18 @@ def validate_persona_snapshot(row: sqlite3.Row) -> PersonaSnapshotProof:
     calculated = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     if canonical != str(raw_json) or calculated != str(digest):
         raise SessionBindingError("persona_snapshot_invalid", status=409)
-    if str(payload.get("source") or "") != str(source):
+    try:
+        normalized_source = normalize_persona_snapshot_source(str(source))
+    except ValueError as exc:
+        raise SessionBindingError("persona_snapshot_invalid", status=409) from exc
+    if str(payload.get("source") or "") != normalized_source:
         raise SessionBindingError("persona_snapshot_invalid", status=409)
     return PersonaSnapshotProof(
         payload=payload,
         canonical_json=canonical,
         schema=int(schema),
         sha256=calculated,
-        source=str(source),
+        source=normalized_source,
     )
 
 
@@ -263,7 +329,7 @@ class DesktopSessionBindingService:
 
         if session_id is None:
             default_persona = active_persona(self._conn) or startup_persona
-            proof = build_persona_snapshot(default_persona, source="bootstrap")
+            proof = build_persona_snapshot(default_persona, source=PERSONA_SNAPSHOT_SOURCE_A1)
             session_id = preferred_session_id if row is None and preferred_session_id else uuid.uuid4().hex
             with immediate_transaction(self._conn):
                 self._insert_session(
@@ -336,7 +402,7 @@ class DesktopSessionBindingService:
             raise self._conflict("persona_not_found", state, status=404)
 
         try:
-            proof = build_persona_snapshot(persona, source="persona_switch")
+            proof = build_persona_snapshot(persona, source=PERSONA_SNAPSHOT_SOURCE_A1)
             self._inject_fault("snapshot")
             new_session_id = uuid.uuid4().hex
             previous_session_id = str(state["active_session_id"])
@@ -429,7 +495,12 @@ class DesktopSessionBindingService:
             if persona is None and str(row["persona_id"]) == startup_persona.persona_id:
                 persona = startup_persona
             if persona is not None:
-                proofs.append((build_persona_snapshot(persona, source="legacy_backfill"), str(row["id"])))
+                proofs.append(
+                    (
+                        build_persona_snapshot(persona, source=PERSONA_SNAPSHOT_SOURCE_LEGACY),
+                        str(row["id"]),
+                    )
+                )
         if not proofs:
             return
         with immediate_transaction(self._conn):
@@ -657,6 +728,8 @@ def _validate_snapshot_payload(payload: dict[str, Any], row: sqlite3.Row) -> Non
     )
     if any(not isinstance(payload.get(key), str) or not payload[key] for key in required_text):
         raise SessionBindingError("persona_snapshot_invalid", status=409)
+    if payload["source"] not in PERSONA_SNAPSHOT_SOURCES:
+        raise SessionBindingError("persona_snapshot_invalid", status=409)
     if str(payload["persona_id"]) != str(row["persona_id"]):
         raise SessionBindingError("persona_snapshot_invalid", status=409)
     if not isinstance(payload.get("role_lock"), bool) or not isinstance(
@@ -686,31 +759,22 @@ def _validate_snapshot_payload(payload: dict[str, Any], row: sqlite3.Row) -> Non
 
 def rebind_runtime_session(runtime: Any, context: DesktopSessionContext) -> None:
     """摘要：把兼容字段与长生命周期组件统一投影到同一 context。"""
-    stream = context.event_stream
-    runtime.session_id = context.session_id
     runtime.persona_name = (
         context.session_core.persona.companion_display_name
         or context.session_core.persona.default_companion_display_name
     )
-    runtime.orchestrator.session_id = context.session_id
-    runtime.orchestrator.session_core = context.session_core
-    runtime.orchestrator.event_stream = stream
-    consent_gateway = runtime.orchestrator.consent_gateway
-    if consent_gateway is not None:
-        consent_gateway.event_stream = stream
-    tool_invoker = runtime.orchestrator.tool_invoker
-    if tool_invoker is not None:
-        tool_invoker.event_stream = stream
-    if runtime.sample_lifecycle is not None:
-        runtime.sample_lifecycle._event_stream = stream
-    if runtime.sample_retriever is not None:
-        runtime.sample_retriever._event_stream = stream
-    if runtime.auto_turn_orchestrator is not None:
-        runtime.auto_turn_orchestrator.event_stream = stream
-    plan_orchestrator = runtime.plan_orchestrator
-    publisher = getattr(plan_orchestrator, "_event_publisher", None)
-    if publisher is not None and hasattr(publisher, "_stream"):
-        publisher._stream = stream
-    downloader = runtime.model_downloader
-    if downloader is not None and hasattr(downloader, "_event_stream"):
-        downloader._event_stream = stream
+    values = {
+        "session_id": context.session_id,
+        "session_core": context.session_core,
+        "event_stream": context.event_stream,
+    }
+    for binding in BOOTSTRAP_SESSION_HOLDER_BINDINGS:
+        holder = runtime
+        for part in binding.path:
+            holder = getattr(holder, part, None)
+            if holder is None:
+                break
+        if holder is None:
+            continue
+        for attribute, value_name in binding.assignments:
+            setattr(holder, attribute, values[value_name])

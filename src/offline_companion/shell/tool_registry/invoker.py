@@ -147,13 +147,16 @@ class ToolInvoker:
 
     def resume(self, consent_request_id: str, *, allowed: bool) -> ToolResult:
         """摘要：恢复一条等待 Consent 的 Tool 操作。"""
-        pending = self.pending_actions.pop(consent_request_id, None)
+        pending = self.pending_actions.get(consent_request_id)
         if pending is None:
             raise KeyError(f"unknown tool consent_request_id: {consent_request_id}")
         if self.consent_gateway is not None:
             consent = self.consent_gateway.get_pending(consent_request_id)
-            if consent is not None and not consent.decided:
+            if consent is None:
+                raise KeyError(f"inactive session tool consent_request_id: {consent_request_id}")
+            if not consent.decided:
                 self.consent_gateway.decide(consent_request_id, allowed)
+        self.pending_actions.pop(consent_request_id)
         manifest = self.registry.require_manifest(pending.tool_id)
         if not allowed:
             return ToolResult(

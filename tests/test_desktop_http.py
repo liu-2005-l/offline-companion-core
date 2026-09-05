@@ -27,6 +27,7 @@ from offline_companion.core.persona_session.persona_loader import load_persona_f
 from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.core.plan_orchestrator import (
     A3ConsentAdapter,
+    ConsentRequest,
     InMemoryPlanStore,
     PlanOrchestrator,
     PlanStatus,
@@ -72,6 +73,9 @@ from offline_companion.shell.ui_host.desktop.privacy_socket_guard import (
     is_socket_guard_enabled,
 )
 from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
+from offline_companion.shell.ui_host.desktop.session_binding import (
+    BOOTSTRAP_SESSION_HOLDER_BINDINGS,
+)
 from offline_companion.storage.settings_store import update_settings
 
 
@@ -1261,6 +1265,7 @@ def test_desktop_switch_rebinds_session_scoped_components_and_writes(tmp_path) -
     runtime.plan_orchestrator = SimpleNamespace(
         _event_publisher=SimpleNamespace(_stream=old_stream)
     )
+    runtime.model_downloader = SimpleNamespace(_event_stream=old_stream)
     client = create_desktop_app(runtime).test_client()
     current = client.get("/api/sessions/current").get_json()
     target = next(
@@ -1285,6 +1290,36 @@ def test_desktop_switch_rebinds_session_scoped_components_and_writes(tmp_path) -
     assert runtime.sample_retriever._event_stream is new_stream
     assert runtime.auto_turn_orchestrator.event_stream is new_stream
     assert runtime.plan_orchestrator._event_publisher._stream is new_stream
+    assert runtime.model_downloader._event_stream is new_stream
+
+    registered = {binding.name for binding in BOOTSTRAP_SESSION_HOLDER_BINDINGS}
+    assert registered == {
+        "runtime",
+        "conversation_orchestrator",
+        "consent_gateway",
+        "tool_invoker",
+        "sample_lifecycle",
+        "sample_retriever",
+        "auto_turn",
+        "plan_publisher",
+        "model_downloader",
+    }
+    context = runtime.session_context_provider.capture()
+    values = {
+        "session_id": context.session_id,
+        "session_core": context.session_core,
+        "event_stream": context.event_stream,
+    }
+    for binding in BOOTSTRAP_SESSION_HOLDER_BINDINGS:
+        holder = runtime
+        for part in binding.path:
+            holder = getattr(holder, part)
+        for attribute, value_name in binding.assignments:
+            actual = getattr(holder, attribute)
+            if value_name == "session_id":
+                assert actual == values[value_name]
+            else:
+                assert actual is values[value_name]
 
     chat = client.post("/api/chat", json={"message": "新会话消息"})
     memory = client.post("/api/memories", json={"content": "新会话记忆"})
@@ -1301,6 +1336,48 @@ def test_desktop_switch_rebinds_session_scoped_components_and_writes(tmp_path) -
     ).fetchone()[0] == new_session_id
     assert new_stream.latest_seq >= 0
     assert old_stream.latest_seq == -1
+
+
+def test_pending_consent_stays_with_old_session_across_persona_switch(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+    gateway = UIHostConsentGateway()
+    runtime.orchestrator.consent_gateway = gateway
+    app = create_desktop_app(runtime)
+    client = app.test_client()
+    current = client.get("/api/sessions/current").get_json()
+    old_session_id = current["canonical_session_id"]
+    gateway.submit(
+        ConsentRequest(
+            plan_id=old_session_id,
+            step_id="turn",
+            skill_id="skill_cloud_inference",
+            operation="route_cloud_turn",
+        )
+    )
+    request_id = gateway.last_artifact["request_id"]
+    old_pending = gateway.pending[request_id]
+    target = next(
+        item
+        for item in client.get("/api/personas").get_json()["items"]
+        if item["id"] != current["persona"]["id"]
+    )
+
+    switched = client.post(
+        f"/api/personas/{target['id']}/activate",
+        json={"switch_request_id": "consent-session-switch", "expected_revision": current["revision"]},
+    )
+
+    assert switched.status_code == 200
+    assert gateway.active_session_id == switched.get_json()["canonical_session_id"]
+    assert gateway.get_pending(request_id) is None
+    assert client.get("/api/consent").get_json().get("request_id") is None
+    assert client.post("/api/consent", json={"request_id": request_id, "allowed": True}).status_code == 404
+    assert old_pending.decided is False
+
+    gateway.bind_session_context(old_session_id, None)
+
+    assert gateway.get_pending(request_id) is old_pending
+    assert gateway.to_modal_payload(request_id)["status"] == "pending"
 
 
 def test_persona_frontend_reconciles_unknown_switch_state_without_fake_success() -> None:

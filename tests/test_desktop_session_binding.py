@@ -9,11 +9,17 @@ import threading
 import time
 from multiprocessing import get_context
 from pathlib import Path
+from queue import Empty
 
 import pytest
 
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.runtime.storage_index.engine import SCHEMA_VERSION, connect
+from offline_companion.shared.persona_snapshot import (
+    PERSONA_SNAPSHOT_SOURCE_A1,
+    PERSONA_SNAPSHOT_SOURCE_LEGACY,
+    normalize_persona_snapshot_source,
+)
 from offline_companion.shell.ui_host.bootstrap import bootstrap_ui_session
 from offline_companion.shell.ui_host.desktop.session_binding import (
     DesktopSessionBindingService,
@@ -56,6 +62,105 @@ def _commit_then_wait_for_kill(db_path: str, ready_path: str) -> None:
         switch_request_id="kill-after-commit",
         expected_revision=initial.revision,
     )
+
+
+def _bootstrap_after_restart(data_dir: str, result_queue) -> None:
+    """摘要：在第二真实进程中走完整 UI bootstrap 并回报绑定状态。"""
+    bundle = None
+    try:
+        bundle = bootstrap_ui_session(
+            persona_path=_DEFAULT_PERSONA,
+            session_id="must-not-replace-canonical",
+            data_dir=data_dir,
+            memory=False,
+            model=str(Path(data_dir) / "missing.gguf"),
+        )
+        context = bundle.session_context_provider.capture()
+        state = bundle.conn.execute(
+            "SELECT active_session_id, revision FROM desktop_session_state WHERE id = 1;"
+        ).fetchone()
+        result_queue.put(
+            {
+                "session_id": bundle.session_id,
+                "context_session_id": context.session_id,
+                "orchestrator_session_id": bundle.orchestrator.session_id,
+                "canonical_session_id": state["active_session_id"],
+                "revision": state["revision"],
+                "source": context.snapshot.source,
+                "auto_stream_bound": bundle.auto_turn_orchestrator.event_stream is context.event_stream,
+                "consent_stream_bound": bundle.orchestrator.consent_gateway.event_stream
+                is context.event_stream,
+                "consent_session_id": bundle.orchestrator.consent_gateway.active_session_id,
+                "sample_lifecycle_bound": bundle.sample_lifecycle._event_stream is context.event_stream,
+                "sample_retriever_bound": bundle.sample_retriever._event_stream is context.event_stream,
+                "integrity": bundle.conn.execute("PRAGMA integrity_check;").fetchone()[0],
+                "foreign_keys": bundle.conn.execute("PRAGMA foreign_key_check;").fetchall(),
+            }
+        )
+    finally:
+        if bundle is not None:
+            bundle.idle_detector.stop()
+            if bundle.event_persistence is not None:
+                bundle.event_persistence.shutdown()
+            bundle.conn.close()
+
+
+def _replay_switch_after_restart(
+    db_path: str,
+    target_persona_id: str,
+    request_id: str,
+    expected_revision: int,
+    result_queue,
+) -> None:
+    """摘要：在新进程中验证持久化幂等键的 replay 或冲突语义。"""
+    conn = connect(Path(db_path))
+    try:
+        service = DesktopSessionBindingService(
+            conn,
+            context_provider=DesktopSessionContextProvider(),
+            event_stream_manager=None,
+            semantic_embed_func=None,
+        )
+        service.restore_or_create(
+            preferred_session_id="ignored-after-restart",
+            startup_persona=load_persona_file(_DEFAULT_PERSONA),
+            title="重启恢复",
+        )
+        try:
+            result = service.switch_persona(
+                target_persona_id,
+                switch_request_id=request_id,
+                expected_revision=expected_revision,
+            )
+        except SessionBindingError as exc:
+            result_queue.put({"status": exc.status, "code": exc.code})
+        else:
+            result_queue.put(
+                {
+                    "status": 200,
+                    "session_id": result.context.session_id,
+                    "idempotent_replay": result.idempotent_replay,
+                    "session_count": conn.execute("SELECT COUNT(*) FROM sessions;").fetchone()[0],
+                }
+            )
+    finally:
+        conn.close()
+
+
+def _spawn_result(target, args: tuple) -> dict:
+    """摘要：运行一个 spawn 子进程并读取其结构化结果。"""
+    process_context = get_context("spawn")
+    result_queue = process_context.Queue()
+    process = process_context.Process(target=target, args=(*args, result_queue))
+    process.start()
+    process.join(timeout=30)
+    assert not process.is_alive(), "子进程未在时限内结束"
+    assert process.exitcode == 0
+    try:
+        result = result_queue.get(timeout=5)
+    except Empty as exc:
+        raise AssertionError("子进程未返回结果") from exc
+    return result
 
 
 def _service(tmp_path: Path) -> tuple[sqlite3.Connection, DesktopSessionBindingService]:
@@ -196,7 +301,7 @@ def test_snapshot_semantics_are_rejected_even_with_matching_hash(tmp_path: Path)
 
 
 def test_process_kill_after_commit_recovers_sqlite_canonical(tmp_path: Path) -> None:
-    db_path = tmp_path / "kill-recovery.db"
+    db_path = tmp_path / "companion.db"
     ready_path = tmp_path / "committed.marker"
     process = get_context("spawn").Process(
         target=_commit_then_wait_for_kill,
@@ -211,24 +316,21 @@ def test_process_kill_after_commit_recovers_sqlite_canonical(tmp_path: Path) -> 
     process.join(timeout=10)
     assert not process.is_alive()
 
-    conn = connect(db_path)
-    service = DesktopSessionBindingService(
-        conn,
-        context_provider=DesktopSessionContextProvider(),
-        event_stream_manager=None,
-        semantic_embed_func=None,
-    )
-    recovered = service.restore_or_create(
-        preferred_session_id="ignored-after-canonical",
-        startup_persona=load_persona_file(_DEFAULT_PERSONA),
-        title="恢复会话",
-    )
+    recovered = _spawn_result(_bootstrap_after_restart, (str(tmp_path),))
 
-    assert recovered.revision == 2
-    assert recovered.session_id != "initial"
-    assert recovered.snapshot.source == "persona_switch"
-    assert conn.execute("PRAGMA integrity_check;").fetchone()[0] == "ok"
-    assert conn.execute("PRAGMA foreign_key_check;").fetchall() == []
+    assert recovered["revision"] == 2
+    assert recovered["session_id"] != "initial"
+    assert recovered["session_id"] == recovered["context_session_id"]
+    assert recovered["session_id"] == recovered["orchestrator_session_id"]
+    assert recovered["session_id"] == recovered["canonical_session_id"]
+    assert recovered["session_id"] == recovered["consent_session_id"]
+    assert recovered["source"] == PERSONA_SNAPSHOT_SOURCE_A1
+    assert recovered["auto_stream_bound"] is True
+    assert recovered["consent_stream_bound"] is True
+    assert recovered["sample_lifecycle_bound"] is True
+    assert recovered["sample_retriever_bound"] is True
+    assert recovered["integrity"] == "ok"
+    assert recovered["foreign_keys"] == []
 
 
 def test_switch_failure_rolls_back_session_default_and_pointer(tmp_path: Path, monkeypatch) -> None:
@@ -349,6 +451,68 @@ def test_switch_request_is_idempotent_and_cannot_change_target(tmp_path: Path) -
         )
 
 
+def test_switch_request_idempotency_survives_process_restart(tmp_path: Path) -> None:
+    db_path = tmp_path / "restart-idempotency.db"
+    conn = connect(db_path)
+    service = DesktopSessionBindingService(
+        conn,
+        context_provider=DesktopSessionContextProvider(),
+        event_stream_manager=None,
+        semantic_embed_func=None,
+    )
+    before = service.restore_or_create(
+        preferred_session_id="initial",
+        startup_persona=load_persona_file(_DEFAULT_PERSONA),
+        title="初始会话",
+    )
+    targets = [item for item in list_personas(conn) if item["id"] != before.session_core.persona.persona_id]
+    first = service.switch_persona(
+        targets[0]["id"],
+        switch_request_id="restart-replay",
+        expected_revision=before.revision,
+    )
+    first_session_id = first.context.session_id
+    conn.close()
+
+    replay = _spawn_result(
+        _replay_switch_after_restart,
+        (str(db_path), targets[0]["id"], "restart-replay", before.revision),
+    )
+
+    assert replay == {
+        "status": 200,
+        "session_id": first_session_id,
+        "idempotent_replay": True,
+        "session_count": 2,
+    }
+
+    conn = connect(db_path)
+    service = DesktopSessionBindingService(
+        conn,
+        context_provider=DesktopSessionContextProvider(),
+        event_stream_manager=None,
+        semantic_embed_func=None,
+    )
+    current = service.restore_or_create(
+        preferred_session_id="ignored",
+        startup_persona=load_persona_file(_DEFAULT_PERSONA),
+        title="再次恢复",
+    )
+    moved = service.switch_persona(
+        targets[1]["id"],
+        switch_request_id="move-canonical",
+        expected_revision=current.revision,
+    )
+    conn.close()
+
+    conflict = _spawn_result(
+        _replay_switch_after_restart,
+        (str(db_path), targets[0]["id"], "restart-replay", moved.context.revision),
+    )
+
+    assert conflict == {"status": 409, "code": "switch_request_conflict"}
+
+
 def test_concurrent_switch_returns_conflict_without_second_write(tmp_path: Path, monkeypatch) -> None:
     conn, service = _service(tmp_path)
     before = service.current()
@@ -389,11 +553,61 @@ def test_concurrent_switch_returns_conflict_without_second_write(tmp_path: Path,
 
 def test_snapshot_builder_uses_canonical_json_and_preregistered_cutpoints() -> None:
     persona = load_persona_file(_DEFAULT_PERSONA)
-    proof = build_persona_snapshot(persona, source="test", created_at=1.0)
+    proof = build_persona_snapshot(persona, source=PERSONA_SNAPSHOT_SOURCE_A1, created_at=1.0)
 
     assert proof.canonical_json == proof.canonical_json.strip()
-    assert proof.payload["source"] == "test"
+    assert proof.payload["source"] == PERSONA_SNAPSHOT_SOURCE_A1
     assert len(proof.sha256) == 64
+
+    with pytest.raises(ValueError, match="unsupported persona snapshot source"):
+        normalize_persona_snapshot_source("unknown_source")
+
+
+@pytest.mark.parametrize(
+    ("legacy_source", "expected_source"),
+    [
+        ("bootstrap", PERSONA_SNAPSHOT_SOURCE_A1),
+        ("persona_switch", PERSONA_SNAPSHOT_SOURCE_A1),
+        ("legacy_backfill", PERSONA_SNAPSHOT_SOURCE_LEGACY),
+    ],
+)
+def test_v13_snapshot_source_values_migrate_and_rehash(
+    tmp_path: Path,
+    legacy_source: str,
+    expected_source: str,
+) -> None:
+    db_path = tmp_path / "source-migration.db"
+    conn, service = _service(tmp_path)
+    context = service.current()
+    payload = dict(context.snapshot.payload)
+    payload["source"] = legacy_source
+    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    conn.execute(
+        """
+        UPDATE sessions
+        SET persona_snapshot_json = ?, persona_snapshot_sha256 = ?, persona_snapshot_source = ?
+        WHERE id = ?;
+        """,
+        (canonical, digest, legacy_source, context.session_id),
+    )
+    conn.execute("UPDATE meta SET value = '13' WHERE key = 'schema_version';")
+    destination = sqlite3.connect(db_path)
+    conn.backup(destination)
+    destination.close()
+    conn.close()
+
+    migrated = connect(db_path)
+    row = migrated.execute("SELECT * FROM sessions WHERE id = ?;", (context.session_id,)).fetchone()
+    proof = validate_persona_snapshot(row)
+
+    assert proof.source == expected_source
+    assert proof.payload["source"] == expected_source
+    assert proof.sha256 != digest or legacy_source == expected_source
+    assert migrated.execute("SELECT value FROM meta WHERE key = 'schema_version';").fetchone()[0] == str(
+        SCHEMA_VERSION
+    )
+    migrated.close()
 
 
 def test_bootstrap_restores_sqlite_canonical_instead_of_new_random_session(tmp_path: Path) -> None:

@@ -252,6 +252,42 @@ def test_orchestrator_routed_cloud_turn_waits_for_consent_then_resumes(tmp_path)
     assert gateway.get_pending(pending.consent_request_id).decided is True
 
 
+def test_orchestrator_pending_turn_cannot_resume_from_another_session(tmp_path) -> None:
+    decision = ModelRoutingDecision(
+        selected_model="deepseek-v4",
+        fallback_model="qwen2.5-1.5b-instruct-q4_k_m",
+        requires_consent=True,
+        reason="cloud_candidate_selected",
+        estimated_input_tokens=128,
+        estimated_output_tokens=256,
+        estimated_cost=0.02,
+    )
+    gateway = UIHostConsentGateway(active_session_id="s1")
+    orchestrator, _conn = _routed_orch(
+        tmp_path,
+        decision=decision,
+        selected_type="cloud",
+        cloud_post=lambda _req: CloudCompletionResponse(text="云端回答", raw={}),
+        gateway=gateway,
+    )
+    pending = orchestrator.run_turn("请联网搜索后给我答案", memory_on=False)
+    request_id = pending.consent_request_id
+    assert request_id
+
+    orchestrator.session_id = "s2"
+    gateway.bind_session_context("s2", None)
+    with pytest.raises(KeyError, match="inactive session pending turn"):
+        orchestrator.resume_pending_turn(request_id, allowed=True)
+    assert request_id in orchestrator.pending_turns
+    assert gateway.pending[request_id].decided is False
+
+    orchestrator.session_id = "s1"
+    gateway.bind_session_context("s1", None)
+    resumed = orchestrator.resume_pending_turn(request_id, allowed=True)
+
+    assert "云端回答" in resumed.reply
+
+
 def test_orchestrator_routed_cloud_turn_denied_does_not_execute(tmp_path) -> None:
     decision = ModelRoutingDecision(
         selected_model="deepseek-v4",

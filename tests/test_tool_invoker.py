@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from offline_companion.core.event_stream import EventStream, build_default_registry
 from offline_companion.core.tools.datetime_tool import datetime_now
 from offline_companion.core.tools.file_read_tool import file_read
@@ -65,6 +67,46 @@ def test_invoker_returns_pending_for_ask_builtin_and_can_resume(tmp_path: Path, 
 
     assert resumed.status == "completed"
     assert resumed.result == {"path": str(allowed_file.resolve()), "content": "hello"}
+
+
+def test_invoker_pending_action_cannot_resume_from_another_session(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("OFFLINE_COMPANION_DATA_DIR", str(tmp_path))
+    allowed_file = tmp_path / "note.txt"
+    allowed_file.write_text("hello", encoding="utf-8")
+    registry = ToolRegistry()
+    registry.register_builtin(
+        _manifest(
+            tool_id="file_read",
+            permission="ask",
+            scope="file_read",
+            handler_function="file_read",
+        ),
+        file_read,
+    )
+    gateway = UIHostConsentGateway(active_session_id="s1")
+    invoker = ToolInvoker(registry, consent_gateway=gateway)
+    pending = invoker.execute(
+        "file_read",
+        {"path": str(allowed_file)},
+        session_id="s1",
+        privacy_mode=PrivacyMode.LOCAL_ONLY,
+    )
+    request_id = pending.consent_request_id
+    assert request_id
+
+    gateway.bind_session_context("s2", None)
+    with pytest.raises(KeyError, match="inactive session tool consent"):
+        invoker.resume(request_id, allowed=True)
+    assert request_id in invoker.pending_actions
+    assert gateway.pending[request_id].decided is False
+
+    gateway.bind_session_context("s1", None)
+    resumed = invoker.resume(request_id, allowed=True)
+
+    assert resumed.status == "completed"
 
 
 def test_invoker_enable_external_returns_pending_and_sets_enabled(tmp_path: Path) -> None:
