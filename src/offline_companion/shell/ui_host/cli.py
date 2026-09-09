@@ -67,6 +67,11 @@ from offline_companion.shell.ui_host.model_registry import (
     resolve_default_model_config,
     resolve_n_gpu_layers,
 )
+from offline_companion.storage.persona_traits_migration import (
+    PersonaTraitsMigrationError,
+    complete_persona_level_migration,
+    prepare_persona_traits_migration,
+)
 
 
 def _parse_privacy(s: str) -> PrivacyMode:
@@ -161,6 +166,13 @@ def cmd_chat(args: argparse.Namespace) -> int:
     memory_on = persona.memory_default_on if args.memory is None else bool(args.memory)
 
     conn = connect(paths.db_path)
+    try:
+        prepare_persona_traits_migration(conn, exports_dir=paths.exports_dir)
+        complete_persona_level_migration(conn)
+    except PersonaTraitsMigrationError as exc:
+        conn.close()
+        print("人格档位迁移失败，已拒绝启动:", exc, file=sys.stderr)
+        return 1
     semantic_embedder = SemanticEmbeddingProvider(data_root=paths.root)
     EventRepository(conn).recompute_content_embeddings(semantic_embedder)
     session_core = PersonaSessionCore(persona, semantic_embed_func=semantic_embedder)

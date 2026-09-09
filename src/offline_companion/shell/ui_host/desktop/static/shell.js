@@ -1347,9 +1347,6 @@ function renderPersonaDetail(name) {
         '<p>' + p.desc + '</p>' +
       '</div>' +
       '<div class="persona-card-actions">' +
-        '<button class="icon-btn" id="personaEditBtn" onclick="togglePersonaEdit()" title="编辑">' +
-          '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
-        '</button>' +
         '<button class="icon-btn del" onclick="deletePersona()" title="删除">' +
           '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
         '</button>' +
@@ -1375,132 +1372,6 @@ function renderPersonaDetail(name) {
       '<h3>人设锚语</h3>' +
       '<div class="persona-anchor">' + p.anchor + '</div>' +
     '</div>';
-}
-
-var _personaEditMode = false;
-
-function togglePersonaEdit() {
-  if (_personaEditMode) { savePersonaEdit(); return; }
-
-  var name = getActivePersonaName();
-  if (!name || !_personaRegistry[name]) return;
-  var p = _personaRegistry[name];
-  var card = document.getElementById('personaDetailCard');
-  _personaEditMode = true;
-
-  // avatar → keep as is (not editable inline)
-
-  // name → input
-  var h2 = card.querySelector('.persona-meta h2');
-  h2.outerHTML = '<input class="persona-edit-name" id="peName" value="' + name + '" maxlength="6">';
-
-  // desc → textarea
-  var descP = card.querySelector('.persona-meta p');
-  descP.outerHTML = '<textarea class="persona-edit-desc" id="peDesc">' + p.desc + '</textarea>';
-
-  // OCEAN → number inputs
-  var bars = card.querySelectorAll('.ocean-bar');
-  p.ocean.forEach(function(val, i) {
-    var valEl = bars[i].querySelector('.ocean-value');
-    valEl.outerHTML = '<input type="number" class="ocean-edit-input ocean-value" min="0" max="100" value="' + val + '" data-idx="' + i + '" oninput="onOceanEdit(this)">';
-  });
-
-  // traits → chip editor
-  var traitsBox = card.querySelector('.persona-traits');
-  traitsBox.className = 'persona-traits tag-editor';
-  traitsBox.innerHTML = '';
-  p.traits.forEach(function(t) { _addTagChip(traitsBox, t); });
-  _appendTagInput(traitsBox);
-
-  // anchor → textarea
-  var anchor = card.querySelector('.persona-anchor');
-  anchor.outerHTML = '<textarea class="persona-edit-anchor persona-anchor" id="peAnchor">' + p.anchor + '</textarea>';
-
-  // button → save
-  var btn = document.getElementById('personaEditBtn');
-  btn.title = '保存';
-  btn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>';
-}
-
-function onOceanEdit(input) {
-  var idx = parseInt(input.dataset.idx);
-  var val = parseInt(input.value);
-  if (isNaN(val)) val = 0;
-  val = Math.max(0, Math.min(100, val));
-  input.value = val;
-  // update fill width
-  var bar = input.closest('.ocean-bar');
-  var fill = bar.querySelector('.ocean-fill');
-  if (fill) fill.style.width = val + '%';
-}
-
-async function savePersonaEdit() {
-  var oldName = getActivePersonaName();
-  if (!oldName || !_personaRegistry[oldName]) return;
-  var personaId = getActivePersonaId();
-
-  var newName = document.getElementById('peName').value.trim() || oldName;
-  var desc = document.getElementById('peDesc').value.trim();
-  var anchor = document.getElementById('peAnchor').value.trim();
-
-  // collect OCEAN values
-  var ocean = [];
-  document.querySelectorAll('.ocean-edit-input').forEach(function(inp) {
-    var v = parseInt(inp.value);
-    if (isNaN(v)) v = 50;
-    ocean.push(Math.max(0, Math.min(100, v)));
-  });
-
-  // collect traits from chips
-  var traits = [];
-  document.querySelectorAll('.persona-traits .tag-edit-chip span').forEach(function(s) {
-    traits.push(s.textContent);
-  });
-
-  if (personaId && typeof updatePersonaApi === 'function') {
-    try {
-      await updatePersonaApi(personaId, {
-        name: newName,
-        desc: desc,
-        ocean: ocean,
-        traits: traits,
-        anchor: anchor
-      });
-      _personaEditMode = false;
-      var updatedChip = document.querySelector('.persona-chip[data-persona-id="' + personaId + '"]');
-      if (updatedChip) updatedChip.click();
-      showToast('Persona saved');
-    } catch (error) {
-      showToast('Persona save failed: ' + error.message);
-    }
-    return;
-  }
-
-  // update registry (handle name change)
-  if (newName !== oldName) {
-    if (_personaRegistry[newName]) {
-      showToast('人格名称已存在');
-      return;
-    }
-    _personaRegistry[newName] = _personaRegistry[oldName];
-    delete _personaRegistry[oldName];
-    // update chip text
-    var chip = document.querySelector('.persona-chip.active');
-    if (chip) {
-      chip.querySelector('span:last-child').textContent = newName;
-      chip.setAttribute('onclick', "selectPersona(this, '" + newName + "')");
-    }
-  }
-  _personaRegistry[newName].desc = desc;
-  _personaRegistry[newName].ocean = ocean;
-  _personaRegistry[newName].traits = traits;
-  _personaRegistry[newName].anchor = anchor;
-
-  _personaEditMode = false;
-
-  // re-render card
-  renderPersonaDetail(newName);
-  showToast('人格已保存');
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1791,113 +1662,47 @@ function _radarDragEnd() {
   if (v) v.classList.remove('dragging');
 }
 
-// ── OCEAN → 性格标签推导 ──
-var _oceanTraitMap = [
-  // [min, max, highTrait, lowTrait]
-  [70, 100, '好奇心强', '务实'],
-  [70, 100, '有条理', '随性'],
-  [70, 100, '外向', '内敛'],
-  [70, 100, '温暖', '直率'],
-  [70, 100, '敏感', '稳定']
-];
+var _personaPreviewTimer = null;
+var _personaPreviewSequence = 0;
 
-function _deriveTraits(ocean) {
-  var traits = [];
-  var labelPairs = [
-    ['好奇心强', '务实守旧'],
-    ['有条理', '随性自在'],
-    ['外向健谈', '内敛安静'],
-    ['温暖共情', '直率独立'],
-    ['敏感丰富', '情绪稳定']
-  ];
-  for (var i = 0; i < 5; i++) {
-    if (ocean[i] >= 70) traits.push(labelPairs[i][0]);
-    else if (ocean[i] <= 35) traits.push(labelPairs[i][1]);
-  }
-  if (traits.length < 3) {
-    // fill with mid-range descriptors
-    if (ocean[0] >= 55) traits.push('有创造力');
-    if (ocean[3] >= 55) traits.push('善解人意');
-    if (ocean[4] <= 50) traits.push('从容');
-    if (traits.length < 3) traits.push('平衡', '适度');
-  }
-  return traits.slice(0, 6);
+function _applyPersonaPreview(preview) {
+  var traits = Array.isArray(preview.traits) ? preview.traits : [];
+  var traitsEl = document.getElementById('pcTraits');
+  traitsEl.innerHTML = traits.length
+    ? traits.map(function(t) { return '<span class="trait-tag">' + apiEscapeHtml(t) + '</span>'; }).join('')
+    : '<span class="pc-traits-empty">自定义 OCEAN · 未验证</span>';
+  document.getElementById('pcDesc').value = preview.desc || '';
+  document.getElementById('pcAnchor').textContent = preview.anchor || '';
+}
+
+async function _requestPersonaPreview(showSuccess) {
+  if (typeof previewPersonaApi !== 'function') throw new Error('persona_preview_unavailable');
+  var sequence = ++_personaPreviewSequence;
+  var preview = await previewPersonaApi({
+    name: document.getElementById('pcName').value.trim() || '新人格',
+    ocean: _radarValues.slice()
+  });
+  if (sequence !== _personaPreviewSequence) return null;
+  _applyPersonaPreview(preview);
+  if (showSuccess) showToast('已基于 OCEAN 档位生成提示词');
+  return preview;
 }
 
 function _updateTraitsPreview() {
-  var el = document.getElementById('pcTraits');
-  if (!el) return;
-  var traits = _deriveTraits(_radarValues);
-  if (traits.length === 0) {
-    el.innerHTML = '<span class="pc-traits-empty">调整五维后自动生成</span>';
-  } else {
-    el.innerHTML = traits.map(function(t) {
-      return '<span class="trait-tag">' + t + '</span>';
-    }).join('');
-  }
+  window.clearTimeout(_personaPreviewTimer);
+  _personaPreviewTimer = window.setTimeout(function() {
+    _requestPersonaPreview(false).catch(function(error) {
+      document.getElementById('pcTraits').innerHTML = '<span class="pc-traits-empty">预览失败：' + apiEscapeHtml(error.message) + '</span>';
+    });
+  }, 100);
 }
 
-// ── OCEAN → 描述 + 锚语生成（模拟后端提示词生成） ──
-function _genDesc(ocean) {
-  var parts = [];
-  var dimDesc = [
-    { hi: '对新事物充满好奇', lo: '务实，更关注眼前' },
-    { hi: '做事有条理、可靠', lo: '灵活随性，不拘小节' },
-    { hi: '外向健谈，乐于表达', lo: '内敛安静，善于观察' },
-    { hi: '温暖友善，善于共情', lo: '独立直率，对事不对人' },
-    { hi: '感受细腻，情绪丰富', lo: '情绪稳定，波澜不惊' }
-  ];
-  for (var i = 0; i < 5; i++) {
-    if (ocean[i] >= 65) parts.push(dimDesc[i].hi);
-    else if (ocean[i] <= 40) parts.push(dimDesc[i].lo);
+async function generatePersonaPrompt() {
+  try {
+    await _requestPersonaPreview(true);
+  } catch (error) {
+    showToast('人格预览失败：' + error.message);
   }
-  if (parts.length === 0) parts.push('性格均衡，没有极端倾向');
-  return parts.join('，') + '。';
-}
-
-function _genAnchor(name, ocean) {
-  var tone, interaction, emotion;
-  // 外向性 + 宜人性 → 互动风格
-  if (ocean[2] >= 65 && ocean[3] >= 65) {
-    interaction = '主动关心你，语气温暖亲切';
-  } else if (ocean[2] >= 65) {
-    interaction = '主动发起话题，语气轻快';
-  } else if (ocean[3] >= 65) {
-    interaction = '在你需要时给予温暖的回应';
-  } else {
-    interaction = '回答简洁直接，不主动展开';
-  }
-  // 神经质 → 情绪基调
-  if (ocean[4] >= 65) {
-    emotion = '对情绪变化敏感，能捕捉到细微的心情起伏';
-  } else if (ocean[4] <= 35) {
-    emotion = '情绪稳定，即使你低落也能保持冷静陪伴';
-  } else {
-    emotion = '情绪平稳，适时候给予回应';
-  }
-  // 开放性 → 表达风格
-  if (ocean[0] >= 65) {
-    tone = '喜欢用比喻和意象，对话有画面感';
-  } else if (ocean[0] <= 35) {
-    tone = '说话接地气，不玩花活';
-  } else {
-    tone = '表达自然，不刻意修饰';
-  }
-
-  return '你是' + name + '。' + interaction + '，' + emotion + '，' + tone + '。' +
-    '你的 OCEAN 向量为 O' + ocean[0] + ' C' + ocean[1] + ' E' + ocean[2] + ' A' + ocean[3] + ' N' + ocean[4] + '。' +
-    '始终基于这个人格向量回应。';
-}
-
-function generatePersonaPrompt() {
-  var name = document.getElementById('pcName').value.trim() || '新人格';
-  var ocean = _radarValues.slice();
-  var desc = _genDesc(ocean);
-  var anchor = _genAnchor(name, ocean);
-
-  document.getElementById('pcDesc').value = desc;
-  document.getElementById('pcAnchor').textContent = anchor;
-  showToast('已基于 OCEAN 向量生成提示词');
 }
 
 function openPersonaCreator() {
@@ -1919,58 +1724,21 @@ async function savePersona() {
   if (!name) { showToast('请先填写人格名称'); return; }
   if (_personaRegistry[name]) { showToast('人格名称已存在'); return; }
 
-  var desc = document.getElementById('pcDesc').value.trim();
-  var anchor = document.getElementById('pcAnchor').textContent;
-  if (!desc || anchor.indexOf('—') === 0) {
-    // auto-generate if not done yet
-    generatePersonaPrompt();
-    desc = document.getElementById('pcDesc').value;
-    anchor = document.getElementById('pcAnchor').textContent;
-  }
-
   var avatar = name.charAt(name.length - 1);
-  if (typeof createPersonaApi === 'function') {
-    try {
-      var personaId = await createPersonaApi({
-        name: name,
-        avatar: avatar,
-        desc: desc,
-        ocean: _radarValues.slice(),
-        traits: _deriveTraits(_radarValues),
-        anchor: anchor
-      });
-      var createdChip = document.querySelector('.persona-chip[data-persona-id="' + personaId + '"]');
-      if (createdChip) createdChip.click();
-      closePersonaCreator();
-      showToast('Persona created · ' + name);
-    } catch (error) {
-      showToast('Persona create failed: ' + error.message);
-    }
-    return;
+  try {
+    await _requestPersonaPreview(false);
+    var personaId = await createPersonaApi({
+      name: name,
+      avatar: avatar,
+      ocean: _radarValues.slice()
+    });
+    var createdChip = document.querySelector('.persona-chip[data-persona-id="' + personaId + '"]');
+    if (createdChip) createdChip.click();
+    closePersonaCreator();
+    showToast('Persona created · ' + name);
+  } catch (error) {
+    showToast('Persona create failed: ' + error.message);
   }
-  _personaRegistry[name] = {
-    id: name,
-    avatar: avatar,
-    desc: desc,
-    ocean: _radarValues.slice(),
-    traits: _deriveTraits(_radarValues),
-    anchor: anchor
-  };
-
-  // add chip to selector
-  var selector = document.getElementById('personaSelector');
-  var chip = document.createElement('div');
-  chip.className = 'persona-chip';
-  chip.setAttribute('data-persona-id', name);
-  chip.setAttribute('onclick', "selectPersona(this, '" + name + "')");
-  chip.innerHTML = '<span class="persona-chip-avatar">' + avatar + '</span><span>' + name + '</span>';
-  selector.appendChild(chip);
-
-  // auto-select the new persona
-  chip.click();
-
-  closePersonaCreator();
-  showToast('人格「' + name + '」已保存');
 }
 
 var _currentMemoryCard = null;

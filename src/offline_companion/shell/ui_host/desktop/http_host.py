@@ -43,6 +43,12 @@ from offline_companion.core.memory_lifecycle.semantic_embedding_provider import 
     SemanticEmbeddingProvider,
     embedding_space_of,
 )
+from offline_companion.core.persona_constraint import (
+    REPLY_COPY_CONSTRAINT_CONFIG_FALLBACK,
+    REPLY_COPY_SWITCH_CONFIRMATION,
+    derive_persona_preview,
+    load_persona_constraint_assets,
+)
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.core.plan_enums import PlanErrorCode, PlanEventName
 from offline_companion.core.plan_orchestrator import (
@@ -247,6 +253,7 @@ def create_desktop_app(runtime: DesktopRuntime):
             context_provider=runtime.session_context_provider,
             event_stream_manager=runtime.event_stream_manager,
             semantic_embed_func=runtime.semantic_embed_func,
+            constraint_assets=load_persona_constraint_assets(),
         )
         runtime.session_binding_service.restore_or_create(
             preferred_session_id=runtime.session_id,
@@ -956,16 +963,46 @@ def create_desktop_app(runtime: DesktopRuntime):
     def create_persona():
         data = request.get_json(silent=True) or {}
         try:
-            item = create_persisted_persona(runtime.orchestrator.conn, data)
+            derived = derive_persona_preview(data.get("name"), data.get("ocean", [50] * 5))
+            item = create_persisted_persona(
+                runtime.orchestrator.conn,
+                _persona_derived_write_payload(data, derived.as_payload()),
+            )
         except ValueError as exc:
             return _json_response(jsonify, {"error": str(exc)}, status=400)
         return _json_response(jsonify, {"ok": True, "id": item["id"], "persona": item}, status=201)
+
+    @app.post("/api/personas/preview")
+    def preview_persona():
+        data = request.get_json(silent=True) or {}
+        try:
+            preview = derive_persona_preview(
+                data.get("name") or "新人格",
+                data.get("ocean", [50] * 5),
+            )
+        except ValueError as exc:
+            return _json_response(jsonify, {"error": str(exc)}, status=400)
+        return _json_response(jsonify, {"ok": True, "preview": preview.as_payload()})
 
     @app.put("/api/personas/<persona_id>")
     def update_persona(persona_id: str):
         data = request.get_json(silent=True) or {}
         try:
-            item = update_persisted_persona(runtime.orchestrator.conn, persona_id, data)
+            if "traits" in data or "derived_traits_cache" in data:
+                raise ValueError("traits_read_only")
+            write_payload = dict(data)
+            if "name" in data or "ocean" in data:
+                current = next(
+                    (item for item in list_personas(runtime.orchestrator.conn) if item["id"] == persona_id),
+                    None,
+                )
+                if current is not None:
+                    derived = derive_persona_preview(
+                        data.get("name", current["name"]),
+                        data.get("ocean", current["ocean"]),
+                    )
+                    write_payload = _persona_derived_write_payload(data, derived.as_payload())
+            item = update_persisted_persona(runtime.orchestrator.conn, persona_id, write_payload)
         except ValueError as exc:
             return _json_response(jsonify, {"error": str(exc)}, status=400)
         if item is None:
@@ -1025,6 +1062,13 @@ def create_desktop_app(runtime: DesktopRuntime):
                 "canonical_session_id": exc.canonical_session_id,
                 "revision": exc.revision,
             }
+            if exc.code == "switch_failed":
+                fallback_copy = runtime.session_binding_service.deterministic_reply(
+                    persona_id,
+                    REPLY_COPY_CONSTRAINT_CONFIG_FALLBACK,
+                )
+                if fallback_copy:
+                    payload["user_message"] = fallback_copy
             return _json_response(jsonify, payload, status=exc.status)
         finally:
             model_lock.release()
@@ -1043,6 +1087,10 @@ def create_desktop_app(runtime: DesktopRuntime):
                 "created_new_session": result.created_new_session,
                 "idempotent_replay": result.idempotent_replay,
                 "persona": item,
+                "confirmation": runtime.session_binding_service.deterministic_reply(
+                    persona_id,
+                    REPLY_COPY_SWITCH_CONFIRMATION,
+                ),
             },
         )
 
@@ -2359,6 +2407,20 @@ def create_desktop_app(runtime: DesktopRuntime):
     return app
 
 
+def _persona_derived_write_payload(
+    payload: dict[str, Any],
+    derived: dict[str, object],
+) -> dict[str, Any]:
+    """摘要：把后端权威派生结果转换为存储门面专用写入 payload。"""
+    if "traits" in payload or "derived_traits_cache" in payload:
+        raise ValueError("traits_read_only")
+    result = dict(payload)
+    result["desc"] = derived["desc"]
+    result["anchor"] = derived["anchor"]
+    result["derived_traits_cache"] = derived["traits"]
+    return result
+
+
 def _download_progress_payload(progress: DownloadProgress) -> dict[str, Any]:
     """摘要：将下载进度转换为 API 与 SSE 共用的 JSON payload。"""
     return {
@@ -2976,7 +3038,7 @@ def _persona_payload(path: Path, runtime: DesktopRuntime) -> dict[str, Any]:
         if ocean is not None
         else []
     )
-    traits = raw.get("traits") or raw.get("tone_keywords") or []
+    traits = raw.get("traits") or []
     if not isinstance(traits, list):
         traits = []
     return {

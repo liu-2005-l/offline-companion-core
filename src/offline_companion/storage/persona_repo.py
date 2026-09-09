@@ -5,8 +5,14 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from collections.abc import Iterable, Mapping
 from typing import Any
 
+from offline_companion.core.persona_constraint.levels import (
+    CUTPOINT_VERSION,
+    derive_levels,
+    serialize_levels,
+)
 from offline_companion.shared.types import OceanVector, Persona
 
 _SEED_PERSONAS: tuple[dict[str, Any], ...] = (
@@ -51,6 +57,19 @@ _SEED_PERSONAS: tuple[dict[str, Any], ...] = (
     },
 )
 
+_BUILTIN_SYNC_FIELDS = (
+    "name",
+    "avatar",
+    "desc",
+    "ocean_json",
+    "traits_json",
+    "anchor",
+    "system_prompt",
+    "raw_json",
+    "derived_levels_json",
+    "derived_cutpoint_version",
+)
+
 
 def init_personas(conn: Any) -> None:
     """摘要：首次运行时写入默认三个人格。
@@ -64,6 +83,94 @@ def init_personas(conn: Any) -> None:
     now = time.time()
     for index, seed in enumerate(_SEED_PERSONAS):
         _insert_seed(conn, seed, active=index == 0, now=now)
+
+
+def sync_builtin_personas(conn: Any, presets: Iterable[Mapping[str, Any]]) -> None:
+    """摘要：按稳定 ID 幂等写入由 A 层校验过的内置人格预设。
+
+    参数：
+        conn: SQLite 连接。
+        presets: 已通过冻结资产校验的确定性存储 payload。
+    Raises:
+        ValueError: 稳定 ID 与非内置人格冲突，或 payload 字段不合法。
+        TypeError: payload 的集合字段类型不合法。
+    """
+    init_personas(conn)
+    now = time.time()
+    conn.execute("SAVEPOINT sync_builtin_personas;")
+    try:
+        for preset in presets:
+            normalized = _normalize_builtin_preset(preset)
+            existing = conn.execute(
+                """
+                SELECT name, avatar, desc, ocean_json, traits_json, anchor, system_prompt,
+                       raw_json, derived_levels_json, derived_cutpoint_version
+                FROM personas
+                WHERE id = ?;
+                """,
+                (normalized["id"],),
+            ).fetchone()
+            if existing is not None:
+                existing_raw = _loads_dict(existing["raw_json"])
+                if existing_raw.get("builtin") is not True:
+                    raise ValueError("builtin_persona_id_conflict")
+                if all(str(existing[field]) == normalized[field] for field in _BUILTIN_SYNC_FIELDS):
+                    continue
+                conn.execute(
+                    """
+                    UPDATE personas
+                    SET name = ?, avatar = ?, desc = ?, ocean_json = ?, traits_json = ?,
+                        anchor = ?, system_prompt = ?, raw_json = ?, derived_levels_json = ?,
+                        derived_cutpoint_version = ?, updated_at = ?
+                    WHERE id = ?;
+                    """,
+                    (
+                        normalized["name"],
+                        normalized["avatar"],
+                        normalized["desc"],
+                        normalized["ocean_json"],
+                        normalized["traits_json"],
+                        normalized["anchor"],
+                        normalized["system_prompt"],
+                        normalized["raw_json"],
+                        normalized["derived_levels_json"],
+                        normalized["derived_cutpoint_version"],
+                        now,
+                        normalized["id"],
+                    ),
+                )
+                continue
+            conn.execute(
+                """
+                INSERT INTO personas(
+                    id, name, avatar, desc, ocean_json, traits_json, anchor, system_prompt,
+                    raw_json, derived_levels_json, derived_cutpoint_version,
+                    active, created_at, updated_at
+                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?);
+                """,
+                (
+                    normalized["id"],
+                    normalized["name"],
+                    normalized["avatar"],
+                    normalized["desc"],
+                    normalized["ocean_json"],
+                    normalized["traits_json"],
+                    normalized["anchor"],
+                    normalized["system_prompt"],
+                    normalized["raw_json"],
+                    normalized["derived_levels_json"],
+                    normalized["derived_cutpoint_version"],
+                    0,
+                    now,
+                    now,
+                ),
+            )
+    except BaseException:
+        conn.execute("ROLLBACK TO sync_builtin_personas;")
+        conn.execute("RELEASE sync_builtin_personas;")
+        raise
+    else:
+        conn.execute("RELEASE sync_builtin_personas;")
 
 
 def list_personas(conn: Any) -> list[dict[str, Any]]:
@@ -122,14 +229,34 @@ def activate_persona(conn: Any, persona_id: str) -> Persona | None:
         激活后的人格；不存在时返回 None。
     """
     init_personas(conn)
-    persona = get_persona(conn, persona_id)
-    if persona is None:
-        return None
-    now = time.time()
     with conn:
-        conn.execute("UPDATE personas SET active = 0, updated_at = ? WHERE active = 1;", (now,))
-        conn.execute("UPDATE personas SET active = 1, updated_at = ? WHERE id = ?;", (now, persona_id))
+        if not set_active_persona_in_transaction(conn, persona_id):
+            return None
     return get_persona(conn, persona_id)
+
+
+def set_active_persona_in_transaction(
+    conn: Any,
+    persona_id: str,
+    *,
+    updated_at: float | None = None,
+) -> bool:
+    """摘要：在调用方事务内更新下一新会话默认人格，且绝不自行提交。
+
+    参数：
+        conn: 已由调用方管理事务边界的 SQLite 连接。
+        persona_id: 要设为默认值的人格 ID。
+        updated_at: 调用方提供的统一更新时间；省略时取当前时间。
+    返回值：
+        目标人格存在并完成投影时返回 True；不存在时零写入并返回 False。
+    """
+    row = conn.execute("SELECT 1 FROM personas WHERE id = ?;", (persona_id,)).fetchone()
+    if row is None:
+        return False
+    now = time.time() if updated_at is None else float(updated_at)
+    conn.execute("UPDATE personas SET active = 0, updated_at = ? WHERE active = 1;", (now,))
+    conn.execute("UPDATE personas SET active = 1, updated_at = ? WHERE id = ?;", (now, persona_id))
+    return True
 
 
 def create_persona(conn: Any, payload: dict[str, Any]) -> dict[str, Any]:
@@ -146,12 +273,15 @@ def create_persona(conn: Any, payload: dict[str, Any]) -> dict[str, Any]:
         ValueError: 字段不合法或名称重复。
     """
     init_personas(conn)
+    if "traits" in payload:
+        raise ValueError("traits_read_only")
     name = _clean_required_text(payload.get("name"), "name")
     _ensure_unique_name(conn, name)
     avatar = str(payload.get("avatar") or name[:1] or "").strip()
     desc = str(payload.get("desc") or "").strip()
     ocean = _normalize_ocean(payload.get("ocean"))
-    traits = _normalize_traits(payload.get("traits"))
+    derived_levels_json = _serialize_ocean_levels(ocean)
+    traits = _normalize_traits(payload.get("derived_traits_cache"))
     anchor = str(payload.get("anchor") or "").strip()
     system_prompt = anchor or f"你是{name}，一个运行在用户本机的隐私优先离线陪伴人格。"
     persona_id = uuid.uuid4().hex
@@ -162,8 +292,9 @@ def create_persona(conn: Any, payload: dict[str, Any]) -> dict[str, Any]:
             """
             INSERT INTO personas(
                 id, name, avatar, desc, ocean_json, traits_json, anchor, system_prompt,
-                raw_json, active, created_at, updated_at
-            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?);
+                raw_json, derived_levels_json, derived_cutpoint_version,
+                active, created_at, updated_at
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?);
             """,
             (
                 persona_id,
@@ -175,6 +306,8 @@ def create_persona(conn: Any, payload: dict[str, Any]) -> dict[str, Any]:
                 anchor,
                 system_prompt,
                 json.dumps(raw, ensure_ascii=False),
+                derived_levels_json,
+                CUTPOINT_VERSION,
                 0,
                 now,
                 now,
@@ -201,9 +334,13 @@ def update_persona(conn: Any, persona_id: str, payload: dict[str, Any]) -> dict[
         ValueError: 字段不合法或名称重复。
     """
     init_personas(conn)
+    if "traits" in payload:
+        raise ValueError("traits_read_only")
     current = _get_persona_payload(conn, persona_id)
     if current is None:
         return None
+    if _is_builtin_persona(conn, persona_id):
+        raise ValueError("builtin_persona_read_only")
     updates: dict[str, Any] = {}
     if "name" in payload:
         name = _clean_required_text(payload.get("name"), "name")
@@ -215,9 +352,15 @@ def update_persona(conn: Any, persona_id: str, payload: dict[str, Any]) -> dict[
     if "desc" in payload:
         updates["desc"] = str(payload.get("desc") or "").strip()
     if "ocean" in payload:
-        updates["ocean_json"] = json.dumps(_normalize_ocean(payload.get("ocean")), ensure_ascii=False)
-    if "traits" in payload:
-        updates["traits_json"] = json.dumps(_normalize_traits(payload.get("traits")), ensure_ascii=False)
+        ocean = _normalize_ocean(payload.get("ocean"))
+        updates["ocean_json"] = json.dumps(ocean, ensure_ascii=False)
+        updates["derived_levels_json"] = _serialize_ocean_levels(ocean)
+        updates["derived_cutpoint_version"] = CUTPOINT_VERSION
+    if "derived_traits_cache" in payload:
+        updates["traits_json"] = json.dumps(
+            _normalize_traits(payload.get("derived_traits_cache")),
+            ensure_ascii=False,
+        )
     if "anchor" in payload:
         anchor = str(payload.get("anchor") or "").strip()
         updates["anchor"] = anchor
@@ -274,6 +417,8 @@ def delete_persona(conn: Any, persona_id: str) -> bool:
     current = _get_persona_payload(conn, persona_id)
     if current is None:
         return False
+    if _is_builtin_persona(conn, persona_id):
+        raise ValueError("builtin_persona_read_only")
     if bool(current["active"]):
         raise ValueError("cannot_delete_active_persona")
     row = conn.execute("SELECT COUNT(*) AS count FROM personas;").fetchone()
@@ -285,6 +430,7 @@ def delete_persona(conn: Any, persona_id: str) -> bool:
 
 
 def _insert_seed(conn: Any, seed: dict[str, Any], *, active: bool, now: float) -> None:
+    derived_levels_json = _serialize_ocean_levels(seed["ocean"])
     raw = {
         "id": seed["id"],
         "name": seed["name"],
@@ -301,8 +447,9 @@ def _insert_seed(conn: Any, seed: dict[str, Any], *, active: bool, now: float) -
         """
         INSERT INTO personas(
             id, name, avatar, desc, ocean_json, traits_json, anchor, system_prompt,
-            raw_json, active, created_at, updated_at
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?);
+            raw_json, derived_levels_json, derived_cutpoint_version,
+            active, created_at, updated_at
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?);
         """,
         (
             seed["id"],
@@ -314,11 +461,74 @@ def _insert_seed(conn: Any, seed: dict[str, Any], *, active: bool, now: float) -
             seed["system_prompt"],
             seed["system_prompt"],
             json.dumps(raw, ensure_ascii=False),
+            derived_levels_json,
+            CUTPOINT_VERSION,
             1 if active else 0,
             now,
             now,
         ),
     )
+
+
+def _normalize_builtin_preset(preset: Mapping[str, Any]) -> dict[str, str]:
+    persona_id = str(preset.get("id") or "").strip()
+    name = _clean_required_text(preset.get("name"), "name")
+    avatar = str(preset.get("avatar") or "").strip()
+    desc = str(preset.get("desc") or "").strip()
+    system_prompt = _clean_required_text(preset.get("system_prompt"), "system_prompt")
+    anchor = str(preset.get("anchor") or system_prompt).strip()
+    ocean = preset.get("ocean")
+    traits = preset.get("traits")
+    derived_traits = preset.get("derived_traits")
+    derived_levels = preset.get("derived_levels")
+    if not persona_id or not avatar:
+        raise ValueError("builtin_persona_invalid")
+    if not isinstance(ocean, list) or len(ocean) != 5 or any(type(value) is not int for value in ocean):
+        raise ValueError("builtin_persona_invalid")
+    if not isinstance(traits, list) or not isinstance(derived_traits, list) or not isinstance(derived_levels, dict):
+        raise TypeError("builtin_persona_invalid")
+    calculated_levels = derive_levels(ocean)
+    if derived_levels != calculated_levels:
+        raise ValueError("builtin_persona_levels_mismatch")
+    raw = {
+        "id": persona_id,
+        "name": name,
+        "avatar": avatar,
+        "description": desc,
+        "traits": [str(item) for item in traits],
+        "derived_traits": [str(item) for item in derived_traits],
+        "derived_levels": {str(key): str(value) for key, value in derived_levels.items()},
+        "system_prompt": system_prompt,
+        "role_lock": True,
+        "memory_default_on": True,
+        "default_companion_display_name": name,
+        "ocean": _ocean_dict(ocean),
+        "builtin": True,
+        "validation_status": str(preset.get("validation_status") or "validated_anchor"),
+        "validated_anchor_id": str(preset.get("validated_anchor_id") or persona_id),
+        "constraint_manifest_sha256": str(preset.get("constraint_manifest_sha256") or ""),
+        "constraint_manifest_version": str(preset.get("constraint_manifest_version") or ""),
+    }
+    return {
+        "id": persona_id,
+        "name": name,
+        "avatar": avatar,
+        "desc": desc,
+        "ocean_json": json.dumps(ocean, ensure_ascii=False),
+        "traits_json": json.dumps(traits, ensure_ascii=False),
+        "anchor": anchor,
+        "system_prompt": system_prompt,
+        "raw_json": json.dumps(raw, ensure_ascii=False, sort_keys=True),
+        "derived_levels_json": serialize_levels(calculated_levels),
+        "derived_cutpoint_version": CUTPOINT_VERSION,
+    }
+
+
+def _is_builtin_persona(conn: Any, persona_id: str) -> bool:
+    row = conn.execute("SELECT raw_json FROM personas WHERE id = ?;", (persona_id,)).fetchone()
+    if row is None:
+        return False
+    return _loads_dict(row["raw_json"]).get("builtin") is True
 
 
 def _row_payload(row: Any) -> dict[str, Any]:
@@ -388,6 +598,10 @@ def _normalize_traits(value: Any) -> list[str]:
         if text and text not in traits:
             traits.append(text)
     return traits
+
+
+def _serialize_ocean_levels(ocean: list[int]) -> str:
+    return serialize_levels(derive_levels(ocean))
 
 
 def _raw_payload(

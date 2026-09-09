@@ -227,6 +227,7 @@ def test_final_corpus_manifest_references_single_sources_without_duplication() -
         "dimension_corpus": "configs/persona_constraint_dimension_corpus.yaml",
         "structural_corpus": "configs/persona_constraint_structural_corpus.yaml",
         "persona_compositions": "configs/persona_constraint_persona_compositions.yaml",
+        "reply_copy": "configs/persona_constraint_reply_copy.yaml",
     }
 
     assert payload["status"] == "ta_approved"

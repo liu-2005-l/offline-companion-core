@@ -19,11 +19,11 @@ from offline_companion.core.memory_lifecycle.event_recaller import (
     format_event_narrative,
 )
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
+from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
+from offline_companion.core.memory_lifecycle.recall import format_recall_prompt_block, recall
 from offline_companion.core.memory_lifecycle.semantic_embedding_provider import (
     SemanticEmbeddingProvider,
 )
-from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
-from offline_companion.core.memory_lifecycle.recall import format_recall_prompt_block, recall
 from offline_companion.core.persona_session.expression import (
     STYLE_BLOCK_HEADER,
     PersonaExpressionConfig,
@@ -178,6 +178,27 @@ def _sanitize_display_name(value: object) -> str:
     return "".join(safe_chars).strip()[:_DISPLAY_NAME_MAX_CHARS]
 
 
+def effective_companion_display_name(
+    persona: Persona,
+    conn: sqlite3.Connection | None = None,
+) -> str:
+    """摘要：按画像记忆优先级解析并净化当前有效自称。
+
+    参数：
+        persona: 当前会话人格定义。
+        conn: 可选记忆数据库连接；提供时优先读取助手画像自称。
+
+    返回值：
+        最长 32 个 Unicode 字符的安全单行自称。
+    """
+    if conn is not None:
+        profile = MemoryLifecycleManager.latest_profile_memory(conn)
+        display_name = _sanitize_display_name(profile.get("assistant", {}).get("display_name"))
+        if display_name:
+            return display_name
+    return _sanitize_display_name(resolved_companion_display_name(persona))
+
+
 @runtime_checkable
 class InferenceBackend(Protocol):
     """摘要：B1 所依赖的 C1 推理后端最小协议。"""
@@ -247,12 +268,7 @@ class PersonaSessionCore:
 
     def _resolved_companion_display_name(self, conn: sqlite3.Connection | None = None) -> str:
         """摘要：解析当前助手自称；长期画像记忆优先于 persona 默认配置。"""
-        if conn is not None:
-            profile = MemoryLifecycleManager.latest_profile_memory(conn)
-            display_name = _sanitize_display_name(profile.get("assistant", {}).get("display_name"))
-            if display_name:
-                return display_name
-        return _sanitize_display_name(resolved_companion_display_name(self.persona))
+        return effective_companion_display_name(self.persona, conn)
 
     def assemble_reply(
         self,

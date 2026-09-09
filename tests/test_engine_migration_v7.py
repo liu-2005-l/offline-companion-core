@@ -83,6 +83,7 @@ def test_engine_migrates_v6_to_current_schema(tmp_path: Path) -> None:
         "personas",
         "plans",
         "plan_steps",
+        "persona_migration_state",
         "stream_events",
     } <= table_names
     job_task_columns = {
@@ -95,6 +96,15 @@ def test_engine_migrates_v6_to_current_schema(tmp_path: Path) -> None:
         for row in conn.execute("PRAGMA table_info(messages);").fetchall()
     }
     assert "status" in message_columns
+    persona_columns = {
+        row[1]
+        for row in conn.execute("PRAGMA table_info(personas);").fetchall()
+    }
+    assert {
+        "derived_traits_json",
+        "derived_levels_json",
+        "derived_cutpoint_version",
+    } <= persona_columns
 
     session_count = conn.execute("SELECT COUNT(*) FROM sessions;").fetchone()[0]
     message_count = conn.execute("SELECT COUNT(*) FROM messages;").fetchone()[0]

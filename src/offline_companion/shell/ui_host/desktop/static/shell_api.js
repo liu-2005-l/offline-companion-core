@@ -2155,7 +2155,6 @@ async function loadPersonas() {
       var traitsVal = Array.isArray(persona.traits)
         ? persona.traits.filter(function(t) { return typeof t === 'string' && t.length >= 2; })
         : [];
-      if (!traitsVal.length) traitsVal = _deriveTraits(oceanVal);
       window._personaRegistry[persona.name] = {
         id: persona.id,
         avatar: persona.avatar || persona.name.slice(0, 1),
@@ -2226,14 +2225,14 @@ async function selectPersona(el, name) {
     _currentSessionRevision = Number(data.revision);
     localActivate();
     await saveSetting('active_session_id', _currentSessionId).catch(function(){});
-    showToast('已切换到人格 · ' + name);
+    showToast(data.confirmation || ('已切换到人格 · ' + name));
     await loadSessions();
   } catch (error) {
     const unchanged = error.data && error.data.state_unchanged === true &&
       error.data.canonical_session_id === previousSessionId &&
       Number(error.data.revision) === previousRevision;
     if (unchanged) {
-      showToast('人格切换失败：' + error.message);
+      showToast((error.data && error.data.user_message) || ('人格切换失败：' + error.message));
       return;
     }
     await reconcileCurrentSession();
@@ -2288,6 +2287,15 @@ async function createPersonaApi(formData) {
   });
   await loadPersonas();
   return data.id || (data.persona && data.persona.id);
+}
+
+async function previewPersonaApi(formData) {
+  const data = await apiJson('/api/personas/preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formData)
+  });
+  return data.preview;
 }
 
 async function updatePersonaApi(personaId, formData) {

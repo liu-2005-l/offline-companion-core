@@ -15,6 +15,47 @@ sources:
   dimension_corpus: configs/persona_constraint_dimension_corpus.yaml
   structural_corpus: configs/persona_constraint_structural_corpus.yaml
   persona_compositions: configs/persona_constraint_persona_compositions.yaml
+  reply_copy: configs/persona_constraint_reply_copy.yaml
+
+manifest:
+  schema_version: 1
+  hash_algorithm: sha256
+  source_sha256:
+    mappings: 05e2a9001e3dde0dbfbafa6f523f00250b565d49bef56c8163debd45b60445c7
+    coverage_contract: 2be4a629bac8136d4da539322cf15a27d6885b583ab54350ee466ede498c813d
+    dimension_corpus: de12acd43c0deb8bbd297e477fe109739e901a59896a0e016388b74c5259fac5
+    structural_corpus: 8f34b22d4d29070bcdfe3f61e9712a5cfe7086be4231663f4e2957de0db7256e
+    persona_compositions: 889930cee23b6238738d4cef72b47504fe406e0acafb8bc9213141fdb7ce3334
+    reply_copy: 4ccc1c266842c20a3596078d44c2b2fd1c4ba3bc14b0f69b768fc72dd2d19972
+  builtin_personas:
+    base_system_prompt: >-
+      你是运行在用户本机的隐私优先离线陪伴助手。你必须遵守已加载的人格约束、事实边界、安全规则与用户同意要求。
+    presets:
+      温柔:
+        stable_id: builtin_wenrou
+        avatar: 温
+        description: 内置已验证人格预设 · 温柔
+        ocean: [50, 50, 17, 83, 83]
+      暴躁:
+        stable_id: builtin_baizao
+        avatar: 暴
+        description: 内置已验证人格预设 · 暴躁
+        ocean: [50, 50, 50, 17, 83]
+      可靠:
+        stable_id: builtin_kekao
+        avatar: 可
+        description: 内置已验证人格预设 · 可靠
+        ocean: [50, 83, 50, 50, 50]
+      甜美:
+        stable_id: builtin_tianmei
+        avatar: 甜
+        description: 内置已验证人格预设 · 甜美
+        ocean: [83, 50, 83, 83, 17]
+      可爱:
+        stable_id: builtin_keai
+        avatar: 爱
+        description: 内置已验证人格预设 · 可爱
+        ocean: [83, 50, 83, 50, 17]
 
 assembly_contract:
   dimension_resolution: trait_level_to_dimension_unit

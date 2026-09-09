@@ -14,16 +14,33 @@ from dataclasses import dataclass
 from typing import Any
 
 from offline_companion.core.event_stream import EventStream, StreamManager
-from offline_companion.core.persona_session.session import PersonaSessionCore
+from offline_companion.core.persona_constraint import (
+    PERSONA_CONSTRAINT_MANIFEST_SHA256,
+    PersonaConstraintAssets,
+    ReplyCopyKind,
+    assemble_l1_prompt,
+    default_frozen_l1_mapping,
+    finalize_l1_prompt,
+)
+from offline_companion.core.persona_session.session import (
+    PersonaSessionCore,
+    effective_companion_display_name,
+)
 from offline_companion.shared.persona_snapshot import (
     PERSONA_SNAPSHOT_SOURCE_A1,
+    PERSONA_SNAPSHOT_SOURCE_L1,
     PERSONA_SNAPSHOT_SOURCE_LEGACY,
     PERSONA_SNAPSHOT_SOURCES,
     PersonaSnapshotSource,
     normalize_persona_snapshot_source,
 )
 from offline_companion.shared.types import OceanVector, Persona
-from offline_companion.storage.persona_repo import active_persona, get_persona, init_personas
+from offline_companion.storage.persona_repo import (
+    active_persona,
+    get_persona,
+    init_personas,
+    set_active_persona_in_transaction,
+)
 
 PERSONA_SNAPSHOT_SCHEMA = 1
 
@@ -197,14 +214,23 @@ def build_persona_snapshot(
     *,
     source: PersonaSnapshotSource,
     effective_system_prompt: str | None = None,
+    effective_companion_name: str | None = None,
     created_at: float | None = None,
 ) -> PersonaSnapshotProof:
     """摘要：从已解析人格构造 schema v1 canonical 快照与哈希。"""
     normalized_source = normalize_persona_snapshot_source(source)
     ocean = _normalized_ocean(persona.ocean)
     raw = persona.raw if isinstance(persona.raw, dict) else {}
+    validation_status = str(raw.get("validation_status") or "unvalidated")
+    manifest_hash = raw.get("constraint_manifest_sha256")
+    if validation_status == "validated_anchor" and manifest_hash != PERSONA_CONSTRAINT_MANIFEST_SHA256:
+        raise SessionBindingError("persona_constraint_manifest_mismatch", status=409)
     payload = {
-        "companion_display_name": persona.companion_display_name,
+        "companion_display_name": (
+            persona.companion_display_name
+            if effective_companion_name is None
+            else str(effective_companion_name)
+        ),
         "constraint_manifest": {
             "sha256": raw.get("constraint_manifest_sha256"),
             "version": raw.get("constraint_manifest_version"),
@@ -215,6 +241,7 @@ def build_persona_snapshot(
             persona.system_prompt if effective_system_prompt is None else str(effective_system_prompt)
         ),
         "memory_default_on": bool(persona.memory_default_on),
+        "manifest_hash": manifest_hash,
         "name": persona.name,
         "ocean": ocean,
         "ocean_levels": [_to_level(value) for value in ocean],
@@ -222,7 +249,7 @@ def build_persona_snapshot(
         "role_lock": bool(persona.role_lock),
         "source": normalized_source,
         "validated_anchor_id": raw.get("validated_anchor_id"),
-        "validation_status": str(raw.get("validation_status") or "unvalidated"),
+        "validation_status": validation_status,
     }
     canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -281,6 +308,7 @@ class DesktopSessionBindingService:
         context_provider: DesktopSessionContextProvider,
         event_stream_manager: StreamManager | None,
         semantic_embed_func: Callable[[str], list[float]] | None,
+        constraint_assets: PersonaConstraintAssets | None = None,
         on_bind: Callable[[DesktopSessionContext], None] | None = None,
         after_commit_hook: Callable[[DesktopSessionContext], None] | None = None,
         fault_injector: Callable[[str], None] | None = None,
@@ -289,6 +317,7 @@ class DesktopSessionBindingService:
         self._context_provider = context_provider
         self._event_stream_manager = event_stream_manager
         self._semantic_embed_func = semantic_embed_func
+        self._constraint_assets = constraint_assets
         self._on_bind = on_bind
         self._after_commit_hook = after_commit_hook
         self._fault_injector = fault_injector
@@ -297,6 +326,19 @@ class DesktopSessionBindingService:
     def set_on_bind(self, callback: Callable[[DesktopSessionContext], None]) -> None:
         """摘要：注册提交后运行时投影重绑定回调。"""
         self._on_bind = callback
+
+    def deterministic_reply(self, persona_id: str, kind: ReplyCopyKind) -> str | None:
+        """摘要：从启动时已校验资产读取三类确定性文案。
+
+        参数：
+            persona_id: 目标或当前人格稳定 ID。
+            kind: 三类白名单文案之一。
+        返回值：
+            内置已验证人格的冻结文案；资产不可用或非内置人格时返回 ``None``。
+        """
+        if self._constraint_assets is None:
+            return None
+        return self._constraint_assets.deterministic_reply(persona_id, kind)
 
     def restore_or_create(
         self,
@@ -329,7 +371,7 @@ class DesktopSessionBindingService:
 
         if session_id is None:
             default_persona = active_persona(self._conn) or startup_persona
-            proof = build_persona_snapshot(default_persona, source=PERSONA_SNAPSHOT_SOURCE_A1)
+            proof = self._snapshot_for_new_session(default_persona)
             session_id = preferred_session_id if row is None and preferred_session_id else uuid.uuid4().hex
             with immediate_transaction(self._conn):
                 self._insert_session(
@@ -402,7 +444,7 @@ class DesktopSessionBindingService:
             raise self._conflict("persona_not_found", state, status=404)
 
         try:
-            proof = build_persona_snapshot(persona, source=PERSONA_SNAPSHOT_SOURCE_A1)
+            proof = self._snapshot_for_new_session(persona)
             self._inject_fault("snapshot")
             new_session_id = uuid.uuid4().hex
             previous_session_id = str(state["active_session_id"])
@@ -430,11 +472,12 @@ class DesktopSessionBindingService:
                 )
                 self._inject_fault("session")
                 now = time.time()
-                self._conn.execute("UPDATE personas SET active = 0, updated_at = ? WHERE active = 1;", (now,))
-                self._conn.execute(
-                    "UPDATE personas SET active = 1, updated_at = ? WHERE id = ?;",
-                    (now, persona.persona_id),
-                )
+                if not set_active_persona_in_transaction(
+                    self._conn,
+                    persona.persona_id,
+                    updated_at=now,
+                ):
+                    raise self._conflict("persona_not_found", locked_state, status=404)
                 self._inject_fault("default")
                 self._conn.execute(
                     """
@@ -633,6 +676,24 @@ class DesktopSessionBindingService:
             ),
         )
 
+    def _snapshot_for_new_session(self, persona: Persona) -> PersonaSnapshotProof:
+        """摘要：为新会话构造旧链或已验证 L1 烧入态快照。"""
+        raw = persona.raw if isinstance(persona.raw, dict) else {}
+        if str(raw.get("validation_status") or "") != "validated_anchor":
+            return build_persona_snapshot(persona, source=PERSONA_SNAPSHOT_SOURCE_A1)
+        if self._constraint_assets is None:
+            raise SessionBindingError("persona_constraint_assets_unavailable", status=503)
+        mapping = default_frozen_l1_mapping(persona.persona_id, self._constraint_assets)
+        assembled = assemble_l1_prompt(persona.persona_id, self._constraint_assets, mapping)
+        display_name = effective_companion_display_name(persona, self._conn)
+        effective_prompt = finalize_l1_prompt(assembled, display_name)
+        return build_persona_snapshot(
+            persona,
+            source=PERSONA_SNAPSHOT_SOURCE_L1,
+            effective_system_prompt=effective_prompt,
+            effective_companion_name=display_name,
+        )
+
     def _inject_fault(self, stage: str) -> None:
         if self._fault_injector is not None:
             self._fault_injector(stage)
@@ -711,6 +772,7 @@ def _persona_from_snapshot(payload: dict[str, Any]) -> Persona:
             "validation_status": payload.get("validation_status"),
             "validated_anchor_id": payload.get("validated_anchor_id"),
             "constraint_manifest": payload.get("constraint_manifest"),
+            "manifest_hash": payload.get("manifest_hash"),
             "snapshot_source": payload.get("source"),
         },
         ocean=ocean,
@@ -750,6 +812,8 @@ def _validate_snapshot_payload(payload: dict[str, Any], row: sqlite3.Row) -> Non
     if not isinstance(manifest, dict) or set(manifest) != {"version", "sha256"}:
         raise SessionBindingError("persona_snapshot_invalid", status=409)
     if any(value is not None and not isinstance(value, str) for value in manifest.values()):
+        raise SessionBindingError("persona_snapshot_invalid", status=409)
+    if "manifest_hash" in payload and payload.get("manifest_hash") != manifest.get("sha256"):
         raise SessionBindingError("persona_snapshot_invalid", status=409)
     for optional_text in ("companion_display_name", "validated_anchor_id"):
         value = payload.get(optional_text)

@@ -23,6 +23,7 @@ from offline_companion.core.decomposition_sample_library import (
 )
 from offline_companion.core.event_stream import StreamManager, build_default_registry
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
+from offline_companion.core.persona_constraint import load_persona_constraint_assets
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.core.plan_orchestrator import (
@@ -76,6 +77,7 @@ from offline_companion.shell.ui_host.desktop.runtime import DesktopRuntime
 from offline_companion.shell.ui_host.desktop.session_binding import (
     BOOTSTRAP_SESSION_HOLDER_BINDINGS,
 )
+from offline_companion.storage.persona_repo import sync_builtin_personas
 from offline_companion.storage.settings_store import update_settings
 
 
@@ -109,6 +111,22 @@ class _BlockingBackend(EchoBackend):
         self.entered.set()
         assert self.release.wait(timeout=5)
         return "完成"
+
+
+class _FailIfCalledBackend(EchoBackend):
+    """摘要：确定性文案路径若误入模型后端则立即令测试失败。"""
+
+    def __init__(self) -> None:
+        super().__init__("must-not-run")
+        self.calls = 0
+
+    def generate(self, **_kwargs) -> str:
+        self.calls += 1
+        raise AssertionError("deterministic_reply_must_not_call_backend")
+
+    def generate_stream(self, **_kwargs):
+        self.calls += 1
+        raise AssertionError("deterministic_reply_must_not_call_backend")
 
 
 class _ArithmeticStreamBackend(EchoBackend):
@@ -1214,6 +1232,97 @@ def test_desktop_persona_switch_failure_and_idempotent_replay(tmp_path) -> None:
     assert replay.get_json()["canonical_session_id"] == first.get_json()["canonical_session_id"]
 
 
+def test_desktop_persona_l1_failure_is_explicit_and_keeps_canonical_session(tmp_path) -> None:
+    runtime = _runtime(tmp_path)
+    client = create_desktop_app(runtime).test_client()
+    assets = load_persona_constraint_assets(root_override=Path(__file__).resolve().parents[1])
+    payloads = []
+    for preset in assets.builtin_presets:
+        payload = preset.storage_payload()
+        payload["constraint_manifest_sha256"] = assets.manifest_sha256
+        payload["constraint_manifest_version"] = str(assets.manifest.get("version") or "")
+        payloads.append(payload)
+    sync_builtin_personas(runtime.orchestrator.conn, payloads)
+    runtime.session_binding_service._constraint_assets = None
+    current = client.get("/api/sessions/current").get_json()
+    before_count = runtime.orchestrator.conn.execute("SELECT COUNT(*) FROM sessions;").fetchone()[0]
+
+    response = client.post(
+        "/api/personas/builtin_tianmei/activate",
+        json={
+            "switch_request_id": "http-l1-failure",
+            "expected_revision": current["revision"],
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.get_json() == {
+        "error": "switch_failed",
+        "state_unchanged": True,
+        "canonical_session_id": current["canonical_session_id"],
+        "revision": current["revision"],
+    }
+    assert runtime.orchestrator.conn.execute("SELECT COUNT(*) FROM sessions;").fetchone()[0] == before_count
+    assert client.get("/api/sessions/current").get_json() == current
+
+
+def test_t24_desktop_deterministic_reply_paths_do_not_call_backend(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime = _runtime(tmp_path)
+    backend = _FailIfCalledBackend()
+    runtime.orchestrator.backend = backend
+    client = create_desktop_app(runtime).test_client()
+    assets = load_persona_constraint_assets(root_override=Path(__file__).resolve().parents[1])
+    payloads = []
+    for preset in assets.builtin_presets:
+        payload = preset.storage_payload()
+        payload["constraint_manifest_sha256"] = assets.manifest_sha256
+        payload["constraint_manifest_version"] = str(assets.manifest.get("version") or "")
+        payloads.append(payload)
+    sync_builtin_personas(runtime.orchestrator.conn, payloads)
+    current = client.get("/api/sessions/current").get_json()
+
+    switched = client.post(
+        "/api/personas/builtin_wenrou/activate",
+        json={"switch_request_id": "t24-switch", "expected_revision": current["revision"]},
+    )
+    assert switched.status_code == 200
+    assert switched.get_json()["confirmation"] == "已切换到温柔人格，我们慢慢继续。"
+
+    memory = client.post("/api/chat", json={"message": "#remember T24 文案不进入模型"})
+    assert memory.status_code == 200
+    assert memory.get_json()["reply"] == "这条记忆已经保存，我们接着来。"
+
+    streamed_memory = client.post(
+        "/api/chat",
+        json={"message": "#remember T24 流式文案也不进入模型", "stream": True},
+    )
+    streamed_events = _sse_payloads(streamed_memory.text)
+    assert streamed_memory.status_code == 200
+    assert streamed_events[-1]["reply"] == "这条记忆已经保存，我们接着来。"
+
+    protected = client.post("/api/chat", json={"message": "我不想活了"})
+    assert protected.status_code == 200
+    assert protected.get_json()["blocked"] is True
+
+    import offline_companion.core.persona_constraint.assembly as assembly_module
+
+    monkeypatch.setattr(assembly_module, "L1_PROMPT_CHARACTER_LIMIT", 1)
+    failed = client.post(
+        "/api/personas/builtin_tianmei/activate",
+        json={
+            "switch_request_id": "t24-fallback",
+            "expected_revision": switched.get_json()["revision"],
+        },
+    )
+    assert failed.status_code == 409
+    assert failed.get_json()["error"] == "switch_failed"
+    assert failed.get_json()["user_message"] == "这次人格配置没有生效，先保持原会话哦。"
+    assert backend.calls == 0
+
+
 def test_desktop_persona_switch_is_rejected_during_active_turn(tmp_path) -> None:
     runtime = _runtime(tmp_path)
     backend = _BlockingBackend()
@@ -1394,6 +1503,9 @@ def test_persona_frontend_reconciles_unknown_switch_state_without_fake_success()
     select_block = source[source.index("async function selectPersona"):source.index("async function createPersonaApi")]
 
     assert "API 不可用时 fallback 到本地行为" not in select_block
+    catch_block = select_block[select_block.index("} catch (error)"):]
+    assert "if (unchanged)" in catch_block
+    assert "localActivate();" not in catch_block
     assert "await reconcileCurrentSession();" in select_block
     assert "if (_sessionReconciling)" in source[source.index("async function sendMessage"):]
     assert "setSessionReconciling(true);" in source
@@ -1403,36 +1515,89 @@ def test_persona_frontend_reconciles_unknown_switch_state_without_fake_success()
 def test_desktop_http_persona_create_update_delete(tmp_path) -> None:
     rt = _runtime(tmp_path)
     client = create_desktop_app(rt).test_client()
+    create_payload = {
+        "name": "Test Persona",
+        "avatar": "T",
+        "ocean": [60, 70, 50, 80, 40],
+    }
+    before = rt.orchestrator.conn.execute(
+        "SELECT COUNT(*) FROM personas;"
+    ).fetchone()[0]
+    before_changes = rt.orchestrator.conn.total_changes
+
+    previewed = client.post("/api/personas/preview", json=create_payload)
+
+    assert previewed.status_code == 200
+    preview = previewed.get_json()["preview"]
+    assert rt.orchestrator.conn.execute(
+        "SELECT COUNT(*) FROM personas;"
+    ).fetchone()[0] == before
+    assert rt.orchestrator.conn.total_changes == before_changes
 
     created = client.post(
         "/api/personas",
-        json={
-            "name": "Test Persona",
-            "avatar": "T",
-            "desc": "temporary persona",
-            "ocean": [60, 70, 50, 80, 40],
-            "traits": ["test", "temporary"],
-            "anchor": "You are a temporary test persona.",
-        },
+        json=create_payload,
     )
     assert created.status_code == 201
-    persona_id = created.get_json()["id"]
+    created_payload = created.get_json()
+    persona_id = created_payload["id"]
     assert persona_id
+    assert {
+        key: created_payload["persona"][key]
+        for key in ("name", "ocean", "traits", "desc", "anchor")
+    } == preview
     assert any(item["id"] == persona_id for item in client.get("/api/personas").get_json()["items"])
 
+    update_preview = client.post(
+        "/api/personas/preview",
+        json={"name": "Edited Persona", "ocean": [1, 2, 3, 4, 5]},
+    ).get_json()["preview"]
     updated = client.put(
         f"/api/personas/{persona_id}",
-        json={"name": "Edited Persona", "desc": "edited", "ocean": [1, 2, 3, 4, 5]},
+        json={"name": "Edited Persona", "ocean": [1, 2, 3, 4, 5]},
     )
     assert updated.status_code == 200
     payload = updated.get_json()["persona"]
-    assert payload["name"] == "Edited Persona"
-    assert payload["desc"] == "edited"
-    assert payload["ocean"] == [1, 2, 3, 4, 5]
+    assert {
+        key: payload[key]
+        for key in ("name", "ocean", "traits", "desc", "anchor")
+    } == update_preview
+    stored_persona = rt.orchestrator.conn.execute(
+        "SELECT traits_json, raw_json FROM personas WHERE id = ?;",
+        (persona_id,),
+    ).fetchone()
+    assert json.loads(stored_persona["traits_json"]) == update_preview["traits"]
+    assert json.loads(stored_persona["raw_json"])["traits"] == update_preview["traits"]
 
     deleted = client.delete(f"/api/personas/{persona_id}")
     assert deleted.status_code == 200
     assert all(item["id"] != persona_id for item in client.get("/api/personas").get_json()["items"])
+
+
+def test_desktop_http_persona_traits_are_read_only(tmp_path) -> None:
+    rt = _runtime(tmp_path)
+    client = create_desktop_app(rt).test_client()
+
+    create_rejected = client.post(
+        "/api/personas",
+        json={"name": "旁路", "ocean": [50] * 5, "traits": ["伪造"]},
+    )
+    existing = client.get("/api/personas").get_json()["items"][0]
+    update_rejected = client.put(
+        f"/api/personas/{existing['id']}",
+        json={"traits": ["伪造"]},
+    )
+    internal_cache_rejected = client.put(
+        f"/api/personas/{existing['id']}",
+        json={"derived_traits_cache": ["伪造"]},
+    )
+
+    assert create_rejected.status_code == 400
+    assert create_rejected.get_json()["error"] == "traits_read_only"
+    assert update_rejected.status_code == 400
+    assert update_rejected.get_json()["error"] == "traits_read_only"
+    assert internal_cache_rejected.status_code == 400
+    assert internal_cache_rejected.get_json()["error"] == "traits_read_only"
 
 
 def test_desktop_http_persona_duplicate_name_rejected(tmp_path) -> None:

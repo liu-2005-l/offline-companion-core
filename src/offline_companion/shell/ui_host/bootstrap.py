@@ -32,6 +32,7 @@ from offline_companion.core.memory_lifecycle.semantic_embedding_provider import 
     SemanticEmbeddingProvider,
 )
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
+from offline_companion.core.persona_constraint import load_persona_constraint_assets
 from offline_companion.core.persona_session.persona_loader import (
     load_persona_file,
     resolved_companion_display_name,
@@ -99,6 +100,12 @@ from offline_companion.shell.ui_host.model_registry import (
 )
 from offline_companion.storage.cloud_model_repo import list_cloud_models
 from offline_companion.storage.json_state_store import check_state_integrity
+from offline_companion.storage.persona_repo import sync_builtin_personas
+from offline_companion.storage.persona_traits_migration import (
+    PersonaTraitsMigrationError,
+    complete_persona_level_migration,
+    prepare_persona_traits_migration,
+)
 from offline_companion.storage.settings_store import load_settings
 
 ECHO_NO_MODEL_LABEL = "Echo (no model)"
@@ -292,6 +299,22 @@ def bootstrap_ui_session(
     triggers = load_triggers()
 
     conn = connect(paths.db_path)
+    try:
+        prepare_persona_traits_migration(conn, exports_dir=paths.exports_dir)
+        constraint_assets = load_persona_constraint_assets()
+        builtin_payloads: list[dict[str, Any]] = []
+        for preset in constraint_assets.builtin_presets:
+            payload = preset.storage_payload()
+            payload["constraint_manifest_sha256"] = constraint_assets.manifest_sha256
+            payload["constraint_manifest_version"] = str(
+                constraint_assets.manifest.get("version") or ""
+            )
+            builtin_payloads.append(payload)
+        sync_builtin_personas(conn, builtin_payloads)
+        complete_persona_level_migration(conn)
+    except BaseException:
+        conn.close()
+        raise
     semantic_embedder = SemanticEmbeddingProvider(data_root=paths.root)
     EventRepository(conn).recompute_content_embeddings(semantic_embedder)
     event_persistence = EventPersistence(paths.db_path)
@@ -303,6 +326,7 @@ def bootstrap_ui_session(
         context_provider=session_context_provider,
         event_stream_manager=event_stream_manager,
         semantic_embed_func=semantic_embedder,
+        constraint_assets=constraint_assets,
     )
     preferred_session_id = str(settings_state.get("active_session_id") or session_id)
     session_context = session_binding_service.restore_or_create(
@@ -689,4 +713,7 @@ def bootstrap_ui_session_or_exit(args, *, session_title: str = "UI") -> UISessio
         )
     except InferenceBackendError as e:
         print("推理后端初始化失败:", e, file=sys.stderr)
+        raise SystemExit(1) from e
+    except PersonaTraitsMigrationError as e:
+        print("人格档位迁移失败，已拒绝启动:", e, file=sys.stderr)
         raise SystemExit(1) from e

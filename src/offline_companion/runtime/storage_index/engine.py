@@ -12,7 +12,7 @@ from typing import Any
 from offline_companion.shared.persona_snapshot import normalize_persona_snapshot_source
 from offline_companion.shared.types import MessageRow
 
-SCHEMA_VERSION = 14
+SCHEMA_VERSION = 15
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -82,6 +82,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if version < 14:
         _init_v14(conn)
         version = 14
+    if version < 15:
+        _init_v15(conn)
+        version = 15
     conn.execute(
         "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
@@ -248,6 +251,36 @@ def _init_v14(conn: sqlite3.Connection) -> None:
             """,
             (canonical, digest, normalized_source, row["id"]),
         )
+
+
+def _init_v15(conn: sqlite3.Connection) -> None:
+    """摘要：增加隔离的 traits 派生缓存与持久化迁移状态。"""
+    personas_table = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'personas';"
+    ).fetchone()
+    if personas_table is None:
+        _init_v9(conn)
+    persona_columns = {row[1] for row in conn.execute("PRAGMA table_info(personas);").fetchall()}
+    required = {
+        "derived_traits_json": "TEXT NOT NULL DEFAULT '[]'",
+        "derived_levels_json": "TEXT NOT NULL DEFAULT '{}'",
+        "derived_cutpoint_version": "TEXT NOT NULL DEFAULT ''",
+    }
+    for name, ddl in required.items():
+        if name not in persona_columns:
+            conn.execute(f"ALTER TABLE personas ADD COLUMN {name} {ddl};")
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS persona_migration_state (
+            migration_id TEXT PRIMARY KEY,
+            status TEXT NOT NULL CHECK (status IN ('exported', 'completed')),
+            export_path TEXT NOT NULL,
+            record_count INTEGER NOT NULL CHECK (record_count >= 0),
+            export_sha256 TEXT NOT NULL,
+            updated_at REAL NOT NULL
+        );
+        """
+    )
 
 
 def _init_v2(conn: sqlite3.Connection) -> None:

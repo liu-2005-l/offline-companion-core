@@ -2,21 +2,34 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import sqlite3
 import threading
 import time
+from dataclasses import replace
 from multiprocessing import get_context
 from pathlib import Path
 from queue import Empty
 
 import pytest
 
+import offline_companion.core.persona_constraint.assembly as persona_assembly
+from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
+from offline_companion.core.persona_constraint import (
+    L1_PROMPT_CHARACTER_LIMIT,
+    PersonaL1AssemblyError,
+    assemble_l1_prompt,
+    default_frozen_l1_mapping,
+    finalize_l1_prompt,
+    load_persona_constraint_assets,
+)
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.runtime.storage_index.engine import SCHEMA_VERSION, connect
 from offline_companion.shared.persona_snapshot import (
     PERSONA_SNAPSHOT_SOURCE_A1,
+    PERSONA_SNAPSHOT_SOURCE_L1,
     PERSONA_SNAPSHOT_SOURCE_LEGACY,
     normalize_persona_snapshot_source,
 )
@@ -28,9 +41,26 @@ from offline_companion.shell.ui_host.desktop.session_binding import (
     build_persona_snapshot,
     validate_persona_snapshot,
 )
-from offline_companion.storage.persona_repo import list_personas, update_persona
+from offline_companion.storage.persona_repo import (
+    get_persona,
+    list_personas,
+    sync_builtin_personas,
+    update_persona,
+)
 
 _DEFAULT_PERSONA = Path(__file__).resolve().parents[1] / "configs" / "personas" / "default.yaml"
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _constraint_payloads(assets) -> list[dict]:
+    """摘要：生成带发布 manifest 追溯字段的五预设存储 payload。"""
+    payloads = []
+    for preset in assets.builtin_presets:
+        payload = preset.storage_payload()
+        payload["constraint_manifest_sha256"] = assets.manifest_sha256
+        payload["constraint_manifest_version"] = str(assets.manifest.get("version") or "")
+        payloads.append(payload)
+    return payloads
 
 
 def _commit_then_wait_for_kill(db_path: str, ready_path: str) -> None:
@@ -558,9 +588,219 @@ def test_snapshot_builder_uses_canonical_json_and_preregistered_cutpoints() -> N
     assert proof.canonical_json == proof.canonical_json.strip()
     assert proof.payload["source"] == PERSONA_SNAPSHOT_SOURCE_A1
     assert len(proof.sha256) == 64
-
     with pytest.raises(ValueError, match="unsupported persona snapshot source"):
         normalize_persona_snapshot_source("unknown_source")
+
+
+def test_validated_switch_burns_display_name_into_l1_snapshot_with_final_budget(
+    tmp_path: Path,
+) -> None:
+    assets = load_persona_constraint_assets(root_override=_REPO_ROOT)
+    conn = connect(tmp_path / "l1-snapshot.db")
+    sync_builtin_personas(conn, _constraint_payloads(assets))
+    service = DesktopSessionBindingService(
+        conn,
+        context_provider=DesktopSessionContextProvider(),
+        event_stream_manager=None,
+        semantic_embed_func=None,
+        constraint_assets=assets,
+    )
+    initial = service.restore_or_create(
+        preferred_session_id="initial",
+        startup_persona=load_persona_file(_DEFAULT_PERSONA),
+        title="初始会话",
+    )
+    display_name = "甜" * 32
+    MemoryLifecycleManager.add_memory_chunk(
+        conn,
+        f"助手自画像：名字 = {display_name}",
+        session_id=initial.session_id,
+        source="semantic_auto",
+        meta={
+            "memory_type": "agent_profile",
+            "target": "assistant",
+            "field": "display_name",
+            "value": display_name,
+        },
+    )
+
+    switched = service.switch_persona(
+        "builtin_tianmei",
+        switch_request_id="l1-snapshot",
+        expected_revision=initial.revision,
+    ).context
+    persona = get_persona(conn, "builtin_tianmei")
+    assert persona is not None
+    assembled = assemble_l1_prompt(
+        persona.persona_id,
+        assets,
+        default_frozen_l1_mapping(persona.persona_id, assets),
+    )
+    expected_prompt = finalize_l1_prompt(assembled, display_name)
+
+    assert switched.snapshot.source == PERSONA_SNAPSHOT_SOURCE_L1
+    assert switched.snapshot.payload["effective_system_prompt"] == expected_prompt
+    assert switched.snapshot.payload["companion_display_name"] == display_name
+    assert switched.snapshot.payload["manifest_hash"] == assets.manifest_sha256
+    assert len(expected_prompt) == 652 <= L1_PROMPT_CHARACTER_LIMIT
+    assert "{display_name}" not in expected_prompt
+
+
+def test_t22_l1_source_switch_does_not_rewrite_legacy_snapshot_rows(tmp_path: Path) -> None:
+    assets = load_persona_constraint_assets(root_override=_REPO_ROOT)
+    conn = connect(tmp_path / "source-zero-drift.db")
+    sync_builtin_personas(conn, _constraint_payloads(assets))
+    service = DesktopSessionBindingService(
+        conn,
+        context_provider=DesktopSessionContextProvider(),
+        event_stream_manager=None,
+        semantic_embed_func=None,
+        constraint_assets=assets,
+    )
+    initial = service.restore_or_create(
+        preferred_session_id="initial",
+        startup_persona=load_persona_file(_DEFAULT_PERSONA),
+        title="初始会话",
+    )
+    old_rows: dict[str, tuple[str, str, str]] = {}
+    for source in (PERSONA_SNAPSHOT_SOURCE_A1, "bootstrap", "persona_switch"):
+        payload = {**initial.snapshot.payload, "source": source}
+        canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        session_id = f"historical-{source}"
+        conn.execute(
+            """
+            INSERT INTO sessions(
+                id, title, persona_id, created_at, updated_at,
+                persona_snapshot_json, persona_snapshot_schema, persona_snapshot_sha256,
+                persona_snapshot_source
+            ) VALUES(?,?,?,?,?,?,?,?,?);
+            """,
+            (
+                session_id,
+                "历史会话",
+                initial.session_core.persona.persona_id,
+                1.0,
+                1.0,
+                canonical,
+                initial.snapshot.schema,
+                digest,
+                source,
+            ),
+        )
+        old_rows[session_id] = (canonical, source, digest)
+    before_count = conn.execute("SELECT COUNT(*) FROM sessions;").fetchone()[0]
+
+    switched = service.switch_persona(
+        "builtin_tianmei",
+        switch_request_id="t22-new-source",
+        expected_revision=initial.revision,
+    ).context
+
+    assert switched.session_id not in old_rows
+    assert switched.snapshot.source == PERSONA_SNAPSHOT_SOURCE_L1
+    assert conn.execute("SELECT COUNT(*) FROM sessions;").fetchone()[0] == before_count + 1
+    for session_id, expected in old_rows.items():
+        row = conn.execute(
+            """
+            SELECT persona_snapshot_json, persona_snapshot_source, persona_snapshot_sha256
+            FROM sessions WHERE id = ?;
+            """,
+            (session_id,),
+        ).fetchone()
+        assert tuple(row) == expected
+
+
+def test_t23_missing_frozen_asset_rejects_before_switch_transaction(tmp_path: Path) -> None:
+    assets = load_persona_constraint_assets(root_override=_REPO_ROOT)
+    source_payloads = {
+        name: copy.deepcopy(dict(payload)) for name, payload in assets.source_payloads.items()
+    }
+    dialogues = source_payloads["dimension_corpus"]["dimension_units"]["O"]["high"]["dialogues"]
+    source_payloads["dimension_corpus"]["dimension_units"]["O"]["high"]["dialogues"] = [
+        item for item in dialogues if item["id"] != "O_high_advice"
+    ]
+    broken_assets = replace(assets, source_payloads=source_payloads)
+    conn = connect(tmp_path / "missing-asset.db")
+    sync_builtin_personas(conn, _constraint_payloads(assets))
+    service = DesktopSessionBindingService(
+        conn,
+        context_provider=DesktopSessionContextProvider(),
+        event_stream_manager=None,
+        semantic_embed_func=None,
+        constraint_assets=broken_assets,
+    )
+    initial = service.restore_or_create(
+        preferred_session_id="initial",
+        startup_persona=load_persona_file(_DEFAULT_PERSONA),
+        title="初始会话",
+    )
+    before_sessions = conn.execute("SELECT COUNT(*) FROM sessions;").fetchone()[0]
+    before_memories = conn.execute("SELECT COUNT(*) FROM memory_chunks;").fetchone()[0]
+
+    with pytest.raises(SessionBindingError, match="switch_failed") as captured:
+        service.switch_persona(
+            "builtin_tianmei",
+            switch_request_id="missing-asset",
+            expected_revision=initial.revision,
+        )
+
+    assert isinstance(captured.value.__cause__, PersonaL1AssemblyError)
+    assert conn.execute("SELECT COUNT(*) FROM sessions;").fetchone()[0] == before_sessions
+    assert conn.execute("SELECT COUNT(*) FROM memory_chunks;").fetchone()[0] == before_memories
+    assert service.current().session_id == initial.session_id
+    assert service.current().revision == initial.revision
+
+
+def test_t23_burned_prompt_budget_rejects_before_switch_transaction(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    assets = load_persona_constraint_assets(root_override=_REPO_ROOT)
+    conn = connect(tmp_path / "over-budget.db")
+    sync_builtin_personas(conn, _constraint_payloads(assets))
+    service = DesktopSessionBindingService(
+        conn,
+        context_provider=DesktopSessionContextProvider(),
+        event_stream_manager=None,
+        semantic_embed_func=None,
+        constraint_assets=assets,
+    )
+    initial = service.restore_or_create(
+        preferred_session_id="initial",
+        startup_persona=load_persona_file(_DEFAULT_PERSONA),
+        title="初始会话",
+    )
+    display_name = "甜" * 32
+    MemoryLifecycleManager.add_memory_chunk(
+        conn,
+        f"助手自画像：名字 = {display_name}",
+        session_id=initial.session_id,
+        source="semantic_auto",
+        meta={
+            "memory_type": "agent_profile",
+            "target": "assistant",
+            "field": "display_name",
+            "value": display_name,
+        },
+    )
+    before_sessions = conn.execute("SELECT COUNT(*) FROM sessions;").fetchone()[0]
+    before_memories = conn.execute("SELECT COUNT(*) FROM memory_chunks;").fetchone()[0]
+    monkeypatch.setattr(persona_assembly, "L1_PROMPT_CHARACTER_LIMIT", 651)
+
+    with pytest.raises(SessionBindingError, match="switch_failed") as captured:
+        service.switch_persona(
+            "builtin_tianmei",
+            switch_request_id="over-budget",
+            expected_revision=initial.revision,
+        )
+
+    assert isinstance(captured.value.__cause__, PersonaL1AssemblyError)
+    assert "persona_l1_prompt_over_budget" in str(captured.value.__cause__)
+    assert conn.execute("SELECT COUNT(*) FROM sessions;").fetchone()[0] == before_sessions
+    assert conn.execute("SELECT COUNT(*) FROM memory_chunks;").fetchone()[0] == before_memories
+    assert service.current().session_id == initial.session_id
+    assert service.current().revision == initial.revision
 
 
 @pytest.mark.parametrize(
@@ -621,6 +861,13 @@ def test_bootstrap_restores_sqlite_canonical_instead_of_new_random_session(tmp_p
     try:
         assert first.session_id == "first-bootstrap"
         assert first.session_context_provider.capture().session_id == "first-bootstrap"
+        assert first.session_context_provider.capture().snapshot.source == PERSONA_SNAPSHOT_SOURCE_A1
+        assert "档位:" not in first.session_context_provider.capture().snapshot.payload[
+            "effective_system_prompt"
+        ]
+        assert first.conn.execute(
+            "SELECT COUNT(*) FROM personas WHERE id LIKE 'builtin_%';"
+        ).fetchone()[0] == 5
     finally:
         first.idle_detector.stop()
         if first.event_persistence is not None:
@@ -643,3 +890,34 @@ def test_bootstrap_restores_sqlite_canonical_instead_of_new_random_session(tmp_p
         if restored.event_persistence is not None:
             restored.event_persistence.shutdown()
         restored.conn.close()
+
+
+def test_validated_active_persona_uses_l1_source_for_first_bootstrap_session(
+    tmp_path: Path,
+) -> None:
+    assets = load_persona_constraint_assets(root_override=_REPO_ROOT)
+    conn = connect(tmp_path / "companion.db")
+    sync_builtin_personas(conn, _constraint_payloads(assets))
+    conn.execute("UPDATE personas SET active = 0;")
+    conn.execute("UPDATE personas SET active = 1 WHERE id = ?;", ("builtin_tianmei",))
+    conn.close()
+
+    bundle = bootstrap_ui_session(
+        persona_path=_DEFAULT_PERSONA,
+        session_id="validated-first-bootstrap",
+        data_dir=str(tmp_path),
+        memory=False,
+        model=str(tmp_path / "missing.gguf"),
+    )
+    try:
+        snapshot = bundle.session_context_provider.capture().snapshot
+        assert bundle.session_id == "validated-first-bootstrap"
+        assert snapshot.source == PERSONA_SNAPSHOT_SOURCE_L1
+        assert snapshot.payload["companion_display_name"] == "甜美"
+        assert "我是甜美" in snapshot.payload["effective_system_prompt"]
+        assert "{display_name}" not in snapshot.payload["effective_system_prompt"]
+    finally:
+        bundle.idle_detector.stop()
+        if bundle.event_persistence is not None:
+            bundle.event_persistence.shutdown()
+        bundle.conn.close()
