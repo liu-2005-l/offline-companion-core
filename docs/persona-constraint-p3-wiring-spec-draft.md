@@ -31,7 +31,7 @@ W3 独占的是输出检测器的后续改造、检测域扩展、4-gram 重校�
 
 在 `core/persona_constraint/` 建立单一实现入口，职责固定为：
 
-- 加载并校验 `persona_constraint_corpus.yaml` 及其五份事实源；
+- 加载并校验 `persona_constraint_corpus.yaml` manifest 及其六份事实源，发布常量先钉 manifest、manifest 再钉逐项源文件；
 - 规范化 OCEAN，按 `O,C,E,A,N` 派生 low/mid/high；
 - 识别五个冻结标定点或 `unvalidated_custom`；
 - 选择 L1 维度/结构样本，解析 L3 降档信号并稳定渲染 system 文本块；
@@ -55,6 +55,9 @@ B 层不得 import `shell`，不得访问网络，不直接写 UI 设置。配�
 `storage/persona_repo.py` 继续只做 SQLite 持久化，不 import B 层。公开创建/更新路径不得再接受用户提供的
 `traits`；仅允许 A 层传入命名明确的 `derived_traits_cache`。收到外部 `traits` 时返回
 `traits_read_only`，禁止静默忽略。
+
+A2 已将 personas 写入口收敛到 `persona_repo.py`：会话切换只调用不自行提交的 transaction-aware active setter，
+事务提交权继续由 A 层四阶段切换编排持有；seed 与 v15 迁移是显式允许项。
 
 当前 `InferenceBackend.generate/generate_stream` 没有逐请求采样参数入口。P3 是否扩展为共享
 `GenerationOptions` DTO，取决于 §5 的 P3-0 数值包锚；在数值包冻结前禁止先改 C 层接口，也禁止把 L2
@@ -154,10 +157,13 @@ P3 必须把温柔、暴躁、可靠、甜美、可爱五个冻结组合作为�
 
 ### 4.2 预算与失败语义
 
-- 渲染后 L1 文本硬上限 `640` 个 Unicode 字符，不含既有身份锁、skill、memory 与格式提示；
+- 烧入净化后 `display_name` 的最终 L1 文本硬上限 `660` 个 Unicode 字符，不含既有身份锁、skill、memory 与格式提示；
 - 只按完整块组装，禁止截断某条示例；
-- 五维 + 一结构任一标定点超过 640 字符视为配置错误，关闭整个人格约束，不通过丢维度“凑预算”；
+- 五维 + 一结构任一标定点在名称烧入后超过 660 字符视为配置错误，关闭整个人格约束，不通过丢维度“凑预算”；
 - P3 fixture 必须证明五标定点当前最坏组合均不超过上限；P4 另记真实 GGUF prompt token 数。
+
+占位符态长度只用于定位资产构成，不作为预算验收；曾以甜美占位符态 `634/640` 报告余量属于测量口径假绿，
+交付口径必须使用净化后自称烧入的实际生效文本。
 
 组装位置沿用臂 A：身份锁、算术要求、skill prompt 之后追加人格 L1 块，再拼现有 tone/emotion/format hint。
 人格块不得覆盖安全、审计、Consent 或 skill 约束。
@@ -171,7 +177,7 @@ P3-0 必须先冻结一份机器规格，至少包含：
 
 - 每维 low/mid/high 的 `temperature/top_p/repeat_penalty` 增量或显式 `no_change`；
 - 五维叠加顺序、最终夹紧区间、非法组合与后端不支持时的确定性关闭语义；
-- L1 注入预算是否属于 L2，以及它与 §4 固定 `640` 字符上限的关系；
+- L1 注入预算是否属于 L2，以及它与 §4 固定 `660` 字符上限的关系；
 - 本地 server、本地直调、云端路由各自的支持矩阵和 applied-options trace；
 - P4 逐项归因所需的 baseline、只开 L1、只开 L2、L1+L2 观察臂。
 
@@ -250,7 +256,7 @@ P4 必须单列 F0b `11/80` 禁用族、F0a `6/18` 断崖本底、assistant 复�
 2. 记忆保存确认语；
 3. 人格约束配置异常后的用户可见降级提示。
 
-15 条均从独立 YAML 加载，过禁用/L4/绝对承诺/内部机制泄漏 lint。身份查询继续使用现有安全
+15 条均从独立 YAML 加载并进入六源哈希链，过禁用/L4/短前缀复制/绝对承诺/内部机制泄漏 lint。身份查询继续使用现有安全
 `display_name` 参数化模板，不复制成五份；人格差异由当前 profile 的短语片段提供。
 
 以下保护区逐字节不变且明确排除人格化：安全固定回复、Consent 文案、算术警示、审计块、任务结果与错误码。
@@ -335,7 +341,7 @@ P4。P3 不得用旧 artifact 代替新代码路径单测，也不得把静态 f
 
 1. **P3-0 阻塞锚**：L2 数值包、L3 机器语义、GenerationOptions 支持矩阵与 P4 归因臂先冻结；
 2. **P3-A 派生/迁移/lint**：完整根 loader、20 边界、五预设入库、traits 导出迁移、API 旁路拒绝、lint 正负控；
-3. **P3-B L1/L2/L3/L4 基线**：确定性选择、640 字符预算、参数应用 trace、显式信号、三事件生产消费、
+3. **P3-B L1/L2/L3/L4 基线**：确定性选择、660 字符预算、参数应用 trace、显式信号、三事件生产消费、
    缓冲式 retry/fallback；
 4. **P3-C 文案/UX**：15 条文案、persona 快照迁移、原子 session context、前端失败回滚、历史会话恢复；
 5. **P3-D 闭合**：关闭契约、受影响 fixture 全量复跑、P3 报告与 v1.5 验收回填。
@@ -346,7 +352,7 @@ P4。P3 不得用旧 artifact 代替新代码路径单测，也不得把静态 f
 
 - [ ] P3-0：L2 数据确认的数值包或 `no_effect_observed_within_preregistered_grid` 不采用裁决 + L3 机器效果已冻结，不存在未测全零、空转字段或未声明后端；
 - [ ] P3-A：单一派生链、五标定预设、完整根解析、迁移三件套、traits 写旁路清零、lint 正控；
-- [ ] P3-B：五标定点 L1/L2/L3 确定性组装、640 字符预算、三审计信号生产/消费、L4 基线动作链；
+- [ ] P3-B：五标定点 L1/L2/L3 确定性组装、660 字符预算、三审计信号生产/消费、L4 基线动作链；
 - [ ] P3-C：15 条文案、persona 持久化快照、真实新会话切换、失败零状态变化、历史会话 context 一致；
 - [ ] 自定义 OCEAN 明示未验证且默认不启用约束，不删除用户现有向量；
 - [ ] 单对失败隐藏策略实现但在 P4 verdict 前不生效；

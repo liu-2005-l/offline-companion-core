@@ -1,6 +1,6 @@
 # P3-A2 L1 组装 + 资产补全实现规格（v0.2）
 
-状态：§9 盘点、D-A1～A6、traits 冲突口径、`tone_keywords` 单域口径与五预设入库对齐表均已落位；可进入实现。
+状态：A2 已闭合。资产四件、`to_level`、L1 组装、source 接线、T24 文案与 T26 写旁路哨兵均已完成；D-A6 后端权威预览链已收编；全量回归为 1389 passed、3 skipped。
 
 输入：A1 基座（快照四列 + source 枚举预埋 p3_a2_l1_assembled）+ P1/P2 冻结资产 + 883f84b 冻结映射 + 四锚终版（v1.5 §8 :156）
 v0.1→v0.2 演进：TA 完成 §9 五项盘点回填 + D-A1～A6 裁决；五预设入库从“逐字节复制”改为“对齐表回填”（盘点实锤：compositions 无完整 payload 字段）；traits 保全升级为双写对齐。
@@ -15,8 +15,8 @@ v0.1→v0.2 演进：TA 完成 §9 五项盘点回填 + D-A1～A6 裁决；五�
 
 实现：
 
-manifest 载体 = corpus.yaml 内增 manifest 段（不建独立 manifest 文件——P2 终裁“YAML 单入口”，独立文件违反单入口）。manifest 内记录五份被引用源文件的逐项 SHA-256；manifest 不能记录自身哈希，避免自引用闭环；
-manifest 的期望 SHA-256 由 B 层发布常量钉死，resolver 先校验 manifest，再校验其中五份源文件。只把实际 manifest 哈希写进快照不构成信任锚，不能替代发布常量；
+manifest 载体 = corpus.yaml 内增 manifest 段（不建独立 manifest 文件——P2 终裁“YAML 单入口”，独立文件违反单入口）。manifest 内记录六份被引用源文件的逐项 SHA-256；manifest 不能记录自身哈希，避免自引用闭环；
+manifest 的期望 SHA-256 由 B 层发布常量钉死，resolver 先校验 manifest，再校验其中六份源文件（含确定性文案 YAML）。只把实际 manifest 哈希写进快照不构成信任锚，不能替代发布常量；
 当前盘点哈希如下；corpus 为加入 manifest 段前的基线哈希，实现后必须重算最终哈希并更新发布常量：
 
 | 资产 | SHA-256 | 用途 |
@@ -27,6 +27,9 @@ manifest 的期望 SHA-256 由 B 层发布常量钉死，resolver 先校验 mani
 | `configs/persona_constraint_dimension_corpus.yaml` | `de12acd43c0deb8bbd297e477fe109739e901a59896a0e016388b74c5259fac5` | manifest 逐项哈希 |
 | `configs/persona_constraint_structural_corpus.yaml` | `8f34b22d4d29070bcdfe3f61e9712a5cfe7086be4231663f4e2957de0db7256e` | manifest 逐项哈希 |
 | `configs/persona_constraint_persona_compositions.yaml` | `889930cee23b6238738d4cef72b47504fe406e0acafb8bc9213141fdb7ce3334` | manifest 逐项哈希 |
+| `configs/persona_constraint_reply_copy.yaml` | `4ccc1c266842c20a3596078d44c2b2fd1c4ba3bc14b0f69b768fc72dd2d19972` | manifest 逐项哈希 |
+
+实现闭合值：manifest 发布常量为 `c222befb2e6819e88ff5467c6eb1ab3b174f1e0fcc58131235ec35ac29e21d4d`；运行时先校验该常量与真实 manifest，再校验六份源文件，测试不使用动态 fixture 替代发布常量。
 
 加载器逐条校验，任一不符即 raise（fail-fast），禁止静默跳过或降级加载；
 快照可追溯（D-A1 附加裁决）：persona_snapshot_json 内增 manifest_hash 字段（快照四列不动，不加列），记录组装时 manifest 实际哈希——每个会话可追溯到当时的资产版本；
@@ -101,27 +104,30 @@ assemble_l1_prompt(persona_id, corpus_assets, frozen_mapping) -> AssembledPrompt
 
 | 层 | 内容 | 确定性口径 |
 | --- | --- | --- |
-| L1 核心 | 模板 + 语料条目 + traits 派生 + 人格文案 | 同一人格两次组装逐字节一致（纯函数） |
+| L1 核心 | 模板 + 语料条目 + traits 档位 | 同一人格两次组装逐字节一致（纯函数） |
 | display_name 烧入 | `build_snapshot` 时查 `latest_profile_memory()` 烧入实际值 | 非纯函数（含记忆状态），不进 L1 验收 |
 | 快照整体 | L1 产物 + display_name + manifest_hash = 实际生效 prompt 及其资产版本 | 逐字节回放审计（A1 T1 语义保持） |
 display_name 不进 L1 核心：保纯函数 + 现有 conn-aware 机制不动；快照必须烧入：A1 快照立约理由 = 行为审计逐字节回放。两层各保各的口径，禁止混同；
-组装顺序固定（模板段 → 语料段 → traits 段 → 文案段），顺序变更 = 规格变更；
+组装顺序固定（模板段 → 档位段 → 五维语料段 → 结构段 → 标签段），顺序变更 = 规格变更；
+15 条确定性文案是 reply 侧查表输出（§8），不进 L1 组装，预算增量为零；
+预算验证口径从占位符态改为烧入态：净化后 `display_name` 烧入的最终 L1 文本必须不超过 660 个 Unicode 字符；甜美占位符态 `634/640` 的余量属于测量口径假绿，不再作为验收证据；
 组装失败：资产缺失 / 哈希不符 / 解析失败 → raise → A1 切换事务回滚 → 前端明确失败。禁止降级旧模板静默组装。
 ## 7. source 切换
 新会话快照 source = p3_a2_l1_assembled（A1.1 R5 预埋值，只加值不改语义）；
 存量会话快照逐字节不变（历史不洗）；
-bootstrap 链路同步：启动创建的首个会话同样走 L1 组装 + 新 source。
+bootstrap 链路同步：active persona 为 validated anchor 时，启动创建的首个会话同样走 L1 组装 + 新 source；non-validated persona 继续使用 `a1_persona_system_prompt`，禁止误入 L1。
 ## 8. 确定性文案 15 条（3 类 × 5 人格，D-A4 落地）
-三类：switch 确认语 / 确定性回答确认语 / 降级语，五预设各一套；
+三类：switch 确认语 / 记忆保存确认语 / 人格约束配置降级语，五预设各一套；
 边界（D-A4 裁决）：仅覆盖五预设的三类确定性文案。下列保护区逐字节保持既有确定性输出，不得读取人格文案表：安全/危机固定回复；Consent 披露、询问、拒绝、超时与撤销；算术/质量警示及审计块；工具、任务、计划和下载结果；隐私、离线与出站策略提示；API/schema 错误码；迁移、恢复、冲突与数据完整性错误；
 流程：TA 起草 → 过 P1/P2 一次性 lint 五项（禁用词 / L4 / 短前缀复制 / 无证据绝对承诺 / 内部机制泄漏）→ 0 红后冻结进 YAML + manifest 登记哈希；
 验收：15 条全过 lint + 确定性路径不进 backend 回归保持 + 五预设对应查表断言。
-## 9. 盘点事实清单（TA 已回填，v0.2 落位）
-corpus.yaml:12 统一入口，仅路径无哈希字段；五份被引用资产 SHA-256 已算定，corpus 自身记录修改前基线哈希，最终发布哈希须在 manifest 段落地后重算；
-无专用 resolver；configs_dir() 仅凭 seeded default.yaml 选整根（runtime_paths.py:62）；目标规则接线批骨架 :63；
+## 9. 盘点事实清单（TA 已回填，A2 实现闭合）
+corpus.yaml 继续作为统一入口，并已登记六份源文件逐项 SHA-256；B 层发布常量钉死 manifest 期望哈希，快照记录实际 manifest hash；
+persona 资产已使用专用完整根 resolver，旧 `configs_dir()` 仅继续服务非 persona 配置；旧 seeded root 缺少完整资产时整体跳过，不跨根拼接；
 compositions 仅名称/类型/档位签名/语料引用，无完整 payload 字段（§2 对齐表）；
-traits 手写值双写（persona_repo.py:154/:393）；tone_keywords = reformitter 行为字段（rule_reformatter.py:84）；编辑入口 shell.js:1350/:1437；创建器派生链 shell.js:1804/:1917；
-写点：persona_repo.py:115/:135/:189/:260/:287 + session_binding.py:433（§4 表）。
+traits 手写值已由 v15 导出保全并隔离档位缓存；`tone_keywords` 保持 local reformatter 输出侧单域；热编辑入口与 JS traits/desc/anchor 派生链均已删除；
+人格创建器通过无副作用本地预览 API 消费 B 层唯一派生函数，create/update 外部提交 `traits` 或内部缓存字段均返回 `traits_read_only`；
+personas 写入已收敛到 `persona_repo.py`，切换事务通过不提交的 active setter 写入；seed 与 v15 迁移是显式允许项（§4 表）。
 ## 10. 测试清单（T12-T26）
 | # | 断言 |
 | --- | --- |
@@ -130,13 +136,13 @@ traits 手写值双写（persona_repo.py:154/:393）；tone_keywords = reformitt
 | T14 | 组装输出与冻结映射逐字节一致 |
 | T15 | `to_level` 边界：33/34/66/67 × 五维 25 断言；五预设每维数值均属于 `{17,50,83}`，且 `to_level(数值)` 与冻结档位签名逐维一致 |
 | T16 | 派生幂等：同输入两次派生逐字节一致 |
-| T17 | 快照完整性：新会话快照 = L1 产物 + display_name + manifest_hash = 实际生效 prompt 逐字节 |
+| T17 | 快照完整性：新会话快照 = L1 产物 + display_name + manifest_hash = 实际生效 prompt 逐字节；32 汉字自称 × 甜美人格为 652 字符且不超过 660 烧入态预算 |
 | T18 | 旧 configs 遮挡免疫：残留字段注入 → 解析行为不变；结构不符 → raise |
-| T19 | manifest 发布哈希或五份源文件逐项哈希任一不符 → 加载 raise、组装拒绝（负控） |
+| T19 | manifest 发布哈希或六份源文件逐项哈希任一不符 → 加载 raise、组装拒绝（负控） |
 | T20 | 双写对齐：`traits_json` 与 `raw_json.traits` 手写值迁移前后逐字节一致 + 冲突/回退判例 |
 | T21 | 编辑入口及 JS 派生规则移除；UI 冒烟无热编辑入口；预览 API 与最终保存共用派生结果 |
 | T22 | source 切换：新会话 `p3_a2_l1_assembled`；存量快照逐字节不变 |
-| T23 | 组装失败回滚：注入资产缺失 → 切换事务全回滚 → API 明确报错（T4 同型） |
+| T23 | L1 前置拒绝：真实资产缺失或烧入态超预算 → 切换事务不开启、sessions/memory 零残留、API 返回明确 `switch_failed`；事务内 snapshot/session/default/canonical 写入失败继续由 A1.1 四阶段判例保证原子回滚 |
 | T24 | 文案 15 条：五项 lint 0 红 + 五预设对应查表断言 + 保护区未被越界改动 |
 | T25 | 确定性路径回归：身份查询等确定性路径不进 backend（既有行为保持） |
 | T26 | 写旁路清零：repo 外 personas 写 SQL = 0 + session_binding 走 repo setter + seed/迁移显式豁免 |
@@ -147,14 +153,14 @@ T12-T26 全绿；
 解析免疫负控通过（T18+T19）；
 source 切换判例通过且存量快照零漂移（T22）；
 写旁路清零：§4 处置表逐行核对通过（T26）；
-全量回归 ≥ 1306 passed 基线；
+全量回归 1389 passed、3 skipped，高于 1388 passed 收尾基线；
 文档同步放本批最后一步。
 ## 12. 决策点
 已裁落位（D-A1～A6）：
 
 | # | 裁决 |
 | --- | --- |
-| D-A1 | 逐项哈希；manifest 记五份源文件各自 SHA-256；发布常量钉 manifest 期望哈希；运行快照另记实际哈希 |
+| D-A1 | 逐项哈希；manifest 记六份源文件各自 SHA-256；发布常量钉 manifest 期望哈希；运行快照另记实际哈希 |
 | D-A2 | 原 traits 保全 + `derived_*` 隔离；取代 v1.3 覆盖原键旧口径 |
 | D-A3 | A2 一次性全量写点断言，A3 转 CI 常驻；seed/迁移显式列入允许项；session_binding 不得永久旁路 |
 | D-A4 | TA 起草 → lint → 冻结；仅五预设三类，保护区不人格化 |
@@ -163,7 +169,7 @@ source 切换判例通过且存量快照零漂移（T22）；
 | 确认 1 | 双写冲突以合法的 `raw_json.traits` 为准；缺失/非法时回退 `traits_json`；冲突与回退均审计 |
 | 确认 2 | `tone_keywords` 确认为 local reformatter 输出侧单域，A2 不建输入侧域 |
 
-## 13. 执行顺序
+## 13. 执行顺序（已完成）
 资产①②（manifest 段 + resolver + 入库）→ 资产③（v15 迁移三件套 + 入口移除）→ to_level 派生 → L1 组装器 → 文案 15 条 → 资产④（写旁路清零）→ source 切换 → 测试收口 → 文档同步（最后）。
 
-估量 1-2 晚不变；对齐表回填质量是唯一的实现批风险前置项。
+A2 已按上述顺序串行完成；后续进入 A3 L3 谓词接线，不回开本批裁决。
