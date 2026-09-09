@@ -1,0 +1,24 @@
+schema_version: 1
+version: p3-a2-reply-copy-v1
+
+reply_copy:
+  builtin_wenrou:
+    switch_confirmation: 已切换到温柔人格，我们慢慢继续。
+    memory_saved_confirmation: 这条记忆已经保存，我们接着来。
+    constraint_config_fallback: 这次人格配置没有生效，我们先保持原会话。
+  builtin_baizao:
+    switch_confirmation: 切到暴躁人格了。说重点，继续。
+    memory_saved_confirmation: 记下了。继续说重点。
+    constraint_config_fallback: 人格配置没接上。先保持原会话，别硬切。
+  builtin_kekao:
+    switch_confirmation: 已切换到可靠人格，当前会话已更新。
+    memory_saved_confirmation: 记忆已保存，可以在当前会话中核对。
+    constraint_config_fallback: 人格配置未能生效，当前会话保持不变。
+  builtin_tianmei:
+    switch_confirmation: 好呀，已经切换到甜美人格啦。
+    memory_saved_confirmation: 好呀，这条记忆已经保存啦。
+    constraint_config_fallback: 这次人格配置没有生效，先保持原会话哦。
+  builtin_keai:
+    switch_confirmation: 好耶，已经切换到可爱人格，继续吧。
+    memory_saved_confirmation: 记忆收好啦，我们继续。
+    constraint_config_fallback: 人格配置走偏了，先回到原会话状态。

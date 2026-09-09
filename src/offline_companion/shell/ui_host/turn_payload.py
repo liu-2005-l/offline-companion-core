@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from typing import Any, Protocol
 
 from offline_companion.core.memory_lifecycle.triggers import maybe_summarize_to_memory
+from offline_companion.core.persona_constraint import REPLY_COPY_MEMORY_SAVED_CONFIRMATION
 from offline_companion.shared.types import TurnResult
 
 
@@ -72,6 +73,7 @@ def process_chat_message(runtime: ChatRuntime, message: str) -> dict[str, Any]:
     memory_snippet = maybe_summarize_to_memory(text, triggers) if triggers is not None else []
     result = runtime.orchestrator.run_turn(text, memory_on=bool(getattr(runtime, "memory_on", True)))
     payload = turn_result_to_payload(result)
+    _apply_memory_saved_reply(runtime, result, payload)
     payload.update(_new_message_ids(conn, session_id, before_message_id))
     if memory_snippet:
         payload.setdefault("memory_saved", [])
@@ -105,6 +107,7 @@ def process_chat_message_stream(runtime: ChatRuntime, message: str) -> Iterator[
         if event.get("done"):
             result = event["turn_result"]
             payload = turn_result_to_payload(result)
+            _apply_memory_saved_reply(runtime, result, payload)
             payload["done"] = True
             payload.update(_new_message_ids(conn, session_id, before_message_id))
             if memory_snippet:
@@ -113,6 +116,20 @@ def process_chat_message_stream(runtime: ChatRuntime, message: str) -> Iterator[
             yield payload
             continue
         yield event
+
+
+def _apply_memory_saved_reply(runtime: ChatRuntime, result: TurnResult, payload: dict[str, Any]) -> None:
+    """摘要：仅对纯记忆保存成功路径应用当前内置人格冻结文案。"""
+    if not result.memory_only or not result.memory_saved:
+        return
+    service = getattr(runtime, "session_binding_service", None)
+    persona = getattr(getattr(runtime, "orchestrator", None), "session_core", None)
+    persona_id = getattr(getattr(persona, "persona", None), "persona_id", None)
+    if service is None or not persona_id:
+        return
+    reply = service.deterministic_reply(str(persona_id), REPLY_COPY_MEMORY_SAVED_CONFIRMATION)
+    if reply:
+        payload["reply"] = reply
 
 
 def _max_message_id(conn: Any, session_id: Any) -> int:
