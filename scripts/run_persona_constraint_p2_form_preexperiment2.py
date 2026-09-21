@@ -8,14 +8,13 @@
 from __future__ import annotations
 
 import argparse
-import difflib
 import gc
 import hashlib
+import importlib
 import json
 import re
 import sys
 import time
-import unicodedata
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -26,6 +25,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
+
+_persona_lint = importlib.import_module("offline_companion.core.persona_constraint.lint")
+detect_copy = _persona_lint.detect_copy
+scan_forbidden = _persona_lint.scan_forbidden
+scan_l4 = _persona_lint.scan_l4
 
 DEFAULT_SPEC = REPO_ROOT / "fixtures" / "persona_constraints" / "p2_form_preexperiment2_spec.yaml"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "artifacts" / "persona_constraints" / "p2_form_preexperiment2"
@@ -52,72 +56,6 @@ def _load_json(path: Path) -> dict[str, Any]:
 def _sha256_text(text: str) -> str:
     """摘要：计算 UTF-8 文本的 SHA-256。"""
     return hashlib.sha256(text.encode("utf-8")).hexdigest().upper()
-
-
-def _compact(text: str) -> str:
-    """摘要：按禁用语义族口径折叠大小写与空白。"""
-    return "".join(unicodedata.normalize("NFKC", text).lower().split())
-
-
-def _copy_normalize(text: str) -> str:
-    """摘要：按复制 gate 口径做 NFKC、裁剪与空白折叠。"""
-    return " ".join(unicodedata.normalize("NFKC", text).strip().split())
-
-
-def _han_count(text: str) -> int:
-    """摘要：统计文本中的汉字数量。"""
-    return sum("\u4e00" <= char <= "\u9fff" for char in text)
-
-
-def scan_forbidden(text: str, lexicon: dict[str, Any]) -> list[str]:
-    """摘要：返回命中的禁用语义族名称。"""
-    compact_text = _compact(text)
-    hits: list[str] = []
-    for family_name, family in lexicon["forbidden_semantic_families"].items():
-        if any(_compact(str(variant)) in compact_text for variant in family["variants"]):
-            hits.append(str(family_name))
-    return hits
-
-
-def scan_l4(
-    text: str,
-    patterns: dict[str, Any],
-    *,
-    display_name_present: bool | None = None,
-) -> dict[str, Any]:
-    """摘要：按 P1 模式语言返回首个命中分区与模式族。"""
-    if display_name_present is None:
-        display_name_present = _compact(DISPLAY_NAME) in _compact(text)
-    for zone_name, zone in patterns["zones"].items():
-        for family_name, family in zone["families"].items():
-            if not re.search(str(family["pattern"]), text, flags=re.IGNORECASE):
-                continue
-            exclude_pattern = family.get("exclude_pattern")
-            if exclude_pattern and re.search(str(exclude_pattern), text, flags=re.IGNORECASE):
-                continue
-            if family.get("requires_display_name_absent") and display_name_present:
-                continue
-            return {"hit": True, "zone": str(zone_name), "family": str(family_name)}
-    return {"hit": False, "zone": None, "family": None}
-
-
-def detect_copy(reply: str, examples: list[str], output_tokens: int) -> dict[str, Any]:
-    """摘要：按短前缀与长连续子串双规则检测示例复制。"""
-    normalized_reply = _copy_normalize(reply)
-    best_chars = 0
-    for example in examples:
-        normalized_example = _copy_normalize(example)
-        if (
-            output_tokens <= 16
-            and _han_count(normalized_reply) >= 4
-            and normalized_example.startswith(normalized_reply)
-        ):
-            return {"hit": True, "kind": "short_exact_prefix", "matched_chars": len(normalized_reply)}
-        match = difflib.SequenceMatcher(None, normalized_reply, normalized_example, autojunk=False).find_longest_match()
-        best_chars = max(best_chars, match.size)
-    if output_tokens < 40 and best_chars >= 10:
-        return {"hit": True, "kind": "long_contiguous_substring", "matched_chars": best_chars}
-    return {"hit": False, "kind": None, "matched_chars": best_chars}
 
 
 def _dialogue_text(title: str, dialogue: list[dict[str, str]]) -> str:

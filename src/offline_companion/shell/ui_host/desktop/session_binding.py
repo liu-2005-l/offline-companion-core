@@ -584,7 +584,11 @@ class DesktopSessionBindingService:
             session_id=session_id,
             revision=revision,
             snapshot=proof,
-            session_core=PersonaSessionCore(persona, semantic_embed_func=self._semantic_embed_func),
+            session_core=PersonaSessionCore(
+                persona,
+                semantic_embed_func=self._semantic_embed_func,
+                constraint_assets=self._constraint_assets,
+            ),
             event_stream=stream,
         )
 
@@ -756,6 +760,8 @@ def _persona_from_snapshot(payload: dict[str, Any]) -> Persona:
         agreeableness=normalized[3] / 100,
         neuroticism=normalized[4] / 100,
     )
+    constraint_manifest = payload.get("constraint_manifest")
+    manifest = constraint_manifest if isinstance(constraint_manifest, dict) else {}
     return Persona(
         persona_id=persona_id,
         name=name,
@@ -771,7 +777,8 @@ def _persona_from_snapshot(payload: dict[str, Any]) -> Persona:
         raw={
             "validation_status": payload.get("validation_status"),
             "validated_anchor_id": payload.get("validated_anchor_id"),
-            "constraint_manifest": payload.get("constraint_manifest"),
+            "constraint_manifest_sha256": manifest.get("sha256"),
+            "constraint_manifest_version": manifest.get("version"),
             "manifest_hash": payload.get("manifest_hash"),
             "snapshot_source": payload.get("source"),
         },

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Callable, Iterator
 from contextlib import nullcontext
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Any
 from uuid import uuid4
 
@@ -25,6 +26,11 @@ from offline_companion.core.memory_lifecycle.triggers import (
     TriggerRegistry,
     is_enabled,
     maybe_summarize_to_memory,
+)
+from offline_companion.core.persona_constraint import (
+    AUDIT_ARITHMETIC_WARNING_APPENDED,
+    PersonaL3Trace,
+    PersonaTurnSignals,
 )
 from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.core.plan_orchestrator import ConsentRequest
@@ -325,17 +331,81 @@ class ConversationOrchestrator:
             },
         )
 
-    def _append_domain_event(self, event_type: str, payload: dict[str, Any]) -> None:
+    def _append_domain_event(self, event_type: str, payload: dict[str, Any]) -> bool:
         """并行追加领域事件；失败不影响既有对话链路。"""
         if self.event_stream is None:
-            return
+            return False
         event_payload = dict(payload)
         if self._active_trace_id is not None:
             event_payload.setdefault("trace_id", self._active_trace_id)
         try:
             self.event_stream.append(event_type, event_payload)
         except Exception:
-            return
+            return False
+        return True
+
+    def _mirror_persona_audit_event(self, event_type: str, consumed: bool) -> bool:
+        """摘要：镜像人格审计事实；失败不得改变直接信号。"""
+        return self._append_domain_event(
+            event_type,
+            {
+                "session_id": self.session_id,
+                "source": "persona_session",
+                "consumed_in_turn": self._active_trace_id if consumed else None,
+            },
+        )
+
+    def _claim_pending_persona_audit_events(self) -> tuple[str, ...]:
+        """摘要：从最近 assistant meta 原子领取一次性警示信号。"""
+        row = self.conn.execute(
+            "SELECT id, meta_json FROM messages "
+            "WHERE session_id = ? AND role = 'assistant' ORDER BY id DESC LIMIT 1;",
+            (self.session_id,),
+        ).fetchone()
+        if row is None:
+            return ()
+        try:
+            meta = json.loads(row["meta_json"] or "{}")
+        except (TypeError, ValueError):
+            return ()
+        if not isinstance(meta, dict) or meta.get("persona_audit_consumed_in_turn"):
+            return ()
+        pending = meta.get("persona_audit_pending")
+        if not isinstance(pending, list) or AUDIT_ARITHMETIC_WARNING_APPENDED not in pending:
+            return ()
+        trace_id = self._active_trace_id or "untraced"
+        meta["persona_audit_pending"] = []
+        meta["persona_audit_consumed_in_turn"] = trace_id
+        self.conn.execute(
+            "UPDATE messages SET meta_json = ? WHERE id = ?;",
+            (json.dumps(meta, ensure_ascii=False), int(row["id"])),
+        )
+        return (AUDIT_ARITHMETIC_WARNING_APPENDED,)
+
+    def _persona_turn_signals(self, emotion_context: Any | None) -> PersonaTurnSignals:
+        """摘要：合并当前情绪与最近一次可消费的审计警示。"""
+        return PersonaTurnSignals(
+            emotion_label=(
+                str(emotion_context.emotion) if emotion_context is not None else None
+            ),
+            emotion_confidence=(
+                emotion_context.confidence if emotion_context is not None else None
+            ),
+            audit_events=self._claim_pending_persona_audit_events(),
+        )
+
+    @staticmethod
+    def _persona_meta(
+        l3_trace: PersonaL3Trace | None,
+        pending_audit_events: tuple[str, ...] | list[str],
+    ) -> dict[str, Any]:
+        """摘要：把逐轮 L3 trace 与一次性状态投影到消息 meta。"""
+        meta: dict[str, Any] = {}
+        if l3_trace is not None:
+            meta["persona_l3_trace"] = asdict(l3_trace)
+        if pending_audit_events:
+            meta["persona_audit_pending"] = list(pending_audit_events)
+        return meta
 
     def _begin_turn(self, user_text: str) -> str:
         """创建本轮 trace_id 并记录 turn_start。"""
@@ -467,6 +537,7 @@ class ConversationOrchestrator:
         routing = self._routing_meta(decision, route_mode) if decision is not None else None
         if not user_message_appended:
             self._append_user_message(prepared.chat_text, emotion=emotion, channel=route_mode, routing=routing)
+        turn_signals = self._persona_turn_signals(emotion.context)
         history = recent_messages(self.conn, self.session_id, limit=self.history_limit)
         history_for_model = history[:-1] if history and history[-1].role == "user" else history
         assembled = self.session_core.assemble_reply(
@@ -479,6 +550,10 @@ class ConversationOrchestrator:
             emotion_context=emotion.context,
             capability_profile=self._local_capability_profile(),
             skill_prompt=prepared.skill_prompt,
+            turn_signals=turn_signals,
+            audit_event_mirror=(
+                self._mirror_persona_audit_event if self.event_stream is not None else None
+            ),
         )
         final_reply = reformat_local_reply(
             assembled.reply,
@@ -494,7 +569,10 @@ class ConversationOrchestrator:
             emotion=emotion,
             channel=route_mode,
             routing=routing,
-            extra_meta={"reformatted": True},
+            extra_meta={
+                "reformatted": True,
+                **self._persona_meta(assembled.l3_trace, assembled.pending_audit_events),
+            },
         )
         explanation = (
             get_memory_explanation(assembled.memory_recalls)
@@ -530,11 +608,14 @@ class ConversationOrchestrator:
         emotion = self._emotion_payload(prepared.chat_text)
         routing = self._routing_meta(decision, route_mode) if decision is not None else None
         self._append_user_message(prepared.chat_text, emotion=emotion, channel=route_mode, routing=routing)
+        turn_signals = self._persona_turn_signals(emotion.context)
         history = recent_messages(self.conn, self.session_id, limit=self.history_limit)
         history_for_model = history[:-1] if history and history[-1].role == "user" else history
         raw_parts: list[str] = []
         recalls: list[Any] = []
         audited_reply: str | None = None
+        l3_trace: PersonaL3Trace | None = None
+        pending_audit_events: tuple[str, ...] = ()
         assistant_persisted = False
         try:
             for event in self.session_core.assemble_reply_stream(
@@ -547,12 +628,20 @@ class ConversationOrchestrator:
                 emotion_context=emotion.context,
                 capability_profile=self._local_capability_profile(),
                 skill_prompt=prepared.skill_prompt,
+                turn_signals=turn_signals,
+                audit_event_mirror=(
+                    self._mirror_persona_audit_event if self.event_stream is not None else None
+                ),
             ):
                 if event.get("token") is not None:
                     raw_parts.append(str(event["token"]))
                 if event.get("done"):
                     recalls = list(event.get("memory_recalls") or [])
                     audited_reply = str(event.get("reply") or "")
+                    candidate_trace = event.get("l3_trace")
+                    if isinstance(candidate_trace, PersonaL3Trace):
+                        l3_trace = candidate_trace
+                    pending_audit_events = tuple(event.get("pending_audit_events") or ())
                     continue
                 yield event
             final_reply = reformat_local_reply(
@@ -565,7 +654,10 @@ class ConversationOrchestrator:
                 emotion=emotion,
                 channel=route_mode,
                 routing=routing,
-                extra_meta={"reformatted": True},
+                extra_meta={
+                    "reformatted": True,
+                    **self._persona_meta(l3_trace, pending_audit_events),
+                },
             )
             assistant_persisted = True
             explanation = get_memory_explanation(recalls) if prepared.memory_on and recalls else None
@@ -709,7 +801,7 @@ class ConversationOrchestrator:
                     cloud_used=True,
                     cloud_degraded=True,
                 )
-            reply = self._local_fallback_reply(
+            reply, persona_meta = self._local_fallback_reply(
                 prepared.chat_text,
                 memory_on=prepared.memory_on,
                 skill_prompt=prepared.skill_prompt,
@@ -722,7 +814,7 @@ class ConversationOrchestrator:
                 emotion=emotion,
                 channel="cloud_degraded",
                 routing=routing,
-                extra_meta={"had_cloud_raw": False},
+                extra_meta={"had_cloud_raw": False, **persona_meta},
             )
             return self._turn_result_with_route(
                 reply=reply,
@@ -809,8 +901,16 @@ class ConversationOrchestrator:
             decision=decision,
         )
 
-    def _local_fallback_reply(self, chat_text: str, *, memory_on: bool, skill_prompt: str = "") -> str:
+    def _local_fallback_reply(
+        self,
+        chat_text: str,
+        *,
+        memory_on: bool,
+        skill_prompt: str = "",
+    ) -> tuple[str, dict[str, Any]]:
+        """摘要：生成本地降级回复，并保留逐轮人格审计元信息。"""
         emotion_context = self._classify_emotion(chat_text)
+        turn_signals = self._persona_turn_signals(emotion_context)
         history = recent_messages(self.conn, self.session_id, limit=self.history_limit)
         assembled = self.session_core.assemble_reply(
             self.backend,
@@ -822,13 +922,20 @@ class ConversationOrchestrator:
             emotion_context=emotion_context,
             capability_profile=self._local_capability_profile(),
             skill_prompt=skill_prompt,
+            turn_signals=turn_signals,
+            audit_event_mirror=(
+                self._mirror_persona_audit_event if self.event_stream is not None else None
+            ),
         )
         final_reply = reformat_local_reply(
             assembled.reply,
             emotion_context=emotion_context,
             capability_profile=self._local_capability_profile(),
         )
-        return LOCAL_FALLBACK_PREFIX + final_reply
+        return (
+            LOCAL_FALLBACK_PREFIX + final_reply,
+            self._persona_meta(assembled.l3_trace, assembled.pending_audit_events),
+        )
 
     def _build_routing_consent_request(
         self,
@@ -954,7 +1061,7 @@ class ConversationOrchestrator:
                 route_mode="cloud",
             )
         except (ReformatError, CloudConnectorError, Exception):
-            reply = self._local_fallback_reply(
+            reply, persona_meta = self._local_fallback_reply(
                 prepared.chat_text,
                 memory_on=prepared.memory_on,
                 skill_prompt=prepared.skill_prompt,
@@ -965,7 +1072,7 @@ class ConversationOrchestrator:
                 emotion=emotion,
                 channel="cloud_degraded",
                 routing=self._routing_meta(decision, "cloud"),
-                extra_meta={"had_cloud_raw": False},
+                extra_meta={"had_cloud_raw": False, **persona_meta},
             )
             return self._turn_result_with_route(
                 reply=reply,

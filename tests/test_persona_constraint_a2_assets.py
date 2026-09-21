@@ -57,6 +57,7 @@ def test_complete_root_loads_manifest_sources_and_builtin_presets() -> None:
         "structural_corpus",
         "persona_compositions",
         "reply_copy",
+        "downgrade",
     }
     assert [preset.persona_id for preset in assets.builtin_presets] == [
         "builtin_wenrou",

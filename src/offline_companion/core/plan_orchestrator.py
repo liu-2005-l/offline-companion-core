@@ -16,6 +16,11 @@ from uuid import uuid4
 from offline_companion.core import plan_snapshot
 from offline_companion.core.decomposition_result import NotDecomposableResult
 from offline_companion.core.event_stream import EventStream
+from offline_companion.core.persona_constraint import (
+    AUDIT_QUALITY_RETRY_TAKEN,
+    PERSONA_TURN_SIGNALS_PAYLOAD_KEY,
+    PersonaTurnSignals,
+)
 from offline_companion.core.plan_dag_engine import PlanDAGEngine
 from offline_companion.core.plan_decomposer import PlanDecomposer
 from offline_companion.core.plan_enums import PlanErrorCode, PlanEventName
@@ -445,6 +450,7 @@ class EventStreamPlanEventPublisher:
         "task.plan_started": "plan/status_changed",
         "task.plan_resumed": "plan/status_changed",
         "task.plan_paused": "plan/status_changed",
+        "task.quality_retry_taken": AUDIT_QUALITY_RETRY_TAKEN,
     }
 
     def __init__(self, delegate: PlanEventPublisher, stream: EventStream) -> None:
@@ -457,17 +463,22 @@ class EventStreamPlanEventPublisher:
         event_type = self._EVENT_TYPES.get(event_name)
         if event_type is None:
             return
-        self._stream.append(
-            event_type,
-            {
-                "plan_id": context.plan_id,
-                "step_id": current_step,
-                "status": context.status.value,
-                "event_name": event_name,
-                "trace_id": context.trace_id,
-                "error": context.error,
-            },
-        )
+        try:
+            self._stream.append(
+                event_type,
+                {
+                    "plan_id": context.plan_id,
+                    "step_id": current_step,
+                    "status": context.status.value,
+                    "event_name": event_name,
+                    "trace_id": context.trace_id,
+                    "source": "plan_orchestrator",
+                    "consumed_in_turn": context.trace_id,
+                    "error": context.error,
+                },
+            )
+        except Exception:
+            logger.warning("计划领域事件镜像失败: %s", event_type, exc_info=True)
 
 
 class PlanStateStore(ABC):
@@ -1106,9 +1117,20 @@ class PlanOrchestrator:
                 }
             )
         context.touch()
+        self._event_publisher.publish(
+            "task.quality_retry_taken",
+            context,
+            current_step=step.step_id,
+        )
         self._store.save(context.plan_id, context)
 
-        retry_result = self._execute_step_raw(context, step, context_vars)
+        context.context_vars[PERSONA_TURN_SIGNALS_PAYLOAD_KEY] = PersonaTurnSignals(
+            audit_events=(AUDIT_QUALITY_RETRY_TAKEN,)
+        ).to_payload()
+        try:
+            retry_result = self._execute_step_raw(context, step, context_vars)
+        finally:
+            context.context_vars.pop(PERSONA_TURN_SIGNALS_PAYLOAD_KEY, None)
         retry_issues = self._gateway.verify_post_execution(step, retry_result) if step.stage else []
         if retry_issues:
             context.paused_reason = PlanErrorCode.POST_VERIFICATION_FAILED.value
@@ -1147,6 +1169,10 @@ class PlanOrchestrator:
             payload["_fallback_index"] = int(context_vars.get("fallback_index") or 0)
         if feedback:
             payload["_quality_retry_feedback"] = feedback
+        turn_signals = context_vars.get(PERSONA_TURN_SIGNALS_PAYLOAD_KEY)
+        route_mode = str(context_vars.get("route_mode") or "local")
+        if route_mode == "local" and isinstance(turn_signals, dict):
+            payload[PERSONA_TURN_SIGNALS_PAYLOAD_KEY] = dict(turn_signals)
         return self._skill_invoker.invoke(step.skill_id, payload, step.idempotency_key)
 
     def _propagate_unblock_events(self, context: TaskContext, previous_statuses: Mapping[str, Any]) -> None:

@@ -16,6 +16,7 @@ from queue import Empty
 import pytest
 
 import offline_companion.core.persona_constraint.assembly as persona_assembly
+from offline_companion.core.emotion_analyzer import EmotionContext
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
 from offline_companion.core.persona_constraint import (
     L1_PROMPT_CHARACTER_LIMIT,
@@ -50,6 +51,19 @@ from offline_companion.storage.persona_repo import (
 
 _DEFAULT_PERSONA = Path(__file__).resolve().parents[1] / "configs" / "personas" / "default.yaml"
 _REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+class _PromptCaptureBackend:
+    """摘要：记录真实 bootstrap 会话在单次生成中使用的 system prompt。"""
+
+    label = "a3-reload-test"
+
+    def __init__(self) -> None:
+        self.system_prompts: list[str] = []
+
+    def generate(self, **kwargs) -> str:
+        self.system_prompts.append(str(kwargs.get("system_prompt") or ""))
+        return "低强度回复"
 
 
 def _constraint_payloads(assets) -> list[dict]:
@@ -117,6 +131,9 @@ def _bootstrap_after_restart(data_dir: str, result_queue) -> None:
                 "canonical_session_id": state["active_session_id"],
                 "revision": state["revision"],
                 "source": context.snapshot.source,
+                "snapshot_sha256": context.snapshot.sha256,
+                "effective_system_prompt": context.snapshot.payload["effective_system_prompt"],
+                "session_core_system_prompt": context.session_core.persona.system_prompt,
                 "auto_stream_bound": bundle.auto_turn_orchestrator.event_stream is context.event_stream,
                 "consent_stream_bound": bundle.orchestrator.consent_gateway.event_stream
                 is context.event_stream,
@@ -921,3 +938,51 @@ def test_validated_active_persona_uses_l1_source_for_first_bootstrap_session(
         if bundle.event_persistence is not None:
             bundle.event_persistence.shutdown()
         bundle.conn.close()
+
+
+def test_l3_temporary_prompt_does_not_survive_real_bootstrap_reload(tmp_path: Path) -> None:
+    assets = load_persona_constraint_assets(root_override=_REPO_ROOT)
+    conn = connect(tmp_path / "companion.db")
+    sync_builtin_personas(conn, _constraint_payloads(assets))
+    conn.execute("UPDATE personas SET active = 0;")
+    conn.execute("UPDATE personas SET active = 1 WHERE id = ?;", ("builtin_wenrou",))
+    conn.close()
+
+    bundle = bootstrap_ui_session(
+        persona_path=_DEFAULT_PERSONA,
+        session_id="a3-reload",
+        data_dir=str(tmp_path),
+        memory=False,
+        model=str(tmp_path / "missing.gguf"),
+    )
+    try:
+        context = bundle.session_context_provider.capture()
+        expected_prompt = context.snapshot.payload["effective_system_prompt"]
+        expected_sha256 = context.snapshot.sha256
+        backend = _PromptCaptureBackend()
+
+        result = context.session_core.assemble_reply(
+            backend,
+            bundle.conn,
+            user_message="今天有点低落",
+            history=[],
+            memory_enabled=False,
+            emotion_context=EmotionContext(emotion="sadness", confidence=0.45),
+            audit_arithmetic=False,
+        )
+
+        assert result.l3_trace.prompt_replaced is True
+        assert expected_prompt not in backend.system_prompts[0]
+    finally:
+        bundle.idle_detector.stop()
+        if bundle.event_persistence is not None:
+            bundle.event_persistence.shutdown()
+        bundle.conn.close()
+
+    recovered = _spawn_result(_bootstrap_after_restart, (str(tmp_path),))
+
+    assert recovered["session_id"] == "a3-reload"
+    assert recovered["source"] == PERSONA_SNAPSHOT_SOURCE_L1
+    assert recovered["snapshot_sha256"] == expected_sha256
+    assert recovered["effective_system_prompt"] == expected_prompt
+    assert recovered["session_core_system_prompt"] == expected_prompt

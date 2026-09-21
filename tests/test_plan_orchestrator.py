@@ -3,9 +3,11 @@ from __future__ import annotations
 import pytest
 
 from offline_companion.core.decomposition_result import NotDecomposableResult
+from offline_companion.core.event_stream import EventStream, build_default_registry
 from offline_companion.core.plan_orchestrator import (
     A2PlanValidationError,
     A3ConsentAdapter,
+    EventStreamPlanEventPublisher,
     InMemoryPlanStore,
     PlanContext,
     PlanOrchestrator,
@@ -45,6 +47,13 @@ class RecordingSampleLifecycle:
         if self.fail:
             raise RuntimeError("feedback unavailable")
         self.verified_candidates.append(sample_id)
+
+
+class FailingEventStream:
+    """摘要：模拟审计镜像追加失败。"""
+
+    def append(self, _event_type: str, _payload: dict[str, object]) -> None:
+        raise RuntimeError("event stream unavailable")
 
 
 def test_task_context_from_v1_snapshot_keeps_old_data() -> None:
@@ -534,9 +543,11 @@ def test_execute_next_post_verification_retry_succeeds() -> None:
     """摘要：第一次后置校验失败时注入 feedback 并重试一次，成功后步骤完成。"""
     store = InMemoryPlanStore()
     calls: list[dict[str, object]] = []
+    turn_signals: list[object] = []
 
     def invoke(step: PlanStep, context: TaskContext) -> str:
         calls.append(dict(context.feedback_overrides))
+        turn_signals.append(context.context_vars.get("_persona_turn_signals"))
         if len(calls) == 1:
             return ""
         assert "planning" in context.feedback_overrides[step.step_id]
@@ -553,9 +564,81 @@ def test_execute_next_post_verification_retry_succeeds() -> None:
     assert completed.status is PlanStatus.DONE
     assert completed.step_status["planning"] is StepStatus.DONE
     assert len(calls) == 2
+    assert turn_signals[0] is None
+    assert turn_signals[1] == {
+        "emotion_label": None,
+        "emotion_confidence": None,
+        "audit_events": ["audit/quality_retry_taken"],
+    }
     assert completed.quality_retry_counts["planning"] == 1
     assert "planning" not in completed.feedback_overrides
     assert completed.get_step_result("planning") == "模块 plan_dag_engine，数据流 A 到 B，测试策略覆盖。"
+
+
+def test_quality_retry_signal_reaches_second_execution_when_event_mirror_fails() -> None:
+    """摘要：quality 镜像失败不得吞掉同 trace 的第二次执行信号。"""
+    signals: list[object] = []
+
+    def invoke(_step: PlanStep, context: TaskContext) -> str:
+        signals.append(context.context_vars.get("_persona_turn_signals"))
+        return "" if len(signals) == 1 else "模块 plan_dag_engine，数据流 A 到 B，测试策略覆盖。"
+
+    publisher = EventStreamPlanEventPublisher(RecordingPlanEventPublisher(), FailingEventStream())
+    orchestrator = PlanOrchestrator(InMemoryPlanStore(), event_publisher=publisher)
+    context = orchestrator.create_context("quality-mirror-failure")
+    step = PlanStep(
+        step_id="planning",
+        skill_id="chat",
+        result_key="result",
+        stage="planning",
+    )
+    context.steps = {step.step_id: step}
+    context.step_status = {step.step_id: StepStatus.PENDING}
+
+    completed = orchestrator.execute_next(context, invoke_skill=invoke)
+
+    assert completed.status is PlanStatus.DONE
+    assert signals[0] is None
+    assert signals[1] == {
+        "emotion_label": None,
+        "emotion_confidence": None,
+        "audit_events": ["audit/quality_retry_taken"],
+    }
+    assert "_persona_turn_signals" not in completed.context_vars
+
+
+def test_quality_retry_mirrors_registered_domain_event() -> None:
+    """摘要：quality 生产点向注册事件流镜像同 trace 审计事实。"""
+    stream = EventStream("quality-retry", build_default_registry())
+    publisher = EventStreamPlanEventPublisher(RecordingPlanEventPublisher(), stream)
+    call_count = 0
+
+    def invoke(_step: PlanStep, _context: TaskContext) -> str:
+        nonlocal call_count
+        call_count += 1
+        return "" if call_count == 1 else "模块 plan_dag_engine，数据流 A 到 B，测试策略覆盖。"
+
+    orchestrator = PlanOrchestrator(InMemoryPlanStore(), event_publisher=publisher)
+    context = orchestrator.create_context("quality-domain-event")
+    step = PlanStep(
+        step_id="planning",
+        skill_id="chat",
+        result_key="result",
+        stage="planning",
+    )
+    context.steps = {step.step_id: step}
+    context.step_status = {step.step_id: StepStatus.PENDING}
+
+    completed = orchestrator.execute_next(context, invoke_skill=invoke)
+    quality_event = next(
+        event for event in stream.get_events() if event.event_type == "audit/quality_retry_taken"
+    )
+
+    assert completed.status is PlanStatus.DONE
+    assert quality_event.payload["plan_id"] == context.plan_id
+    assert quality_event.payload["step_id"] == step.step_id
+    assert quality_event.payload["trace_id"] == context.trace_id
+    assert quality_event.payload["consumed_in_turn"] == context.trace_id
 
 
 def test_execute_next_routed_retry_receives_quality_feedback() -> None:

@@ -105,6 +105,8 @@ BaseMessage Schema 与消息总线抽象接口均放入 `shared/` 横切层，�
 > **Auto Mode 路径**：Auto 开启时，`/api/chat` 分叉到 `AutoTurnOrchestrator.execute_turn_stream()`，执行 decide → per-step route → execute_next → SSE 事件链；Auto 关闭时继续走原有 ModelRouter 路径，普通聊天零改动。详见 §6.2.17。
 ```
 
+**人格约束逐轮边界（P3-A3）**：会话快照继续保存 A2 基础 L1，不因逐轮信号改写。`EmotionContext` 与三类审计事实先进入纯 `PersonaTurnSignals → resolve_l3()` 谓词；标准态逐字节复用快照 prompt，低强度态只为当前生成尝试替换冻结结构样本。算术 retry、warning 与 quality retry 使用显式直达信号，EventStream 仅作允许失败的同源镜像；warning 通过 assistant message meta 最多消费一次。内部 `_persona_turn_signals` 只允许进入本地执行载荷，禁止随 cloud/echo 路由出站。当前仅闭合 L1 样本切换，后置 `set_style_strength_low` 仍归 W3。
+
 ### 复杂任务路径
 
 ```text

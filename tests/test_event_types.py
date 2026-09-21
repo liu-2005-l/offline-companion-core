@@ -53,3 +53,12 @@ def test_default_registry_contains_all_planned_event_types() -> None:
     registry = build_default_registry()
 
     assert all(registry.schema_version(event_type) == 1 for event_type in DEFAULT_EVENT_TYPES)
+
+
+def test_persona_audit_event_whitelist_is_registered_without_step_retry_alias() -> None:
+    assert {
+        "audit/arithmetic_retry_taken",
+        "audit/arithmetic_warning_appended",
+        "audit/quality_retry_taken",
+    } <= set(DEFAULT_EVENT_TYPES)
+    assert "task.step_retry" not in DEFAULT_EVENT_TYPES

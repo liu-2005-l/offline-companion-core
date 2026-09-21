@@ -7,6 +7,10 @@
 ## 未发布 · 2026-09-03（拟人表述 W2 / 人格约束 P2 实验闭合）
 
 ### 实验与基础设施
+- 闭合 P3-A3 L3 谓词与 lint 归并的部分接线：情绪阈值与三类审计直接信号驱动逐轮冻结样本切换，EventStream 仅作可失败镜像；会话快照保持 A2 字节不变，后置 `set_style_strength_low` 继续归 W3。
+- 将 `persona_constraint_downgrade.yaml` 纳入第七源发布哈希链，注册三类人格审计事件，并把内容/schema lint 收敛为 B 层共享纯函数；内部 `_persona_turn_signals` 只进本地执行载荷，不随 cloud/echo 路由出站。
+- P3-A3 门禁通过：A2/A3 组合窄测 `213 passed`，全量 `1427 passed, 3 skipped`；流式 warning、云端失败后的本地 fallback、quality 镜像失败与 A2 标准态逐字节零侵入均有专测。
+- P3-A3 commit 前证明补强：补 exact `0.0` 真值表格、第二真实进程完整 bootstrap reload 回放与烧入态 system prompt 固定 SHA-256 golden；reload 判例同时修复快照 manifest 追溯字段恢复映射，逐轮临时 prompt 不进入持久化或恢复态。
 - 闭合 P3-A2 L1 组装与资产补全：以发布常量 → manifest → 六份源文件建立 fail-fast 信任链，物理加入五个冻结预设，并把 manifest hash 烧入会话快照以支持逐字节追溯。
 - 完成 v15 traits 保全与档位派生：先原子导出历史双写内容，再按 `33/34/66/67` 唯一切点生成逐行版本化缓存；非法历史数据拒绝升级且整批零修改。
 - 接通确定性 L1 组装与 `p3_a2_l1_assembled` source：五预设机械复用 `883f84b` 映射，display name 烧入态上限统一为 660 字符，存量快照保持零漂移。

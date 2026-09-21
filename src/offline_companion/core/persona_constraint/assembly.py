@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from offline_companion.core.persona_constraint.assets import PersonaConstraintAssets
@@ -104,6 +104,50 @@ def default_frozen_l1_mapping(
         dimension_dialogue_ids=tuple(dialogue_ids),
         structural_sample_id=honesty_ids[0],
     )
+
+
+def l3_frozen_l1_mapping(
+    persona_id: str,
+    corpus_assets: PersonaConstraintAssets,
+    trigger_domain: str,
+) -> FrozenL1Mapping:
+    """摘要：为逐轮 L3 触发机械替换唯一授权的降档结构样本。
+
+    参数：
+        persona_id: 当前 validated anchor 稳定 ID。
+        corpus_assets: 已通过完整根与哈希校验的冻结资产。
+        trigger_domain: ``low_intensity_comfort`` 或 ``low_intensity_correction``。
+    返回值：
+        仅结构样本引用不同于 A2 默认映射的不可变映射。
+    Raises:
+        PersonaL1AssemblyError: 触发域未知或人格没有对应冻结样本。
+    """
+    if trigger_domain not in {"low_intensity_comfort", "low_intensity_correction"}:
+        raise PersonaL1AssemblyError(f"persona_l3_trigger_domain_invalid:{trigger_domain}")
+    default = default_frozen_l1_mapping(persona_id, corpus_assets)
+    composition = _persona_composition(corpus_assets, default.persona_name, persona_id)
+    references = _mapping(
+        composition.get("structural_sample_refs"),
+        f"persona_l1_structural_refs_invalid:{persona_id}",
+    )
+    candidates = _string_sequence(
+        references.get("downgrade"),
+        f"persona_l3_downgrade_refs_invalid:{persona_id}",
+    )
+    structural_index = _structural_sample_index(corpus_assets)
+    sample_id = next(
+        (
+            candidate
+            for candidate in candidates
+            if structural_index.get(candidate, {}).get("trigger_domain") == trigger_domain
+        ),
+        None,
+    )
+    if sample_id is None:
+        raise PersonaL1AssemblyError(
+            f"persona_l3_downgrade_sample_missing:{persona_id}:{trigger_domain}"
+        )
+    return replace(default, structural_sample_id=sample_id)
 
 
 def assemble_l1_prompt(

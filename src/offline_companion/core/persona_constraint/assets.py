@@ -15,7 +15,7 @@ import yaml
 
 from offline_companion.shared.runtime_paths import bundled_configs_dir, data_root, dev_repo_root
 
-PERSONA_CONSTRAINT_MANIFEST_SHA256 = "c222befb2e6819e88ff5467c6eb1ab3b174f1e0fcc58131235ec35ac29e21d4d"
+PERSONA_CONSTRAINT_MANIFEST_SHA256 = "3a002e759e59c851eb35a0d5a19aac036b588c50582096b7af015709c3f88098"
 PERSONA_CONSTRAINT_MANIFEST_RELATIVE_PATH = Path("configs") / "persona_constraint_corpus.yaml"
 PERSONA_CONSTRAINT_ASSET_ROOT_ENV = "OFFLINE_COMPANION_PERSONA_ASSET_ROOT"
 OCEAN_DIMENSION_ORDER = ("O", "C", "E", "A", "N")
@@ -35,6 +35,7 @@ _REQUIRED_SOURCES = (
     "structural_corpus",
     "persona_compositions",
     "reply_copy",
+    "downgrade",
 )
 _REPLY_COPY_KINDS = (
     REPLY_COPY_SWITCH_CONFIRMATION,
@@ -137,7 +138,7 @@ def load_persona_constraint_assets(*, root_override: Path | None = None) -> Pers
     参数：
         root_override: 测试或开发显式候选根；提供后只校验该根并在失败时直接报错。
     返回值：
-        通过发布 manifest 与六份源文件逐项校验的资产集合。
+        通过发布 manifest 与七份源文件逐项校验的资产集合。
     Raises:
         PersonaConstraintConfigError: 无候选根通过完整性或结构校验。
     """

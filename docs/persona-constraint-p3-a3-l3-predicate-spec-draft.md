@@ -1,7 +1,7 @@
 # P3-A A3 规格批：L3 触发谓词接线 + lint 归并
 
-版本：v0.2（六条事实回填与 §7 裁决落位终版）
-状态：终锚规格，实现尚未开始
+版本：v0.3（实现闭合记录）
+状态：实现闭合；部分接线——L1 样本切换与触发谓词闭合，`set_style_strength_low` 待 W3
 
 v0.1→v0.2 演进：TA 六条事实回填 + 五条必改全采纳。v0.1 错误清单：
 
@@ -148,18 +148,18 @@ P3-0 §4.2 把低强度定义为“L1 样本切换 + 后置 low profile”同时
 
 A3 闭合标记必须写明：**部分接线——L1 样本切换与触发谓词闭合，`set_style_strength_low` 待 W3。** 禁止宣告低强度全闭合。
 
-## 6. 验收行（预注册）
+## 6. 验收行（已闭合）
 
-1. 真值表 fixture：§1.2 六行逐格断言，覆盖 `0.45/0.70` 双侧、`0/1`、NaN/inf、非数值；
-2. 降档方向断言：触发后落到 P2 冻结映射对应降档语料，不落任意位置；
-3. `standard_intensity` 零审计：缺失/中性/低分三形态断言零事件；
-4. `invalid_emotion_signal`：三形态各一条，结构化 trace 在场 + 本轮约束关闭 + 零 DomainEvent；
-5. 快照边界：L3 注入后快照逐字节不变，回放路径无注入残留；
-6. 三事件注册与直达信号：三生产点各一条 DomainEvent 镜像判例，并逐通路断言信号到达点——算术 retry 信号使逐轮纠错块在同次 retry 重组装中在场；warning 标记写入 assistant message meta、下一次生成消费一次后失效；quality 信号在同 trace 第二次执行或最终摘要到位；另含镜像追加失败不吞直接信号负控、未注册事件负控及 `task.step_retry` 非别名断言；
-7. lint 归并等价：共享 API 归并后既有 lint 全绿 + 两项新增扫描正控必红；
-8. 第七源：`downgrade.yaml` 篡改拒绝 + 发布常量重算后七源校验全绿；
-9. L3 零侵入：关闭态组装输出与 `53acf4c` 态逐字节一致 + `1389 passed` 基线不倒退；
-10. 部分接线标记：闭合报告含 §5 标记原文。
+1. [x] 真值表 fixture：§1.2 六行逐格断言，覆盖 `0.45/0.70` 双侧、`0/1`、NaN/inf、非数值；
+2. [x] 降档方向断言：触发后落到 P2 冻结映射对应降档语料，不落任意位置；
+3. [x] `standard_intensity` 零审计：缺失/中性/低分三形态断言零事件；
+4. [x] `invalid_emotion_signal`：三形态各一条，结构化 trace 在场 + 本轮约束关闭 + 零 DomainEvent；
+5. [x] 快照边界：L3 注入后快照逐字节不变，回放路径无注入残留；
+6. [x] 三事件注册与直达信号：三生产点各一条 DomainEvent 镜像判例，并逐通路断言信号到达点——算术 retry 信号使逐轮纠错块在同次 retry 重组装中在场；warning 标记写入 assistant message meta、下一次生成消费一次后失效；quality 信号在同 trace 第二次执行或最终摘要到位；另含镜像追加失败不吞直接信号负控、未注册事件负控及 `task.step_retry` 非别名断言；
+7. [x] lint 归并等价：共享 API 归并后既有 lint 全绿 + 两项新增扫描正控必红；
+8. [x] 第七源：`downgrade.yaml` 篡改拒绝 + 发布常量重算后七源校验全绿；
+9. [x] L3 零侵入：关闭态组装输出与 `53acf4c` 态逐字节一致；烧入态 system prompt 另有固定 SHA-256 golden；全量从 `1389 passed, 3 skipped` 提升为 `1427 passed, 3 skipped`；
+10. [x] 部分接线标记：闭合报告保留 §5 原文，不宣告完整 low profile 能力。
 
 ## 7. TA trace 裁决记录
 
@@ -171,3 +171,14 @@ A3 闭合标记必须写明：**部分接线——L1 样本切换与触发谓词
 ## 8. 执行顺序
 
 v0.2 终锚 → 谓词纯函数 + 真值表 fixture → 逐轮接线 + 快照边界 → 三事件注册 → lint 归并 + 第七源 → 零侵入证明 → 验收行逐条核 + 部分接线标记。
+
+## 9. 实现闭合记录
+
+- 纯谓词与共享 DTO 落在 `core/persona_constraint/l3.py`；标准态直接复用 A2 快照 prompt，低强度仅在单次生成尝试中替换冻结结构样本；
+- 算术 retry、算术 warning 与 quality retry 均采用显式直达信号，EventStream 只做允许失败的同源审计镜像；warning 在 assistant message meta 中最多消费一次，流式与云端降级到本地路径同样保留；
+- `_persona_turn_signals` 只进入本地计划执行载荷，不随 cloud/echo 路由出站；
+- `downgrade.yaml` 已成为第七源，发布常量为 `3a002e759e59c851eb35a0d5a19aac036b588c50582096b7af015709c3f88098`；
+- lint 规则归并至 `core/persona_constraint/lint.py`，发布 SHA 校验仍由 `assets.py` 独占；
+- commit 前补强：真值表补 exact `0.0`；第二真实进程走完整 bootstrap 后断言逐轮临时 prompt 不进入快照或恢复态；烧入态 system prompt 固定 SHA-256 golden 为 `88befdc730346df1c2fdf30dac3e9cf2c5277d4fa194c57dea001158267ec7e8`；
+- 真实进程回放同时修复快照恢复时 manifest 追溯字段未还原到 `Persona.raw` 的映射缺口，L3 仍保持发布 manifest fail-closed；
+- 验证：A2/A3 组合窄测按新增三项从 `210` 增至 `213`，全量 `1427 passed, 3 skipped`；本次涉及文件 Ruff 全绿，仓库级 Ruff 仍仅保留 11 个既有无关基线问题。

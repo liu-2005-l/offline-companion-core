@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from offline_companion.core.persona_constraint import PERSONA_TURN_SIGNALS_PAYLOAD_KEY
 from offline_companion.core.plan_orchestrator import PlanStep, TaskContext
 from offline_companion.shared.types import CloudCompletionRequest
 from offline_companion.shell.outbound_manager.connector import post_cloud_completion
@@ -102,4 +103,7 @@ class RoutedPlanInvoker:
         quality_retry_feedback = context.context_vars.get("_quality_retry_feedback")
         if quality_retry_feedback:
             payload["_quality_retry_feedback"] = str(quality_retry_feedback)
+        turn_signals = context.context_vars.get(PERSONA_TURN_SIGNALS_PAYLOAD_KEY)
+        if route_mode == "local" and isinstance(turn_signals, dict):
+            payload[PERSONA_TURN_SIGNALS_PAYLOAD_KEY] = dict(turn_signals)
         return self.invoke(step.skill_id, payload, step.idempotency_key)

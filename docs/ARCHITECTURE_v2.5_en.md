@@ -89,6 +89,8 @@ User input → B3 safety (block → fixed reply)
 > **Cloud model routing branch**: if AutoRouter decides to use a cloud model, generation goes through an A3 outbound call to a cloud inference Skill; after it returns, B4 still gates the result. Under LOCAL_ONLY mode, the original pure local path remains unchanged.
 ```
 
+**Per-turn persona-constraint boundary (P3-A3)**: the session snapshot keeps the A2 baseline L1 and is never rewritten by per-turn signals. `EmotionContext` and the three audit facts flow through the pure `PersonaTurnSignals → resolve_l3()` predicate; the standard path reuses the snapshot prompt byte-for-byte, while a low-intensity path replaces only the frozen structural sample for the current generation attempt. Arithmetic retry, warning, and quality retry use direct signals; EventStream is only a fallible audit mirror, and warning state is consumed at most once from assistant-message metadata. Internal `_persona_turn_signals` may enter local execution payloads only and must not leave through cloud or echo routing. This closes L1 sample switching only; post-processing `set_style_strength_low` remains in W3.
+
 ## 5. Complex task path
 
 ```text

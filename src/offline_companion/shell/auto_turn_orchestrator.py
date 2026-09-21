@@ -11,6 +11,10 @@ from uuid import uuid4
 from offline_companion.core.algorithm_tools import booth_multiply, format_booth_result
 from offline_companion.core.decomposition_result import NotDecomposableResult
 from offline_companion.core.event_stream import EventStream
+from offline_companion.core.persona_constraint import (
+    PERSONA_TURN_SIGNALS_PAYLOAD_KEY,
+    PersonaTurnSignals,
+)
 from offline_companion.core.plan_enums import PlanErrorCode, PlanEventName
 from offline_companion.core.plan_evidence_schema import STAGE_EVIDENCE_SCHEMA
 from offline_companion.core.plan_orchestrator import (
@@ -109,6 +113,9 @@ class ConversationPlanInvoker:
                 "请在结果中逐项明确给出这些证据。"
             )
         quality_retry_feedback = str(payload.get("_quality_retry_feedback") or "").strip()
+        turn_signals = PersonaTurnSignals.from_payload(
+            payload.get(PERSONA_TURN_SIGNALS_PAYLOAD_KEY)
+        )
         retry_requirement = f"\n质量校验反馈：\n{quality_retry_feedback}" if quality_retry_feedback else ""
         prompt = (
             f"用户目标：{goal}\n当前步骤：{description}\n"
@@ -125,6 +132,7 @@ class ConversationPlanInvoker:
             max_tokens=self.conversation_orchestrator.max_tokens,
             capability_profile=self.conversation_orchestrator._local_capability_profile(),
             audit_arithmetic=False,
+            turn_signals=turn_signals,
         )
         return {"result": assembled.reply, "route_mode": "local"}
 

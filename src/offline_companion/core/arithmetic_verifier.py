@@ -9,6 +9,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal, DecimalException, localcontext
 
+from offline_companion.core.persona_constraint.l3 import (
+    AUDIT_ARITHMETIC_RETRY_TAKEN,
+    AUDIT_ARITHMETIC_WARNING_APPENDED,
+)
+
 logger = logging.getLogger(__name__)
 
 _NUMBER = r"[+\-−]?\d+(?:\.\d+)?"
@@ -77,6 +82,8 @@ class ArithmeticAuditResult:
     reply: str
     failures: tuple[ArithmeticAssertion, ...]
     retried: bool = False
+    audit_events: tuple[str, ...] = ()
+    event_mirror_failures: tuple[str, ...] = ()
 
 
 def extract_arithmetic_assertions(text: str) -> tuple[ArithmeticAssertion, ...]:
@@ -114,6 +121,7 @@ def audit_arithmetic_reply(
     *,
     retry: Callable[[str], str] | None = None,
     retry_allowed: bool = True,
+    on_event: Callable[[str], bool | None] | None = None,
 ) -> ArithmeticAuditResult:
     """摘要：审计回复，必要时重试一次或追加确定性警示。
 
@@ -121,11 +129,14 @@ def audit_arithmetic_reply(
         reply: 首次模型回复。
         retry: 接收系统反馈并重新生成回复的回调。
         retry_allowed: 是否仍有质量重试槽位。
+        on_event: 审计事实的直接信号与 EventStream 镜像回调。
 
     返回值：
         最终展示正文、剩余失败断言与是否发生重试。
     """
     original = str(reply or "")
+    audit_events: list[str] = []
+    mirror_failures: list[str] = []
     normalized = unicodedata.normalize("NFKC", original)
     skip_reason = _arithmetic_candidate_skip_reason(normalized)
     assertions = () if skip_reason is not None else extract_arithmetic_assertions(normalized)
@@ -140,6 +151,12 @@ def audit_arithmetic_reply(
     if not failures:
         return ArithmeticAuditResult(reply=original, failures=())
     if retry is not None and retry_allowed:
+        _record_audit_event(
+            AUDIT_ARITHMETIC_RETRY_TAKEN,
+            on_event,
+            audit_events,
+            mirror_failures,
+        )
         try:
             retried_reply = str(retry(build_arithmetic_feedback(failures)) or "").strip()
         except Exception:
@@ -161,13 +178,60 @@ def audit_arithmetic_reply(
                 retry_skip_reason or "none",
             )
             if not retry_failures:
-                return ArithmeticAuditResult(reply=retried_reply, failures=(), retried=True)
+                return ArithmeticAuditResult(
+                    reply=retried_reply,
+                    failures=(),
+                    retried=True,
+                    audit_events=tuple(audit_events),
+                    event_mirror_failures=tuple(mirror_failures),
+                )
+            warned_reply = _append_warning(retried_reply, retry_failures)
+            _record_audit_event(
+                AUDIT_ARITHMETIC_WARNING_APPENDED,
+                on_event,
+                audit_events,
+                mirror_failures,
+            )
             return ArithmeticAuditResult(
-                reply=_append_warning(retried_reply, retry_failures),
+                reply=warned_reply,
                 failures=retry_failures,
                 retried=True,
+                audit_events=tuple(audit_events),
+                event_mirror_failures=tuple(mirror_failures),
             )
-    return ArithmeticAuditResult(reply=_append_warning(original, failures), failures=failures)
+    warned_reply = _append_warning(original, failures)
+    _record_audit_event(
+        AUDIT_ARITHMETIC_WARNING_APPENDED,
+        on_event,
+        audit_events,
+        mirror_failures,
+    )
+    return ArithmeticAuditResult(
+        reply=warned_reply,
+        failures=failures,
+        audit_events=tuple(audit_events),
+        event_mirror_failures=tuple(mirror_failures),
+    )
+
+
+def _record_audit_event(
+    event_type: str,
+    callback: Callable[[str], bool | None] | None,
+    audit_events: list[str],
+    mirror_failures: list[str],
+) -> None:
+    """摘要：先记录直接事实，再执行允许失败的同源审计镜像。"""
+    audit_events.append(event_type)
+    if callback is None:
+        return
+    try:
+        mirrored = callback(event_type)
+    except Exception:
+        logger.warning("人格审计事件镜像失败: %s", event_type, exc_info=True)
+        mirror_failures.append(event_type)
+        return
+    if mirrored is False:
+        mirror_failures.append(event_type)
 
 
 def build_arithmetic_feedback(failures: tuple[ArithmeticAssertion, ...]) -> str:

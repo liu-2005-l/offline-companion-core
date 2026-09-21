@@ -7,7 +7,7 @@ import os
 import sqlite3
 import unicodedata
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from typing import Any, Protocol, runtime_checkable
 
 import yaml
@@ -23,6 +23,22 @@ from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManag
 from offline_companion.core.memory_lifecycle.recall import format_recall_prompt_block, recall
 from offline_companion.core.memory_lifecycle.semantic_embedding_provider import (
     SemanticEmbeddingProvider,
+)
+from offline_companion.core.persona_constraint import (
+    AUDIT_ARITHMETIC_WARNING_APPENDED,
+    L3_INVALID_EMOTION_SIGNAL,
+    L3_STANDARD_INTENSITY,
+    PersonaConstraintAssets,
+    PersonaL1AssemblyError,
+    PersonaL3Decision,
+    PersonaL3Policy,
+    PersonaL3Trace,
+    PersonaTurnSignals,
+    assemble_l1_prompt,
+    finalize_l1_prompt,
+    l3_frozen_l1_mapping,
+    policy_from_assets,
+    resolve_l3,
 )
 from offline_companion.core.persona_session.expression import (
     STYLE_BLOCK_HEADER,
@@ -64,6 +80,25 @@ SKILL_BOOTSTRAP_PROMPT = """\
 """
 
 logger = logging.getLogger(__name__)
+
+
+def _trace_from_decision(
+    decision: PersonaL3Decision,
+    *,
+    prompt_replaced: bool = False,
+    structural_sample_id: str | None = None,
+    closure_reason: str | None = None,
+) -> PersonaL3Trace:
+    """摘要：把纯谓词结果投影为逐轮应用 trace。"""
+    return PersonaL3Trace(
+        result=decision.result,
+        trace_code=decision.trace_code,
+        constraints_enabled=decision.constraints_enabled and closure_reason is None,
+        prompt_replaced=prompt_replaced,
+        structural_sample_id=structural_sample_id,
+        audit_event=decision.audit_event,
+        closure_reason=closure_reason,
+    )
 
 
 def _load_yaml_dict(file_name: str) -> dict[str, object]:
@@ -231,7 +266,18 @@ class AssembleReplyResult:
     reply: str
     memory_recalls: list[MemoryRecallHit]
     memory_block: str
-    expression_trace: PersonaExpressionTrace = PersonaExpressionTrace()
+    expression_trace: PersonaExpressionTrace = field(default_factory=PersonaExpressionTrace)
+    l3_trace: PersonaL3Trace = field(default_factory=PersonaL3Trace)
+    audit_events: tuple[str, ...] = ()
+    pending_audit_events: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class _L3PromptApplication:
+    """摘要：一次生成尝试采用的锁定 prompt 与 L3 trace。"""
+
+    locked_prompt: str
+    trace: PersonaL3Trace
 
 
 class PersonaSessionCore:
@@ -241,15 +287,21 @@ class PersonaSessionCore:
         self,
         persona: Persona,
         semantic_embed_func: Callable[[str], list[float]] | None = None,
+        constraint_assets: PersonaConstraintAssets | None = None,
     ) -> None:
         """摘要：初始化会话核心并绑定语义事件 embedding 入口。
 
         参数：
             persona: 当前会话使用的人格定义。
             semantic_embed_func: 可选的统一语义事件向量函数。
+            constraint_assets: 可选的已校验人格约束发布资产。
         """
         self.persona = persona
         self._semantic_embed = semantic_embed_func or SemanticEmbeddingProvider()
+        self._constraint_assets = constraint_assets
+        self._l3_policy: PersonaL3Policy | None = (
+            policy_from_assets(constraint_assets) if constraint_assets is not None else None
+        )
 
     @property
     def system_prompt_locked(self) -> str:
@@ -258,17 +310,112 @@ class PersonaSessionCore:
 
     def _system_prompt_locked(self, conn: sqlite3.Connection | None = None) -> str:
         """摘要：返回角色锁系统提示；若存在助手画像记忆，优先使用记忆中的当前自称。"""
+        return self._identity_prompt_prefix(conn) + self.persona.system_prompt
+
+    def _identity_prompt_prefix(self, conn: sqlite3.Connection | None = None) -> str:
+        """摘要：构造与会话快照正文分离的当前自称锁前缀。"""
         display = self._resolved_companion_display_name(conn)
-        prefix = (
+        return (
             f"【当前自称】{display}\n"
             "只有用户主动询问你的名字或身份，或当前语境确实需要时，才提及自称；普通寒暄不要主动自我介绍。\n"
             "需要提及名字时必须使用上述标准自称，不要使用名字变体。\n\n"
         )
-        return prefix + self.persona.system_prompt
 
     def _resolved_companion_display_name(self, conn: sqlite3.Connection | None = None) -> str:
         """摘要：解析当前助手自称；长期画像记忆优先于 persona 默认配置。"""
         return effective_companion_display_name(self.persona, conn)
+
+    def _turn_signals(
+        self,
+        emotion_context: EmotionContext | None,
+        explicit: PersonaTurnSignals | None,
+    ) -> PersonaTurnSignals:
+        """摘要：把情绪上下文与调用方审计信号合成单次不可变输入。"""
+        audit_events = explicit.audit_events if explicit is not None else ()
+        if explicit is not None and (
+            explicit.emotion_label is not None or explicit.emotion_confidence is not None
+        ):
+            return explicit
+        if emotion_context is None:
+            return PersonaTurnSignals(audit_events=audit_events)
+        return PersonaTurnSignals(
+            emotion_label=emotion_context.emotion,
+            emotion_confidence=emotion_context.confidence,
+            audit_events=audit_events,
+        )
+
+    def _apply_l3(
+        self,
+        conn: sqlite3.Connection,
+        signals: PersonaTurnSignals,
+    ) -> _L3PromptApplication:
+        """摘要：保持标准态快照字节不变，仅为低强度生成临时替换 prompt。"""
+        standard_prompt = self._system_prompt_locked(conn)
+        assets = self._constraint_assets
+        policy = self._l3_policy
+        raw = self.persona.raw if isinstance(self.persona.raw, dict) else {}
+        if (
+            assets is None
+            or policy is None
+            or str(raw.get("validation_status") or "") != "validated_anchor"
+            or str(raw.get("constraint_manifest_sha256") or "") != assets.manifest_sha256
+        ):
+            return _L3PromptApplication(standard_prompt, PersonaL3Trace())
+
+        decision = resolve_l3(signals, policy)
+        if decision.result == L3_STANDARD_INTENSITY:
+            return _L3PromptApplication(standard_prompt, _trace_from_decision(decision))
+
+        preset = next(
+            (item for item in assets.builtin_presets if item.persona_id == self.persona.persona_id),
+            None,
+        )
+        if preset is None:
+            return _L3PromptApplication(
+                standard_prompt,
+                _trace_from_decision(decision, closure_reason="validated_persona_missing"),
+            )
+        base_prompt = self._identity_prompt_prefix(conn) + preset.base_system_prompt
+        if decision.result == L3_INVALID_EMOTION_SIGNAL:
+            return _L3PromptApplication(
+                base_prompt,
+                _trace_from_decision(
+                    decision,
+                    prompt_replaced=True,
+                    closure_reason=L3_INVALID_EMOTION_SIGNAL,
+                ),
+            )
+        if decision.trigger_domain is None:
+            return _L3PromptApplication(
+                base_prompt,
+                _trace_from_decision(decision, prompt_replaced=True, closure_reason="trigger_missing"),
+            )
+        try:
+            mapping = l3_frozen_l1_mapping(
+                self.persona.persona_id,
+                assets,
+                decision.trigger_domain,
+            )
+            assembled = assemble_l1_prompt(self.persona.persona_id, assets, mapping)
+            prompt = finalize_l1_prompt(assembled, self._resolved_companion_display_name(conn))
+        except PersonaL1AssemblyError:
+            logger.warning("L3 低强度样本不可用，关闭本轮人格约束", exc_info=True)
+            return _L3PromptApplication(
+                base_prompt,
+                _trace_from_decision(
+                    decision,
+                    prompt_replaced=True,
+                    closure_reason="l3_asset_unavailable",
+                ),
+            )
+        return _L3PromptApplication(
+            self._identity_prompt_prefix(conn) + prompt,
+            _trace_from_decision(
+                decision,
+                prompt_replaced=True,
+                structural_sample_id=mapping.structural_sample_id,
+            ),
+        )
 
     def assemble_reply(
         self,
@@ -285,9 +432,14 @@ class PersonaSessionCore:
         skill_prompt: str = "",
         audit_arithmetic: bool = True,
         expression_config: PersonaExpressionConfig | None = None,
+        turn_signals: PersonaTurnSignals | None = None,
+        audit_event_mirror: Callable[[str, bool], bool] | None = None,
     ) -> AssembleReplyResult:
         """摘要：装配 prompt、注入记忆召回与情绪/语气策略并调用推理后端。"""
         config = expression_config or PersonaExpressionConfig()
+        active_signals = self._turn_signals(emotion_context, turn_signals)
+        l3_application = self._apply_l3(conn, active_signals)
+        final_l3_trace = l3_application.trace
         recalls, combined_memory_block, system_prompt, identity_reply = self._assemble_context(
             conn,
             user_message=user_message,
@@ -297,6 +449,8 @@ class PersonaSessionCore:
             capability_profile=capability_profile,
             skill_prompt=skill_prompt,
             expression_config=config,
+            turn_signals=active_signals,
+            _l3_application=l3_application,
         )
         display_name = self._resolved_companion_display_name(conn)
         identity_reminder = ""
@@ -314,6 +468,7 @@ class PersonaSessionCore:
                     style_block_injected=STYLE_BLOCK_HEADER in system_prompt,
                     identity_reminder_injected=identity_reminder_injected,
                 ),
+                l3_trace=final_l3_trace,
             )
 
         reply = backend.generate(
@@ -323,16 +478,41 @@ class PersonaSessionCore:
             memory_block=combined_memory_block,
             max_tokens=max_tokens,
         )
+        def on_audit_event(event_type: str) -> bool | None:
+            nonlocal active_signals
+            active_signals = active_signals.with_audit_event(event_type)
+            if audit_event_mirror is None:
+                return None
+            return audit_event_mirror(
+                event_type,
+                event_type != AUDIT_ARITHMETIC_WARNING_APPENDED,
+            )
+
+        def retry_arithmetic(feedback: str) -> str:
+            nonlocal final_l3_trace
+            retry_application = self._apply_l3(conn, active_signals)
+            final_l3_trace = retry_application.trace
+            retry_prompt = self._compose_system_prompt(
+                conn,
+                emotion_context=emotion_context,
+                capability_profile=capability_profile,
+                skill_prompt=skill_prompt,
+                expression_config=config,
+                l3_application=retry_application,
+            )
+            return backend.generate(
+                system_prompt=f"{retry_prompt}\n\n【算术校验反馈】\n{feedback}",
+                history=history,
+                user_message=user_message,
+                memory_block=combined_memory_block,
+                max_tokens=max_tokens,
+            )
+
         audit = (
             audit_arithmetic_reply(
                 reply,
-                retry=lambda feedback: backend.generate(
-                    system_prompt=f"{system_prompt}\n\n【算术校验反馈】\n{feedback}",
-                    history=history,
-                    user_message=user_message,
-                    memory_block=combined_memory_block,
-                    max_tokens=max_tokens,
-                ),
+                retry=retry_arithmetic,
+                on_event=on_audit_event,
             )
             if audit_arithmetic
             else None
@@ -342,6 +522,8 @@ class PersonaSessionCore:
         retry_generation_cliff = False
         warnings: tuple[str, ...] = ()
         audited_reply = audit.reply if audit is not None else reply
+        if audit is not None and audit.event_mirror_failures:
+            final_l3_trace = replace(final_l3_trace, event_mirror_failed=True)
         first_generation_cliff = (
             config.identity_exit_guard_enabled
             and is_identity_intent(user_message)
@@ -381,6 +563,14 @@ class PersonaSessionCore:
                 output_source=output_source,
                 warnings=warnings,
             ),
+            l3_trace=final_l3_trace,
+            audit_events=audit.audit_events if audit is not None else (),
+            pending_audit_events=(
+                (AUDIT_ARITHMETIC_WARNING_APPENDED,)
+                if audit is not None
+                and AUDIT_ARITHMETIC_WARNING_APPENDED in audit.audit_events
+                else ()
+            ),
         )
 
     def assemble_reply_stream(
@@ -397,9 +587,14 @@ class PersonaSessionCore:
         capability_profile: CapabilityProfile | None = None,
         skill_prompt: str = "",
         expression_config: PersonaExpressionConfig | None = None,
+        turn_signals: PersonaTurnSignals | None = None,
+        audit_event_mirror: Callable[[str, bool], bool] | None = None,
     ) -> Iterator[dict[str, Any]]:
-        """????? prompt ??????????????"""
+        """摘要：流式生成单轮回复，并在结束事件中返回审计后的最终正文。"""
         config = expression_config or PersonaExpressionConfig()
+        active_signals = self._turn_signals(emotion_context, turn_signals)
+        l3_application = self._apply_l3(conn, active_signals)
+        final_l3_trace = l3_application.trace
         recalls, combined_memory_block, system_prompt, identity_reply = self._assemble_context(
             conn,
             user_message=user_message,
@@ -409,6 +604,8 @@ class PersonaSessionCore:
             capability_profile=capability_profile,
             skill_prompt=skill_prompt,
             expression_config=config,
+            turn_signals=active_signals,
+            _l3_application=l3_application,
         )
         if config.identity_near_prompt_enabled and is_identity_intent(user_message):
             user_message = append_ephemeral_identity_reminder(
@@ -418,7 +615,13 @@ class PersonaSessionCore:
         yield {"recall": len(recalls)}
         if identity_reply is not None:
             yield {"token": identity_reply}
-            yield {"done": True, "reply": identity_reply, "memory_recalls": recalls}
+            yield {
+                "done": True,
+                "reply": identity_reply,
+                "memory_recalls": recalls,
+                "l3_trace": final_l3_trace,
+                "pending_audit_events": (),
+            }
             return
         chunks: list[str] = []
         for token in backend.generate_stream(
@@ -431,17 +634,55 @@ class PersonaSessionCore:
             chunks.append(token)
             yield {"token": token}
         raw_reply = "".join(chunks)
-        audit = audit_arithmetic_reply(
-            raw_reply,
-            retry=lambda feedback: backend.generate(
-                system_prompt=f"{system_prompt}\n\n【算术校验反馈】\n{feedback}",
+        def on_audit_event(event_type: str) -> bool | None:
+            nonlocal active_signals
+            active_signals = active_signals.with_audit_event(event_type)
+            if audit_event_mirror is None:
+                return None
+            return audit_event_mirror(
+                event_type,
+                event_type != AUDIT_ARITHMETIC_WARNING_APPENDED,
+            )
+
+        def retry_arithmetic(feedback: str) -> str:
+            nonlocal final_l3_trace
+            retry_application = self._apply_l3(conn, active_signals)
+            final_l3_trace = retry_application.trace
+            retry_prompt = self._compose_system_prompt(
+                conn,
+                emotion_context=emotion_context,
+                capability_profile=capability_profile,
+                skill_prompt=skill_prompt,
+                expression_config=config,
+                l3_application=retry_application,
+            )
+            return backend.generate(
+                system_prompt=f"{retry_prompt}\n\n【算术校验反馈】\n{feedback}",
                 history=history,
                 user_message=user_message,
                 memory_block=combined_memory_block,
                 max_tokens=max_tokens,
-            ),
+            )
+
+        audit = audit_arithmetic_reply(
+            raw_reply,
+            retry=retry_arithmetic,
+            on_event=on_audit_event,
         )
-        yield {"done": True, "reply": audit.reply, "memory_recalls": recalls}
+        if audit.event_mirror_failures:
+            final_l3_trace = replace(final_l3_trace, event_mirror_failed=True)
+        yield {
+            "done": True,
+            "reply": audit.reply,
+            "memory_recalls": recalls,
+            "l3_trace": final_l3_trace,
+            "audit_events": audit.audit_events,
+            "pending_audit_events": (
+                (AUDIT_ARITHMETIC_WARNING_APPENDED,)
+                if AUDIT_ARITHMETIC_WARNING_APPENDED in audit.audit_events
+                else ()
+            ),
+        }
 
     def _assemble_context(
         self,
@@ -454,8 +695,10 @@ class PersonaSessionCore:
         capability_profile: CapabilityProfile | None = None,
         skill_prompt: str = "",
         expression_config: PersonaExpressionConfig | None = None,
+        turn_signals: PersonaTurnSignals | None = None,
+        _l3_application: _L3PromptApplication | None = None,
     ) -> tuple[list[MemoryRecallHit], str, str, str | None]:
-        """??????????profile ? system prompt????????????"""
+        """摘要：装配召回块、逐轮人格 prompt 与确定性身份回复。"""
         config = expression_config or PersonaExpressionConfig()
         profile = capability_profile or CapabilityProfile()
         recalls: list[MemoryRecallHit] = []
@@ -484,6 +727,36 @@ class PersonaSessionCore:
                 memory_block = "\n\n".join(part for part in (memory_block, event_block) if part.strip())
         profile_block = self._profile_memory_block(conn) if memory_enabled else ""
         combined_memory_block = "\n\n".join(part for part in (profile_block, memory_block) if part.strip())
+        application = _l3_application or self._apply_l3(
+            conn,
+            self._turn_signals(emotion_context, turn_signals),
+        )
+        system_prompt = self._compose_system_prompt(
+            conn,
+            emotion_context=emotion_context,
+            capability_profile=profile,
+            skill_prompt=skill_prompt,
+            expression_config=config,
+            l3_application=application,
+        )
+        if os.getenv("OFFLINE_COMPANION_PROMPT_PROBE") == "1":
+            logger.debug("[PROMPT_PROBE] system_prompt=%r", system_prompt[:200])
+        identity_reply = self._identity_question_reply(conn, user_message, memory_enabled=memory_enabled)
+        return recalls, combined_memory_block, system_prompt, identity_reply
+
+    def _compose_system_prompt(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        emotion_context: EmotionContext | None,
+        capability_profile: CapabilityProfile | None,
+        skill_prompt: str,
+        expression_config: PersonaExpressionConfig,
+        l3_application: _L3PromptApplication,
+    ) -> str:
+        """摘要：以给定逐轮 L3 应用结果构造无召回副作用的 system prompt。"""
+        del conn
+        profile = capability_profile or CapabilityProfile()
         tone_instruction = _build_tone_instruction(self.persona.ocean)
         if profile.roleplay_quality < 0.4:
             tone_instruction = ""
@@ -492,21 +765,19 @@ class PersonaSessionCore:
         if profile.instruction_following < 0.4:
             format_hint = "\n【输出要求】请用简洁自然的中文回答，不要重复用户的话。\n"
         prompt_parts = [
-            self._system_prompt_locked(conn),
+            l3_application.locked_prompt,
             "涉及数值计算时，给出结果前先做量级估算复核。",
             SKILL_BOOTSTRAP_PROMPT,
         ]
         if skill_prompt.strip():
             prompt_parts.append(skill_prompt.strip())
-        if config.style_examples_enabled:
+        if expression_config.style_examples_enabled:
             style_block = build_style_examples_block(self.persona)
             if style_block:
                 prompt_parts.append(style_block)
-        system_prompt = "\n\n".join(prompt_parts) + (tone_instruction + emotion_instruction + format_hint)
-        if os.getenv("OFFLINE_COMPANION_PROMPT_PROBE") == "1":
-            logger.debug("[PROMPT_PROBE] system_prompt=%r", system_prompt[:200])
-        identity_reply = self._identity_question_reply(conn, user_message, memory_enabled=memory_enabled)
-        return recalls, combined_memory_block, system_prompt, identity_reply
+        return "\n\n".join(prompt_parts) + (
+            tone_instruction + emotion_instruction + format_hint
+        )
 
     def _profile_memory_block(self, conn: sqlite3.Connection) -> str:
         profile = MemoryLifecycleManager.latest_profile_memory(conn)

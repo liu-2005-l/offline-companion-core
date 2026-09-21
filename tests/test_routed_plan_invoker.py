@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from offline_companion.core.persona_constraint import PERSONA_TURN_SIGNALS_PAYLOAD_KEY
 from offline_companion.core.plan_orchestrator import PlanStep, StepStatus, TaskContext
 from offline_companion.shell.routed_plan_invoker import (
     CloudRouteInvoker,
@@ -89,6 +90,36 @@ def test_routed_plan_invoker_forwards_stage_and_quality_retry_feedback() -> None
     payload = local.calls[0][1]
     assert payload["stage"] == "planning"
     assert payload["_quality_retry_feedback"] == "补充 modules 与 data_flow"
+
+
+def test_routed_plan_invoker_keeps_persona_turn_signals_local() -> None:
+    local = StubInvoker([], "local")
+    cloud = StubInvoker([], "cloud")
+    invoker = RoutedPlanInvoker(local, cloud)
+    step = PlanStep(step_id="a", skill_id="chat", result_key="res")
+    signals = {
+        "emotion_label": None,
+        "emotion_confidence": None,
+        "audit_events": ["audit/quality_retry_taken"],
+    }
+    local_context = TaskContext(
+        plan_id="local",
+        steps={"a": step},
+        step_status={"a": StepStatus.PENDING},
+        context_vars={"route_mode": "local", PERSONA_TURN_SIGNALS_PAYLOAD_KEY: signals},
+    )
+    cloud_context = TaskContext(
+        plan_id="cloud",
+        steps={"a": step},
+        step_status={"a": StepStatus.PENDING},
+        context_vars={"route_mode": "cloud", PERSONA_TURN_SIGNALS_PAYLOAD_KEY: signals},
+    )
+
+    invoker.invoke_step(step, local_context)
+    invoker.invoke_step(step, cloud_context)
+
+    assert local.calls[0][1][PERSONA_TURN_SIGNALS_PAYLOAD_KEY] == signals
+    assert PERSONA_TURN_SIGNALS_PAYLOAD_KEY not in cloud.calls[0][1]
 
 
 def test_cloud_route_invoker_uses_cloud_completion(monkeypatch) -> None:

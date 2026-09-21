@@ -1,7 +1,7 @@
 # 人格约束 P3 接线批规格
 
 版本：v1.3（P3-0 标定判定线联动修订稿）
-状态：主体规格已展开；L2 数值包与 L3 强度语义仍须 P3-0 预注册，尚未实现、未锚定
+状态：主体规格已展开；L2 数值包已按 no-effect 裁决删除，P3-A2 与 P3-A3 已闭合，L3 后置 low profile 待 W3，L4 待 A4
 上游：`docs/persona-constraint-batch-design-v1_5.md`、`configs/persona_constraint_corpus.yaml`、
 P1 锚 `bcb8c1a`、P2 闭合锚 `658fdb3`
 
@@ -31,7 +31,7 @@ W3 独占的是输出检测器的后续改造、检测域扩展、4-gram 重校�
 
 在 `core/persona_constraint/` 建立单一实现入口，职责固定为：
 
-- 加载并校验 `persona_constraint_corpus.yaml` manifest 及其六份事实源，发布常量先钉 manifest、manifest 再钉逐项源文件；
+- 加载并校验 `persona_constraint_corpus.yaml` manifest 及其七份事实源，发布常量先钉 manifest、manifest 再钉逐项源文件；第七源为 L3 阈值与事件名事实源 `persona_constraint_downgrade.yaml`；
 - 规范化 OCEAN，按 `O,C,E,A,N` 派生 low/mid/high；
 - 识别五个冻结标定点或 `unvalidated_custom`；
 - 选择 L1 维度/结构样本，解析 L3 降档信号并稳定渲染 system 文本块；
@@ -256,7 +256,7 @@ P4 必须单列 F0b `11/80` 禁用族、F0a `6/18` 断崖本底、assistant 复�
 2. 记忆保存确认语；
 3. 人格约束配置异常后的用户可见降级提示。
 
-15 条均从独立 YAML 加载并进入六源哈希链，过禁用/L4/短前缀复制/绝对承诺/内部机制泄漏 lint。身份查询继续使用现有安全
+15 条均从独立 YAML 加载并进入发布哈希链，过禁用/L4/短前缀复制/绝对承诺/内部机制泄漏 lint。身份查询继续使用现有安全
 `display_name` 参数化模板，不复制成五份；人格差异由当前 profile 的短语片段提供。
 
 以下保护区逐字节不变且明确排除人格化：安全固定回复、Consent 文案、算术警示、审计块、任务结果与错误码。
