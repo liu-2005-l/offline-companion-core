@@ -9,6 +9,8 @@ from offline_companion.core.memory_lifecycle.triggers import maybe_summarize_to_
 from offline_companion.core.persona_constraint import REPLY_COPY_MEMORY_SAVED_CONFIRMATION
 from offline_companion.shared.types import TurnResult
 
+STREAM_FAILURE_REPLY = "回复生成或安全校验失败，请稍后重试。"
+
 
 class ChatRuntime(Protocol):
     """摘要：单轮聊天运行时最小契约。"""

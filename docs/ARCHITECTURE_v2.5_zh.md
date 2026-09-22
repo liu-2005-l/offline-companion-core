@@ -107,6 +107,8 @@ BaseMessage Schema 与消息总线抽象接口均放入 `shared/` 横切层，�
 
 **人格约束逐轮边界（P3-A3）**：会话快照继续保存 A2 基础 L1，不因逐轮信号改写。`EmotionContext` 与三类审计事实先进入纯 `PersonaTurnSignals → resolve_l3()` 谓词；标准态逐字节复用快照 prompt，低强度态只为当前生成尝试替换冻结结构样本。算术 retry、warning 与 quality retry 使用显式直达信号，EventStream 仅作允许失败的同源镜像；warning 通过 assistant message meta 最多消费一次。内部 `_persona_turn_signals` 只允许进入本地执行载荷，禁止随 cloud/echo 路由出站。当前仅闭合 L1 样本切换，后置 `set_style_strength_low` 仍归 W3。
 
+**人格约束输出边界（P3-A4）**：当前发布 manifest 下的 validated 会话，其进入 `PersonaSessionCore` 的本地模型候选在生成与算术审计后统一接受 P1 冻结 L4 扫描。身份断崖和能力/事实否认最多执行一次带准确优先与人格内诚实提醒的重试，二次仍命中则返回确定性 fallback；用户攻击只记录 observe warning。validated SSE 必须先缓冲后放行，失败候选不得进入 token、消息表或记忆抽取；未验证人格维持即时流式。L4 模式是发布哈希链第八源，`PersonaL4Trace` 同步进入运行时结果、流式终态和 assistant message meta。检测扩域、重校、跨轮检测及低延迟在线扫描仍归 W3。
+
 ### 复杂任务路径
 
 ```text

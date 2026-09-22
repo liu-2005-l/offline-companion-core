@@ -1,7 +1,7 @@
 # 人格约束 P3 接线批规格
 
 版本：v1.3（P3-0 标定判定线联动修订稿）
-状态：主体规格已展开；L2 数值包已按 no-effect 裁决删除，P3-A2 与 P3-A3 已闭合，L3 后置 low profile 待 W3，L4 待 A4
+状态：主体规格已展开；L2 数值包已按 no-effect 裁决删除，P3-A2/A3/A4 已闭合，L3 后置 low profile 待 W3，下一阶段为 A5 总闭合
 上游：`docs/persona-constraint-batch-design-v1_5.md`、`configs/persona_constraint_corpus.yaml`、
 P1 锚 `bcb8c1a`、P2 闭合锚 `658fdb3`
 
@@ -22,8 +22,8 @@ P1 锚 `bcb8c1a`、P2 闭合锚 `658fdb3`
 | L2/L3 已有可实现参数 | P1 只冻结档位、`set_style_strength_low` 语义名与触发条件，没有解码增量表、叠加/夹紧规则或 L3 机器效果 | 设 P3-0 阻塞锚：数值与效果先预注册，再改推理协议；不得用未测全零或空转字段冒充接线，数据确认的全零走不采用裁决 |
 
 本规格中的“接线”覆盖输入组装、L2/L3 调制、P1 冻结 L4 基线动作链、状态派生和 A 层会话 UX。
-W3 独占的是输出检测器的后续改造、检测域扩展、4-gram 重校与跨轮结构修复，不得把 P3 已承诺的
-`retry_then_fallback` 基线接线顺延给 W3。
+`retry_then_fallback` 基线已由 A4 接通；W3 只承接输出检测器改造、检测扩域、4-gram 重校、跨轮结构与
+低延迟安全在线扫描，不得反向承接 P3 已闭合的基线动作链。
 
 ## 1. 分层与新增边界
 

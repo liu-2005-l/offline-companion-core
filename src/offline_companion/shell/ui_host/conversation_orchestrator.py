@@ -30,6 +30,7 @@ from offline_companion.core.memory_lifecycle.triggers import (
 from offline_companion.core.persona_constraint import (
     AUDIT_ARITHMETIC_WARNING_APPENDED,
     PersonaL3Trace,
+    PersonaL4Trace,
     PersonaTurnSignals,
 )
 from offline_companion.core.persona_session.session import PersonaSessionCore
@@ -50,6 +51,7 @@ from offline_companion.shell.outbound_manager.a3_gateway import UIHostConsentGat
 from offline_companion.shell.skill_router import SkillDecisionEngine
 from offline_companion.shell.tool_registry import ToolInvoker
 from offline_companion.shell.ui_host.consent_feedback import CONSENT_DECLINED_MESSAGE
+from offline_companion.shell.ui_host.turn_payload import STREAM_FAILURE_REPLY
 
 CloudPost = Callable[[CloudCompletionRequest], Any]
 
@@ -397,12 +399,15 @@ class ConversationOrchestrator:
     @staticmethod
     def _persona_meta(
         l3_trace: PersonaL3Trace | None,
+        l4_trace: PersonaL4Trace | None,
         pending_audit_events: tuple[str, ...] | list[str],
     ) -> dict[str, Any]:
-        """摘要：把逐轮 L3 trace 与一次性状态投影到消息 meta。"""
+        """摘要：把逐轮 L3/L4 trace 与一次性状态投影到消息 meta。"""
         meta: dict[str, Any] = {}
         if l3_trace is not None:
             meta["persona_l3_trace"] = asdict(l3_trace)
+        if l4_trace is not None:
+            meta["persona_l4_trace"] = asdict(l4_trace)
         if pending_audit_events:
             meta["persona_audit_pending"] = list(pending_audit_events)
         return meta
@@ -571,7 +576,11 @@ class ConversationOrchestrator:
             routing=routing,
             extra_meta={
                 "reformatted": True,
-                **self._persona_meta(assembled.l3_trace, assembled.pending_audit_events),
+                **self._persona_meta(
+                    assembled.l3_trace,
+                    assembled.l4_trace,
+                    assembled.pending_audit_events,
+                ),
             },
         )
         explanation = (
@@ -615,6 +624,7 @@ class ConversationOrchestrator:
         recalls: list[Any] = []
         audited_reply: str | None = None
         l3_trace: PersonaL3Trace | None = None
+        l4_trace: PersonaL4Trace | None = None
         pending_audit_events: tuple[str, ...] = ()
         assistant_persisted = False
         try:
@@ -641,6 +651,9 @@ class ConversationOrchestrator:
                     candidate_trace = event.get("l3_trace")
                     if isinstance(candidate_trace, PersonaL3Trace):
                         l3_trace = candidate_trace
+                    candidate_l4_trace = event.get("l4_trace")
+                    if isinstance(candidate_l4_trace, PersonaL4Trace):
+                        l4_trace = candidate_l4_trace
                     pending_audit_events = tuple(event.get("pending_audit_events") or ())
                     continue
                 yield event
@@ -656,7 +669,7 @@ class ConversationOrchestrator:
                 routing=routing,
                 extra_meta={
                     "reformatted": True,
-                    **self._persona_meta(l3_trace, pending_audit_events),
+                    **self._persona_meta(l3_trace, l4_trace, pending_audit_events),
                 },
             )
             assistant_persisted = True
@@ -692,15 +705,28 @@ class ConversationOrchestrator:
                 )
             raise
         except Exception:
-            if raw_parts and not assistant_persisted:
-                self._append_assistant_message(
-                    "".join(raw_parts),
-                    emotion=emotion,
-                    channel=route_mode,
-                    routing=routing,
-                    extra_meta={"stream_interrupted": True},
-                    status="error",
-                )
+            if not assistant_persisted:
+                if raw_parts:
+                    error_reply = "".join(raw_parts)
+                    extra_meta = {"stream_interrupted": True}
+                elif self.session_core.requires_audited_stream_buffering():
+                    error_reply = STREAM_FAILURE_REPLY
+                    extra_meta = {
+                        "stream_interrupted": True,
+                        "persona_l4_fail_closed": True,
+                    }
+                else:
+                    error_reply = ""
+                    extra_meta = {}
+                if error_reply:
+                    self._append_assistant_message(
+                        error_reply,
+                        emotion=emotion,
+                        channel=route_mode,
+                        routing=routing,
+                        extra_meta=extra_meta,
+                        status="error",
+                    )
             raise
 
     def _execute_cloud_once(
@@ -934,7 +960,11 @@ class ConversationOrchestrator:
         )
         return (
             LOCAL_FALLBACK_PREFIX + final_reply,
-            self._persona_meta(assembled.l3_trace, assembled.pending_audit_events),
+            self._persona_meta(
+                assembled.l3_trace,
+                assembled.l4_trace,
+                assembled.pending_audit_events,
+            ),
         )
 
     def _build_routing_consent_request(

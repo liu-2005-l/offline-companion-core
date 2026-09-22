@@ -7,6 +7,9 @@
 ## 未发布 · 2026-09-03（拟人表述 W2 / 人格约束 P2 实验闭合）
 
 ### 实验与基础设施
+- 闭合 P3-A4 L4 基线接线：P1 三分区冻结扫描驱动 `direct/retry/fallback/observe`，身份断崖与能力/事实否认最多重试一次，用户攻击保持 observe-only；动作 trace 同步写入 assistant message meta。
+- 将 `persona_constraint_l4_patterns.yaml` 纳入第八源发布哈希链；validated SSE 改为后端 token 缓冲、算术/L3/L4 审计完成后再分块回放，失败候选不进入前端、消息表或记忆抽取。
+- P3-A4 门禁通过：A4 专测 `10 passed`、受影响窄测 `300 passed`、全量 `1437 passed, 3 skipped`；未验证人格即时流式与保护区逐字节透传保持不变。
 - 闭合 P3-A3 L3 谓词与 lint 归并的部分接线：情绪阈值与三类审计直接信号驱动逐轮冻结样本切换，EventStream 仅作可失败镜像；会话快照保持 A2 字节不变，后置 `set_style_strength_low` 继续归 W3。
 - 将 `persona_constraint_downgrade.yaml` 纳入第七源发布哈希链，注册三类人格审计事件，并把内容/schema lint 收敛为 B 层共享纯函数；内部 `_persona_turn_signals` 只进本地执行载荷，不随 cloud/echo 路由出站。
 - P3-A3 门禁通过：A2/A3 组合窄测 `213 passed`，全量 `1427 passed, 3 skipped`；流式 warning、云端失败后的本地 fallback、quality 镜像失败与 A2 标准态逐字节零侵入均有专测。

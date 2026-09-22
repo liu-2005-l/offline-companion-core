@@ -124,6 +124,7 @@ from offline_companion.shell.ui_host.plugin_loader import (
     build_mock_plugin_registry,
 )
 from offline_companion.shell.ui_host.turn_payload import (
+    STREAM_FAILURE_REPLY,
     process_chat_message,
     process_chat_message_stream,
     turn_result_to_payload,
@@ -2296,7 +2297,7 @@ def create_desktop_app(runtime: DesktopRuntime):
                         {
                             "done": True,
                             "error": str(exc),
-                            "reply": "",
+                            "reply": STREAM_FAILURE_REPLY,
                             "blocked": False,
                             "memory_saved": [],
                             "memory_recall_count": 0,

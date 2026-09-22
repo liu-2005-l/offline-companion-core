@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from collections import Counter
 from pathlib import Path
@@ -10,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PATTERNS_PATH = REPO_ROOT / "configs" / "persona_constraint_l4_patterns.yaml"
 FIXTURE_PATH = REPO_ROOT / "fixtures" / "persona_constraints" / "p1_l4_baseline.yaml"
 RELIABILITY_PATH = REPO_ROOT / "configs" / "persona_constraint_reliability_rules.yaml"
+P1_L4_PATTERNS_SHA256 = "02b1eca439244429e4217da621f7cb3e7608e75fe8fbbafcf96a11111a711647"
 
 
 def _load_yaml(path: Path) -> dict[str, object]:
@@ -52,6 +54,11 @@ def test_l4_fixture_has_fifty_paired_pattern_neighbors() -> None:
     for pair in pairs:
         assert pair["positive"]["text"]
         assert pair["negative"]["text"]
+
+
+def test_l4_reference_patterns_match_p1_frozen_bytes() -> None:
+    """摘要：按 P1 冻结哈希逐字节锁定 L4 模式资产。"""
+    assert hashlib.sha256(PATTERNS_PATH.read_bytes()).hexdigest() == P1_L4_PATTERNS_SHA256
 
 
 def test_l4_reference_patterns_meet_preregistered_fixture_gates() -> None:

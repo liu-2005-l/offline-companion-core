@@ -17,6 +17,7 @@ sources:
   persona_compositions: configs/persona_constraint_persona_compositions.yaml
   reply_copy: configs/persona_constraint_reply_copy.yaml
   downgrade: configs/persona_constraint_downgrade.yaml
+  l4_patterns: configs/persona_constraint_l4_patterns.yaml
 
 manifest:
   schema_version: 1
@@ -29,6 +30,7 @@ manifest:
     persona_compositions: 889930cee23b6238738d4cef72b47504fe406e0acafb8bc9213141fdb7ce3334
     reply_copy: 4ccc1c266842c20a3596078d44c2b2fd1c4ba3bc14b0f69b768fc72dd2d19972
     downgrade: 86dc9a110b567c1a4afae6c48095f56fffe468ed181be82d6031cacfc74924b0
+    l4_patterns: 02b1eca439244429e4217da621f7cb3e7608e75fe8fbbafcf96a11111a711647
   builtin_personas:
     base_system_prompt: >-
       你是运行在用户本机的隐私优先离线陪伴助手。你必须遵守已加载的人格约束、事实边界、安全规则与用户同意要求。

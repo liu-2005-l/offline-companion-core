@@ -12,7 +12,7 @@ from typing import Any, Protocol, runtime_checkable
 
 import yaml
 
-from offline_companion.core.arithmetic_verifier import audit_arithmetic_reply
+from offline_companion.core.arithmetic_verifier import ArithmeticAuditResult, audit_arithmetic_reply
 from offline_companion.core.emotion_analyzer.context import EmotionContext
 from offline_companion.core.memory_lifecycle.event_recaller import (
     EventRecaller,
@@ -28,17 +28,29 @@ from offline_companion.core.persona_constraint import (
     AUDIT_ARITHMETIC_WARNING_APPENDED,
     L3_INVALID_EMOTION_SIGNAL,
     L3_STANDARD_INTENSITY,
+    L4_DIRECT,
+    L4_FALLBACK,
+    L4_OBSERVE,
+    L4_RETRY,
     PersonaConstraintAssets,
     PersonaL1AssemblyError,
     PersonaL3Decision,
     PersonaL3Policy,
     PersonaL3Trace,
+    PersonaL4Decision,
+    PersonaL4Outcome,
+    PersonaL4Policy,
+    PersonaL4Trace,
     PersonaTurnSignals,
     assemble_l1_prompt,
+    build_l4_retry_instruction,
+    deterministic_l4_fallback,
     finalize_l1_prompt,
     l3_frozen_l1_mapping,
+    l4_policy_from_assets,
     policy_from_assets,
     resolve_l3,
+    resolve_l4,
 )
 from offline_companion.core.persona_session.expression import (
     STYLE_BLOCK_HEADER,
@@ -99,6 +111,39 @@ def _trace_from_decision(
         audit_event=decision.audit_event,
         closure_reason=closure_reason,
     )
+
+
+def _l4_observe_warning(decision: PersonaL4Decision) -> str:
+    """摘要：把 observe-only 命中压成稳定 warning 码。"""
+    return f"l4_observe:{decision.zone or 'unknown'}:{decision.family or 'unknown'}"
+
+
+def _l4_trace(
+    first: PersonaL4Decision,
+    *,
+    outcome: PersonaL4Outcome,
+    retry: PersonaL4Decision | None = None,
+    retry_taken: bool = False,
+    warnings: tuple[str, ...] = (),
+) -> PersonaL4Trace:
+    """摘要：把两次以内的纯扫描判定投影为稳定运行时 trace。"""
+    return PersonaL4Trace(
+        enabled=True,
+        outcome=outcome,
+        first_zone=first.zone,
+        first_family=first.family,
+        retry_zone=retry.zone if retry is not None else None,
+        retry_family=retry.family if retry is not None else None,
+        retry_taken=retry_taken,
+        warnings=warnings,
+    )
+
+
+def _buffered_replay_chunks(text: str, *, chunk_size: int = 32) -> Iterator[str]:
+    """摘要：把已通过审计的最终正文按稳定字符窗口回放为 SSE token。"""
+    body = str(text or "")
+    for offset in range(0, len(body), chunk_size):
+        yield body[offset : offset + chunk_size]
 
 
 def _load_yaml_dict(file_name: str) -> dict[str, object]:
@@ -268,6 +313,7 @@ class AssembleReplyResult:
     memory_block: str
     expression_trace: PersonaExpressionTrace = field(default_factory=PersonaExpressionTrace)
     l3_trace: PersonaL3Trace = field(default_factory=PersonaL3Trace)
+    l4_trace: PersonaL4Trace = field(default_factory=PersonaL4Trace)
     audit_events: tuple[str, ...] = ()
     pending_audit_events: tuple[str, ...] = ()
 
@@ -278,6 +324,17 @@ class _L3PromptApplication:
 
     locked_prompt: str
     trace: PersonaL3Trace
+
+
+@dataclass(frozen=True)
+class _FinalizedReply:
+    """摘要：算术审计与 L4 动作链完成后的唯一可放行正文。"""
+
+    reply: str
+    l3_trace: PersonaL3Trace
+    l4_trace: PersonaL4Trace
+    audit_events: tuple[str, ...] = ()
+    pending_audit_events: tuple[str, ...] = ()
 
 
 class PersonaSessionCore:
@@ -301,6 +358,9 @@ class PersonaSessionCore:
         self._constraint_assets = constraint_assets
         self._l3_policy: PersonaL3Policy | None = (
             policy_from_assets(constraint_assets) if constraint_assets is not None else None
+        )
+        self._l4_policy: PersonaL4Policy | None = (
+            l4_policy_from_assets(constraint_assets) if constraint_assets is not None else None
         )
 
     @property
@@ -344,6 +404,20 @@ class PersonaSessionCore:
             audit_events=audit_events,
         )
 
+    def _constraints_managed(self) -> bool:
+        """摘要：仅允许当前发布 manifest 下的已验证人格进入 L3/L4。"""
+        assets = self._constraint_assets
+        raw = self.persona.raw if isinstance(self.persona.raw, dict) else {}
+        return bool(
+            assets is not None
+            and str(raw.get("validation_status") or "") == "validated_anchor"
+            and str(raw.get("constraint_manifest_sha256") or "") == assets.manifest_sha256
+        )
+
+    def requires_audited_stream_buffering(self) -> bool:
+        """摘要：返回当前会话是否必须先完成 L4 审计再放行流式正文。"""
+        return self._constraints_managed() and self._l4_policy is not None
+
     def _apply_l3(
         self,
         conn: sqlite3.Connection,
@@ -353,12 +427,10 @@ class PersonaSessionCore:
         standard_prompt = self._system_prompt_locked(conn)
         assets = self._constraint_assets
         policy = self._l3_policy
-        raw = self.persona.raw if isinstance(self.persona.raw, dict) else {}
         if (
             assets is None
             or policy is None
-            or str(raw.get("validation_status") or "") != "validated_anchor"
-            or str(raw.get("constraint_manifest_sha256") or "") != assets.manifest_sha256
+            or not self._constraints_managed()
         ):
             return _L3PromptApplication(standard_prompt, PersonaL3Trace())
 
@@ -415,6 +487,154 @@ class PersonaSessionCore:
                 prompt_replaced=True,
                 structural_sample_id=mapping.structural_sample_id,
             ),
+        )
+
+    def _finalize_generated_reply(
+        self,
+        backend: InferenceBackend,
+        conn: sqlite3.Connection,
+        *,
+        reply: str,
+        history: list[MessageRow],
+        user_message: str,
+        memory_block: str,
+        max_tokens: int,
+        emotion_context: EmotionContext | None,
+        capability_profile: CapabilityProfile | None,
+        skill_prompt: str,
+        expression_config: PersonaExpressionConfig,
+        active_signals: PersonaTurnSignals,
+        initial_l3_trace: PersonaL3Trace,
+        audit_arithmetic: bool,
+        audit_event_mirror: Callable[[str, bool], bool] | None,
+    ) -> _FinalizedReply:
+        """摘要：依次完成算术审计与一次有界 L4 retry/fallback。"""
+        final_l3_trace = initial_l3_trace
+        audit_events: list[str] = []
+        pending_audit_events: list[str] = []
+
+        def on_audit_event(event_type: str) -> bool | None:
+            nonlocal active_signals
+            active_signals = active_signals.with_audit_event(event_type)
+            if audit_event_mirror is None:
+                return None
+            return audit_event_mirror(
+                event_type,
+                event_type != AUDIT_ARITHMETIC_WARNING_APPENDED,
+            )
+
+        def generate_with_reminder(reminder: str) -> str:
+            nonlocal final_l3_trace
+            application = self._apply_l3(conn, active_signals)
+            final_l3_trace = application.trace
+            retry_prompt = self._compose_system_prompt(
+                conn,
+                emotion_context=emotion_context,
+                capability_profile=capability_profile,
+                skill_prompt=skill_prompt,
+                expression_config=expression_config,
+                l3_application=application,
+            )
+            return backend.generate(
+                system_prompt=f"{retry_prompt}\n\n{reminder}",
+                history=history,
+                user_message=user_message,
+                memory_block=memory_block,
+                max_tokens=max_tokens,
+            )
+
+        def record_audit(result: ArithmeticAuditResult) -> None:
+            nonlocal final_l3_trace
+            audit_events.extend(result.audit_events)
+            if AUDIT_ARITHMETIC_WARNING_APPENDED in result.audit_events:
+                pending_audit_events.append(AUDIT_ARITHMETIC_WARNING_APPENDED)
+            if result.event_mirror_failures:
+                final_l3_trace = replace(final_l3_trace, event_mirror_failed=True)
+
+        audited_reply = str(reply or "")
+        if audit_arithmetic:
+            audit = audit_arithmetic_reply(
+                audited_reply,
+                retry=lambda feedback: generate_with_reminder(f"【算术校验反馈】\n{feedback}"),
+                on_event=on_audit_event,
+            )
+            record_audit(audit)
+            audited_reply = audit.reply
+
+        policy = self._l4_policy
+        if policy is None or not self._constraints_managed():
+            return _FinalizedReply(
+                reply=audited_reply,
+                l3_trace=final_l3_trace,
+                l4_trace=PersonaL4Trace(),
+                audit_events=tuple(audit_events),
+                pending_audit_events=tuple(dict.fromkeys(pending_audit_events)),
+            )
+
+        display_name = self._resolved_companion_display_name(conn)
+        first = resolve_l4(audited_reply, policy, display_name=display_name)
+        if first.action == L4_DIRECT:
+            return _FinalizedReply(
+                reply=audited_reply,
+                l3_trace=final_l3_trace,
+                l4_trace=_l4_trace(first, outcome=L4_DIRECT),
+                audit_events=tuple(audit_events),
+                pending_audit_events=tuple(dict.fromkeys(pending_audit_events)),
+            )
+        if first.action == L4_OBSERVE:
+            return _FinalizedReply(
+                reply=audited_reply,
+                l3_trace=final_l3_trace,
+                l4_trace=_l4_trace(
+                    first,
+                    outcome=L4_OBSERVE,
+                    warnings=(_l4_observe_warning(first),),
+                ),
+                audit_events=tuple(audit_events),
+                pending_audit_events=tuple(dict.fromkeys(pending_audit_events)),
+            )
+
+        retry_reply = generate_with_reminder(build_l4_retry_instruction(display_name))
+        if audit_arithmetic:
+            retry_audit = audit_arithmetic_reply(
+                retry_reply,
+                retry_allowed=False,
+                on_event=on_audit_event,
+            )
+            record_audit(retry_audit)
+            retry_reply = retry_audit.reply
+        second = resolve_l4(retry_reply, policy, display_name=display_name)
+        if second.action == L4_RETRY:
+            return _FinalizedReply(
+                reply=deterministic_l4_fallback(first.zone, display_name),
+                l3_trace=final_l3_trace,
+                l4_trace=_l4_trace(
+                    first,
+                    outcome=L4_FALLBACK,
+                    retry=second,
+                    retry_taken=True,
+                    warnings=("l4_retry_exhausted",),
+                ),
+                audit_events=tuple(audit_events),
+                pending_audit_events=tuple(dict.fromkeys(pending_audit_events)),
+            )
+        warnings = (
+            (_l4_observe_warning(second),)
+            if second.action == L4_OBSERVE
+            else ()
+        )
+        return _FinalizedReply(
+            reply=retry_reply,
+            l3_trace=final_l3_trace,
+            l4_trace=_l4_trace(
+                first,
+                outcome=L4_RETRY,
+                retry=second,
+                retry_taken=True,
+                warnings=warnings,
+            ),
+            audit_events=tuple(audit_events),
+            pending_audit_events=tuple(dict.fromkeys(pending_audit_events)),
         )
 
     def assemble_reply(
@@ -478,54 +698,31 @@ class PersonaSessionCore:
             memory_block=combined_memory_block,
             max_tokens=max_tokens,
         )
-        def on_audit_event(event_type: str) -> bool | None:
-            nonlocal active_signals
-            active_signals = active_signals.with_audit_event(event_type)
-            if audit_event_mirror is None:
-                return None
-            return audit_event_mirror(
-                event_type,
-                event_type != AUDIT_ARITHMETIC_WARNING_APPENDED,
-            )
-
-        def retry_arithmetic(feedback: str) -> str:
-            nonlocal final_l3_trace
-            retry_application = self._apply_l3(conn, active_signals)
-            final_l3_trace = retry_application.trace
-            retry_prompt = self._compose_system_prompt(
-                conn,
-                emotion_context=emotion_context,
-                capability_profile=capability_profile,
-                skill_prompt=skill_prompt,
-                expression_config=config,
-                l3_application=retry_application,
-            )
-            return backend.generate(
-                system_prompt=f"{retry_prompt}\n\n【算术校验反馈】\n{feedback}",
-                history=history,
-                user_message=user_message,
-                memory_block=combined_memory_block,
-                max_tokens=max_tokens,
-            )
-
-        audit = (
-            audit_arithmetic_reply(
-                reply,
-                retry=retry_arithmetic,
-                on_event=on_audit_event,
-            )
-            if audit_arithmetic
-            else None
+        finalized = self._finalize_generated_reply(
+            backend,
+            conn,
+            reply=reply,
+            history=history,
+            user_message=user_message,
+            memory_block=combined_memory_block,
+            max_tokens=max_tokens,
+            emotion_context=emotion_context,
+            capability_profile=capability_profile,
+            skill_prompt=skill_prompt,
+            expression_config=config,
+            active_signals=active_signals,
+            initial_l3_trace=final_l3_trace,
+            audit_arithmetic=audit_arithmetic,
+            audit_event_mirror=audit_event_mirror,
         )
         output_source = "direct"
         retry_taken = False
         retry_generation_cliff = False
         warnings: tuple[str, ...] = ()
-        audited_reply = audit.reply if audit is not None else reply
-        if audit is not None and audit.event_mirror_failures:
-            final_l3_trace = replace(final_l3_trace, event_mirror_failed=True)
+        audited_reply = finalized.reply
         first_generation_cliff = (
-            config.identity_exit_guard_enabled
+            not finalized.l4_trace.enabled
+            and config.identity_exit_guard_enabled
             and is_identity_intent(user_message)
             and detect_identity_cliff(audited_reply, display_name)
         )
@@ -563,14 +760,10 @@ class PersonaSessionCore:
                 output_source=output_source,
                 warnings=warnings,
             ),
-            l3_trace=final_l3_trace,
-            audit_events=audit.audit_events if audit is not None else (),
-            pending_audit_events=(
-                (AUDIT_ARITHMETIC_WARNING_APPENDED,)
-                if audit is not None
-                and AUDIT_ARITHMETIC_WARNING_APPENDED in audit.audit_events
-                else ()
-            ),
+            l3_trace=finalized.l3_trace,
+            l4_trace=finalized.l4_trace,
+            audit_events=finalized.audit_events,
+            pending_audit_events=finalized.pending_audit_events,
         )
 
     def assemble_reply_stream(
@@ -620,9 +813,11 @@ class PersonaSessionCore:
                 "reply": identity_reply,
                 "memory_recalls": recalls,
                 "l3_trace": final_l3_trace,
+                "l4_trace": PersonaL4Trace(),
                 "pending_audit_events": (),
             }
             return
+        buffered = self.requires_audited_stream_buffering()
         chunks: list[str] = []
         for token in backend.generate_stream(
             system_prompt=system_prompt,
@@ -632,56 +827,38 @@ class PersonaSessionCore:
             max_tokens=max_tokens,
         ):
             chunks.append(token)
-            yield {"token": token}
+            if not buffered:
+                yield {"token": token}
         raw_reply = "".join(chunks)
-        def on_audit_event(event_type: str) -> bool | None:
-            nonlocal active_signals
-            active_signals = active_signals.with_audit_event(event_type)
-            if audit_event_mirror is None:
-                return None
-            return audit_event_mirror(
-                event_type,
-                event_type != AUDIT_ARITHMETIC_WARNING_APPENDED,
-            )
-
-        def retry_arithmetic(feedback: str) -> str:
-            nonlocal final_l3_trace
-            retry_application = self._apply_l3(conn, active_signals)
-            final_l3_trace = retry_application.trace
-            retry_prompt = self._compose_system_prompt(
-                conn,
-                emotion_context=emotion_context,
-                capability_profile=capability_profile,
-                skill_prompt=skill_prompt,
-                expression_config=config,
-                l3_application=retry_application,
-            )
-            return backend.generate(
-                system_prompt=f"{retry_prompt}\n\n【算术校验反馈】\n{feedback}",
-                history=history,
-                user_message=user_message,
-                memory_block=combined_memory_block,
-                max_tokens=max_tokens,
-            )
-
-        audit = audit_arithmetic_reply(
-            raw_reply,
-            retry=retry_arithmetic,
-            on_event=on_audit_event,
+        finalized = self._finalize_generated_reply(
+            backend,
+            conn,
+            reply=raw_reply,
+            history=history,
+            user_message=user_message,
+            memory_block=combined_memory_block,
+            max_tokens=max_tokens,
+            emotion_context=emotion_context,
+            capability_profile=capability_profile,
+            skill_prompt=skill_prompt,
+            expression_config=config,
+            active_signals=active_signals,
+            initial_l3_trace=final_l3_trace,
+            audit_arithmetic=True,
+            audit_event_mirror=audit_event_mirror,
         )
-        if audit.event_mirror_failures:
-            final_l3_trace = replace(final_l3_trace, event_mirror_failed=True)
+        l4_trace = replace(finalized.l4_trace, buffered=True) if buffered else finalized.l4_trace
+        if buffered:
+            for token in _buffered_replay_chunks(finalized.reply):
+                yield {"token": token}
         yield {
             "done": True,
-            "reply": audit.reply,
+            "reply": finalized.reply,
             "memory_recalls": recalls,
-            "l3_trace": final_l3_trace,
-            "audit_events": audit.audit_events,
-            "pending_audit_events": (
-                (AUDIT_ARITHMETIC_WARNING_APPENDED,)
-                if AUDIT_ARITHMETIC_WARNING_APPENDED in audit.audit_events
-                else ()
-            ),
+            "l3_trace": finalized.l3_trace,
+            "l4_trace": l4_trace,
+            "audit_events": finalized.audit_events,
+            "pending_audit_events": finalized.pending_audit_events,
         }
 
     def _assemble_context(

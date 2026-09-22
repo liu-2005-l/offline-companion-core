@@ -1,8 +1,8 @@
 # 人格约束 P3-A 重规划骨架
 
-版本：v0.3（P3-0 `no_effect` 终局与 A1 schema trace 修订稿）
+版本：v0.4（A1-A4 实现闭合回填稿）
 
-状态：待本地规格锚；锚定后按 A1→A5 严格串行执行
+状态：A1-A4 已闭合；下一阶段为 A5 总闭合
 
 上游：`docs/persona-constraint-p3-wiring-spec-draft.md`、
 `docs/persona-constraint-p3-0-l2-no-effect-closure-spec.md`、P3-0 锚 `74a8144`
@@ -84,9 +84,10 @@ context 重绑定断言为门槛。前端假成功修复属于 A1，不顺延 A5
 
 ## 4. A4：L4 retry/fallback 基线接线
 
-- 只接通 P1 冻结检测器与 `direct/retry/fallback/observe` 动作链；
-- 人格约束会话先缓冲后检测，原始坏 token 不得流出；
-- 保护区继续逐字节透传；
+- [x] 只接通 P1 冻结检测器与 `direct/retry/fallback/observe` 动作链；
+- [x] 人格约束会话先缓冲后检测，原始坏 token 不得流出；
+- [x] 保护区继续逐字节透传；
+- [x] `persona_constraint_l4_patterns.yaml` 成为第八源，L4 trace 进入消息 meta；
 - 检测覆盖扩展、检测域扩展、4-gram 重校与跨轮结构改造仍归 W3。
 
 “隐藏较弱者”不在 A4 重新裁决。其 dormant 实现随 A2 预设状态落地，P4 后才允许激活。

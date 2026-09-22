@@ -1032,7 +1032,6 @@ async function sendMessage() {
       if (data.memory_saved && data.memory_saved.length) loadMemories();
       return;
     }
-    hideTyping();
     let bubble = window._autoRouterEnabled ? null : apiCreateStreamingMessage(nextIdx + 1);
     let finalData = null;
     let streamedText = '';
@@ -1043,14 +1042,22 @@ async function sendMessage() {
         return;
       }
       if (event.type === 'chat_fallback' && !bubble) bubble = apiCreateStreamingMessage(nextIdx + 1);
-      if (event.error) throw new Error(event.error);
+      if (event.error) {
+        hideTyping();
+        if (event.reply && bubble && !streamedText) bubble.textContent = event.reply;
+        throw new Error(event.error);
+      }
       if (event.recall != null && event.recall > 0) showToast('召回 ' + event.recall + ' 条记忆');
       if (event.token) {
+        hideTyping();
         streamedText += event.token;
         if (bubble) bubble.textContent = streamedText;
         chat.scrollTop = chat.scrollHeight;
       }
-      if (event.done) finalData = event;
+      if (event.done) {
+        hideTyping();
+        finalData = event;
+      }
     };
     const repairGap = function(fromSeq, untilSeq) {
       return apiRepairSseGap(_currentSessionId, fromSeq, handleStreamEvent, untilSeq);
