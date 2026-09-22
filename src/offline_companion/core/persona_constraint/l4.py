@@ -32,6 +32,7 @@ class PersonaL4Policy:
     """摘要：通过发布哈希校验的 L4 三分区扫描策略。"""
 
     patterns: Mapping[str, Any]
+    fallback_copy: Mapping[str, str]
 
 
 @dataclass(frozen=True)
@@ -88,7 +89,31 @@ def policy_from_assets(assets: PersonaConstraintAssets) -> PersonaL4Policy:
         families = zone.get("families")
         if not isinstance(families, Mapping) or not families:
             raise PersonaL4ConfigError(f"l4_families_invalid:{zone_name}")
-    return PersonaL4Policy(patterns=MappingProxyType(dict(payload)))
+    reply_payload = assets.source_payloads.get("reply_copy")
+    if not isinstance(reply_payload, Mapping):
+        raise PersonaL4ConfigError("l4_fallback_source_missing")
+    raw_fallback = reply_payload.get("l4_fallback_copy")
+    fallback_zones = {L4_IDENTITY_CLIFF, L4_CAPABILITY_AND_FACT_DENIAL}
+    if not isinstance(raw_fallback, Mapping) or set(raw_fallback) != fallback_zones:
+        raise PersonaL4ConfigError("l4_fallback_copy_invalid")
+    fallback_copy: dict[str, str] = {}
+    for zone_name in (L4_IDENTITY_CLIFF, L4_CAPABILITY_AND_FACT_DENIAL):
+        template = raw_fallback.get(zone_name)
+        if not isinstance(template, str) or not template.strip() or template != template.strip():
+            raise PersonaL4ConfigError(f"l4_fallback_text_invalid:{zone_name}")
+        placeholder_count = template.count("{display_name}")
+        expected_count = 1 if zone_name == L4_IDENTITY_CLIFF else 0
+        if placeholder_count != expected_count:
+            raise PersonaL4ConfigError(f"l4_fallback_placeholder_invalid:{zone_name}")
+        try:
+            template.format(display_name="测试助手")
+        except (KeyError, ValueError) as exc:
+            raise PersonaL4ConfigError(f"l4_fallback_template_invalid:{zone_name}") from exc
+        fallback_copy[zone_name] = template
+    return PersonaL4Policy(
+        patterns=MappingProxyType(dict(payload)),
+        fallback_copy=MappingProxyType(fallback_copy),
+    )
 
 
 def resolve_l4(text: str, policy: PersonaL4Policy, *, display_name: str) -> PersonaL4Decision:
@@ -127,14 +152,15 @@ def build_l4_retry_instruction(display_name: str) -> str:
     )
 
 
-def deterministic_l4_fallback(zone: str | None, display_name: str) -> str:
-    """摘要：按首次命中分区返回不含模型输出的确定性降级正文。"""
-    if zone == L4_IDENTITY_CLIFF:
-        return (
-            f"AI 身份不会被隐瞒；当前会话中我会保持“{display_name}”这一身份与既定人格，"
-            "同时以事实和安全边界为先。"
-        )
-    return (
-        "这次回复没有守住能力与事实边界，我先不沿用它。"
-        "当前能力以本机实际启用的功能和你的授权为准；不确定的部分我会明确说明，不把否认当成事实。"
+def deterministic_l4_fallback(
+    policy: PersonaL4Policy,
+    zone: str | None,
+    display_name: str,
+) -> str:
+    """摘要：从发布链冻结文案按首次命中分区渲染确定性降级正文。"""
+    selected_zone = (
+        zone
+        if zone in {L4_IDENTITY_CLIFF, L4_CAPABILITY_AND_FACT_DENIAL}
+        else L4_CAPABILITY_AND_FACT_DENIAL
     )
+    return policy.fallback_copy[selected_zone].format(display_name=display_name)

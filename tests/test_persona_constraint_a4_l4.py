@@ -174,8 +174,22 @@ def test_l4_patterns_are_covered_by_the_release_manifest_chain(tmp_path: Path) -
         load_persona_constraint_assets(root_override=tmp_path)
 
 
+def test_l4_fallback_copy_character_tamper_is_rejected_by_release_chain(tmp_path: Path) -> None:
+    shutil.copytree(REPO_ROOT / "configs", tmp_path / "configs")
+    target = tmp_path / "configs" / "persona_constraint_reply_copy.yaml"
+    original = target.read_text(encoding="utf-8")
+    tampered = original.replace("identity_cliff: AI 身份", "identity_cliff: AI身份", 1)
+    assert tampered != original
+    target.write_text(tampered, encoding="utf-8")
+
+    with pytest.raises(PersonaConstraintConfigError, match="source_hash_mismatch:reply_copy"):
+        load_persona_constraint_assets(root_override=tmp_path)
+
+
 def test_l4_deterministic_fallback_copy_passes_five_quality_audits() -> None:
     assets = load_persona_constraint_assets(root_override=REPO_ROOT)
+    policy = l4_policy_from_assets(assets)
+    assert dict(policy.fallback_copy) == assets.source_payloads["reply_copy"]["l4_fallback_copy"]
     lexicon = yaml.safe_load(
         (REPO_ROOT / "configs" / "persona_constraint_lexicon.yaml").read_text(encoding="utf-8")
     )
@@ -187,7 +201,8 @@ def test_l4_deterministic_fallback_copy_passes_five_quality_audits() -> None:
     )
 
     for zone in (L4_IDENTITY_CLIFF, L4_CAPABILITY_AND_FACT_DENIAL):
-        text = deterministic_l4_fallback(zone, "测试助手")
+        text = deterministic_l4_fallback(policy, zone, "测试助手")
+        assert text == policy.fallback_copy[zone].format(display_name="测试助手")
         assert scan_forbidden(text, lexicon) == []
         assert scan_l4(text, patterns, display_name_present=True)["hit"] is False
         assert detect_copy(text, examples, output_tokens=len(text))["hit"] is False
@@ -270,8 +285,19 @@ def test_l4_sync_retry_exhaustion_uses_deterministic_fallback(tmp_path: Path) ->
     assert len(backend.system_prompts) == 2
 
 
-def test_l4_retry_reapplies_l3_and_arithmetic_audit_without_recursion(tmp_path: Path) -> None:
+def test_l4_retry_reapplies_l3_and_arithmetic_audit_without_recursion(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _assets, _persona, core, conn = _validated_runtime(tmp_path)
+    applied_signals = []
+    original_apply_l3 = core._apply_l3
+
+    def capture_apply_l3(active_conn, signals):
+        applied_signals.append(signals)
+        return original_apply_l3(active_conn, signals)
+
+    monkeypatch.setattr(core, "_apply_l3", capture_apply_l3)
     backend = _QueueBackend(
         [
             "作为一个AI助手，我没有真正的性格。",
@@ -295,6 +321,10 @@ def test_l4_retry_reapplies_l3_and_arithmetic_audit_without_recursion(tmp_path: 
     assert AUDIT_ARITHMETIC_WARNING_APPENDED in result.pending_audit_events
     assert "自动校验" in result.reply
     assert len(backend.system_prompts) == 2
+    assert len(applied_signals) == 2
+    assert applied_signals[0] is applied_signals[1]
+    assert applied_signals[1].emotion_confidence == 0.45
+    assert backend.system_prompts[1].startswith(backend.system_prompts[0] + "\n\n")
 
 
 def test_l4_stream_buffers_bad_tokens_until_final_candidate_is_safe(tmp_path: Path) -> None:

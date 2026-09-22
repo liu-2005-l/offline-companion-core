@@ -1,8 +1,8 @@
 # 人格约束 P3-A 重规划骨架
 
-版本：v0.4（A1-A4 实现闭合回填稿）
+版本：v0.5（A1-A5 总闭合回填稿）
 
-状态：A1-A4 已闭合；下一阶段为 A5 总闭合
+状态：A1-A5 已闭合；P3-A 总闭合
 
 上游：`docs/persona-constraint-p3-wiring-spec-draft.md`、
 `docs/persona-constraint-p3-0-l2-no-effect-closure-spec.md`、P3-0 锚 `74a8144`
@@ -94,9 +94,11 @@ context 重绑定断言为门槛。前端假成功修复属于 A1，不顺延 A5
 
 ## 5. A5：闭合
 
-- UX 契约端到端回归：新会话生效、历史会话恢复、失败零状态变化、超时对账；
-- 全量重跑 P1/P2 静态 fixture、受影响运行时窄测与关闭路径逐字节契约；
-- 回填 P3 报告、v1.5 验收与架构/CHANGELOG 文档；
+- [x] UX 契约端到端回归：新会话生效、历史会话恢复、失败零状态变化、超时对账；
+- [x] 全量重跑 P1/P2 静态 fixture、受影响运行时窄测与关闭路径逐字节契约；
+- [x] L4 fallback 迁入第六源冻结 YAML，P1 patterns 字节锚保持不变；
+- [x] L4 retry 明确复用原轮 `PersonaTurnSignals` 与 confidence，不重新分类；
+- [x] 回填 P3 报告、架构与 CHANGELOG 文档；
 - 不重跑 P1/P2 原始 GGUF 实验，不用旧 artifact 冒充新接线验证。
 
 ## 6. 债务映射
@@ -104,9 +106,11 @@ context 重绑定断言为门槛。前端假成功修复属于 A1，不顺延 A5
 | 债务 | 状态 | 落点 |
 | --- | --- | --- |
 | persona 切换 UX 契约 | 已裁 | A1 实现，A5 端到端回归 |
-| 审计事件白名单注册 | 待执行 | A3 |
+| 审计事件白名单注册 | 已完成 | A3 |
 | 隐藏较弱者 | 已裁、不重裁 | A2 dormant 实现，P4 verdict 后激活 |
-| fixture 重跑义务 | 待执行 | A5 闭合门槛 |
+| fixture 重跑义务 | 已完成 | A5 闭合门槛 |
+| L4 fallback 发布治理 | 已完成 | A5 迁入第六源冻结 YAML |
+| L4 retry confidence | 已完成 | A5 固定复用原轮信号 |
 
 ## 7. 提交边界
 

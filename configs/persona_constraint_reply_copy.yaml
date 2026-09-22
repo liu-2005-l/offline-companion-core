@@ -1,6 +1,10 @@
 schema_version: 1
 version: p3-a2-reply-copy-v1
 
+l4_fallback_copy:
+  identity_cliff: AI 身份不会被隐瞒；当前会话中我会保持“{display_name}”这一身份与既定人格，同时以事实和安全边界为先。
+  capability_and_fact_denial: 这次回复没有守住能力与事实边界，我先不沿用它。当前能力以本机实际启用的功能和你的授权为准；不确定的部分我会明确说明，不把否认当成事实。
+
 reply_copy:
   builtin_wenrou:
     switch_confirmation: 已切换到温柔人格，我们慢慢继续。

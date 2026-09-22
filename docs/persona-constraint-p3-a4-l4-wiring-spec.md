@@ -2,7 +2,7 @@
 
 版本：v1.0（实现闭合稿）
 
-状态：实现与补强完成，等待 trace review；下一阶段为 A5 总闭合
+状态：已闭合；A5 总闭合已完成
 
 上游：`docs/persona-constraint-p1-spec.md`、`docs/persona-constraint-p3-wiring-spec-draft.md`、`docs/persona-constraint-p3-a-replan-draft.md`
 
@@ -54,9 +54,9 @@ L4 不递归；一次动作链最多执行一次 L4 retry。初次算术 retry �
 
 fallback 不复用 A2 T24 的 `constraint_config_fallback`：后者表达“人格配置未生效并保持原会话”，与“候选违反 L4 边界”语义不同。A4 的两条分区文案保持代码内确定性常量，并通过禁用词、L4 自扫描、短前缀复制、绝对承诺与内部机制泄漏五项审计。
 
-债务记档：上述两条代码常量当前不在 manifest 发布哈希链内。A5 收口时必须显式裁决“迁入冻结 YAML 纳链”或“保留代码常量并记录发布治理例外”，不得静默搁置。
+债务结清：A5 选择迁入既有 `persona_constraint_reply_copy.yaml` 的独立 `l4_fallback_copy` 段并纳入第六源哈希链，不新增第九源，也不修改 P1 L4 patterns 冻结字节。
 
-A5 挂账：确认 L4 retry 候选重新经过 L3 时复用原轮 emotion confidence，还是重新分类计算；该项不改变 A4 红线防线与闭合结论。
+A5 挂账结清：L4 retry 候选重新经过 L3 时复用原轮不可变 `PersonaTurnSignals` 与 emotion confidence，不重新分类同轮模型输出。
 
 ## 4. 流式与持久化
 

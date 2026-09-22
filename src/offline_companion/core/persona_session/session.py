@@ -606,7 +606,7 @@ class PersonaSessionCore:
         second = resolve_l4(retry_reply, policy, display_name=display_name)
         if second.action == L4_RETRY:
             return _FinalizedReply(
-                reply=deterministic_l4_fallback(first.zone, display_name),
+                reply=deterministic_l4_fallback(policy, first.zone, display_name),
                 l3_trace=final_l3_trace,
                 l4_trace=_l4_trace(
                     first,

@@ -1,7 +1,7 @@
 # 人格约束 P3 接线批规格
 
 版本：v1.3（P3-0 标定判定线联动修订稿）
-状态：主体规格已展开；L2 数值包已按 no-effect 裁决删除，P3-A2/A3/A4 已闭合，L3 后置 low profile 待 W3，下一阶段为 A5 总闭合
+状态：主体规格已展开；L2 数值包已按 no-effect 裁决删除，P3-A1-A5 已闭合，L3 后置 low profile 待 W3
 上游：`docs/persona-constraint-batch-design-v1_5.md`、`configs/persona_constraint_corpus.yaml`、
 P1 锚 `bcb8c1a`、P2 闭合锚 `658fdb3`
 
@@ -350,12 +350,12 @@ P4。P3 不得用旧 artifact 代替新代码路径单测，也不得把静态 f
 
 ## 14. P3 总验收行
 
-- [ ] P3-0：L2 数据确认的数值包或 `no_effect_observed_within_preregistered_grid` 不采用裁决 + L3 机器效果已冻结，不存在未测全零、空转字段或未声明后端；
-- [ ] P3-A：单一派生链、五标定预设、完整根解析、迁移三件套、traits 写旁路清零、lint 正控；
-- [ ] P3-B：五标定点 L1/L2/L3 确定性组装、660 字符预算、三审计信号生产/消费、L4 基线动作链；
-- [ ] P3-C：15 条文案、persona 持久化快照、真实新会话切换、失败零状态变化、历史会话 context 一致；
-- [ ] 自定义 OCEAN 明示未验证且默认不启用约束，不删除用户现有向量；
-- [ ] 单对失败隐藏策略实现但在 P4 verdict 前不生效；
-- [ ] 关闭路径与无约束路径同 seed 逐字节一致；
-- [ ] CI 静态层与受影响运行时层全绿；
-- [ ] P3 报告明确：L2 applied-options、L3 档位、L4 direct/retry/fallback/observe trace 与模型效果待 P4。
+- [x] P3-0：L2 数据确认的 `no_effect_observed_within_preregistered_grid` 不采用裁决 + L3 机器语义已冻结，不存在未测全零、空转字段或未声明后端；
+- [x] P3-A：单一派生链、五标定预设、完整根解析、迁移三件套、traits 写旁路清零、lint 正控；
+- [x] P3-B：五标定点 L1/L3 确定性组装、660 字符预算、三审计信号生产/消费、L4 基线动作链；
+- [x] P3-C：15 条文案、persona 持久化快照、真实新会话切换、失败零状态变化、历史会话 context 一致；
+- [x] 自定义 OCEAN 明示未验证且默认不启用约束，不删除用户现有向量；
+- [x] 单对失败隐藏策略实现但在 P4 verdict 前不生效；
+- [x] 关闭路径与无约束路径同 seed 逐字节一致；
+- [x] CI 静态层与受影响运行时层全绿；
+- [x] P3 报告明确：L2 不采用、L3 档位与 L4 direct/retry/fallback/observe trace 已接线，模型效果待 P4。
