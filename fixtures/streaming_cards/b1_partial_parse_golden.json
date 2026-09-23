@@ -1,0 +1,496 @@
+{
+  "schema_version": 1,
+  "contract": "docs/streaming-card-b0-contract-spec.md#c1-partialparse-接口",
+  "partial_parse_fields": [
+    "value",
+    "closed",
+    "complete"
+  ],
+  "l0_trigger_semantics": "count false-to-true transitions across a chain",
+  "cases": [
+    {
+      "id": "rule_incomplete_escape",
+      "group": "rules",
+      "buffer": "{\"a\":\"b\\",
+      "expected": {
+        "value": {"a": "b"},
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": false
+    },
+    {
+      "id": "rule_unclosed_string_with_comma",
+      "group": "rules",
+      "buffer": "{\"a\":[\"x,y",
+      "expected": {
+        "value": {"a": ["x,y"]},
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": false
+    },
+    {
+      "id": "rule_trailing_comma",
+      "group": "rules",
+      "buffer": "{\"a\":1,",
+      "expected": {
+        "value": {"a": 1},
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": false
+    },
+    {
+      "id": "rule_incomplete_literal",
+      "group": "rules",
+      "buffer": "{\"a\":tru",
+      "expected": {
+        "value": {"a": null},
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": false
+    },
+    {
+      "id": "rule_incomplete_number_exponent",
+      "group": "rules",
+      "buffer": "{\"a\":1e",
+      "expected": {
+        "value": {"a": null},
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": false
+    },
+    {
+      "id": "rule_incomplete_number_sign",
+      "group": "rules",
+      "buffer": "{\"a\":-",
+      "expected": {
+        "value": {"a": null},
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": false
+    },
+    {
+      "id": "rule_empty_value_after_colon",
+      "group": "rules",
+      "buffer": "{\"a\":",
+      "expected": {
+        "value": {"a": null},
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": false
+    },
+    {
+      "id": "rule_incomplete_key",
+      "group": "rules",
+      "buffer": "{\"ste",
+      "expected": {
+        "value": {},
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": false
+    },
+    {
+      "id": "rule_key_missing_colon",
+      "group": "rules",
+      "buffer": "{\"a\"",
+      "expected": {
+        "value": {},
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": false
+    },
+    {
+      "id": "interaction_literal_and_trailing_comma",
+      "group": "interactions",
+      "buffer": "{\"a\":tru,",
+      "expected": {
+        "value": {"a": null},
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": false
+    },
+    {
+      "id": "interaction_second_array_object_literal",
+      "group": "interactions",
+      "buffer": "{\"steps\":[{\"a\":1},{\"b\":tr",
+      "expected": {
+        "value": {"steps": [{"a": 1}, {"b": null}]},
+        "closed": ["steps[0]"],
+        "complete": false
+      },
+      "l0_active": true
+    },
+    {
+      "id": "interaction_array_number_exponent",
+      "group": "interactions",
+      "buffer": "{\"steps\":[1e",
+      "expected": {
+        "value": {"steps": [null]},
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": true
+    },
+    {
+      "id": "failure_non_object_prefix",
+      "group": "failures",
+      "buffer": "plain text",
+      "expected": {
+        "value": null,
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": false
+    },
+    {
+      "id": "failure_mismatched_close",
+      "group": "failures",
+      "buffer": "{]",
+      "expected": {
+        "value": null,
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": false
+    },
+    {
+      "id": "failure_extra_close",
+      "group": "failures",
+      "buffer": "{\"a\":1}}",
+      "expected": {
+        "value": null,
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": false
+    },
+    {
+      "id": "complete_stack_empty_but_invalid_json",
+      "group": "complete_conditions",
+      "buffer": "{\"steps\":[1]}}",
+      "expected": {
+        "value": null,
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": false
+    },
+    {
+      "id": "complete_lexically_complete_but_stack_open",
+      "group": "complete_conditions",
+      "buffer": "{\"steps\":[",
+      "expected": {
+        "value": {"steps": []},
+        "closed": [],
+        "complete": false
+      },
+      "l0_active": true
+    },
+    {
+      "id": "complete_all_conditions",
+      "group": "complete_conditions",
+      "buffer": "{\"steps\":[]}",
+      "expected": {
+        "value": {"steps": []},
+        "closed": [],
+        "complete": true
+      },
+      "l0_active": true
+    },
+    {
+      "id": "scan_direct_step_closed",
+      "group": "struct_scan",
+      "buffer": "{\"steps\":[{\"title\":\"A\"}]}",
+      "expected": {
+        "value": {"steps": [{"title": "A"}]},
+        "closed": ["steps[0]"],
+        "complete": true
+      },
+      "l0_active": true
+    },
+    {
+      "id": "scan_nested_object_filtered",
+      "group": "struct_scan",
+      "buffer": "{\"steps\":[{\"sub_tasks\":[{\"title\":\"nested\"}]}]}",
+      "expected": {
+        "value": {"steps": [{"sub_tasks": [{"title": "nested"}]}]},
+        "closed": ["steps[0]"],
+        "complete": true
+      },
+      "l0_active": true
+    },
+    {
+      "id": "scan_steps_text_does_not_trigger_l0",
+      "group": "struct_scan",
+      "buffer": "{\"note\":\"literal \\\"steps\\\": [\"}",
+      "expected": {
+        "value": {"note": "literal \"steps\": ["},
+        "closed": [],
+        "complete": true
+      },
+      "l0_active": false
+    },
+    {
+      "id": "scan_non_steps_array_object_filtered",
+      "group": "struct_scan",
+      "buffer": "{\"other\":[{\"x\":1}]}",
+      "expected": {
+        "value": {"other": [{"x": 1}]},
+        "closed": [],
+        "complete": true
+      },
+      "l0_active": false
+    },
+    {
+      "id": "scan_mixed_other_object_filtered",
+      "group": "struct_scan",
+      "buffer": "{\"steps\":[],\"other\":{\"y\":1}}",
+      "expected": {
+        "value": {"steps": [], "other": {"y": 1}},
+        "closed": [],
+        "complete": true
+      },
+      "l0_active": true
+    }
+  ],
+  "chains": [
+    {
+      "id": "array_literal_path_monotonic",
+      "group": "monotonicity",
+      "assertions": {
+        "value_paths_monotonic": true,
+        "closed_monotonic": true,
+        "l0_trigger_count": 0
+      },
+      "entries": [
+        {
+          "buffer": "{\"a\":[tru",
+          "expected": {
+            "value": {"a": [null]},
+            "closed": [],
+            "complete": false
+          },
+          "l0_active": false
+        },
+        {
+          "buffer": "{\"a\":[true",
+          "expected": {
+            "value": {"a": [true]},
+            "closed": [],
+            "complete": false
+          },
+          "l0_active": false
+        },
+        {
+          "buffer": "{\"a\":[true]}",
+          "expected": {
+            "value": {"a": [true]},
+            "closed": [],
+            "complete": true
+          },
+          "l0_active": false
+        }
+      ]
+    },
+    {
+      "id": "array_empty_slot_never_creates_index",
+      "group": "monotonicity",
+      "assertions": {
+        "value_paths_monotonic": true,
+        "closed_monotonic": true,
+        "forbidden_paths": ["a[0]"],
+        "l0_trigger_count": 0
+      },
+      "entries": [
+        {
+          "buffer": "{\"a\":[",
+          "expected": {
+            "value": {"a": []},
+            "closed": [],
+            "complete": false
+          },
+          "l0_active": false
+        },
+        {
+          "buffer": "{\"a\":[]",
+          "expected": {
+            "value": {"a": []},
+            "closed": [],
+            "complete": false
+          },
+          "l0_active": false
+        },
+        {
+          "buffer": "{\"a\":[]}",
+          "expected": {
+            "value": {"a": []},
+            "closed": [],
+            "complete": true
+          },
+          "l0_active": false
+        }
+      ]
+    },
+    {
+      "id": "failure_results_stay_none",
+      "group": "failure_stability",
+      "assertions": {
+        "all_results_none": true,
+        "closed_empty": true,
+        "complete_false": true,
+        "l0_trigger_count": 0
+      },
+      "entries": [
+        {
+          "buffer": "plain text",
+          "expected": {
+            "value": null,
+            "closed": [],
+            "complete": false
+          },
+          "l0_active": false
+        },
+        {
+          "buffer": "{]",
+          "expected": {
+            "value": null,
+            "closed": [],
+            "complete": false
+          },
+          "l0_active": false
+        },
+        {
+          "buffer": "{\"steps\":[1]}}",
+          "expected": {
+            "value": null,
+            "closed": [],
+            "complete": false
+          },
+          "l0_active": false
+        }
+      ]
+    },
+    {
+      "id": "realistic_plan_prefix_sequence",
+      "group": "end_to_end",
+      "assertions": {
+        "value_paths_monotonic": true,
+        "closed_monotonic": true,
+        "l0_trigger_count": 1
+      },
+      "entries": [
+        {
+          "buffer": "{",
+          "expected": {
+            "value": {},
+            "closed": [],
+            "complete": false
+          },
+          "l0_active": false
+        },
+        {
+          "buffer": "{\"steps\":",
+          "expected": {
+            "value": {"steps": null},
+            "closed": [],
+            "complete": false
+          },
+          "l0_active": false
+        },
+        {
+          "buffer": "{\"steps\":[",
+          "expected": {
+            "value": {"steps": []},
+            "closed": [],
+            "complete": false
+          },
+          "l0_active": true
+        },
+        {
+          "buffer": "{\"steps\":[{\"title\":\"分析需",
+          "expected": {
+            "value": {"steps": [{"title": "分析需"}]},
+            "closed": [],
+            "complete": false
+          },
+          "l0_active": true
+        },
+        {
+          "buffer": "{\"steps\":[{\"title\":\"分析需求\",\"description\":\"确认范围\",\"expected_output\":\"需求清单\",\"verification\":\"人工核对\",\"completion_criteria\":\"范围明确\"},",
+          "expected": {
+            "value": {
+              "steps": [
+                {
+                  "title": "分析需求",
+                  "description": "确认范围",
+                  "expected_output": "需求清单",
+                  "verification": "人工核对",
+                  "completion_criteria": "范围明确"
+                }
+              ]
+            },
+            "closed": ["steps[0]"],
+            "complete": false
+          },
+          "l0_active": true
+        },
+        {
+          "buffer": "{\"steps\":[{\"title\":\"分析需求\",\"description\":\"确认范围\",\"expected_output\":\"需求清单\",\"verification\":\"人工核对\",\"completion_criteria\":\"范围明确\"},{\"title\":\"实现功",
+          "expected": {
+            "value": {
+              "steps": [
+                {
+                  "title": "分析需求",
+                  "description": "确认范围",
+                  "expected_output": "需求清单",
+                  "verification": "人工核对",
+                  "completion_criteria": "范围明确"
+                },
+                {"title": "实现功"}
+              ]
+            },
+            "closed": ["steps[0]"],
+            "complete": false
+          },
+          "l0_active": true
+        },
+        {
+          "buffer": "{\"steps\":[{\"title\":\"分析需求\",\"description\":\"确认范围\",\"expected_output\":\"需求清单\",\"verification\":\"人工核对\",\"completion_criteria\":\"范围明确\"},{\"title\":\"实现功能\",\"description\":\"完成编码\",\"expected_output\":\"可运行实现\",\"verification\":\"运行测试\",\"completion_criteria\":\"测试通过\"}],\"summary\":\"执行计划\"}",
+          "expected": {
+            "value": {
+              "steps": [
+                {
+                  "title": "分析需求",
+                  "description": "确认范围",
+                  "expected_output": "需求清单",
+                  "verification": "人工核对",
+                  "completion_criteria": "范围明确"
+                },
+                {
+                  "title": "实现功能",
+                  "description": "完成编码",
+                  "expected_output": "可运行实现",
+                  "verification": "运行测试",
+                  "completion_criteria": "测试通过"
+                }
+              ],
+              "summary": "执行计划"
+            },
+            "closed": ["steps[0]", "steps[1]"],
+            "complete": true
+          },
+          "l0_active": true
+        }
+      ]
+    }
+  ]
+}
