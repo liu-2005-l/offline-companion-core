@@ -51,6 +51,7 @@
 | **人格约束 P3-A3 L3 谓词与 lint 归并规格（已闭合，部分接线）** | [`persona-constraint-p3-a3-l3-predicate-spec-draft.md`](./persona-constraint-p3-a3-l3-predicate-spec-draft.md) | — |
 | **人格约束 P3-A4 L4 retry/fallback 基线接线规格（已闭合）** | [`persona-constraint-p3-a4-l4-wiring-spec.md`](./persona-constraint-p3-a4-l4-wiring-spec.md) | — |
 | **人格约束 P3-A5 总闭合报告（已闭合）** | [`persona-constraint-p3-a5-closure-report.md`](./persona-constraint-p3-a5-closure-report.md) | — |
+| **流式卡片 B0 契约冻结规格** | [`streaming-card-b0-contract-spec.md`](./streaming-card-b0-contract-spec.md) | — |
 | **Phase 6.5 召回注入 Fixture** | [`phase6-5-recall-injection-fixtures.md`](./phase6-5-recall-injection-fixtures.md) | — |
 | **Batch E 红队方案** | [`red-team-batch-e-design.md`](./red-team-batch-e-design.md) | — |
 | **Batch E 红队矩阵** | [`red-team-matrix-2026-08-25.md`](./red-team-matrix-2026-08-25.md) | — |

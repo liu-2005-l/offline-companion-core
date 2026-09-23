@@ -7,6 +7,7 @@
 ## 未发布 · 2026-09-03（拟人表述 W2 / 人格约束 P2 实验闭合）
 
 ### 实验与基础设施
+- 冻结流式卡片 B0 接缝契约：默认同步 `/api/plan/decompose` 保持不变，`stream:true` 才启用 SSE；统一 `PartialParse`、card 事件族、provisional/accepted/degraded 生命周期、canonical plan 终态与连接内 gap repair，首版仅覆盖手动入口。
 - P3-A5 总闭合：L4 fallback 从代码常量迁入第六源 `reply_copy` 冻结 YAML 并纳入发布哈希链，P1 L4 patterns 字节锚保持不变；L4 retry 固定复用原轮 `PersonaTurnSignals` 与 emotion confidence，不重新分类同轮模型输出。
 - 闭合 P3-A4 L4 基线接线：P1 三分区冻结扫描驱动 `direct/retry/fallback/observe`，身份断崖与能力/事实否认最多重试一次，用户攻击保持 observe-only；动作 trace 同步写入 assistant message meta。
 - 将 `persona_constraint_l4_patterns.yaml` 纳入第八源发布哈希链；validated SSE 改为后端 token 缓冲、算术/L3/L4 审计完成后再分块回放，失败候选不进入前端、消息表或记忆抽取。
