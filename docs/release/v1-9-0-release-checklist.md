@@ -1,6 +1,6 @@
 # v1.9.0 发布清单
 
-状态：发布准备完成；G1-G6 已通过，待创建发布提交与 tag
+状态：已发布；annotated tag `v1.9.0` 指向发布提交，`origin/master` 与 tag 已完成推送清账
 
 发布日期：2026-09-24
 
@@ -20,10 +20,10 @@
 | G4 | README 翻转 | `docs/README.md` 已登记 v1.9.0 已发布、tag-only；B0 契约与 B4 报告保持时点快照不回翻 |
 | G5 | 安装包裁决 | tag-only；流式卡片虽为用户可见能力，但当前安装包消费者接近零，打包链另立批次 |
 | G6 | 发布清单落库 | 本文件按 `docs/release/v1-9-0-release-checklist.md` 落库 |
-| G7 | 发布 commit 与 tag | 待创建 `chore(release): v1.9.0` 并将 `v1.9.0` tag 指向该提交 |
-| G8 | 推送清账 | 待一次推送领先提交与 tag；网络失败只挂推送欠账，不改变本地 tag 发布状态 |
-| G9 | tag 后回填 | 待回填 tag 目标提交、推送状态与最终 gate 结果 |
-| G10 | 协作档案归档 | 待同步 daily 与工作区 `USER.md`；`USER.md` 不属于本仓库 |
+| G7 | 发布 commit 与 tag | `28d8978 chore(release): v1.9.0`；本地 annotated tag `v1.9.0` 指向该提交 |
+| G8 | 推送清账 | `master` 领先提交与 annotated tag `v1.9.0` 已一次推送至 origin |
+| G9 | tag 后回填 | 已回填 tag 目标 `28d8978`、推送状态与最终 gate |
+| G10 | 协作档案归档 | daily 与工作区 `USER.md` 由协作方在仓库外维护，本仓库无额外动作 |
 
 ## 2. 发布范围
 
@@ -34,7 +34,7 @@
 | B1-B3 | `215716e` | 双解析器、SSE 后端、终态采纳门与三态前端 |
 | B4 收口 | `fa9c75f` | 双哨兵、候选池裁决、十一项终态报告与文档同步 |
 | 发布前清债 | `69010b4` | 机械修复 5 条 import 排序和 6 条测试桩可变类属性，仓库 Ruff 清零 |
-| v1.9.0 发布 | 待提交 | 版本轴、正式 CHANGELOG、README 状态与本清单 |
+| v1.9.0 发布 | `28d8978` | 版本轴、正式 CHANGELOG、README 状态与本清单；`v1.9.0` tag 目标 |
 
 ## 3. 用户可见变化
 
@@ -58,8 +58,8 @@ v1.9.0 沿用 v1.8.0 的 tag-only 发布形态。仓库不生成 `OfflineCompani
 ## 6. 发布动作
 
 1. 已以独立提交 `69010b4` 清零 G1 Ruff 阻塞，并复现全量 `1508 passed, 3 skipped`。
-2. 创建发布提交 `chore(release): v1.9.0`。
-3. 创建 annotated tag `v1.9.0`，目标为发布提交。
+2. 已创建发布提交 `28d8978 chore(release): v1.9.0`。
+3. 已创建 annotated tag `v1.9.0`，目标为 `28d8978`。
 4. 推送 `master` 与 `v1.9.0`；若网络失败，记录推送欠账。
 5. 回填本清单的 tag 目标、推送状态和最终 gate 数字。
 6. 同步 daily 与仓库外协作档案 `USER.md`。
