@@ -593,6 +593,24 @@ body {
   border-radius: 12px; overflow: hidden; align-self: flex-start;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
+.streaming-plan-card.provisional { border-color: var(--accent); }
+.streaming-plan-card.degraded { border-color: var(--warning); }
+.streaming-plan-header {
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light); background: var(--bg-surface-hover);
+}
+.streaming-plan-steps { display: flex; flex-direction: column; padding: 8px 0; }
+.streaming-plan-step {
+  display: flex; align-items: center; gap: 10px; padding: 8px 16px;
+  color: var(--text-secondary); font-size: 13px;
+}
+.streaming-plan-step.closed { color: var(--text); }
+.streaming-plan-step.growing { opacity: 0.72; }
+.streaming-plan-plain { padding: 10px 16px; white-space: pre-wrap; word-break: break-word; }
+.streaming-plan-notice {
+  margin: 8px 16px 12px; padding: 8px 10px; border-radius: 6px;
+  background: var(--warning-soft); color: var(--warning); font-size: 12px;
+}
 .plan-message { width: min(680px, 80vw); max-width: 80%; }
 .plan-message-content { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: stretch; gap: 10px; }
 .plan-final-reply {

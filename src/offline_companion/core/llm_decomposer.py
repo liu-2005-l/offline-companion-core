@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from offline_companion.core.decomposition_result import NotDecomposableResult
@@ -95,6 +95,8 @@ def decompose_with_llm(
     skill_name: str | None = None,
     shots: Sequence[object] | None = None,
     retry_feedback: str | None = None,
+    stream_callback: Callable[[str], None] | None = None,
+    stream_complete_callback: Callable[[], None] | None = None,
 ) -> list[dict[str, Any]] | NotDecomposableResult | None:
     """摘要：用 LLM 拆解任务，失败时返回 None 交由调用方 fallback。
 
@@ -105,6 +107,8 @@ def decompose_with_llm(
         skill_name: 匹配到的 Skill 名称。
         shots: 仅供本次任务拆解使用的本地 few-shot 范例。
         retry_feedback: 上次拆解失败后的定向修正要求。
+        stream_callback: 可选的原始增量片段回调。
+        stream_complete_callback: 可选的单次生成结束回调。
 
     返回值：
         通过 schema 校验的 step 字典列表；调用失败、解析失败或校验失败时返回 None。
@@ -132,10 +136,14 @@ def decompose_with_llm(
             llm_backend,
             user_prompt=user_prompt,
             system_prompt=system_prompt,
+            stream_callback=stream_callback,
         )
     except (RuntimeError, TypeError, ValueError) as exc:
         logger.warning("LLM decompose 调用异常: %s，fallback 到规则模板", exc)
         return None
+    finally:
+        if stream_complete_callback is not None:
+            stream_complete_callback()
 
     normalized_response = str(response).strip()
     logger.debug("LLM decompose 原始输出: %s", normalized_response)
@@ -178,18 +186,37 @@ def _call_llm_backend(
     *,
     user_prompt: str,
     system_prompt: str = DECOMPOSE_SYSTEM_PROMPT,
+    stream_callback: Callable[[str], None] | None = None,
 ) -> str:
     """摘要：调用兼容的 LLM 后端并返回文本。"""
+    if stream_callback is not None and hasattr(llm_backend, "generate_stream"):
+        chunks: list[str] = []
+        for chunk in llm_backend.generate_stream(
+            system_prompt=system_prompt,
+            history=[],
+            user_message=user_prompt,
+            memory_block="",
+            max_tokens=1024,
+        ):
+            text = str(chunk)
+            if not text:
+                continue
+            chunks.append(text)
+            stream_callback(text)
+        return "".join(chunks)
     if hasattr(llm_backend, "chat"):
-        return str(
+        response = str(
             llm_backend.chat(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 temperature=0.3,
             )
         )
+        if stream_callback is not None and response:
+            stream_callback(response)
+        return response
     if hasattr(llm_backend, "generate"):
-        return str(
+        response = str(
             llm_backend.generate(
                 system_prompt=system_prompt,
                 history=[],
@@ -198,6 +225,9 @@ def _call_llm_backend(
                 max_tokens=1024,
             )
         )
+        if stream_callback is not None and response:
+            stream_callback(response)
+        return response
     raise TypeError("llm_backend must provide chat() or generate()")
 
 

@@ -625,6 +625,35 @@ class PlanOrchestrator:
         self._skill_stages = list(self._decomposer.skill_stages)
         return steps
 
+    def decide_stream(
+        self,
+        user_input: str,
+        *,
+        on_delta: Callable[[str], None],
+        on_attempt_complete: Callable[[], None],
+        on_retry: Callable[[int], None],
+    ) -> list[PlanStep] | NotDecomposableResult:
+        """摘要：以增量回调执行手动计划拆解并复用同步终态校验。
+
+        参数：
+            user_input: 用户提交的完整目标文本。
+            on_delta: 单次生成的原始增量片段回调。
+            on_attempt_complete: 单次模型生成结束回调。
+            on_retry: 首次校验失败后的重试通知回调。
+
+        返回值：
+            与 ``decide`` 相同的已校验计划步骤或不可拆解结果。
+        """
+        steps = self._decomposer.decide(
+            user_input,
+            stream_callback=on_delta,
+            stream_complete_callback=on_attempt_complete,
+            retry_callback=on_retry,
+        )
+        self._skill_name = self._decomposer.skill_name
+        self._skill_stages = list(self._decomposer.skill_stages)
+        return steps
+
     def load_template(self, plan_id: str) -> list[PlanStep]:
         for candidate in (
             self._templates_dir / f"{plan_id}.json",

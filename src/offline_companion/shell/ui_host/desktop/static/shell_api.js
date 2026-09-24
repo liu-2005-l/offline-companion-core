@@ -945,6 +945,78 @@ async function apiLatestSseSeq(sessionId) {
   return Number(data.latest_seq) || 0;
 }
 
+async function apiStreamPlanDecomposition(goal, decompStartedAt) {
+  let lastStreamSeq = await apiLatestSseSeq(_currentSessionId);
+  const response = await fetch('/api/plan/decompose', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ goal: goal, stream: true }),
+    signal: _chatAbortController.signal
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(function() { return {}; });
+    throw new Error(payload.error || ('HTTP ' + response.status));
+  }
+  if (!response.body) throw new Error('流式任务拆解响应不可读');
+
+  const state = window.StreamingCardState.create(goal);
+  let cardId = null;
+  let accepted = false;
+  const ensureCard = function() {
+    if (!cardId) {
+      hideTyping();
+      cardId = _createStreamingPlanCard(goal, new Date().toTimeString().slice(0, 5));
+    }
+    return cardId;
+  };
+  const handleEvent = function(event) {
+    if (event.seq) lastStreamSeq = Math.max(lastStreamSeq, Number(event.seq) || 0);
+    window.StreamingCardState.apply(state, event);
+    if (event.type === 'not_decomposable') {
+      if (cardId) _removeStreamingPlanCard(cardId);
+      hideTyping();
+      return;
+    }
+    if (event.type === 'card_final' && state.lifecycle === 'accepted') {
+      if (cardId) _removeStreamingPlanCard(cardId);
+      const plan = state.card;
+      plan._decompMs = performance.now() - decompStartedAt;
+      window._activePlans[plan.id] = plan;
+      hideTyping();
+      _renderPlanCard(plan, new Date().toTimeString().slice(0, 5));
+      accepted = true;
+      return;
+    }
+    if (['card_delta', 'card_retry', 'card_degrade', 'token', 'error'].includes(event.type)) {
+      _renderStreamingPlanState(ensureCard(), state);
+    }
+  };
+  const repairCardGap = function(fromSeq, untilSeq) {
+    return apiRepairSseGap(_currentSessionId, fromSeq, handleEvent, untilSeq);
+  };
+
+  try {
+    const streamState = await apiReadSseStream(response, handleEvent, {
+      initialSeq: lastStreamSeq,
+      onGap: repairCardGap
+    });
+    if (!streamState.done && !state.terminal) throw new Error('流式任务拆解连接提前结束');
+  } catch (error) {
+    window.StreamingCardState.disconnect(state);
+    if (cardId) _removeStreamingPlanCard(cardId);
+    hideTyping();
+    throw error;
+  }
+
+  if (state.fallback) {
+    return {
+      fallbackToChat: true,
+      fallbackNotice: String(state.fallback.fallback_notice || '').trim()
+    };
+  }
+  return { fallbackToChat: false, accepted: accepted, state: state };
+}
+
 async function sendMessage() {
   if (_sessionReconciling) {
     showToast('会话状态正在对账，请稍候');
@@ -978,6 +1050,16 @@ async function sendMessage() {
     const decompStartedAt = performance.now();
     let fallbackToChat = false;
     try {
+      if (window._streamingPlanCardsEnabled) {
+        const streamResult = await apiStreamPlanDecomposition(text, decompStartedAt);
+        fallbackToChat = streamResult.fallbackToChat;
+        fallbackNotice = streamResult.fallbackNotice || '';
+        if (!fallbackToChat) {
+          setChatRequestActive(false);
+          _chatAbortController = null;
+          return;
+        }
+      } else {
       const data = await apiJson('/api/plan/decompose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -993,6 +1075,7 @@ async function sendMessage() {
       window._activePlans[plan.id] = plan;
       _renderPlanCard(plan, new Date().toTimeString().slice(0, 5));
       chat.scrollTop = chat.scrollHeight;
+      }
       }
     } catch (error) {
       hideTyping();

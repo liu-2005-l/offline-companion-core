@@ -26,6 +26,7 @@ from offline_companion.core.memory_lifecycle.triggers import load_triggers
 from offline_companion.core.persona_constraint import load_persona_constraint_assets
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.core.persona_session.session import PersonaSessionCore
+from offline_companion.core.plan_decomposer import PlanCardValidationError
 from offline_companion.core.plan_orchestrator import (
     A3ConsentAdapter,
     ConsentRequest,
@@ -43,6 +44,7 @@ from offline_companion.runtime.storage_index.engine import (
     connect,
     new_session,
     recent_messages,
+    stream_events_after,
 )
 from offline_companion.shared.errors import OutboundDenied
 from offline_companion.shared.types import (
@@ -97,6 +99,39 @@ class _SplitStreamBackend(EchoBackend):
     def generate_stream(self, **_kwargs):
         yield "A"
         yield "B"
+
+
+class _PlanStreamBackend:
+    """摘要：按两个增量片段返回可通过拆解终态门的计划 JSON。"""
+
+    def generate_stream(self, **_kwargs):
+        yield '[{"title":"实现排序脚本","description":"编写本地排序脚本",'
+        yield (
+            '"expected_output":"可运行的排序脚本","verification":"运行排序测试",'
+            '"completion_criteria":"排序测试通过","stage":"","estimated_minutes":10,'
+            '"files":[],"subagent_type":""}]'
+        )
+
+
+class _RetryingPlanStreamBackend(_PlanStreamBackend):
+    """摘要：首次返回无效 schema，第二次返回有效计划。"""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def generate_stream(self, **kwargs):
+        self.calls += 1
+        if self.calls == 1:
+            yield '[{"title":"字段不足"}]'
+            return
+        yield from super().generate_stream(**kwargs)
+
+
+class _FailingPlanBackend:
+    """摘要：同步拆解后端失败时验证既有规则 fallback。"""
+
+    def chat(self, **_kwargs):
+        raise RuntimeError("offline")
 
 
 class _BlockingBackend(EchoBackend):
@@ -641,6 +676,238 @@ def test_desktop_http_plan_decompose_and_execute(tmp_path) -> None:
     assert progress_payload["progress_percent"] > 0
 
 
+def test_desktop_http_plan_decompose_stream_zero_delta_persists_terminal_events(tmp_path) -> None:
+    """摘要：规则命中允许零 delta，并持久化 canonical 终态与 done。"""
+    runtime = _runtime(tmp_path)
+    client = create_desktop_app(runtime).test_client()
+
+    response = client.post(
+        "/api/plan/decompose",
+        json={"goal": "按Booth算法计算7乘3", "stream": True},
+    )
+
+    assert response.status_code == 200
+    assert response.content_type.startswith("text/event-stream")
+    events = _sse_payloads(response.text)
+    assert [event["type"] for event in events] == ["card_final", "done"]
+    assert events[0]["card"]["id"].startswith("plan_")
+    assert events[1]["done"] is True
+    assert all(isinstance(event["seq"], int) for event in events)
+    assert stream_events_after(runtime.orchestrator.conn, "h1", 0) == events
+
+
+def test_desktop_http_plan_decompose_stream_uses_canonical_sse_bytes(tmp_path) -> None:
+    """摘要：卡片流必须复用 data JSON 双换行帧且保留 UTF-8 字节。"""
+    runtime = _runtime(tmp_path)
+    client = create_desktop_app(runtime).test_client()
+
+    response = client.post(
+        "/api/plan/decompose",
+        json={"goal": "按Booth算法计算7乘3", "stream": True},
+    )
+
+    raw = response.data
+    assert raw.endswith(b"\n\n")
+    frames = raw.split(b"\n\n")[:-1]
+    assert len(frames) == 2
+    payloads = []
+    for frame in frames:
+        assert frame.startswith(b"data: ")
+        assert b"\nevent:" not in frame
+        payloads.append(json.loads(frame.removeprefix(b"data: ").decode("utf-8")))
+    assert [payload["type"] for payload in payloads] == ["card_final", "done"]
+    assert payloads[0]["card"]["goal"] == "按Booth算法计算7乘3"
+
+
+def test_desktop_http_plan_decompose_stream_real_backend_reaches_canonical_final(tmp_path) -> None:
+    """摘要：真实 generate_stream 增量必须经过终态校验并落 canonical plan。"""
+    runtime = _runtime(tmp_path)
+    runtime.plan_orchestrator = PlanOrchestrator(
+        InMemoryPlanStore(),
+        llm_backend=_PlanStreamBackend(),
+    )
+    client = create_desktop_app(runtime).test_client()
+
+    events = _sse_payloads(
+        client.post(
+            "/api/plan/decompose",
+            json={"goal": "编写本地排序脚本并运行排序测试", "stream": True},
+        ).text
+    )
+
+    assert [event["type"] for event in events] == [
+        "card_delta",
+        "card_delta",
+        "card_delta",
+        "card_delta",
+        "card_final",
+        "done",
+    ]
+    assert "".join(event["delta"] for event in events if event["type"] == "card_delta").startswith(
+        '{"steps":['
+    )
+    assert events[-2]["card"]["steps"][0]["title"] == "实现排序脚本"
+    assert runtime.orchestrator.conn.execute("SELECT COUNT(*) FROM plans").fetchone()[0] == 1
+
+
+def test_desktop_http_plan_decompose_stream_retries_c2_once_then_accepts(tmp_path) -> None:
+    """摘要：首次 C-2 失败只重试一次，第二次有效输出才能进入终态门。"""
+    runtime = _runtime(tmp_path)
+    backend = _RetryingPlanStreamBackend()
+    runtime.plan_orchestrator = PlanOrchestrator(
+        InMemoryPlanStore(),
+        llm_backend=backend,
+    )
+    client = create_desktop_app(runtime).test_client()
+
+    events = _sse_payloads(
+        client.post(
+            "/api/plan/decompose",
+            json={"goal": "编写本地排序脚本并运行排序测试", "stream": True},
+        ).text
+    )
+
+    assert backend.calls == 2
+    assert [event["type"] for event in events].count("card_retry") == 1
+    assert next(event for event in events if event["type"] == "card_retry")["attempt"] == 2
+    assert events[-2]["type"] == "card_final"
+    assert events[-1]["type"] == "done"
+
+
+def test_desktop_http_plan_decompose_stream_emits_delta_retry_and_terminal_error(tmp_path) -> None:
+    """摘要：两次生成失败时清空跨 attempt 内容并发送持久化终态错误。"""
+    runtime = _runtime(tmp_path)
+    orchestrator = PlanOrchestrator(InMemoryPlanStore())
+
+    def fail_stream(
+        _goal,
+        *,
+        on_delta,
+        on_attempt_complete,
+        on_retry,
+    ):
+        on_delta('[{"title":"第一次"}]')
+        on_attempt_complete()
+        on_retry(2)
+        on_delta('[{"title":"第二次"}]')
+        on_attempt_complete()
+        raise PlanCardValidationError("invalid")
+
+    orchestrator.decide_stream = fail_stream
+    runtime.plan_orchestrator = orchestrator
+    client = create_desktop_app(runtime).test_client()
+
+    response = client.post(
+        "/api/plan/decompose",
+        json={"goal": "实现本地排序脚本", "stream": True},
+    )
+    events = _sse_payloads(response.text)
+
+    assert response.status_code == 200
+    assert [event["type"] for event in events] == [
+        "card_delta",
+        "card_delta",
+        "card_delta",
+        "card_retry",
+        "card_delta",
+        "card_delta",
+        "card_delta",
+        "error",
+    ]
+    assert events[3]["attempt"] == 2
+    assert events[-1]["code"] == "card_validation_failed"
+    assert events[-1]["done"] is True
+    assert stream_events_after(runtime.orchestrator.conn, "h1", 0) == events
+
+
+def test_desktop_http_plan_decompose_stream_degrades_after_midstream_failure(tmp_path) -> None:
+    """摘要：生成中断时保留 provisional 卡片并切到持久化纯文本降级序列。"""
+    runtime = _runtime(tmp_path)
+    orchestrator = PlanOrchestrator(InMemoryPlanStore())
+
+    def interrupt_stream(_goal, *, on_delta, **_callbacks):
+        on_delta('[{"title":"未完成')
+        raise RuntimeError("backend disconnected")
+
+    orchestrator.decide_stream = interrupt_stream
+    runtime.plan_orchestrator = orchestrator
+    client = create_desktop_app(runtime).test_client()
+
+    events = _sse_payloads(
+        client.post(
+            "/api/plan/decompose",
+            json={"goal": "实现本地排序脚本", "stream": True},
+        ).text
+    )
+
+    assert [event["type"] for event in events] == [
+        "card_delta",
+        "card_delta",
+        "card_degrade",
+        "token",
+        "done",
+    ]
+    assert events[2]["reason"] == "generation_failed"
+    assert events[3]["token"] == "任务拆解未完成，请重试。"
+    assert stream_events_after(runtime.orchestrator.conn, "h1", 0) == events
+
+
+def test_desktop_http_plan_decompose_stream_uses_not_decomposable_terminal(tmp_path) -> None:
+    """摘要：不可拆解结果复用专用终态且不误报校验失败。"""
+    runtime = _runtime(tmp_path)
+    orchestrator = PlanOrchestrator(InMemoryPlanStore())
+    orchestrator.decide_stream = lambda _goal, **_callbacks: NotDecomposableResult(
+        reason="explanation",
+        original_input="解释 CRC",
+    )
+    runtime.plan_orchestrator = orchestrator
+    client = create_desktop_app(runtime).test_client()
+
+    events = _sse_payloads(
+        client.post(
+            "/api/plan/decompose",
+            json={"goal": "解释 CRC", "stream": True},
+        ).text
+    )
+
+    assert len(events) == 1
+    assert events[0] == {
+        "type": "not_decomposable",
+        "seq": events[0]["seq"],
+        "status": "not_decomposable",
+        "reason": "explanation",
+        "fallback_notice": None,
+        "done": True,
+    }
+
+
+def test_desktop_http_plan_decompose_stream_card_matches_sync_projection(tmp_path, monkeypatch) -> None:
+    """摘要：同一目标的同步 plan 与流式 card_final 必须保持 canonical 同构。"""
+    monkeypatch.setattr(desktop_http.time, "time", lambda: 1234.5)
+    runtime = _runtime(tmp_path)
+    client = create_desktop_app(runtime).test_client()
+
+    sync_plan = client.post(
+        "/api/plan/decompose",
+        json={"goal": "按Booth算法计算7乘3"},
+    ).get_json()["plan"]
+    stream_events = _sse_payloads(
+        client.post(
+            "/api/plan/decompose",
+            json={"goal": "按Booth算法计算7乘3", "stream": True},
+        ).text
+    )
+    stream_plan = next(event["card"] for event in stream_events if event["type"] == "card_final")
+
+    assert set(stream_plan) == set(sync_plan)
+    sync_id = sync_plan.pop("id")
+    stream_id = stream_plan.pop("id")
+    assert sync_id != stream_id
+    assert isinstance(sync_plan.pop("updated_at"), float)
+    assert isinstance(stream_plan.pop("updated_at"), float)
+    assert stream_plan == sync_plan
+
+
 def test_desktop_http_plan_decompose_non_task_returns_chat_fallback_contract(tmp_path) -> None:
     runtime = _runtime_with_sample_library(tmp_path)
     client = create_desktop_app(runtime).test_client()
@@ -655,6 +922,36 @@ def test_desktop_http_plan_decompose_non_task_returns_chat_fallback_contract(tmp
     }
     assert runtime.orchestrator.conn.execute("SELECT COUNT(*) FROM plans").fetchone()[0] == 0
     assert runtime.sample_repository.list_samples() == []
+
+
+def test_desktop_http_plan_decompose_missing_goal_keeps_sync_json_error(tmp_path) -> None:
+    """摘要：缺失目标的默认同步请求继续返回原 400 JSON 契约。"""
+    runtime = _runtime(tmp_path)
+    response = create_desktop_app(runtime).test_client().post(
+        "/api/plan/decompose",
+        json={},
+    )
+
+    assert response.status_code == 400
+    assert response.content_type.startswith("application/json")
+    assert response.get_json() == {"error": "missing goal"}
+
+
+def test_desktop_http_plan_decompose_sync_llm_failure_keeps_rule_fallback(tmp_path) -> None:
+    """摘要：同步 LLM 失败仍走原规则模板，不进入 SSE 或 card error。"""
+    runtime = _runtime(tmp_path)
+    runtime.plan_orchestrator = PlanOrchestrator(
+        InMemoryPlanStore(),
+        llm_backend=_FailingPlanBackend(),
+    )
+    response = create_desktop_app(runtime).test_client().post(
+        "/api/plan/decompose",
+        json={"goal": "实现一个本地验证脚本"},
+    )
+
+    assert response.status_code == 201
+    assert response.content_type.startswith("application/json")
+    assert response.get_json()["plan"]["steps"]
 
 
 def test_desktop_http_plan_decompose_returns_visible_fallback_notice(tmp_path) -> None:

@@ -203,7 +203,13 @@ function updateSendBtn() {
 }
 
 var _planMode = false;
+var _streamingPlanCardsEnabled = localStorage.getItem('streamingPlanCards') !== 'false';
 var _currentSessionId = null;
+
+function setStreamingPlanCardsEnabled(enabled) {
+  _streamingPlanCardsEnabled = Boolean(enabled);
+  localStorage.setItem('streamingPlanCards', _streamingPlanCardsEnabled ? 'true' : 'false');
+}
 
 async function apiJson(url, options) {
   var resp = await fetch(url, options || {});
@@ -475,6 +481,7 @@ function sendMessage() {
 var _planIdCounter = 0;
 var _activePlans = {};
 var _planCardStates = {};
+var _streamingPlanCardCounter = 0;
 
 function _ensurePlanCardState(plan) {
   if (!_planCardStates[plan.id]) {
@@ -563,6 +570,69 @@ function _buildPlanFallbackReply(plan) {
   var titles = steps.map(function(step) { return '- ' + String(step.title || step.description || '未命名步骤'); });
   return label + '，' + successful + '/' + steps.length + ' 步骤成功。' +
     (titles.length ? '\n\n执行步骤：\n' + titles.join('\n') : '');
+}
+
+function _createStreamingPlanCard(goal, time) {
+  var id = 'streaming_plan_' + (++_streamingPlanCardCounter);
+  var chat = document.getElementById('chatMessages');
+  var html =
+    '<div class="msg msg-bot plan-message streaming-plan-message" data-stream-card-id="' + id + '">' +
+      '<div class="msg-avatar">诺</div>' +
+      '<div class="plan-message-content">' +
+        '<div class="plan-card decomp-card streaming-plan-card provisional" id="' + id + '">' +
+          '<div class="streaming-plan-header">' +
+            '<span class="plan-card-spinner"></span>' +
+            '<div><div class="plan-card-title">任务拆解 · 生成中</div>' +
+            '<div class="plan-card-summary">provisional · ' + escapeHtml(time || '') + '</div></div>' +
+          '</div>' +
+          '<div class="plan-card-goal">' + escapeHtml(goal) + '</div>' +
+          '<div class="streaming-plan-steps"></div>' +
+          '<div class="streaming-plan-notice" hidden></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  chat.insertAdjacentHTML('beforeend', html);
+  chat.scrollTop = chat.scrollHeight;
+  return id;
+}
+
+function _renderStreamingPlanState(cardId, state) {
+  var card = document.getElementById(cardId);
+  if (!card) return;
+  card.classList.remove('provisional', 'accepted', 'degraded');
+  card.classList.add(state.lifecycle);
+  var summary = card.querySelector('.plan-card-summary');
+  if (summary) summary.textContent = state.lifecycle + ' · 第 ' + state.attempt + ' 次生成';
+  var container = card.querySelector('.streaming-plan-steps');
+  var steps = state.partial && state.partial.value && Array.isArray(state.partial.value.steps) ?
+    state.partial.value.steps : [];
+  var closed = new Set(state.partial && state.partial.closed || []);
+  if (container) {
+    container.innerHTML = steps.map(function(step, index) {
+      var isClosed = closed.has('steps[' + index + ']');
+      var title = step && typeof step === 'object' ? String(step.title || step.description || '生成中…') : '生成中…';
+      return '<div class="streaming-plan-step ' + (isClosed ? 'closed' : 'growing') + '">' +
+        '<span class="plan-step-num">' + (index + 1) + '</span>' +
+        '<span>' + escapeHtml(title) + '</span>' +
+      '</div>';
+    }).join('');
+    if (state.lifecycle === 'degraded' && state.plainText) {
+      container.innerHTML += '<div class="streaming-plan-plain">' + escapeHtml(state.plainText) + '</div>';
+    }
+  }
+  var notice = card.querySelector('.streaming-plan-notice');
+  if (notice) {
+    notice.hidden = !state.notice;
+    notice.textContent = state.notice || '';
+  }
+  var chat = document.getElementById('chatMessages');
+  if (chat) chat.scrollTop = chat.scrollHeight;
+}
+
+function _removeStreamingPlanCard(cardId) {
+  var card = document.getElementById(cardId);
+  var message = card && card.closest('.streaming-plan-message');
+  if (message) message.remove();
 }
 
 function _renderPlanCard(plan, time) {

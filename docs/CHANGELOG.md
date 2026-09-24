@@ -7,6 +7,7 @@
 ## 未发布 · 2026-09-03（拟人表述 W2 / 人格约束 P2 实验闭合）
 
 ### 实验与基础设施
+- 落地流式卡片 B1-B3：Python/JS 双实现通过同一份 23 单例 + 4 链 golden，手动拆解以 `stream:true` 协商 SSE，card 全事件接全局 seq 与持久化，终态 canonical plan 与同步响应同构；前端接通 provisional/accepted/degraded、零 delta、单次 retry、纯文本降级与断连清理。
 - 冻结流式卡片 B0 接缝契约：默认同步 `/api/plan/decompose` 保持不变，`stream:true` 才启用 SSE；统一 `PartialParse`、card 事件族、provisional/accepted/degraded 生命周期、canonical plan 终态与连接内 gap repair，首版仅覆盖手动入口。
 - P3-A5 总闭合：L4 fallback 从代码常量迁入第六源 `reply_copy` 冻结 YAML 并纳入发布哈希链，P1 L4 patterns 字节锚保持不变；L4 retry 固定复用原轮 `PersonaTurnSignals` 与 emotion confidence，不重新分类同轮模型输出。
 - 闭合 P3-A4 L4 基线接线：P1 三分区冻结扫描驱动 `direct/retry/fallback/observe`，身份断崖与能力/事实否认最多重试一次，用户攻击保持 observe-only；动作 trace 同步写入 assistant message meta。

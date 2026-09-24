@@ -134,9 +134,9 @@ def test_desktop_static_assets_use_cache_busting_version() -> None:
 
     html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
 
-    assert 'href="/shell.css?v=20260822-arithmetic-audit-v1"' in html
-    assert 'src="/shell.js?v=20260822-arithmetic-audit-v1"' in html
-    assert 'src="/shell_api.js?v=20260822-arithmetic-audit-v1"' in html
+    assert 'href="/shell.css?v=20260923-streaming-card-b3"' in html
+    assert 'src="/shell.js?v=20260923-streaming-card-b3"' in html
+    assert 'src="/shell_api.js?v=20260923-streaming-card-b3"' in html
 
 
 def test_sample_library_has_sidebar_entry_and_defaults_to_all_samples() -> None:
@@ -178,3 +178,34 @@ def test_stream_terminal_reply_replaces_unverified_streamed_text() -> None:
 
     assert "finalData.reply !== streamedText" in api_script
     assert "bubble.textContent = finalData.reply;" in api_script
+
+
+def test_manual_plan_streaming_uses_explicit_negotiation_without_removing_sync_path() -> None:
+    """摘要：流式卡片由前端开关显式协商，关闭时保留原同步调用。"""
+    shell = (STATIC_DIR / "shell.js").read_text(encoding="utf-8")
+    api_script = (STATIC_DIR / "shell_api.js").read_text(encoding="utf-8")
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+
+    assert "function setStreamingPlanCardsEnabled(enabled)" in shell
+    assert "localStorage.getItem('streamingPlanCards') !== 'false'" in shell
+    assert "if (window._streamingPlanCardsEnabled)" in api_script
+    assert "JSON.stringify({ goal: goal, stream: true })" in api_script
+    assert "const data = await apiJson('/api/plan/decompose'" in api_script
+    assert 'src="/streaming_card_parser.js?v=20260923-streaming-card-b1"' in html
+    assert 'src="/streaming_card_state.js?v=20260923-streaming-card-b3"' in html
+
+
+def test_manual_plan_streaming_renders_three_states_and_clears_on_disconnect() -> None:
+    """摘要：provisional、accepted、degraded 与断连清理都有显式消费点。"""
+    shell = (STATIC_DIR / "shell.js").read_text(encoding="utf-8")
+    api_script = (STATIC_DIR / "shell_api.js").read_text(encoding="utf-8")
+    stylesheet = (STATIC_DIR / "shell.css").read_text(encoding="utf-8")
+
+    assert "function _createStreamingPlanCard(goal, time)" in shell
+    assert "function _renderStreamingPlanState(cardId, state)" in shell
+    assert "function _removeStreamingPlanCard(cardId)" in shell
+    assert "state.lifecycle === 'accepted'" in api_script
+    assert "StreamingCardState.disconnect(state)" in api_script
+    assert "if (cardId) _removeStreamingPlanCard(cardId);" in api_script
+    assert ".streaming-plan-card.provisional" in stylesheet
+    assert ".streaming-plan-card.degraded" in stylesheet

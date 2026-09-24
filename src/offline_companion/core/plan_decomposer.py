@@ -26,6 +26,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+class PlanCardValidationError(ValueError):
+    """摘要：表示流式计划两次生成均未通过终态校验。"""
+
 _NON_TASK_INPUTS = frozenset(
     {
         "你好",
@@ -168,7 +172,14 @@ class PlanDecomposer:
         self.last_sample_ids: list[str] = []
         self.last_candidate_sample_id: str | None = None
 
-    def decide(self, user_input: str) -> list[PlanStep] | NotDecomposableResult:
+    def decide(
+        self,
+        user_input: str,
+        *,
+        stream_callback: Callable[[str], None] | None = None,
+        stream_complete_callback: Callable[[], None] | None = None,
+        retry_callback: Callable[[int], None] | None = None,
+    ) -> list[PlanStep] | NotDecomposableResult:
         """摘要：将用户目标拆成可执行、可验证的计划步骤。
 
         参数：
@@ -253,16 +264,42 @@ class PlanDecomposer:
             if self._router is not None:
                 from offline_companion.core.llm_decomposer import decompose_with_llm
 
+                stream_retry_used = False
                 raw_steps = decompose_with_llm(
                     goal,
                     self._router,
                     skill_stages=self.skill_stages or None,
                     skill_name=self.skill_name,
                     shots=shots or None,
+                    stream_callback=stream_callback,
+                    stream_complete_callback=stream_complete_callback,
                 )
                 if isinstance(raw_steps, NotDecomposableResult):
                     logger.info("拆解决策: action=fallback reason=%s", raw_steps.reason)
                     return raw_steps
+                stream_issue = (
+                    self._streaming_llm_candidate_issue(goal, raw_steps)
+                    if stream_callback is not None and raw_steps is not None
+                    else "输出必须是满足字段约束的 JSON 步骤数组，不得包含额外文本。"
+                )
+                if stream_callback is not None and stream_issue:
+                    if retry_callback is not None:
+                        retry_callback(2)
+                    stream_retry_used = True
+                    raw_steps = decompose_with_llm(
+                        goal,
+                        self._router,
+                        skill_stages=self.skill_stages or None,
+                        skill_name=self.skill_name,
+                        shots=shots or None,
+                        retry_feedback=stream_issue,
+                        stream_callback=stream_callback,
+                        stream_complete_callback=stream_complete_callback,
+                    )
+                    if isinstance(raw_steps, NotDecomposableResult):
+                        return raw_steps
+                    if raw_steps is None or self._streaming_llm_candidate_issue(goal, raw_steps):
+                        raise PlanCardValidationError("streamed decomposition failed validation")
                 if raw_steps is not None:
                     source = "llm"
                     missing_constraints = self._missing_method_constraints(goal, raw_steps)
@@ -276,6 +313,8 @@ class PlanDecomposer:
                             "任务拆解丢失方法约束，执行一次定向重拆 constraints=%s",
                             missing_constraints,
                         )
+                        if stream_callback is not None and stream_retry_used:
+                            raise PlanCardValidationError("streamed decomposition exhausted its single retry")
                         raw_steps = decompose_with_llm(
                             goal,
                             self._router,
@@ -407,6 +446,35 @@ class PlanDecomposer:
             self._sample_lifecycle.assign_plan_id(self.last_candidate_sample_id, plan_id)
         except Exception:
             logger.exception("候选样本 plan_id 回填失败，不阻塞计划落库")
+
+    def _streaming_llm_candidate_issue(
+        self,
+        goal: str,
+        raw_steps: list[dict[str, Any]],
+    ) -> str | None:
+        """摘要：在 delta 终态采纳前执行同步链同款 C-2 质量检查。"""
+        missing_constraints = self._missing_method_constraints(goal, raw_steps)
+        if missing_constraints:
+            return (
+                "必须在至少一个步骤中明确保留这些方法约束："
+                + "、".join(missing_constraints)
+                + "。不得改写或省略指定算法、协议或格式。"
+            )
+        steps = [raw_to_plan_step(step, goal, index) for index, step in enumerate(raw_steps)]
+        if _contains_generic_scaffold(steps):
+            return "步骤不得使用空泛元模板描述，必须给出任务特定的动作与对象。"
+        if _detect_echo(goal, _raw_goal_text(raw_steps), _plan_step_texts(steps)):
+            return "步骤不得复述用户目标，必须转化为可执行动作。"
+        if _step_relevance(goal, steps) < _MIN_STEP_RELEVANCE:
+            return "步骤必须与用户目标直接相关。"
+        zero_value_score = _zero_value_plan_score(
+            goal,
+            steps,
+            method_entity_names=self._current_method_entity_names(),
+        )
+        if zero_value_score is not None and zero_value_score >= 0.8:
+            return "计划必须增加可执行、可验证的信息，不得生成零价值步骤。"
+        return None
 
     def _learning_enabled(self) -> bool:
         """摘要：读取动态开关，读取失败时安全退回关闭。"""

@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import queue
 import secrets
 import shutil
 import socket
@@ -50,6 +51,7 @@ from offline_companion.core.persona_constraint import (
     load_persona_constraint_assets,
 )
 from offline_companion.core.persona_session.persona_loader import load_persona_file
+from offline_companion.core.plan_decomposer import PlanCardValidationError
 from offline_companion.core.plan_enums import PlanErrorCode, PlanEventName
 from offline_companion.core.plan_orchestrator import (
     ConsentRequest,
@@ -1950,6 +1952,13 @@ def create_desktop_app(runtime: DesktopRuntime):
         if not goal:
             return _json_response(jsonify, {"error": "missing goal"}, status=400)
         plan_orchestrator = runtime.plan_orchestrator or _fallback_plan_orchestrator(runtime)
+        if data.get("stream") is True:
+            return _stream_manual_plan_decomposition(
+                Response,
+                runtime,
+                plan_orchestrator,
+                goal,
+            )
         steps = plan_orchestrator.decide(goal)
         if isinstance(steps, NotDecomposableResult):
             payload = {"ok": True, "status": steps.status, "reason": steps.reason}
@@ -2524,6 +2533,125 @@ def _sse_response(response_factory: Any, generator: Any) -> Any:
     response.headers["Cache-Control"] = "no-cache"
     response.headers["X-Accel-Buffering"] = "no"
     return response
+
+
+def _stream_manual_plan_decomposition(
+    response_factory: Any,
+    runtime: DesktopRuntime,
+    plan_orchestrator: PlanOrchestrator,
+    goal: str,
+) -> Any:
+    """摘要：在独立 SSE 分支中流式拆解并持久化全部卡片事件。"""
+    events: queue.Queue[dict[str, Any] | object] = queue.Queue()
+    sentinel = object()
+
+    def persist(payload: dict[str, Any]) -> None:
+        events.put(
+            append_stream_event(
+                runtime.orchestrator.conn,
+                runtime.session_id,
+                payload,
+            )
+        )
+
+    def run() -> None:
+        attempt_open = False
+        had_delta = False
+
+        def on_delta(delta: str) -> None:
+            nonlocal attempt_open, had_delta
+            had_delta = True
+            if not attempt_open:
+                persist({"type": "card_delta", "delta": '{"steps":'})
+                attempt_open = True
+            persist({"type": "card_delta", "delta": delta})
+
+        def on_attempt_complete() -> None:
+            nonlocal attempt_open
+            if attempt_open:
+                persist({"type": "card_delta", "delta": "}"})
+                attempt_open = False
+
+        def on_retry(attempt: int) -> None:
+            nonlocal attempt_open
+            attempt_open = False
+            persist({"type": "card_retry", "attempt": int(attempt)})
+
+        try:
+            steps = plan_orchestrator.decide_stream(
+                goal,
+                on_delta=on_delta,
+                on_attempt_complete=on_attempt_complete,
+                on_retry=on_retry,
+            )
+            if isinstance(steps, NotDecomposableResult):
+                persist(
+                    {
+                        "type": "not_decomposable",
+                        "status": steps.status,
+                        "reason": steps.reason,
+                        "fallback_notice": steps.fallback_notice,
+                        "done": True,
+                    }
+                )
+                return
+            plan = _steps_to_legacy_plan(
+                goal,
+                steps,
+                skill_name=plan_orchestrator._skill_name,
+                skill_stages=plan_orchestrator._skill_stages,
+            )
+            context = plan_orchestrator.create_plan(str(plan["id"]), steps)
+            context.context_vars["manual_plan"] = {
+                "goal": goal,
+                "skill_name": plan_orchestrator._skill_name,
+                "skill_stages": list(plan_orchestrator._skill_stages),
+                "created_at": plan["created_at"],
+            }
+            context.context_vars["session_id"] = runtime.session_id
+            context.context_vars["original_input"] = goal
+            if plan_orchestrator._skill_name:
+                context.context_vars["skill_name"] = plan_orchestrator._skill_name
+                context.context_vars["skill_stages"] = list(plan_orchestrator._skill_stages)
+            plan_orchestrator.save_context(context)
+            plan = _save_manual_plan(
+                runtime.orchestrator.conn,
+                _manual_plan_projection(context),
+            )
+            user_message_id = append_message(
+                runtime.orchestrator.conn,
+                runtime.session_id,
+                "user",
+                goal,
+                meta={"channel": "manual_plan", "plan_id": context.plan_id},
+            )
+            context.context_vars["manual_plan_user_message_id"] = user_message_id
+            plan_orchestrator.save_context(context)
+            persist({"type": "card_final", "card": plan})
+            persist({"type": "done", "done": True})
+        except PlanCardValidationError:
+            persist({"type": "error", "code": "card_validation_failed", "done": True})
+        except Exception:
+            logger.exception("流式计划拆解失败")
+            if had_delta:
+                persist({"type": "card_degrade", "reason": "generation_failed"})
+                persist({"type": "token", "token": "任务拆解未完成，请重试。"})
+                persist({"type": "done", "done": True})
+            else:
+                persist({"type": "error", "code": "card_validation_failed", "done": True})
+        finally:
+            events.put(sentinel)
+
+    threading.Thread(target=run, name="plan-card-stream", daemon=True).start()
+
+    def generate():
+        while True:
+            event = events.get()
+            if event is sentinel:
+                return
+            yield _sse_event(event)
+
+    return _sse_response(response_factory, generate())
 
 
 
