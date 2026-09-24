@@ -4,12 +4,10 @@
 
 ---
 
-## v1.9.0（未发布）· 2026-09-03（拟人表述 W2 / 人格约束 P2 / 流式卡片）
+## v1.9.0 · 2026-09-24（流式卡片）
 
 ### 实验与基础设施
-- 闭合流式卡片 B4：新增 Python/JavaScript 解析器禁回退试解析哨兵，完成 B0 十一项冻结契约逐条对账，并以 `streaming-card-b4-closure-report.md` 记录实现、候选池与显式边界。
-- 落地流式卡片 B1-B3：Python/JS 双实现通过同一份 23 单例 + 4 链 golden，手动拆解以 `stream:true` 协商 SSE，card 全事件接全局 seq 与持久化，终态 canonical plan 与同步响应同构；前端接通 provisional/accepted/degraded、零 delta、单次 retry、纯文本降级与断连清理。
-- 冻结流式卡片 B0 接缝契约：默认同步 `/api/plan/decompose` 保持不变，`stream:true` 才启用 SSE；统一 `PartialParse`、card 事件族、provisional/accepted/degraded 生命周期、canonical plan 终态与连接内 gap repair，首版仅覆盖手动入口。
+- `feat(streaming)`：完成流式卡片 B0-B4。默认同步 `/api/plan/decompose` 保持不变，`stream:true` 启用 SSE；Python/JavaScript 双解析器共享 39 节点 golden，card 事件接全局 `seq` 与持久化，canonical 终态与同步响应同构，前端接通 provisional/accepted/degraded、零 delta、单次 retry、纯文本降级、gap repair 幂等与断连清理，并由双哨兵和十一项契约报告完成收口。
 - P3-A5 总闭合：L4 fallback 从代码常量迁入第六源 `reply_copy` 冻结 YAML 并纳入发布哈希链，P1 L4 patterns 字节锚保持不变；L4 retry 固定复用原轮 `PersonaTurnSignals` 与 emotion confidence，不重新分类同轮模型输出。
 - 闭合 P3-A4 L4 基线接线：P1 三分区冻结扫描驱动 `direct/retry/fallback/observe`，身份断崖与能力/事实否认最多重试一次，用户攻击保持 observe-only；动作 trace 同步写入 assistant message meta。
 - 将 `persona_constraint_l4_patterns.yaml` 纳入第八源发布哈希链；validated SSE 改为后端 token 缓冲、算术/L3/L4 审计完成后再分块回放，失败候选不进入前端、消息表或记忆抽取。
@@ -35,7 +33,7 @@
 - 匿名盲评 B 胜 10、baseline 胜 11、平 4，未给 B 体验侧优势；唯一多轮组 B 获胜，说明 4-gram 是症状度量而非可直接替代人工体验的裁决器。
 
 ### 版本裁决
-- v1.9.0 未发布内容现包含可实际启用的手动流式卡片；B4 收口不等于发布，仍须通过 v1.9.0 发布 checklist。W3 保持后续独立批次，不作为本次发布前置条件。
+- v1.9.0 以 tag-only 方式发布手动流式卡片，不制作新的便携包或安装器；现有 v1.8.0 安装器继续作为最近一次打包产物。W3 保持后续独立批次，不作为本次发布前置条件。
 
 ### v1.9.x 候选池裁决
 - **保留：断开续传与 `reset`**。触发条件是生成生命周期已与 HTTP 连接解耦，并具备可恢复的会话/计划标识、最后确认 `seq` 快照和终态补拉；首版继续采用断连清 UI、用户重发的确定性降级。

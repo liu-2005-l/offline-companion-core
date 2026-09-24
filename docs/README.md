@@ -21,6 +21,7 @@
 | **1.5B Function Calling 方案** | [`FunctionCalling小模型方案.md`](./FunctionCalling小模型方案.md) | — |
 | **v1.7.0 收尾清单** | [`v1-7-0-release-checklist.md`](./v1-7-0-release-checklist.md) | — |
 | **v1.8.0 收尾清单** | [`v1-8-0-release-checklist.md`](./v1-8-0-release-checklist.md) | — |
+| **v1.9.0 发布清单（已发布，tag-only）** | [`release/v1-9-0-release-checklist.md`](./release/v1-9-0-release-checklist.md) | — |
 | **窗口自适应布局方案** | [`window-adaptive-layout-design.md`](./window-adaptive-layout-design.md) | — |
 | **v6 主线回归计划** | [`optimization-plan-2026-08-25.md`](./optimization-plan-2026-08-25.md) | — |
 | **v1.8.0 V1 真 embedding 方案** | [`v1-8-0-batch-v1-semantic-embedding-design.md`](./v1-8-0-batch-v1-semantic-embedding-design.md) | — |
