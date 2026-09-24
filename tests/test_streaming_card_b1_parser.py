@@ -10,6 +10,10 @@ import pytest
 from offline_companion.core.streaming_card_parser import parse_partial_card, scan_card_structure
 
 FIXTURE_PATH = Path("fixtures/streaming_cards/b1_partial_parse_golden.json")
+PYTHON_PARSER_PATH = Path("src/offline_companion/core/streaming_card_parser.py")
+JS_PARSER_PATH = Path(
+    "src/offline_companion/shell/ui_host/desktop/static/streaming_card_parser.js"
+)
 
 
 def _entries() -> list[pytest.param]:
@@ -50,3 +54,17 @@ def test_python_partial_parser_discards_closed_paths_after_late_structure_failur
     assert result.complete is False
     assert scan.valid is False
     assert scan.closed == []
+
+
+def test_python_parser_does_not_restore_trial_json_parse() -> None:
+    """摘要：Python 解析器不得重新引入 ``json.loads`` 参与完整性判定。"""
+    source = PYTHON_PARSER_PATH.read_text(encoding="utf-8")
+
+    assert "json.loads(" not in source
+
+
+def test_javascript_parser_does_not_restore_trial_json_parse() -> None:
+    """摘要：JavaScript 解析器不得重新引入 ``JSON.parse`` 参与完整性判定。"""
+    source = JS_PARSER_PATH.read_text(encoding="utf-8")
+
+    assert "JSON.parse(" not in source

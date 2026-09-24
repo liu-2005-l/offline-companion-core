@@ -4,9 +4,10 @@
 
 ---
 
-## 未发布 · 2026-09-03（拟人表述 W2 / 人格约束 P2 实验闭合）
+## v1.9.0（未发布）· 2026-09-03（拟人表述 W2 / 人格约束 P2 / 流式卡片）
 
 ### 实验与基础设施
+- 闭合流式卡片 B4：新增 Python/JavaScript 解析器禁回退试解析哨兵，完成 B0 十一项冻结契约逐条对账，并以 `streaming-card-b4-closure-report.md` 记录实现、候选池与显式边界。
 - 落地流式卡片 B1-B3：Python/JS 双实现通过同一份 23 单例 + 4 链 golden，手动拆解以 `stream:true` 协商 SSE，card 全事件接全局 seq 与持久化，终态 canonical plan 与同步响应同构；前端接通 provisional/accepted/degraded、零 delta、单次 retry、纯文本降级与断连清理。
 - 冻结流式卡片 B0 接缝契约：默认同步 `/api/plan/decompose` 保持不变，`stream:true` 才启用 SSE；统一 `PartialParse`、card 事件族、provisional/accepted/degraded 生命周期、canonical plan 终态与连接内 gap repair，首版仅覆盖手动入口。
 - P3-A5 总闭合：L4 fallback 从代码常量迁入第六源 `reply_copy` 冻结 YAML 并纳入发布哈希链，P1 L4 patterns 字节锚保持不变；L4 retry 固定复用原轮 `PersonaTurnSignals` 与 emotion confidence，不重新分类同轮模型输出。
@@ -34,7 +35,12 @@
 - 匿名盲评 B 胜 10、baseline 胜 11、平 4，未给 B 体验侧优势；唯一多轮组 B 获胜，说明 4-gram 是症状度量而非可直接替代人工体验的裁决器。
 
 ### 版本裁决
-- v1.9.0 编号保留给 W3 或后续可实际启用的新能力；本批只提交实验基础设施、数据资产与诚实失败记录，不单独发版。
+- v1.9.0 未发布内容现包含可实际启用的手动流式卡片；B4 收口不等于发布，仍须通过 v1.9.0 发布 checklist。W3 保持后续独立批次，不作为本次发布前置条件。
+
+### v1.9.x 候选池裁决
+- **保留：断开续传与 `reset`**。触发条件是生成生命周期已与 HTTP 连接解耦，并具备可恢复的会话/计划标识、最后确认 `seq` 快照和终态补拉；首版继续采用断连清 UI、用户重发的确定性降级。
+- **保留：Auto 拆解流式化**。触发条件是 Auto Mode 下次功能批启动且出现第二个流式拆解消费者；届时抽取共享生产器，并强制全部事件接入 `append_stream_event()`。
+- **关闭：嵌套对象级流式**。当前 1.5B 计划 schema 不生产需独立展示的嵌套卡片，提前支持属于 YAGNI；仅当模型/schema 稳定产出嵌套 plan 且 UI 有独立渐进展示需求时重新立项。
 
 ## v1.8.0 · 2026-08-30（真语义召回）
 
