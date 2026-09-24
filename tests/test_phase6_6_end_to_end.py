@@ -7,7 +7,10 @@ from pathlib import Path
 from offline_companion.core.memory_lifecycle.event_extractor import EventExtractor
 from offline_companion.core.memory_lifecycle.event_recaller import EventRecaller
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
-from offline_companion.core.memory_lifecycle.event_types import CONTENT_EMBEDDING_DIMENSIONS, SemanticEvent
+from offline_companion.core.memory_lifecycle.event_types import (
+    CONTENT_EMBEDDING_DIMENSIONS,
+    SemanticEvent,
+)
 from offline_companion.core.memory_lifecycle.idle_hook import MemoryIdleHook
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
 from offline_companion.core.persona_session.session import PersonaSessionCore

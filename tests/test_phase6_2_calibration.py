@@ -10,7 +10,6 @@ from pathlib import Path
 from offline_companion.core.memory_lifecycle.event_extractor import HASH_BOW_DUPLICATE_THRESHOLD
 from offline_companion.shared.deterministic_embedding import cosine_similarity, embed_text
 
-
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "fixtures" / "semantic_event_similarity_pairs.json"
 SCRIPT = ROOT / "scripts" / "calibrate_phase6_2_hash_bow_thresholds.py"

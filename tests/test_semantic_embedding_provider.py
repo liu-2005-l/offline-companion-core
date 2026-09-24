@@ -81,8 +81,8 @@ def test_semantic_embedding_provider_uses_onnx_and_normalizes(
         InferenceSession = _Session
 
     class _Encoded:
-        ids = [1, 2]
-        attention_mask = [1, 1]
+        ids = (1, 2)
+        attention_mask = (1, 1)
 
     class _Tokenizer:
         @classmethod
@@ -142,8 +142,8 @@ def test_semantic_embedding_provider_uses_cls_for_token_embeddings(
         InferenceSession = _Session
 
     class _Encoded:
-        ids = [1, 2]
-        attention_mask = [1, 1]
+        ids = (1, 2)
+        attention_mask = (1, 1)
 
     class _Tokenizer:
         @classmethod
@@ -200,8 +200,8 @@ def test_semantic_embedding_provider_reuses_loaded_model_handles(
         InferenceSession = _Session
 
     class _Encoded:
-        ids = [1]
-        attention_mask = [1]
+        ids = (1,)
+        attention_mask = (1,)
 
     class _Tokenizer:
         @classmethod

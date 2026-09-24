@@ -7,15 +7,17 @@ from pathlib import Path
 from offline_companion.core.emotion_analyzer.context import EmotionContext
 from offline_companion.core.memory_lifecycle.event_recaller import EventRecaller
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
-from offline_companion.core.memory_lifecycle.event_types import CONTENT_EMBEDDING_DIMENSIONS, SemanticEvent
+from offline_companion.core.memory_lifecycle.event_types import (
+    CONTENT_EMBEDDING_DIMENSIONS,
+    SemanticEvent,
+)
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
-from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
+from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.runtime.storage_index.engine import connect, new_session
 from offline_companion.shared.deterministic_embedding import embed_text
 from offline_companion.shared.types import OceanVector, Persona
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
-
 
 F1_CONTENT = "用户的猫名叫布丁，三岁，喜欢玩逗猫棒"
 F1_QUERY = "布丁最近还玩逗猫棒吗"

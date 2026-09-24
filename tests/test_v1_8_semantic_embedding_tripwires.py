@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 
 from offline_companion.core.memory_lifecycle.event_recaller import (
-    EventRecaller,
     SEMANTIC_RECALL_THRESHOLD,
+    EventRecaller,
 )
 from offline_companion.core.memory_lifecycle.event_repository import EventRepository
 from offline_companion.core.memory_lifecycle.event_types import (
@@ -18,7 +18,6 @@ from offline_companion.core.memory_lifecycle.event_types import (
     SemanticEvent,
 )
 from offline_companion.shared.deterministic_embedding import embed_text
-
 
 R43_R46_PARAPHRASE_TRIPWIRES = (
     ("R43", "canine companion naps beside keyboard", "dog sleeps near laptop", 0.380117),

@@ -11,8 +11,8 @@ from offline_companion.core.memory_lifecycle.event_extractor import HASH_BOW_DUP
 from offline_companion.core.memory_lifecycle.event_recaller import (
     HASH_BOW_RECALL_THRESHOLD,
     RRF_K,
-    EventRecaller,
     SEMANTIC_RECALL_THRESHOLD,
+    EventRecaller,
     format_event_narrative,
     recall_threshold_for_space,
 )
