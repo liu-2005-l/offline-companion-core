@@ -13,12 +13,19 @@ zones:
       generic_ai_self_reference:
         pattern: '(?:作为(?:一个|一名)?\s*(?:AI|人工智能)(?:助手|模型)?|我是(?:一个|一名)?\s*(?:AI|人工智能)(?:助手|模型)?)'
         requires_display_name_absent: true
+      generic_assistant_limitation:
+        pattern: '(?:我(?:只)?能(?:提供|回答)(?:信息|知识|帮助)|我(?:不是|没有)?(?:真实的)?(?:人|人类))'
+        requires_display_name_absent: true
       persona_role_denial:
         pattern: '(?:没有|不具备|无法保持|不能维持).{0,6}(?:人格|个性|角色)'
       companion_role_denial:
         pattern: '(?:不能|无法|不会|不可能).{0,8}(?:陪伴|关心|亲近|陪你)'
       identity_reset:
         pattern: '(?:(?:只是|不过是).{0,8}(?:普通)?(?:AI|程序)|(?:人格|角色).{0,6}(?:无效|不存在))'
+      generic_model_self_reference:
+        pattern: '(?:作为(?:一个|一名)?\s*(?:语言模型|智能助手|机器人|助手)|我(?:只)?是(?:一个|一名)?\s*(?:语言模型|程序|机器人|助手))'
+        exclude_pattern: '(?:角色|人格|设定).{0,10}(?:仍然|依然|继续)?(?:有效|生效|保留|保持)'
+        requires_display_name_absent: true
   capability_and_fact_denial:
     action: retry_then_fallback
     families:

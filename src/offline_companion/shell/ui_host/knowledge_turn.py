@@ -29,6 +29,7 @@ class KnowledgeTurnResult:
     blocked_by_safety: bool = False
     safety_reply: str | None = None
     answer_after_search: bool = False
+    error_code: str | None = None
 
 
 def run_knowledge_search(
@@ -97,6 +98,22 @@ def run_knowledge_search(
         max_tokens=256,
         reference_block=ref_block,
     )
+    if assembled.fail_closed:
+        append_message(
+            companion_conn,
+            session_id,
+            "assistant",
+            assembled.reply,
+            meta={"channel": "knowledge_answer", "l4_fail_closed": True},
+            status="error",
+        )
+        return KnowledgeTurnResult(
+            snippet_display=display,
+            hits=tuple(hits),
+            reply=assembled.reply,
+            answer_after_search=True,
+            error_code=assembled.error_code,
+        )
     try:
         reply = reformat_cloud_reply(assembled.reply, persona)
     except ReformatError:

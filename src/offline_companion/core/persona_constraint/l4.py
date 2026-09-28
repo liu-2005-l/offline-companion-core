@@ -27,12 +27,17 @@ class PersonaL4ConfigError(ValueError):
     """摘要：L4 冻结模式资产结构无效。"""
 
 
+class PersonaL4ExecutionError(RuntimeError):
+    """摘要：L4 扫描器或执行器未能完成一次出口判定。"""
+
+
 @dataclass(frozen=True)
 class PersonaL4Policy:
     """摘要：通过发布哈希校验的 L4 三分区扫描策略。"""
 
     patterns: Mapping[str, Any]
     fallback_copy: Mapping[str, str]
+    fail_close_copy: str
 
 
 @dataclass(frozen=True)
@@ -110,9 +115,17 @@ def policy_from_assets(assets: PersonaConstraintAssets) -> PersonaL4Policy:
         except (KeyError, ValueError) as exc:
             raise PersonaL4ConfigError(f"l4_fallback_template_invalid:{zone_name}") from exc
         fallback_copy[zone_name] = template
+    fail_close_copy = reply_payload.get("l4_fail_close_copy")
+    if (
+        not isinstance(fail_close_copy, str)
+        or not fail_close_copy.strip()
+        or fail_close_copy != fail_close_copy.strip()
+    ):
+        raise PersonaL4ConfigError("l4_fail_close_copy_invalid")
     return PersonaL4Policy(
         patterns=MappingProxyType(dict(payload)),
         fallback_copy=MappingProxyType(fallback_copy),
+        fail_close_copy=fail_close_copy,
     )
 
 

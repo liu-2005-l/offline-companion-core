@@ -15,7 +15,7 @@ import yaml
 
 from offline_companion.shared.runtime_paths import bundled_configs_dir, data_root, dev_repo_root
 
-PERSONA_CONSTRAINT_MANIFEST_SHA256 = "1c674a41378f3557fcd728f42e1945ecdac8700c3e4b6b723d0e5bce57f815a7"
+PERSONA_CONSTRAINT_MANIFEST_SHA256 = "1195f76108c473275703e59c5fc7cc059e9bdca11b664abfd7c825c77d5d8fc8"
 PERSONA_CONSTRAINT_MANIFEST_RELATIVE_PATH = Path("configs") / "persona_constraint_corpus.yaml"
 PERSONA_CONSTRAINT_ASSET_ROOT_ENV = "OFFLINE_COMPANION_PERSONA_ASSET_ROOT"
 OCEAN_DIMENSION_ORDER = ("O", "C", "E", "A", "N")

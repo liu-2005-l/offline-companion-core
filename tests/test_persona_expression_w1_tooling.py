@@ -15,10 +15,19 @@ if str(SCRIPTS_DIR) not in sys.path:
 calculate_metrics = importlib.import_module("persona_expression_metrics").calculate_metrics
 run_baseline = importlib.import_module("run_persona_expression_w1_baseline").run_baseline
 run_b1 = importlib.import_module("run_persona_expression_w1_b1").run_b1
-exclusive_w2_run_lock = importlib.import_module("run_persona_expression_w2")._exclusive_run_lock
+w2_runner = importlib.import_module("run_persona_expression_w2")
+exclusive_w2_run_lock = w2_runner._exclusive_run_lock
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "persona_expression"
+
+
+def test_w2_runner_rejects_retired_c_arm_but_keeps_a_and_b() -> None:
+    """摘要：W2 runner 可启动，A/B 可用，C 臂返回稳定退役错误码。"""
+    assert w2_runner._arm_config("A").style_examples_enabled is True
+    assert w2_runner._arm_config("B").identity_near_prompt_enabled is True
+    with pytest.raises(w2_runner.W2ArmRetiredError, match="w2_arm_c_retired"):
+        w2_runner._arm_config("C")
 
 
 def test_w1_fixtures_keep_preregistered_counts() -> None:

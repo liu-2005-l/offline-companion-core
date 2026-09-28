@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sqlite3
 
+import pytest
+
 from offline_companion.core.decomposition_result import NotDecomposableResult
 from offline_companion.core.hard_gate import HardGate
 from offline_companion.core.plan_orchestrator import (
@@ -10,6 +12,7 @@ from offline_companion.core.plan_orchestrator import (
     PlanOrchestrator,
     PlanStatus,
     PlanStep,
+    StepStatus,
 )
 from offline_companion.core.skill_execution_tracker import SkillExecutionTracker
 from offline_companion.core.tools.gcd_tool import gcd_tool
@@ -63,7 +66,11 @@ def test_conversation_plan_invoker_passes_local_profile() -> None:
     class SessionCore:
         def assemble_reply(self, *args, **kwargs):
             captured.update(kwargs)
-            return type("Result", (), {"reply": "ok"})()
+            return type(
+                "Result",
+                (),
+                {"reply": "ok", "fail_closed": False, "error_code": None},
+            )()
 
     orchestrator = type(
         "Orchestrator",
@@ -86,13 +93,85 @@ def test_conversation_plan_invoker_passes_local_profile() -> None:
     assert captured["capability_profile"] is profile
 
 
+def test_conversation_plan_invoker_maps_fail_close_to_auto_failure() -> None:
+    """摘要：Auto 步骤不得把 L4 fail-close 文案包装成成功 result。"""
+
+    class SessionCore:
+        def assemble_reply(self, *args, **kwargs):
+            del args, kwargs
+            return type(
+                "Result",
+                (),
+                {
+                    "reply": "固定失败文案",
+                    "fail_closed": True,
+                    "error_code": "persona_l4_fail_closed",
+                },
+            )()
+
+    orchestrator = type(
+        "Orchestrator",
+        (),
+        {
+            "session_core": SessionCore(),
+            "backend": object(),
+            "conn": object(),
+            "max_tokens": 128,
+            "_local_capability_profile": lambda self: object(),
+        },
+    )()
+    invoker = ConversationPlanInvoker(orchestrator)
+
+    with pytest.raises(RuntimeError, match="persona_l4_fail_closed"):
+        invoker.invoke("chat", {"query": "goal", "description": "step"})
+    with pytest.raises(RuntimeError, match="persona_l4_fail_closed"):
+        invoker.summarize_final_reply("总结")
+
+    auto_turn = _streaming_auto_turn()
+    auto_turn.plan_orchestrator.decide = lambda _text: [
+        PlanStep(
+            "reply",
+            "chat",
+            "reply_result",
+            payload={"description": "生成回复"},
+            title="生成回复",
+        )
+    ]
+    auto_turn.invoke_skill = lambda step, _context: invoker.invoke(
+        step.skill_id,
+        {"query": "goal", "description": step.payload["description"]},
+    )
+    events = list(
+        auto_turn.execute_turn_stream(
+            BaseMessage(message_id="m-fail-close", topic="chat.auto", source="shell"),
+            "生成回复",
+        )
+    )
+    failed_event = next(event for event in events if event["type"] == "step_failed")
+    final_event = events[-1]
+    context = auto_turn.plan_orchestrator.load_context(final_event["plan_id"])
+
+    assert failed_event["error"] == "persona_l4_fail_closed"
+    assert "result" not in failed_event
+    assert final_event["type"] == "plan_failed"
+    assert final_event["done"] is True
+    assert context is not None
+    assert context.status is PlanStatus.FAILED
+    assert context.step_status["reply"] is StepStatus.FAILED
+    assert context.get_step_result("reply") is None
+
+
 def test_conversation_plan_invoker_includes_stage_contract_and_retry_feedback() -> None:
     captured = {}
 
     class SessionCore:
         def assemble_reply(self, *args, **kwargs):
             captured.update(kwargs)
-            return type("Result", (), {"reply": "ok"})()
+            return type(
+                "Result",
+                (),
+                {"reply": "ok", "fail_closed": False, "error_code": None},
+            )()
 
     orchestrator = type(
         "Orchestrator",

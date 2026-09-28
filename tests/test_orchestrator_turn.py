@@ -5,13 +5,16 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+import offline_companion.shell.ui_host.conversation_orchestrator as conversation_module
 from offline_companion.core.emotion_analyzer import EmotionClassifier
 from offline_companion.core.local_reformatter.rule_reformatter import LOCAL_FALLBACK_PREFIX
 from offline_companion.core.memory_lifecycle.manager import MemoryLifecycleManager
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
+from offline_companion.core.persona_constraint import load_persona_constraint_assets
 from offline_companion.core.persona_session.persona_loader import load_persona_file
 from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.core.safety_boundary.classifier import SafetyTier
@@ -138,6 +141,57 @@ def test_orchestrator_cloud_degrade_prefix(tmp_path) -> None:
     result = orchestrator.run_cloud_turn("帮我写一句问候", purpose="test", memory_on=False, cloud_post=fail)
     assert result.cloud_degraded
     assert result.reply.startswith(LOCAL_FALLBACK_PREFIX)
+
+
+def test_cloud_fallback_fail_close_has_no_prefix_or_reformat(tmp_path, monkeypatch) -> None:
+    """摘要：云失败后的本地消费面不得美化或加前缀包装 L4 fail-close。"""
+    orchestrator, conn = _orch(tmp_path, "cloud-fail-close.db")
+    persona = orchestrator.session_core.persona
+    expected_reply = load_persona_constraint_assets().source_payloads["reply_copy"][
+        "l4_fail_close_copy"
+    ]
+
+    class FailClosedCore:
+        def __init__(self) -> None:
+            self.persona = persona
+
+        def assemble_reply(self, *args, **kwargs):
+            del args, kwargs
+            return SimpleNamespace(
+                reply=expected_reply,
+                memory_recalls=[],
+                l3_trace=None,
+                l4_trace=None,
+                pending_audit_events=(),
+                fail_closed=True,
+                error_code="persona_l4_fail_closed",
+            )
+
+    def fail(_req: CloudCompletionRequest) -> CloudCompletionResponse:
+        raise CloudConnectorError("stub fail")
+
+    def reject_reformat(*_args, **_kwargs):
+        raise AssertionError("fail-close 文案不得进入 reformatter")
+
+    orchestrator.session_core = FailClosedCore()
+    monkeypatch.setattr(conversation_module, "reformat_local_reply", reject_reformat)
+    result = orchestrator.run_cloud_turn(
+        "帮我写一句问候",
+        purpose="test",
+        memory_on=False,
+        cloud_post=fail,
+    )
+    assistant = conn.execute(
+        "SELECT content, status, meta_json FROM messages "
+        "WHERE role = 'assistant' ORDER BY id DESC LIMIT 1;"
+    ).fetchone()
+
+    assert not result.reply.startswith(LOCAL_FALLBACK_PREFIX)
+    assert result.reply == expected_reply
+    assert result.error_code == "persona_l4_fail_closed"
+    assert assistant["content"] == expected_reply
+    assert assistant["status"] == "error"
+    assert json.loads(assistant["meta_json"])["l4_fail_closed"] is True
 
 
 def test_orchestrator_memory_off_no_recall_in_turn(tmp_path) -> None:

@@ -425,7 +425,8 @@ class ConversationOrchestrator:
     def _end_turn(self, trace_id: str, *, status: str) -> None:
         """记录 turn_end 并清理本轮 trace 上下文。"""
         self._active_trace_id = trace_id
-        self._maybe_extract_semantic_events()
+        if status == "completed":
+            self._maybe_extract_semantic_events()
         self._append_domain_event("session/turn_end", {"trace_id": trace_id, "status": status})
         self._active_trace_id = None
 
@@ -478,6 +479,7 @@ class ConversationOrchestrator:
         memory_explanation: dict[str, Any] | None = None,
         requires_consent: bool = False,
         consent_request_id: str | None = None,
+        error_code: str | None = None,
     ) -> TurnResult:
         return TurnResult(
             reply=reply,
@@ -497,6 +499,7 @@ class ConversationOrchestrator:
             estimated_input_tokens=decision.estimated_input_tokens,
             estimated_output_tokens=decision.estimated_output_tokens,
             estimated_cost=decision.estimated_cost,
+            error_code=error_code,
         )
 
     def _declined_turn_result(
@@ -560,6 +563,39 @@ class ConversationOrchestrator:
                 self._mirror_persona_audit_event if self.event_stream is not None else None
             ),
         )
+        if assembled.fail_closed:
+            self._append_assistant_message(
+                assembled.reply,
+                emotion=emotion,
+                channel=route_mode,
+                routing=routing,
+                extra_meta={
+                    "l4_fail_closed": True,
+                    **self._persona_meta(
+                        assembled.l3_trace,
+                        assembled.l4_trace,
+                        assembled.pending_audit_events,
+                    ),
+                },
+                status="error",
+            )
+            if decision is None:
+                return TurnResult(
+                    reply=assembled.reply,
+                    memory_on=prepared.memory_on,
+                    memory_saved=prepared.memory_saved,
+                    memory_skipped_trigger=prepared.memory_skipped,
+                    memory_recalls=tuple(assembled.memory_recalls),
+                    error_code=assembled.error_code,
+                )
+            return self._turn_result_with_route(
+                reply=assembled.reply,
+                prepared=prepared,
+                decision=decision,
+                route_mode=route_mode,
+                memory_recalls=tuple(assembled.memory_recalls),
+                error_code=assembled.error_code,
+            )
         final_reply = reformat_local_reply(
             assembled.reply,
             emotion_context=emotion.context,
@@ -827,7 +863,7 @@ class ConversationOrchestrator:
                     cloud_used=True,
                     cloud_degraded=True,
                 )
-            reply, persona_meta = self._local_fallback_reply(
+            reply, persona_meta, error_code = self._local_fallback_reply(
                 prepared.chat_text,
                 memory_on=prepared.memory_on,
                 skill_prompt=prepared.skill_prompt,
@@ -841,6 +877,7 @@ class ConversationOrchestrator:
                 channel="cloud_degraded",
                 routing=routing,
                 extra_meta={"had_cloud_raw": False, **persona_meta},
+                status="error" if error_code else "completed",
             )
             return self._turn_result_with_route(
                 reply=reply,
@@ -849,6 +886,7 @@ class ConversationOrchestrator:
                 route_mode="cloud",
                 cloud_used=True,
                 cloud_degraded=True,
+                error_code=error_code,
             )
 
     def _route_mode_for_model(self, model_name: str | None) -> str | None:
@@ -933,7 +971,7 @@ class ConversationOrchestrator:
         *,
         memory_on: bool,
         skill_prompt: str = "",
-    ) -> tuple[str, dict[str, Any]]:
+    ) -> tuple[str, dict[str, Any], str | None]:
         """摘要：生成本地降级回复，并保留逐轮人格审计元信息。"""
         emotion_context = self._classify_emotion(chat_text)
         turn_signals = self._persona_turn_signals(emotion_context)
@@ -953,6 +991,19 @@ class ConversationOrchestrator:
                 self._mirror_persona_audit_event if self.event_stream is not None else None
             ),
         )
+        if assembled.fail_closed:
+            return (
+                assembled.reply,
+                {
+                    "l4_fail_closed": True,
+                    **self._persona_meta(
+                        assembled.l3_trace,
+                        assembled.l4_trace,
+                        assembled.pending_audit_events,
+                    ),
+                },
+                assembled.error_code,
+            )
         final_reply = reformat_local_reply(
             assembled.reply,
             emotion_context=emotion_context,
@@ -965,6 +1016,7 @@ class ConversationOrchestrator:
                 assembled.l4_trace,
                 assembled.pending_audit_events,
             ),
+            None,
         )
 
     def _build_routing_consent_request(
@@ -1091,7 +1143,7 @@ class ConversationOrchestrator:
                 route_mode="cloud",
             )
         except (ReformatError, CloudConnectorError, Exception):
-            reply, persona_meta = self._local_fallback_reply(
+            reply, persona_meta, error_code = self._local_fallback_reply(
                 prepared.chat_text,
                 memory_on=prepared.memory_on,
                 skill_prompt=prepared.skill_prompt,
@@ -1103,6 +1155,7 @@ class ConversationOrchestrator:
                 channel="cloud_degraded",
                 routing=self._routing_meta(decision, "cloud"),
                 extra_meta={"had_cloud_raw": False, **persona_meta},
+                status="error" if error_code else "completed",
             )
             return self._turn_result_with_route(
                 reply=reply,
@@ -1111,6 +1164,7 @@ class ConversationOrchestrator:
                 route_mode="cloud",
                 cloud_used=True,
                 cloud_degraded=True,
+                error_code=error_code,
             )
 
     def run_turn(self, user_text: str, *, memory_on: bool) -> TurnResult:
@@ -1119,7 +1173,10 @@ class ConversationOrchestrator:
         trace_scope = self.event_stream.trace_context(trace_id) if self.event_stream else nullcontext()
         with trace_scope:
             try:
-                return self._run_turn_impl(user_text, memory_on=memory_on)
+                result = self._run_turn_impl(user_text, memory_on=memory_on)
+                if result.error_code:
+                    status = "error"
+                return result
             except Exception:
                 status = "error"
                 raise

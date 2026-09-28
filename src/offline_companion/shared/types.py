@@ -339,6 +339,7 @@ class TurnResult:
     estimated_input_tokens: int | None = None
     estimated_output_tokens: int | None = None
     estimated_cost: float | None = None
+    error_code: str | None = None
 
 
 @dataclass(frozen=True)

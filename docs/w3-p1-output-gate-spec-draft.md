@@ -228,3 +228,54 @@ zone + family 分列命中归档（W3 重校批输入）：cliff/local_storage/c
 - `registry.py:8`；
 - A4 spec `:69` + A4 判例 `:406`；
 - `v1_5:189` + `w2-report:76`（冻结分工条款）。
+
+## 11. P1-1 实现期勘误与闭合
+
+### 11.1 消费面计数勘误
+
+锚定版 §3.4 把“普通同步”和 `_execute_local_prepared` 分列为两个消费面；实现期 trace 证明二者是同一个物理消费者。消费面数量由 6 更正为 5，属于规格实锚计数错误，不构成实现偏离。五个物理调用点均在格式化、前缀、语义抽取和正常持久化之前紧邻处理 `fail_closed`：
+
+| 消费面 | 漂移后调用点 | `fail_closed` 分支 | 终态 |
+| --- | --- | --- | --- |
+| 普通同步 / `_execute_local_prepared` | `conversation_orchestrator.py:551` | `conversation_orchestrator.py:566` | 原文 error 行 + 稳定机器码 |
+| 云失败后本地 fallback | `conversation_orchestrator.py:979` | `conversation_orchestrator.py:994` | 无 reformat、无 `LOCAL_FALLBACK_PREFIX` |
+| Auto 步骤输出 | `auto_turn_orchestrator.py:126` | `auto_turn_orchestrator.py:137` | `step_failed` / `plan_failed`，无成功 result |
+| Auto 最终总结 | `auto_turn_orchestrator.py:152` | `auto_turn_orchestrator.py:162` | 映射既有 Auto 失败终态 |
+| 知识检索回答 | `knowledge_turn.py:92` | `knowledge_turn.py:101` | 原文 error 行，不作正常知识回答 |
+
+### 11.2 AC-2 客户端边界
+
+AC-2 以 core `done.l4_trace` 与消息库 `meta.persona_l4_trace` 为可观测权威；不要求 HTTP SSE 对客户端暴露 trace。E3 direct 的 core 帧固定为 `recall → token → done`，其中单个 token 承载完整确定性直出文本，`done` 携带 `enabled=True + outcome=L4_DIRECT`，backend 零调用。HTTP 字节级 trace expose 不属 P1-1，进入 v1.9.x 候选池，与断开续传和 Auto 流式化并列。
+
+### 11.3 AC-13 终裁
+
+AC-13 验收行白纸黑字要求“zone + family 分列命中归档（§6.3 四类计数）”。现有逐轮 trace 已保存 zone、family 与 E3 fallthrough warning，但尚无 cliff/local_storage/companion family、guard 拦截与 E3 fallthrough 的聚合计数产物。因此 P1-1 主实现诚实记为“除 AC-13 聚合外闭合”，缺口编号 `P1-1.1`；补批只增加机械聚合与判例，不改变现有检测、动作或消费路径。
+
+### 11.4 AC 到判例映射
+
+| 验收项 | 判例或物理证据 | P1-1 终态 |
+| --- | --- | --- |
+| AC-1 | `test_l4_sync_direct_and_observe_do_not_retry`；`test_l4_stream_buffers_bad_tokens_until_final_candidate_is_safe` | 已闭合 |
+| AC-2 | `test_l4_protected_identity_reply_is_byte_preserved_without_generation`；`test_l4_protected_identity_stream_keeps_recall_token_done_shape` | 已闭合；HTTP trace 入候选池 |
+| AC-3 | `test_l4_identity_hit_falls_through_to_e1_and_records_trace` | 已闭合 |
+| AC-4 | `test_l4_identity_one_shot_error_falls_through_and_recovers` | 已闭合 |
+| AC-5 | `test_l4_identity_persistent_error_falls_through_to_fail_close` | 已闭合 |
+| AC-6 | `test_identity_cliff_detector_fixture_matrix`；`test_l4_fixture_has_fifty_paired_pattern_neighbors`；`docs/w3-p1-w2-c-pattern-migration.md` | 已闭合，50/50 TP、0/50 FP |
+| AC-7a | `test_l4_sync_first_scan_failure_returns_structured_fail_close` | 已闭合 |
+| AC-7b | `test_l4_sync_retry_scan_failure_returns_structured_fail_close` | 已闭合 |
+| AC-7c | `test_l4_runtime_failure_is_fail_closed_and_returns_visible_error` | 已闭合 |
+| AC-7d | AC-7a 调用次数负控；`test_l4_sync_fail_close_bypasses_reformat_and_persists_error_row` | 已闭合 |
+| AC-8 | buffered replay、HTTP rejected bytes、backend failure、L4 runtime failure 四条既有流式判例 | 已闭合 |
+| AC-9 | `test_l4_pure_policy_routes_three_zones_and_display_name_exception`；既有 retry/fallback 判例；B 臂注入判例 | 已闭合 |
+| AC-10 | patterns、fallback copy、fail-close copy 三条篡改拒绝判例；冻结 SHA 判例 | 已闭合 |
+| AC-11 | `test_w2_runner_rejects_retired_c_arm_but_keeps_a_and_b`；`test_arm_c_runtime_surface_is_retired_while_arms_a_and_b_remain` | 已闭合 |
+| AC-12 | 同步结果 trace、流式 done trace、三出口调用探针；`test_arithmetic_retry_reassembles_correction_prompt_even_when_event_mirror_fails` | 已闭合 |
+| AC-13 | 逐轮 trace 在场；缺少 §6.3 四类聚合计数产物 | `P1-1.1` 待补 |
+| AC-14 | 全量 `1519 passed, 3 skipped`；Ruff 0；clean scan 增量 `1.126µs/scan` | 已闭合 |
+| AC-15 | `test_cloud_fallback_fail_close_has_no_prefix_or_reformat` | 已闭合 |
+| AC-16 | `test_knowledge_answer_fail_close_is_error_row_without_reformat` | 已闭合 |
+| AC-17 | `test_conversation_plan_invoker_maps_fail_close_to_auto_failure`，含完整 `step_failed → plan_failed` 传播 | 已闭合 |
+| X-1 | 源码零 `remind_inject` / C 臂 fallback / family action 新机制 | 已守住 |
+| X-2 | §11.1 五对漂移后实锚 | 已回填 |
+
+本批测试净增 11：新增 15 个测试函数，其中 1 个为冻结 SHA 判例改名、3 个旧 C 臂行为判例由 1 个退役哨兵替换，最终从 1508 增至 1519。P1-1.1 新增判例不回写本段基线数字。

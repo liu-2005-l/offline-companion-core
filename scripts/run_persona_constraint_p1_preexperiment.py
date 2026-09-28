@@ -225,14 +225,17 @@ def main() -> int:
     fixture = json.loads(args.fixture.read_text(encoding="utf-8"))
 
     if args.backend == "echo":
-        backend_factory = lambda seed: _EchoBackend()
+        def backend_factory(seed):
+            del seed
+            return _EchoBackend()
     else:
-        backend_factory = lambda seed: create_llama_backend(
-            args.model,
-            n_ctx=args.n_ctx,
-            n_gpu_layers=args.n_gpu_layers,
-            seed=seed,
-        )
+        def backend_factory(seed):
+            return create_llama_backend(
+                args.model,
+                n_ctx=args.n_ctx,
+                n_gpu_layers=args.n_gpu_layers,
+                seed=seed,
+            )
     payload = run_preexperiment(fixture, backend_factory, args.max_tokens)
     payload["meta"] = {
         "version": fixture["version"],

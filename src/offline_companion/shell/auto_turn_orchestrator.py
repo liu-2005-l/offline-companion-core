@@ -134,6 +134,8 @@ class ConversationPlanInvoker:
             audit_arithmetic=False,
             turn_signals=turn_signals,
         )
+        if assembled.fail_closed:
+            raise RuntimeError(str(assembled.error_code or "persona_l4_fail_closed"))
         return {"result": assembled.reply, "route_mode": "local"}
 
     def summarize_final_reply(self, prompt: str) -> str:
@@ -157,6 +159,8 @@ class ConversationPlanInvoker:
             capability_profile=self.conversation_orchestrator._local_capability_profile(),
             audit_arithmetic=False,
         )
+        if assembled.fail_closed:
+            raise RuntimeError(str(assembled.error_code or "persona_l4_fail_closed"))
         return assembled.reply
 
 

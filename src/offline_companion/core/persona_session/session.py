@@ -38,6 +38,7 @@ from offline_companion.core.persona_constraint import (
     PersonaL3Policy,
     PersonaL3Trace,
     PersonaL4Decision,
+    PersonaL4ExecutionError,
     PersonaL4Outcome,
     PersonaL4Policy,
     PersonaL4Trace,
@@ -58,12 +59,8 @@ from offline_companion.core.persona_session.expression import (
     PersonaExpressionTrace,
     append_ephemeral_identity_reminder,
     build_identity_reminder,
-    build_identity_retry_reminder,
     build_style_examples_block,
-    detect_identity_cliff,
-    deterministic_identity_fallback,
     is_identity_intent,
-    warn_identity_fallback_once,
 )
 from offline_companion.core.persona_session.persona_loader import resolved_companion_display_name
 from offline_companion.shared.runtime_paths import configs_dir, dev_repo_root
@@ -92,6 +89,7 @@ SKILL_BOOTSTRAP_PROMPT = """\
 """
 
 logger = logging.getLogger(__name__)
+PERSONA_L4_FAIL_CLOSED = "persona_l4_fail_closed"
 
 
 def _trace_from_decision(
@@ -316,6 +314,8 @@ class AssembleReplyResult:
     l4_trace: PersonaL4Trace = field(default_factory=PersonaL4Trace)
     audit_events: tuple[str, ...] = ()
     pending_audit_events: tuple[str, ...] = ()
+    fail_closed: bool = False
+    error_code: str | None = None
 
 
 @dataclass(frozen=True)
@@ -335,6 +335,15 @@ class _FinalizedReply:
     l4_trace: PersonaL4Trace
     audit_events: tuple[str, ...] = ()
     pending_audit_events: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class _IdentityReplyExit:
+    """摘要：确定性身份回复经过 L4 后的四态出口。"""
+
+    kind: str
+    reply: str | None = None
+    l4_trace: PersonaL4Trace = field(default_factory=PersonaL4Trace)
 
 
 class PersonaSessionCore:
@@ -572,7 +581,7 @@ class PersonaSessionCore:
             )
 
         display_name = self._resolved_companion_display_name(conn)
-        first = resolve_l4(audited_reply, policy, display_name=display_name)
+        first = self._resolve_l4_or_raise(audited_reply, policy, display_name=display_name)
         if first.action == L4_DIRECT:
             return _FinalizedReply(
                 reply=audited_reply,
@@ -603,7 +612,7 @@ class PersonaSessionCore:
             )
             record_audit(retry_audit)
             retry_reply = retry_audit.reply
-        second = resolve_l4(retry_reply, policy, display_name=display_name)
+        second = self._resolve_l4_or_raise(retry_reply, policy, display_name=display_name)
         if second.action == L4_RETRY:
             return _FinalizedReply(
                 reply=deterministic_l4_fallback(policy, first.zone, display_name),
@@ -660,7 +669,7 @@ class PersonaSessionCore:
         active_signals = self._turn_signals(emotion_context, turn_signals)
         l3_application = self._apply_l3(conn, active_signals)
         final_l3_trace = l3_application.trace
-        recalls, combined_memory_block, system_prompt, identity_reply = self._assemble_context(
+        recalls, combined_memory_block, system_prompt, identity_exit = self._assemble_context(
             conn,
             user_message=user_message,
             memory_enabled=memory_enabled,
@@ -679,9 +688,10 @@ class PersonaSessionCore:
             identity_reminder = build_identity_reminder(display_name, self.persona)
             user_message = append_ephemeral_identity_reminder(user_message, identity_reminder)
             identity_reminder_injected = True
-        if identity_reply is not None:
+        if identity_exit.kind == "direct":
+            assert identity_exit.reply is not None
             return AssembleReplyResult(
-                reply=identity_reply,
+                reply=identity_exit.reply,
                 memory_recalls=recalls,
                 memory_block=combined_memory_block,
                 expression_trace=PersonaExpressionTrace(
@@ -689,6 +699,7 @@ class PersonaSessionCore:
                     identity_reminder_injected=identity_reminder_injected,
                 ),
                 l3_trace=final_l3_trace,
+                l4_trace=identity_exit.l4_trace,
             )
 
         reply = backend.generate(
@@ -698,67 +709,39 @@ class PersonaSessionCore:
             memory_block=combined_memory_block,
             max_tokens=max_tokens,
         )
-        finalized = self._finalize_generated_reply(
-            backend,
-            conn,
-            reply=reply,
-            history=history,
-            user_message=user_message,
-            memory_block=combined_memory_block,
-            max_tokens=max_tokens,
-            emotion_context=emotion_context,
-            capability_profile=capability_profile,
-            skill_prompt=skill_prompt,
-            expression_config=config,
-            active_signals=active_signals,
-            initial_l3_trace=final_l3_trace,
-            audit_arithmetic=audit_arithmetic,
-            audit_event_mirror=audit_event_mirror,
-        )
-        output_source = "direct"
-        retry_taken = False
-        retry_generation_cliff = False
-        warnings: tuple[str, ...] = ()
-        audited_reply = finalized.reply
-        first_generation_cliff = (
-            not finalized.l4_trace.enabled
-            and config.identity_exit_guard_enabled
-            and is_identity_intent(user_message)
-            and detect_identity_cliff(audited_reply, display_name)
-        )
-        if first_generation_cliff:
-            retry_taken = True
-            retry_message = append_ephemeral_identity_reminder(
-                user_message,
-                build_identity_retry_reminder(display_name),
-            )
-            retry_reply = backend.generate(
-                system_prompt=system_prompt,
+        try:
+            finalized = self._finalize_generated_reply(
+                backend,
+                conn,
+                reply=reply,
                 history=history,
-                user_message=retry_message,
+                user_message=user_message,
                 memory_block=combined_memory_block,
                 max_tokens=max_tokens,
+                emotion_context=emotion_context,
+                capability_profile=capability_profile,
+                skill_prompt=skill_prompt,
+                expression_config=config,
+                active_signals=active_signals,
+                initial_l3_trace=final_l3_trace,
+                audit_arithmetic=audit_arithmetic,
+                audit_event_mirror=audit_event_mirror,
             )
-            retry_generation_cliff = detect_identity_cliff(retry_reply, display_name)
-            if retry_generation_cliff:
-                audited_reply = deterministic_identity_fallback(display_name, self.persona)
-                output_source = "fallback"
-                warnings = (warn_identity_fallback_once(),)
-            else:
-                audited_reply = retry_reply
-                output_source = "retry"
+        except PersonaL4ExecutionError:
+            return self._fail_closed_result(
+                recalls=recalls,
+                memory_block=combined_memory_block,
+                l3_trace=final_l3_trace,
+                identity_exit=identity_exit,
+            )
+        finalized = self._record_identity_fallthrough(finalized, identity_exit)
         return AssembleReplyResult(
-            reply=audited_reply,
+            reply=finalized.reply,
             memory_recalls=recalls,
             memory_block=combined_memory_block,
             expression_trace=PersonaExpressionTrace(
                 style_block_injected=STYLE_BLOCK_HEADER in system_prompt,
                 identity_reminder_injected=identity_reminder_injected,
-                first_generation_cliff=first_generation_cliff,
-                retry_taken=retry_taken,
-                retry_generation_cliff=retry_generation_cliff,
-                output_source=output_source,
-                warnings=warnings,
             ),
             l3_trace=finalized.l3_trace,
             l4_trace=finalized.l4_trace,
@@ -788,7 +771,7 @@ class PersonaSessionCore:
         active_signals = self._turn_signals(emotion_context, turn_signals)
         l3_application = self._apply_l3(conn, active_signals)
         final_l3_trace = l3_application.trace
-        recalls, combined_memory_block, system_prompt, identity_reply = self._assemble_context(
+        recalls, combined_memory_block, system_prompt, identity_exit = self._assemble_context(
             conn,
             user_message=user_message,
             memory_enabled=memory_enabled,
@@ -806,14 +789,15 @@ class PersonaSessionCore:
                 build_identity_reminder(self._resolved_companion_display_name(conn), self.persona),
             )
         yield {"recall": len(recalls)}
-        if identity_reply is not None:
-            yield {"token": identity_reply}
+        if identity_exit.kind == "direct":
+            assert identity_exit.reply is not None
+            yield {"token": identity_exit.reply}
             yield {
                 "done": True,
-                "reply": identity_reply,
+                "reply": identity_exit.reply,
                 "memory_recalls": recalls,
                 "l3_trace": final_l3_trace,
-                "l4_trace": PersonaL4Trace(),
+                "l4_trace": identity_exit.l4_trace,
                 "pending_audit_events": (),
             }
             return
@@ -847,6 +831,7 @@ class PersonaSessionCore:
             audit_arithmetic=True,
             audit_event_mirror=audit_event_mirror,
         )
+        finalized = self._record_identity_fallthrough(finalized, identity_exit)
         l4_trace = replace(finalized.l4_trace, buffered=True) if buffered else finalized.l4_trace
         if buffered:
             for token in _buffered_replay_chunks(finalized.reply):
@@ -861,6 +846,61 @@ class PersonaSessionCore:
             "pending_audit_events": finalized.pending_audit_events,
         }
 
+    @staticmethod
+    def _resolve_l4_or_raise(
+        text: str,
+        policy: PersonaL4Policy,
+        *,
+        display_name: str,
+    ) -> PersonaL4Decision:
+        """摘要：把任意 L4 扫描执行故障归一为稳定异常类型。"""
+        try:
+            return resolve_l4(text, policy, display_name=display_name)
+        except Exception as exc:
+            raise PersonaL4ExecutionError(str(exc) or PERSONA_L4_FAIL_CLOSED) from exc
+
+    def _fail_closed_result(
+        self,
+        *,
+        recalls: list[MemoryRecallHit],
+        memory_block: str,
+        l3_trace: PersonaL3Trace,
+        identity_exit: _IdentityReplyExit,
+    ) -> AssembleReplyResult:
+        """摘要：构造同步出口唯一允许的 L4 fail-close 结果。"""
+        policy = self._l4_policy
+        if policy is None:
+            raise PersonaL4ExecutionError(PERSONA_L4_FAIL_CLOSED)
+        warnings = [PERSONA_L4_FAIL_CLOSED]
+        if identity_exit.kind.startswith("fallthrough_"):
+            warnings.append(f"l4_e3_{identity_exit.kind}")
+        return AssembleReplyResult(
+            reply=policy.fail_close_copy,
+            memory_recalls=recalls,
+            memory_block=memory_block,
+            l3_trace=l3_trace,
+            l4_trace=PersonaL4Trace(enabled=True, warnings=tuple(warnings)),
+            fail_closed=True,
+            error_code=PERSONA_L4_FAIL_CLOSED,
+        )
+
+    @staticmethod
+    def _record_identity_fallthrough(
+        finalized: _FinalizedReply,
+        identity_exit: _IdentityReplyExit,
+    ) -> _FinalizedReply:
+        """摘要：把 E3 退全链事实附加到最终 E1 trace，供分列归档。"""
+        if not identity_exit.kind.startswith("fallthrough_"):
+            return finalized
+        warning = f"l4_e3_{identity_exit.kind}"
+        return replace(
+            finalized,
+            l4_trace=replace(
+                finalized.l4_trace,
+                warnings=(*finalized.l4_trace.warnings, warning),
+            ),
+        )
+
     def _assemble_context(
         self,
         conn: sqlite3.Connection,
@@ -874,7 +914,7 @@ class PersonaSessionCore:
         expression_config: PersonaExpressionConfig | None = None,
         turn_signals: PersonaTurnSignals | None = None,
         _l3_application: _L3PromptApplication | None = None,
-    ) -> tuple[list[MemoryRecallHit], str, str, str | None]:
+    ) -> tuple[list[MemoryRecallHit], str, str, _IdentityReplyExit]:
         """摘要：装配召回块、逐轮人格 prompt 与确定性身份回复。"""
         config = expression_config or PersonaExpressionConfig()
         profile = capability_profile or CapabilityProfile()
@@ -918,8 +958,12 @@ class PersonaSessionCore:
         )
         if os.getenv("OFFLINE_COMPANION_PROMPT_PROBE") == "1":
             logger.debug("[PROMPT_PROBE] system_prompt=%r", system_prompt[:200])
-        identity_reply = self._identity_question_reply(conn, user_message, memory_enabled=memory_enabled)
-        return recalls, combined_memory_block, system_prompt, identity_reply
+        identity_exit = self._identity_question_exit(
+            conn,
+            user_message,
+            memory_enabled=memory_enabled,
+        )
+        return recalls, combined_memory_block, system_prompt, identity_exit
 
     def _compose_system_prompt(
         self,
@@ -984,3 +1028,37 @@ class PersonaSessionCore:
         if not display_name:
             return None
         return f"我叫{display_name}。"
+
+    def _identity_question_exit(
+        self,
+        conn: sqlite3.Connection,
+        user_message: str,
+        *,
+        memory_enabled: bool,
+    ) -> _IdentityReplyExit:
+        """摘要：让确定性身份直答经过 L4，并以四态结果交给同步与流式消费点。"""
+        reply = self._identity_question_reply(
+            conn,
+            user_message,
+            memory_enabled=memory_enabled,
+        )
+        if reply is None:
+            return _IdentityReplyExit(kind="absent")
+        policy = self._l4_policy
+        if policy is None or not self._constraints_managed():
+            return _IdentityReplyExit(kind="direct", reply=reply)
+        try:
+            decision = resolve_l4(
+                reply,
+                policy,
+                display_name=self._resolved_companion_display_name(conn),
+            )
+        except Exception:  # noqa: BLE001
+            return _IdentityReplyExit(kind="fallthrough_error")
+        if decision.action != L4_DIRECT:
+            return _IdentityReplyExit(kind="fallthrough_hit")
+        return _IdentityReplyExit(
+            kind="direct",
+            reply=reply,
+            l4_trace=_l4_trace(decision, outcome=L4_DIRECT),
+        )

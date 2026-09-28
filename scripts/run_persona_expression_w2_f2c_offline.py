@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import sys
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -21,10 +22,13 @@ if str(SRC_ROOT) not in sys.path:
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from offline_companion.core.persona_session.expression import (
-    detect_identity_cliff,
-    is_identity_intent,
+from offline_companion.core.persona_constraint import (
+    L4_IDENTITY_CLIFF,
+    l4_policy_from_assets,
+    load_persona_constraint_assets,
+    resolve_l4,
 )
+from offline_companion.core.persona_session.expression import is_identity_intent
 from offline_companion.core.persona_session.session import (
     _ASSISTANT_NAME_QUESTION_KEYWORDS,
 )
@@ -34,6 +38,22 @@ DEFAULT_MATRIX = REPO_ROOT / "artifacts" / "persona_expression" / "w2_arm_b_matr
 DEFAULT_PROBE = REPO_ROOT / "fixtures" / "persona_expression" / "w1_probe_turns.json"
 DEFAULT_OUTPUT = REPO_ROOT / "artifacts" / "persona_expression" / "w2_f2c_offline_review.json"
 STYLE_SCENARIOS = {"chat", "memory"}
+
+
+@lru_cache(maxsize=1)
+def _l4_policy():
+    """摘要：加载一次当前发布链 L4 策略，供冻结矩阵全量复算。"""
+    return l4_policy_from_assets(load_persona_constraint_assets(root_override=REPO_ROOT))
+
+
+def _is_l4_identity_cliff(reply: str, display_name: str) -> bool:
+    """摘要：以 L4 单一权威复算冻结 W2 数据的身份断崖。"""
+    decision = resolve_l4(
+        reply,
+        _l4_policy(),
+        display_name=display_name,
+    )
+    return decision.zone == L4_IDENTITY_CLIFF
 
 
 def _sha256_text(text: str) -> str:
@@ -74,7 +94,7 @@ def _base_row(
     """摘要：构造一条可同时供两个复检口径消费的明细。"""
     identity_intent = is_identity_intent(user)
     deterministic_early_return = _is_deterministic_identity_early_return(user, display_name)
-    detector_verdict = detect_identity_cliff(reply, display_name)
+    detector_verdict = _is_l4_identity_cliff(reply, display_name)
     return {
         "source_kind": source_kind,
         "seed": seed_name,

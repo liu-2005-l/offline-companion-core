@@ -11,6 +11,7 @@ import yaml
 
 import offline_companion.core.persona_session.session as persona_session_module
 from offline_companion.core.emotion_analyzer import EmotionContext
+from offline_companion.core.event_stream import EventStream, build_default_registry
 from offline_companion.core.memory_lifecycle.triggers import load_triggers
 from offline_companion.core.persona_constraint import (
     AUDIT_ARITHMETIC_RETRY_TAKEN,
@@ -23,6 +24,7 @@ from offline_companion.core.persona_constraint import (
     L4_OBSERVE,
     L4_RETRY,
     PersonaConstraintConfigError,
+    PersonaL4Decision,
     assistant_texts,
     detect_copy,
     deterministic_l4_fallback,
@@ -186,6 +188,18 @@ def test_l4_fallback_copy_character_tamper_is_rejected_by_release_chain(tmp_path
         load_persona_constraint_assets(root_override=tmp_path)
 
 
+def test_l4_fail_close_copy_character_tamper_is_rejected_by_release_chain(tmp_path: Path) -> None:
+    shutil.copytree(REPO_ROOT / "configs", tmp_path / "configs")
+    target = tmp_path / "configs" / "persona_constraint_reply_copy.yaml"
+    original = target.read_text(encoding="utf-8")
+    tampered = original.replace("回复校验暂时无法完成", "回复校验暂时 无法完成", 1)
+    assert tampered != original
+    target.write_text(tampered, encoding="utf-8")
+
+    with pytest.raises(PersonaConstraintConfigError, match="source_hash_mismatch:reply_copy"):
+        load_persona_constraint_assets(root_override=tmp_path)
+
+
 def test_l4_deterministic_fallback_copy_passes_five_quality_audits() -> None:
     assets = load_persona_constraint_assets(root_override=REPO_ROOT)
     policy = l4_policy_from_assets(assets)
@@ -208,6 +222,14 @@ def test_l4_deterministic_fallback_copy_passes_five_quality_audits() -> None:
         assert detect_copy(text, examples, output_tokens=len(text))["hit"] is False
         assert scan_absolute_promises(text) == ()
         assert scan_mechanism_leaks(text) == ()
+
+    fail_close = policy.fail_close_copy
+    assert fail_close == assets.source_payloads["reply_copy"]["l4_fail_close_copy"]
+    assert scan_forbidden(fail_close, lexicon) == []
+    assert scan_l4(fail_close, patterns, display_name_present=False)["hit"] is False
+    assert detect_copy(fail_close, examples, output_tokens=len(fail_close))["hit"] is False
+    assert scan_absolute_promises(fail_close) == ()
+    assert scan_mechanism_leaks(fail_close) == ()
 
 
 def test_l4_sync_direct_and_observe_do_not_retry(tmp_path: Path) -> None:
@@ -433,6 +455,235 @@ def test_l4_runtime_failure_is_fail_closed_and_returns_visible_error(
     assert (assistant["content"], assistant["status"]) == (STREAM_FAILURE_REPLY, "error")
 
 
+def test_l4_sync_first_scan_failure_returns_structured_fail_close(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assets, _persona, core, conn = _validated_runtime(tmp_path)
+    backend = _QueueBackend(["未审计候选，不得泄漏。"])
+    calls = 0
+
+    def fail_policy(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("first scan failed")
+
+    monkeypatch.setattr(persona_session_module, "resolve_l4", fail_policy)
+    result = core.assemble_reply(
+        backend,
+        conn,
+        user_message="普通问题",
+        history=[],
+        memory_enabled=False,
+        audit_arithmetic=False,
+    )
+
+    expected = assets.source_payloads["reply_copy"]["l4_fail_close_copy"]
+    assert calls == 1
+    assert result.reply == expected
+    assert "未审计候选" not in result.reply
+    assert result.fail_closed is True
+    assert result.error_code == "persona_l4_fail_closed"
+    assert result.l4_trace.enabled is True
+
+
+def test_l4_sync_retry_scan_failure_returns_structured_fail_close(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assets, _persona, core, conn = _validated_runtime(tmp_path)
+    first_candidate = "作为一个AI助手，我没有真正的性格。"
+    retry_candidate = "第二个未审计候选。"
+    backend = _QueueBackend([first_candidate, retry_candidate])
+    original = persona_session_module.resolve_l4
+    calls = 0
+
+    def fail_second(text, policy, *, display_name):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("retry scan failed")
+        return original(text, policy, display_name=display_name)
+
+    monkeypatch.setattr(persona_session_module, "resolve_l4", fail_second)
+    result = core.assemble_reply(
+        backend,
+        conn,
+        user_message="普通问题",
+        history=[],
+        memory_enabled=False,
+        audit_arithmetic=False,
+    )
+
+    assert calls == 2
+    assert result.reply == assets.source_payloads["reply_copy"]["l4_fail_close_copy"]
+    assert first_candidate not in result.reply
+    assert retry_candidate not in result.reply
+    assert result.fail_closed is True
+
+
+def test_l4_identity_hit_falls_through_to_e1_and_records_trace(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _assets, _persona, core, conn = _validated_runtime(tmp_path)
+    backend = _QueueBackend(["模型链安全回复。"])
+    original = persona_session_module.resolve_l4
+    calls = 0
+
+    def hit_then_direct(text, policy, *, display_name):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return PersonaL4Decision(
+                action=L4_RETRY,
+                zone=L4_IDENTITY_CLIFF,
+                family="generic_ai_self_reference",
+            )
+        return original(text, policy, display_name=display_name)
+
+    monkeypatch.setattr(persona_session_module, "resolve_l4", hit_then_direct)
+    result = core.assemble_reply(
+        backend,
+        conn,
+        user_message="你叫什么名字？",
+        history=[],
+        memory_enabled=True,
+        audit_arithmetic=False,
+    )
+
+    assert calls == 2
+    assert backend.system_prompts
+    assert result.reply == "模型链安全回复。"
+    assert result.l4_trace.outcome == L4_DIRECT
+    assert "l4_e3_fallthrough_hit" in result.l4_trace.warnings
+
+
+def test_l4_identity_one_shot_error_falls_through_and_recovers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _assets, _persona, core, conn = _validated_runtime(tmp_path)
+    backend = _QueueBackend(["模型链恢复回复。"])
+    original = persona_session_module.resolve_l4
+    calls = 0
+
+    def fail_once(text, policy, *, display_name):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("identity scan failed")
+        return original(text, policy, display_name=display_name)
+
+    monkeypatch.setattr(persona_session_module, "resolve_l4", fail_once)
+    result = core.assemble_reply(
+        backend,
+        conn,
+        user_message="你叫什么名字？",
+        history=[],
+        memory_enabled=True,
+        audit_arithmetic=False,
+    )
+
+    assert calls == 2
+    assert result.reply == "模型链恢复回复。"
+    assert result.fail_closed is False
+    assert result.l4_trace.outcome == L4_DIRECT
+    assert "l4_e3_fallthrough_error" in result.l4_trace.warnings
+
+
+def test_l4_identity_persistent_error_falls_through_to_fail_close(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assets, _persona, core, conn = _validated_runtime(tmp_path)
+    rejected = "模型链未审计候选，不得泄漏。"
+    backend = _QueueBackend([rejected])
+    calls = 0
+
+    def fail_policy(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("persistent l4 failure")
+
+    monkeypatch.setattr(persona_session_module, "resolve_l4", fail_policy)
+    result = core.assemble_reply(
+        backend,
+        conn,
+        user_message="你叫什么名字？",
+        history=[],
+        memory_enabled=True,
+        audit_arithmetic=False,
+    )
+
+    assert calls == 2
+    assert result.reply == assets.source_payloads["reply_copy"]["l4_fail_close_copy"]
+    assert rejected not in result.reply
+    assert result.fail_closed is True
+    assert result.error_code == "persona_l4_fail_closed"
+    assert "l4_e3_fallthrough_error" in result.l4_trace.warnings
+
+
+def test_l4_sync_fail_close_bypasses_reformat_and_persists_error_row(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend = _QueueBackend(["未审计候选，不得泄漏。"])
+    runtime = _validated_http_runtime(tmp_path, backend)
+    policy = runtime.orchestrator.session_core._l4_policy
+    assert policy is not None
+    expected = policy.fail_close_copy
+
+    def fail_policy(*_args, **_kwargs):
+        raise RuntimeError("l4 policy failed")
+
+    def reject_reformat(*_args, **_kwargs):
+        raise AssertionError("fail-close 文案不得进入 reformatter")
+
+    monkeypatch.setattr(persona_session_module, "resolve_l4", fail_policy)
+    monkeypatch.setattr(
+        "offline_companion.shell.ui_host.conversation_orchestrator.reformat_local_reply",
+        reject_reformat,
+    )
+    response = create_desktop_app(runtime).test_client().post(
+        "/api/chat",
+        json={"message": "普通问题"},
+    )
+    payload = response.get_json()
+    assistant = runtime.orchestrator.conn.execute(
+        "SELECT content, status, meta_json FROM messages "
+        "WHERE role = 'assistant' ORDER BY id DESC LIMIT 1;"
+    ).fetchone()
+
+    assert response.status_code == 200
+    assert payload["reply"] == expected
+    assert payload["error_code"] == "persona_l4_fail_closed"
+    assert assistant["content"] == expected
+    assert assistant["status"] == "error"
+    assert json.loads(assistant["meta_json"])["l4_fail_closed"] is True
+
+
+def test_l4_sync_fail_close_marks_turn_end_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend = _QueueBackend(["未审计候选，不得泄漏。"])
+    runtime = _validated_http_runtime(tmp_path, backend)
+    event_stream = EventStream("s1", build_default_registry())
+    runtime.orchestrator.event_stream = event_stream
+
+    def fail_policy(*_args, **_kwargs):
+        raise RuntimeError("l4 policy failed")
+
+    monkeypatch.setattr(persona_session_module, "resolve_l4", fail_policy)
+    result = runtime.orchestrator.run_turn("普通问题", memory_on=False)
+    turn_end = event_stream.get_events()[-1]
+
+    assert result.error_code == "persona_l4_fail_closed"
+    assert turn_end.event_type == "session/turn_end"
+    assert turn_end.payload["status"] == "error"
+
+
 def test_l4_unmanaged_stream_keeps_existing_immediate_token_behavior(tmp_path: Path) -> None:
     _assets, persona, _core, conn = _validated_runtime(tmp_path)
     core = PersonaSessionCore(persona)
@@ -468,7 +719,32 @@ def test_l4_protected_identity_reply_is_byte_preserved_without_generation(tmp_pa
     )
 
     assert result.reply == "我叫测试助手。"
-    assert result.l4_trace.enabled is False
+    assert result.l4_trace.enabled is True
+    assert result.l4_trace.outcome == L4_DIRECT
+    assert backend.system_prompts == []
+
+
+def test_l4_protected_identity_stream_keeps_recall_token_done_shape(tmp_path: Path) -> None:
+    """摘要：E3 安全直出保持既有帧形态，并在 done 携带真实 L4 trace。"""
+    _assets, _persona, core, conn = _validated_runtime(tmp_path)
+    backend = _QueueBackend([])
+
+    events = list(
+        core.assemble_reply_stream(
+            backend,
+            conn,
+            user_message="你叫什么名字？",
+            history=[],
+            memory_enabled=True,
+        )
+    )
+
+    assert events[0] == {"recall": 0}
+    assert events[1] == {"token": "我叫测试助手。"}
+    assert events[2]["done"] is True
+    assert events[2]["reply"] == "我叫测试助手。"
+    assert events[2]["l4_trace"].enabled is True
+    assert events[2]["l4_trace"].outcome == L4_DIRECT
     assert backend.system_prompts == []
 
 

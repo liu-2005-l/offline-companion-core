@@ -1,8 +1,8 @@
-"""拟人表述 W2 三臂测量 runner。
+"""拟人表述 W2 历史测量 runner。
 
 摘要：
-    复用 W1 判例与 probe fixture，按 A/B/C 三臂运行判例集与 50 轮
-    probe，输出六指标、身份断崖两层统计与每轮防线 trace。
+    复用 W1 判例与 probe fixture，继续支持 A/B 臂历史复测；已被 L4
+    单一权威取代的 C 臂返回稳定退役错误码。
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ import sys
 import tempfile
 import time
 from contextlib import contextmanager
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -31,10 +32,13 @@ if str(SRC_ROOT) not in sys.path:
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from offline_companion.core.persona_session.expression import (
-    PersonaExpressionConfig,
-    detect_identity_cliff,
+from offline_companion.core.persona_constraint import (
+    L4_IDENTITY_CLIFF,
+    l4_policy_from_assets,
+    load_persona_constraint_assets,
+    resolve_l4,
 )
+from offline_companion.core.persona_session.expression import PersonaExpressionConfig
 from offline_companion.core.persona_session.persona_loader import (
     resolved_companion_display_name,
 )
@@ -60,6 +64,27 @@ from run_persona_expression_w1_baseline import (
 DEFAULT_OUTPUT = REPO_ROOT / "artifacts" / "persona_expression" / "w2_three_arm_matrix.json"
 DEFAULT_CHECKPOINT_DIR = REPO_ROOT / "artifacts" / "persona_expression" / "w2_checkpoints"
 DEFAULT_LOCK_FILE = REPO_ROOT / "artifacts" / "persona_expression" / "w2_matrix.lock"
+W2_ARM_C_RETIRED = "w2_arm_c_retired"
+
+
+class W2ArmRetiredError(ValueError):
+    """摘要：请求运行已被 L4 单一权威取代的 W2-C 臂。"""
+
+
+@lru_cache(maxsize=1)
+def _l4_policy():
+    """摘要：加载一次当前发布链 L4 策略，供历史矩阵全量复算。"""
+    return l4_policy_from_assets(load_persona_constraint_assets(root_override=REPO_ROOT))
+
+
+def _is_l4_identity_cliff(reply: str, display_name: str) -> bool:
+    """摘要：以当前 L4 权威复算历史矩阵中的身份断崖。"""
+    decision = resolve_l4(
+        reply,
+        _l4_policy(),
+        display_name=display_name,
+    )
+    return decision.zone == L4_IDENTITY_CLIFF
 
 
 def _arm_config(arm: str) -> PersonaExpressionConfig:
@@ -71,11 +96,7 @@ def _arm_config(arm: str) -> PersonaExpressionConfig:
             identity_near_prompt_enabled=True,
         )
     if arm == "C":
-        return PersonaExpressionConfig(
-            style_examples_enabled=True,
-            identity_near_prompt_enabled=True,
-            identity_exit_guard_enabled=True,
-        )
+        raise W2ArmRetiredError(W2_ARM_C_RETIRED)
     raise ValueError(f"未知 W2 arm: {arm}")
 
 
@@ -129,11 +150,11 @@ def _probe_summary(probe_runs: dict[str, dict[str, Any]], display_name: str) -> 
             turn = int(item["turn"])
             shipped_status = _identity_status(str(item["reply"]))
             trace = traces_by_turn.get(turn, {})
-            detector_observed_cliff = detect_identity_cliff(str(item["reply"]), display_name)
+            detector_observed_cliff = _is_l4_identity_cliff(str(item["reply"]), display_name)
             first_cliff = bool(trace.get("first_generation_cliff", detector_observed_cliff))
             if not trace.get("retry_taken") and not trace.get("first_generation_cliff"):
                 first_cliff = detector_observed_cliff
-            shipped_cliff = detect_identity_cliff(str(item["reply"]), display_name)
+            shipped_cliff = _is_l4_identity_cliff(str(item["reply"]), display_name)
             output_source = str(trace.get("output_source") or "direct")
             output_sources[output_source] = output_sources.get(output_source, 0) + 1
             if first_cliff and first_cliff_turn is None:
@@ -317,7 +338,7 @@ def _assert_style_examples_live(args: argparse.Namespace) -> None:
 
 
 def run_w2(args: argparse.Namespace) -> dict[str, Any]:
-    """摘要：运行 W2 三臂矩阵并返回可落档 payload。"""
+    """摘要：运行仍受支持的 W2 A/B 矩阵并返回可落档 payload。"""
     persona = _load_persona(args.persona)
     display_name = resolved_companion_display_name(persona)
     cases_fixture = json.loads(args.cases.read_text(encoding="utf-8"))
@@ -367,7 +388,7 @@ def run_w2(args: argparse.Namespace) -> dict[str, Any]:
 
 def main() -> int:
     """摘要：命令行入口，运行 W2 三臂测量矩阵。"""
-    parser = argparse.ArgumentParser(description="运行拟人表述 W2 三臂测量矩阵")
+    parser = argparse.ArgumentParser(description="运行拟人表述 W2 A/B 臂测量矩阵")
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
     parser.add_argument("--probe", type=Path, default=DEFAULT_PROBE)
     parser.add_argument("--persona", type=Path, default=DEFAULT_PERSONA)
@@ -384,7 +405,7 @@ def main() -> int:
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--case-seeds", type=_comma_ints, default=CASE_SEEDS)
     parser.add_argument("--probe-seeds", type=_comma_ints, default=PROBE_SEEDS)
-    parser.add_argument("--arms", type=lambda value: tuple(value.upper().split(",")), default=("A", "B", "C"))
+    parser.add_argument("--arms", type=lambda value: tuple(value.upper().split(",")), default=("A", "B"))
     parser.add_argument("--skip-style-check", action="store_true")
     parser.add_argument("--skip-memory-check", action="store_true")
     parser.add_argument("--skip-cases", action="store_true")

@@ -46,6 +46,7 @@ def turn_result_to_payload(result: TurnResult) -> dict[str, Any]:
         "estimated_input_tokens": result.estimated_input_tokens,
         "estimated_output_tokens": result.estimated_output_tokens,
         "estimated_cost": result.estimated_cost,
+        "error_code": result.error_code,
     }
 
 
