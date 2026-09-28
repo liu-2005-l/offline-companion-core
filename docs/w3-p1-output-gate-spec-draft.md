@@ -249,7 +249,7 @@ AC-2 以 core `done.l4_trace` 与消息库 `meta.persona_l4_trace` 为可观测�
 
 ### 11.3 AC-13 终裁
 
-AC-13 验收行白纸黑字要求“zone + family 分列命中归档（§6.3 四类计数）”。现有逐轮 trace 已保存 zone、family 与 E3 fallthrough warning，但尚无 cliff/local_storage/companion family、guard 拦截与 E3 fallthrough 的聚合计数产物。因此 P1-1 主实现诚实记为“除 AC-13 聚合外闭合”，缺口编号 `P1-1.1`；补批只增加机械聚合与判例，不改变现有检测、动作或消费路径。
+AC-13 验收行白纸黑字要求“zone + family 分列命中归档（§6.3 四类计数）”。P1-1 主实现提交时，逐轮 trace 已保存 zone、family 与 E3 fallthrough warning，但尚无 cliff/local_storage/companion family、guard 拦截与 E3 fallthrough 的聚合计数产物，因此诚实登记缺口 `P1-1.1`。补批新增 `scripts/summarize_w3_p1_l4_traces.py`、冻结输入/expected 与全字段等值判例，机械产出上述计数；不改变现有检测、动作或消费路径。AC-13 至此闭合。
 
 ### 11.4 AC 到判例映射
 
@@ -270,7 +270,7 @@ AC-13 验收行白纸黑字要求“zone + family 分列命中归档（§6.3 四
 | AC-10 | patterns、fallback copy、fail-close copy 三条篡改拒绝判例；冻结 SHA 判例 | 已闭合 |
 | AC-11 | `test_w2_runner_rejects_retired_c_arm_but_keeps_a_and_b`；`test_arm_c_runtime_surface_is_retired_while_arms_a_and_b_remain` | 已闭合 |
 | AC-12 | 同步结果 trace、流式 done trace、三出口调用探针；`test_arithmetic_retry_reassembles_correction_prompt_even_when_event_mirror_fails` | 已闭合 |
-| AC-13 | 逐轮 trace 在场；缺少 §6.3 四类聚合计数产物 | `P1-1.1` 待补 |
+| AC-13 | `test_w3_p1_l4_trace_archive_produces_frozen_recalibration_counts`；冻结聚合 fixture；审计脚本 | `P1-1.1` 已闭合 |
 | AC-14 | 全量 `1519 passed, 3 skipped`；Ruff 0；clean scan 增量 `1.126µs/scan` | 已闭合 |
 | AC-15 | `test_cloud_fallback_fail_close_has_no_prefix_or_reformat` | 已闭合 |
 | AC-16 | `test_knowledge_answer_fail_close_is_error_row_without_reformat` | 已闭合 |
@@ -278,4 +278,4 @@ AC-13 验收行白纸黑字要求“zone + family 分列命中归档（§6.3 四
 | X-1 | 源码零 `remind_inject` / C 臂 fallback / family action 新机制 | 已守住 |
 | X-2 | §11.1 五对漂移后实锚 | 已回填 |
 
-本批测试净增 11：新增 15 个测试函数，其中 1 个为冻结 SHA 判例改名、3 个旧 C 臂行为判例由 1 个退役哨兵替换，最终从 1508 增至 1519。P1-1.1 新增判例不回写本段基线数字。
+P1-1 测试净增 11：新增 15 个测试函数，其中 1 个为冻结 SHA 判例改名、3 个旧 C 臂行为判例由 1 个退役哨兵替换，最终从 1508 增至 1519。P1-1.1 另增 1 条聚合判例，闭合后总基线为 1520。

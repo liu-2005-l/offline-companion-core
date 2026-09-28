@@ -1,0 +1,82 @@
+{
+  "records": [
+    {
+      "persona_l4_trace": {
+        "first_zone": "identity_cliff",
+        "first_family": "generic_ai_self_reference",
+        "retry_zone": null,
+        "retry_family": null,
+        "warnings": []
+      }
+    },
+    {
+      "persona_l4_trace": {
+        "first_zone": "capability_and_fact_denial",
+        "first_family": "local_storage_denial",
+        "retry_zone": "capability_and_fact_denial",
+        "retry_family": "local_storage_denial",
+        "warnings": []
+      }
+    },
+    {
+      "persona_l4_trace": {
+        "first_zone": "identity_cliff",
+        "first_family": "companion_role_denial",
+        "retry_zone": null,
+        "retry_family": null,
+        "warnings": []
+      }
+    },
+    {
+      "persona_l4_trace": {
+        "first_zone": null,
+        "first_family": null,
+        "retry_zone": null,
+        "retry_family": null,
+        "warnings": [
+          "l4_e3_fallthrough_hit"
+        ]
+      },
+      "guard_blocked_families": [
+        "generic_model_self_reference"
+      ]
+    },
+    {
+      "persona_l4_trace": {
+        "first_zone": null,
+        "first_family": null,
+        "retry_zone": null,
+        "retry_family": null,
+        "warnings": [
+          "l4_e3_fallthrough_error"
+        ]
+      }
+    }
+  ],
+  "expected": {
+    "record_count": 5,
+    "zone_family_hits": {
+      "capability_and_fact_denial": {
+        "local_storage_denial": 2
+      },
+      "identity_cliff": {
+        "companion_role_denial": 1,
+        "generic_ai_self_reference": 1
+      }
+    },
+    "identity_cliff_family_hits": {
+      "companion_role_denial": 1,
+      "generic_ai_self_reference": 1
+    },
+    "local_storage_denial_hit_count": 2,
+    "companion_role_denial_hit_count": 1,
+    "guard_blocked_family_counts": {
+      "generic_model_self_reference": 1
+    },
+    "guard_blocked_count": 1,
+    "e3_fallthrough_counts": {
+      "hit": 1,
+      "error": 1
+    }
+  }
+}
