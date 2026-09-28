@@ -38,14 +38,14 @@
 ### 1.2 C 臂现状与退役范围
 
 - 三开关默认 `false`，生产未启用；L4 启用后旧 C 臂已被 `l4_trace.enabled` 抑制（`expression.py:46`、`session.py:723`）；
-- 退役范围（AC-11 收窄版）：仅 `identity_exit_guard_enabled` 开关 + C 臂 detector/action/fallback 分支；`expression.py` 的 A/B 开关与近端注入零触碰（留 P2 单独裁决）；
+- 退役范围（AC-11 收窄版）：仅 `identity_exit_guard_enabled` 开关 + C 臂 detector/action/fallback 分支；`expression.py` 的 A/B 开关与近端注入零触碰（留 W3 收口批单独裁决）；
 - W2 runner（`scripts/run_persona_expression_w2.py`）：C arm 改稳定拒绝（错误码 + 拒绝语义），不得悬空 import；判例钉“错误码正确 + 脚本可启动 + 其他 arm 可用”三件。
 
 ### 1.3 范围外（显式）
 
 - B 臂近端注入（P2）；
 - 4-gram 重校与 P36/P39 动作/阈值变更（W3 重校批，等 P4）；
-- 输入侧提醒强化（`identity_near_prompt_enabled` 现状维持，P2/独立规格）；
+- 输入侧提醒强化（`identity_near_prompt_enabled` 现状维持，留 W3 收口批/独立规格）；
 - W2 数据资产（只读归档）。
 
 ## 2. 设计总纲
@@ -142,7 +142,7 @@ Auto/plan 维持排除域（B0 契约同款纪律），但附硬条款：排除�
 | `identity_cliff` 全部 family（含并入的 W2-C 模式） | `retry_then_fallback` | 零变更 |
 | `local_storage_denial` / `companion_role_denial`（family，`yaml:25/:18`） | `retry_then_fallback` | 零变更（锚点：`local_storage=:25`，`companion=:18`） |
 | 输出侧 `remind_inject` | 不存在 | 冻结裁决（`v1_5:189` / `w2-report:76`）：输入侧身份意图负责提醒注入，输出侧继续 retry/fallback；输出侧提醒立项 = 显式变更冻结裁决 + 迁移 + hard→soft 安全基线重跑 |
-| 输入侧 `identity_near_prompt_enabled` | 现状维持 | 零触达，强化留 P2/独立规格 |
+| 输入侧 `identity_near_prompt_enabled` | 现状维持 | 零触达，强化留 W3 收口批/独立规格 |
 
 ## 5. 失败态口径
 
@@ -279,3 +279,7 @@ AC-13 验收行白纸黑字要求“zone + family 分列命中归档（§6.3 四
 | X-2 | §11.1 五对漂移后实锚 | 已回填 |
 
 P1-1 测试净增 11：新增 15 个测试函数，其中 1 个为冻结 SHA 判例改名、3 个旧 C 臂行为判例由 1 个退役哨兵替换，最终从 1508 增至 1519。P1-1.1 另增 1 条聚合判例，闭合后总基线为 1520。
+
+### 11.5 P2 去向勘误
+
+P1 锚定版曾把“A/B 开关去留”和“输入侧 `identity_near_prompt_enabled` 强化”写为留 P2/独立规格。后续 W3-P2 已明确收窄为跨轮复读专治批，两处钩子与 P2 开工门没有可验收接缝。本文 §1.2、§1.3 与 §4 已把去向更正为 W3 收口批/独立规格；这是职责去向勘误，不改变 P1-1 的退役范围、运行时实现或 AC 验收结论。W3-P2 骨架同步把两项列为 out of scope，消除跨规格悬空引用。

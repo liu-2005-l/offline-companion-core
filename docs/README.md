@@ -54,6 +54,8 @@
 | **人格约束 P3-A5 总闭合报告（已闭合）** | [`persona-constraint-p3-a5-closure-report.md`](./persona-constraint-p3-a5-closure-report.md) | — |
 | **人格约束 W3-P1 出口检测改造规格（已锚定）** | [`w3-p1-output-gate-spec-draft.md`](./w3-p1-output-gate-spec-draft.md) | — |
 | **人格约束 W3-P1 W2-C 模式迁移对照表** | [`w3-p1-w2-c-pattern-migration.md`](./w3-p1-w2-c-pattern-migration.md) | — |
+| **人格约束 W3-P2 跨轮复读修复骨架 v0.2** | [`w3-p2-cross-turn-repair-skeleton.md`](./w3-p2-cross-turn-repair-skeleton.md) | — |
+| **人格约束 P4 外部盲判 Roster 即跑包 v0.2** | [`p4-roster-kit.md`](./p4-roster-kit.md) | — |
 | **流式卡片 B0-B4 契约与实现规格（已收口）** | [`streaming-card-b0-contract-spec.md`](./streaming-card-b0-contract-spec.md) | — |
 | **流式卡片 B4 收口报告（已闭合）** | [`streaming-card-b4-closure-report.md`](./streaming-card-b4-closure-report.md) | — |
 | **Phase 6.5 召回注入 Fixture** | [`phase6-5-recall-injection-fixtures.md`](./phase6-5-recall-injection-fixtures.md) | — |
