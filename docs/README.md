@@ -55,6 +55,7 @@
 | **人格约束 W3-P1 出口检测改造规格（已锚定）** | [`w3-p1-output-gate-spec-draft.md`](./w3-p1-output-gate-spec-draft.md) | — |
 | **人格约束 W3-P1 W2-C 模式迁移对照表** | [`w3-p1-w2-c-pattern-migration.md`](./w3-p1-w2-c-pattern-migration.md) | — |
 | **人格约束 W3-P2 跨轮复读修复骨架 v0.2** | [`w3-p2-cross-turn-repair-skeleton.md`](./w3-p2-cross-turn-repair-skeleton.md) | — |
+| **人格约束 W3-P2 因果表 v0.3（正式规格 §1）** | [`w3-p2-causality-table-draft.md`](./w3-p2-causality-table-draft.md) | — |
 | **人格约束 P4 外部盲判 Roster 即跑包 v0.2** | [`p4-roster-kit.md`](./p4-roster-kit.md) | — |
 | **流式卡片 B0-B4 契约与实现规格（已收口）** | [`streaming-card-b0-contract-spec.md`](./streaming-card-b0-contract-spec.md) | — |
 | **流式卡片 B4 收口报告（已闭合）** | [`streaming-card-b4-closure-report.md`](./streaming-card-b4-closure-report.md) | — |
