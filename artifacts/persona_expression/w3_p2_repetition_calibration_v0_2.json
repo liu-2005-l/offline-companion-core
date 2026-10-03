@@ -49,6 +49,34 @@
       "explicit_quote_hiking_plan",
       "explicit_confirmation_project_order"
     ],
-    "true_negative_count": 19
+    "true_negative_count": 19,
+    "runtime_threshold": 0.09,
+    "positive_scores": {
+      "archive_b_seed42_m09_m10": 0.24390243902439024,
+      "archive_b_seed1337_m09_m10": 0.03333333333333333,
+      "archive_a_seed1337_s16_s17": 0.19047619047619047,
+      "archive_a_seed1337_m09_m10": 0.09090909090909091
+    },
+    "effective_negative_scores": {
+      "baseline_seed42_s16_s17": 0.08974358974358974,
+      "baseline_seed42_s17_s18": 0.01818181818181818,
+      "baseline_seed42_m09_m10": 0.0,
+      "baseline_seed1337_s16_s17": 0.0,
+      "baseline_seed1337_s17_s18": 0.0,
+      "baseline_seed1337_m09_m10": 0.0,
+      "baseline_seed2024_s16_s17": 0.0,
+      "baseline_seed2024_s17_s18": 0.010101010101010102,
+      "baseline_seed2024_m09_m10": 0.0,
+      "healthy_b_seed42_s16_s17": 0.016666666666666666,
+      "healthy_b_seed42_s17_s18": 0.011904761904761904,
+      "healthy_b_seed1337_s16_s17": 0.013333333333333334,
+      "healthy_b_seed1337_s17_s18": 0.0,
+      "healthy_b_seed2024_s16_s17": 0.0,
+      "healthy_b_seed2024_s17_s18": 0.0,
+      "healthy_a_seed1337_s17_s18": 0.03676470588235294,
+      "short_reply_acknowledgement": 0.0,
+      "short_reply_confirmation": 0.0,
+      "short_reply_transition": 0.0
+    }
   }
 }

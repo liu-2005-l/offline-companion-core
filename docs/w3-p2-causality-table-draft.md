@@ -82,7 +82,9 @@ style-block-enabled arm × 场景的条件触发；触发位置与强度受 seed
 - 范围与开关（裁决 4）：`cross_turn_repetition_guard_enabled = False` 默认关；独立于 `identity_near_prompt_enabled`；校准与复测必须覆盖 A、B 两个 style-enabled 变体；是否随 style block 上主干由 W3 收口裁决，P2 不偷跑默认开启。
 - 阈值校准（裁决 3）：不得直接复用 0.0368（group-seed 聚合 gate，非单轮运行时阈值）。fixture-first 扫描校准：正例至少含 B seed42 M09-M10、B seed1337 M09-M10、A seed1337 S16-S18；负例含 baseline 三 seed 全量、S16-S18 合法延续、显式引用/确认对、短回复；零 FP 为首要约束（FP 注入 retry 是新增失败模式，FN 只是回基线——v1.8.0 校准先例）；无法同时捕获低分正例并保持零 FP 时接受 FN，不下调阈值凑召回。
 - 实现期勘误（2026-10-01）：4-gram 重合分数仍只参照上一轮 assistant 回复；用户输入仅作资格豁免，不参与重合分数。仓内新增确定性高精度 `detect_confirmation_intent()`，无既有通用确认意图判定可复用，不假称复用。校准保留双口径：strict（关闭豁免）=`zero_fp_no_recall`；intent-aware（生产判定路径消费真实 `user_message`）冻结 `0.089744 + gt`、TP 3/4、FP 0。`expects_user_confirmation` 仅作 fixture 期望与加载期一致性闸输入，不进入判定路径。显式确认与合法引用请求均由生产路径返回 `user_confirmation_exempt`，仍保留在 21 个负例分母中；校准产物见 `artifacts/persona_expression/w3_p2_repetition_calibration_v0_2.json`。
+- P2-1b 接线闭合（2026-10-04）：接线规格 `docs/w3-p2-1b-repetition-guard-wiring-spec.md` 已由 `4e489f2` 锚定；运行时实现、共享 retry 编排、独立 fallback、assistant meta trace、双界校验与 L4 零漂移回归均已通过终验，本提交闭合 P2-1b。
 - 风险记档（非阻断）：W2 归档中没有“用户请求重申 → 合法重述”的真实豁免样本；当前豁免边界由 2 个构造负例与确认/重申变体判例支撑。豁免误开的暴露面由判例表覆盖度与 P2-2 复测观察共同承担；在真实样本补齐前禁止据此扩张为低精度大词表。
+- 风险记档（非阻断）：运行时仅比较 `history[-1]` 的相邻 assistant 回复；隔轮重放不在 P2-1b 实现范围内，待 P2-2 复测出现真实证据后再决定是否扩张检测窗口。
 - prompt 层反复述条款仅作叠加非依赖（1.5B 服从性不可靠，P3-0 教训）——主防线是确定性门。
 
 ### 2.3 批次拆解

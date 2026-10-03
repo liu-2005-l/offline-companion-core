@@ -134,7 +134,11 @@ def test_arm_b_appends_ephemeral_reminder_without_persisting(tmp_path) -> None:
 def test_arm_c_runtime_surface_is_retired_while_arms_a_and_b_remain() -> None:
     """摘要：旧 C 臂运行面退役，A/B 开关继续在场。"""
     fields = PersonaExpressionConfig.__dataclass_fields__
-    assert set(fields) == {"style_examples_enabled", "identity_near_prompt_enabled"}
+    assert set(fields) == {
+        "style_examples_enabled",
+        "identity_near_prompt_enabled",
+        "cross_turn_repetition_guard_enabled",
+    }
     expression_source = (
         REPO_ROOT / "src/offline_companion/core/persona_session/expression.py"
     ).read_text(encoding="utf-8")

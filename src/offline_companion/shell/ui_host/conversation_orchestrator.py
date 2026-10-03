@@ -401,6 +401,7 @@ class ConversationOrchestrator:
         l3_trace: PersonaL3Trace | None,
         l4_trace: PersonaL4Trace | None,
         pending_audit_events: tuple[str, ...] | list[str],
+        repetition_trace: Any | None = None,
     ) -> dict[str, Any]:
         """摘要：把逐轮 L3/L4 trace 与一次性状态投影到消息 meta。"""
         meta: dict[str, Any] = {}
@@ -408,6 +409,8 @@ class ConversationOrchestrator:
             meta["persona_l3_trace"] = asdict(l3_trace)
         if l4_trace is not None:
             meta["persona_l4_trace"] = asdict(l4_trace)
+        if repetition_trace is not None:
+            meta["cross_turn_repetition_trace"] = asdict(repetition_trace)
         if pending_audit_events:
             meta["persona_audit_pending"] = list(pending_audit_events)
         return meta
@@ -575,6 +578,7 @@ class ConversationOrchestrator:
                         assembled.l3_trace,
                         assembled.l4_trace,
                         assembled.pending_audit_events,
+                        getattr(assembled, "repetition_trace", None),
                     ),
                 },
                 status="error",
@@ -616,6 +620,7 @@ class ConversationOrchestrator:
                     assembled.l3_trace,
                     assembled.l4_trace,
                     assembled.pending_audit_events,
+                    getattr(assembled, "repetition_trace", None),
                 ),
             },
         )
@@ -661,6 +666,7 @@ class ConversationOrchestrator:
         audited_reply: str | None = None
         l3_trace: PersonaL3Trace | None = None
         l4_trace: PersonaL4Trace | None = None
+        repetition_trace: Any | None = None
         pending_audit_events: tuple[str, ...] = ()
         assistant_persisted = False
         try:
@@ -690,6 +696,7 @@ class ConversationOrchestrator:
                     candidate_l4_trace = event.get("l4_trace")
                     if isinstance(candidate_l4_trace, PersonaL4Trace):
                         l4_trace = candidate_l4_trace
+                    repetition_trace = event.get("repetition_trace")
                     pending_audit_events = tuple(event.get("pending_audit_events") or ())
                     continue
                 yield event
@@ -705,7 +712,12 @@ class ConversationOrchestrator:
                 routing=routing,
                 extra_meta={
                     "reformatted": True,
-                    **self._persona_meta(l3_trace, l4_trace, pending_audit_events),
+                    **self._persona_meta(
+                        l3_trace,
+                        l4_trace,
+                        pending_audit_events,
+                        repetition_trace,
+                    ),
                 },
             )
             assistant_persisted = True
@@ -1000,6 +1012,7 @@ class ConversationOrchestrator:
                         assembled.l3_trace,
                         assembled.l4_trace,
                         assembled.pending_audit_events,
+                        getattr(assembled, "repetition_trace", None),
                     ),
                 },
                 assembled.error_code,
@@ -1015,6 +1028,7 @@ class ConversationOrchestrator:
                 assembled.l3_trace,
                 assembled.l4_trace,
                 assembled.pending_audit_events,
+                getattr(assembled, "repetition_trace", None),
             ),
             None,
         )

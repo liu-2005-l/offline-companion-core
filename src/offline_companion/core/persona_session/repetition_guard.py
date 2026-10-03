@@ -6,6 +6,12 @@ from dataclasses import dataclass
 from typing import Literal
 
 CROSS_TURN_REPETITION_NGRAM_SIZE = 4
+CROSS_TURN_REPETITION_RUNTIME_THRESHOLD = 0.09
+CROSS_TURN_REPETITION_RUNTIME_COMPARISON: CrossTurnRepetitionComparison = "gt"
+CROSS_TURN_REPETITION_RETRY_INSTRUCTION = (
+    "【跨轮复读重试提醒 data-ephemeral】\n"
+    "不要复用上一轮回复的原句或提问结构；保留事实含义，用新的表达直接回应当前问题。"
+)
 CONFIRMATION_INTENT_MAX_CHARS = 32
 
 _CONFIRMATION_RESTATEMENT_TERMS: tuple[str, ...] = (

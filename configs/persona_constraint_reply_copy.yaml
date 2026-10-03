@@ -7,6 +7,8 @@ l4_fallback_copy:
 
 l4_fail_close_copy: 回复校验暂时无法完成，请稍后重试。
 
+cross_turn_repetition_fallback: 这次回复和上一轮太像了，我先停在这里。你可以换个说法或补充一点信息，我们再继续。
+
 reply_copy:
   builtin_wenrou:
     switch_confirmation: 已切换到温柔人格，我们慢慢继续。

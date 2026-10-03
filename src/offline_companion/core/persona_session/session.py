@@ -63,6 +63,15 @@ from offline_companion.core.persona_session.expression import (
     is_identity_intent,
 )
 from offline_companion.core.persona_session.persona_loader import resolved_companion_display_name
+from offline_companion.core.persona_session.repetition_guard import (
+    CROSS_TURN_REPETITION_RETRY_INSTRUCTION,
+    CROSS_TURN_REPETITION_RUNTIME_COMPARISON,
+    CROSS_TURN_REPETITION_RUNTIME_THRESHOLD,
+    CrossTurnRepetitionDecision,
+    CrossTurnRepetitionOutcome,
+    CrossTurnRepetitionTrace,
+    decide_cross_turn_repetition,
+)
 from offline_companion.shared.runtime_paths import configs_dir, dev_repo_root
 from offline_companion.shared.types import (
     CapabilityProfile,
@@ -142,6 +151,16 @@ def _buffered_replay_chunks(text: str, *, chunk_size: int = 32) -> Iterator[str]
     body = str(text or "")
     for offset in range(0, len(body), chunk_size):
         yield body[offset : offset + chunk_size]
+
+
+def _repetition_bypass_trace(*, enabled: bool, reason: str) -> CrossTurnRepetitionTrace:
+    """摘要：为未进入复读扫描的出口构造可聚合旁路轨迹。"""
+
+    return CrossTurnRepetitionTrace(
+        enabled=enabled,
+        first=CrossTurnRepetitionDecision(action="bypass", reason=reason),
+        outcome="bypass",
+    )
 
 
 def _load_yaml_dict(file_name: str) -> dict[str, object]:
@@ -312,6 +331,7 @@ class AssembleReplyResult:
     expression_trace: PersonaExpressionTrace = field(default_factory=PersonaExpressionTrace)
     l3_trace: PersonaL3Trace = field(default_factory=PersonaL3Trace)
     l4_trace: PersonaL4Trace = field(default_factory=PersonaL4Trace)
+    repetition_trace: CrossTurnRepetitionTrace = field(default_factory=CrossTurnRepetitionTrace)
     audit_events: tuple[str, ...] = ()
     pending_audit_events: tuple[str, ...] = ()
     fail_closed: bool = False
@@ -333,6 +353,7 @@ class _FinalizedReply:
     reply: str
     l3_trace: PersonaL3Trace
     l4_trace: PersonaL4Trace
+    repetition_trace: CrossTurnRepetitionTrace
     audit_events: tuple[str, ...] = ()
     pending_audit_events: tuple[str, ...] = ()
 
@@ -506,6 +527,7 @@ class PersonaSessionCore:
         reply: str,
         history: list[MessageRow],
         user_message: str,
+        raw_user_message: str | None = None,
         memory_block: str,
         max_tokens: int,
         emotion_context: EmotionContext | None,
@@ -570,40 +592,81 @@ class PersonaSessionCore:
             record_audit(audit)
             audited_reply = audit.reply
 
+        def repetition_decision(candidate: str) -> CrossTurnRepetitionDecision:
+            if not expression_config.cross_turn_repetition_guard_enabled:
+                return CrossTurnRepetitionDecision(action="bypass", reason="guard_disabled")
+            if self._constraint_assets is None:
+                return CrossTurnRepetitionDecision(action="bypass", reason="guard_error")
+            if not history:
+                return CrossTurnRepetitionDecision(
+                    reason="missing_previous_or_current_reply",
+                    action="bypass",
+                )
+            if history[-1].role != "assistant":
+                return CrossTurnRepetitionDecision(reason="not_adjacent_pair", action="bypass")
+            try:
+                return decide_cross_turn_repetition(
+                    history[-1].content,
+                    candidate,
+                    threshold=CROSS_TURN_REPETITION_RUNTIME_THRESHOLD,
+                    comparison=CROSS_TURN_REPETITION_RUNTIME_COMPARISON,
+                    user_message=raw_user_message,
+                )
+            except Exception:
+                logger.exception("cross-turn repetition guard failed open")
+                return CrossTurnRepetitionDecision(action="bypass", reason="guard_error")
+
+        def repetition_trace(
+            first: CrossTurnRepetitionDecision,
+            *,
+            retry: CrossTurnRepetitionDecision | None = None,
+            outcome: CrossTurnRepetitionOutcome,
+        ) -> CrossTurnRepetitionTrace:
+            return CrossTurnRepetitionTrace(
+                enabled=expression_config.cross_turn_repetition_guard_enabled,
+                first=first,
+                retry=retry,
+                retry_taken=first.action == "retry",
+                outcome=outcome,
+            )
+
         policy = self._l4_policy
-        if policy is None or not self._constraints_managed():
-            return _FinalizedReply(
-                reply=audited_reply,
-                l3_trace=final_l3_trace,
-                l4_trace=PersonaL4Trace(),
-                audit_events=tuple(audit_events),
-                pending_audit_events=tuple(dict.fromkeys(pending_audit_events)),
-            )
-
+        l4_enabled = policy is not None and self._constraints_managed()
         display_name = self._resolved_companion_display_name(conn)
-        first = self._resolve_l4_or_raise(audited_reply, policy, display_name=display_name)
-        if first.action == L4_DIRECT:
+        first_l4 = (
+            self._resolve_l4_or_raise(audited_reply, policy, display_name=display_name)
+            if l4_enabled and policy is not None
+            else None
+        )
+        first_repetition = repetition_decision(audited_reply)
+        l4_requests_retry = first_l4 is not None and first_l4.action == L4_RETRY
+        repetition_requests_retry = first_repetition.action == "retry"
+
+        if not l4_requests_retry and not repetition_requests_retry:
+            l4_trace = PersonaL4Trace()
+            if first_l4 is not None:
+                warnings = (
+                    (_l4_observe_warning(first_l4),)
+                    if first_l4.action == L4_OBSERVE
+                    else ()
+                )
+                l4_trace = _l4_trace(first_l4, outcome=first_l4.action, warnings=warnings)
+            repetition_outcome = "bypass" if first_repetition.action == "bypass" else "direct"
             return _FinalizedReply(
                 reply=audited_reply,
                 l3_trace=final_l3_trace,
-                l4_trace=_l4_trace(first, outcome=L4_DIRECT),
-                audit_events=tuple(audit_events),
-                pending_audit_events=tuple(dict.fromkeys(pending_audit_events)),
-            )
-        if first.action == L4_OBSERVE:
-            return _FinalizedReply(
-                reply=audited_reply,
-                l3_trace=final_l3_trace,
-                l4_trace=_l4_trace(
-                    first,
-                    outcome=L4_OBSERVE,
-                    warnings=(_l4_observe_warning(first),),
-                ),
+                l4_trace=l4_trace,
+                repetition_trace=repetition_trace(first_repetition, outcome=repetition_outcome),
                 audit_events=tuple(audit_events),
                 pending_audit_events=tuple(dict.fromkeys(pending_audit_events)),
             )
 
-        retry_reply = generate_with_reminder(build_l4_retry_instruction(display_name))
+        reminders: list[str] = []
+        if l4_requests_retry:
+            reminders.append(build_l4_retry_instruction(display_name))
+        if repetition_requests_retry:
+            reminders.append(CROSS_TURN_REPETITION_RETRY_INSTRUCTION)
+        retry_reply = generate_with_reminder("\n\n".join(reminders))
         if audit_arithmetic:
             retry_audit = audit_arithmetic_reply(
                 retry_reply,
@@ -612,35 +675,90 @@ class PersonaSessionCore:
             )
             record_audit(retry_audit)
             retry_reply = retry_audit.reply
-        second = self._resolve_l4_or_raise(retry_reply, policy, display_name=display_name)
-        if second.action == L4_RETRY:
+        second_l4 = (
+            self._resolve_l4_or_raise(retry_reply, policy, display_name=display_name)
+            if l4_enabled and policy is not None
+            else None
+        )
+        second_repetition = (
+            repetition_decision(retry_reply)
+            if first_repetition.action != "bypass"
+            else None
+        )
+        repetition_failed = (
+            second_repetition is not None and second_repetition.action == "retry"
+        )
+        if second_l4 is not None and second_l4.action == L4_RETRY:
+            fallback_zone = (
+                first_l4.zone
+                if first_l4 is not None and first_l4.action == L4_RETRY
+                else second_l4.zone
+            )
+            trace_first_l4 = first_l4 or second_l4
             return _FinalizedReply(
-                reply=deterministic_l4_fallback(policy, first.zone, display_name),
+                reply=deterministic_l4_fallback(policy, fallback_zone, display_name),
                 l3_trace=final_l3_trace,
                 l4_trace=_l4_trace(
-                    first,
+                    trace_first_l4,
                     outcome=L4_FALLBACK,
-                    retry=second,
+                    retry=second_l4,
                     retry_taken=True,
                     warnings=("l4_retry_exhausted",),
+                ),
+                repetition_trace=repetition_trace(
+                    first_repetition,
+                    retry=second_repetition,
+                    outcome="retry" if second_repetition is not None else "bypass",
                 ),
                 audit_events=tuple(audit_events),
                 pending_audit_events=tuple(dict.fromkeys(pending_audit_events)),
             )
-        warnings = (
-            (_l4_observe_warning(second),)
-            if second.action == L4_OBSERVE
-            else ()
-        )
+        if repetition_failed:
+            assert self._constraint_assets is not None
+            fallback = self._constraint_assets.cross_turn_repetition_fallback
+            l4_trace = PersonaL4Trace()
+            if first_l4 is not None:
+                l4_trace = _l4_trace(
+                    first_l4,
+                    outcome=L4_RETRY if l4_requests_retry else first_l4.action,
+                    retry=second_l4 if l4_requests_retry else None,
+                    retry_taken=l4_requests_retry,
+                )
+            return _FinalizedReply(
+                reply=fallback,
+                l3_trace=final_l3_trace,
+                l4_trace=l4_trace,
+                repetition_trace=repetition_trace(
+                    first_repetition,
+                    retry=second_repetition,
+                    outcome="fallback",
+                ),
+                audit_events=tuple(audit_events),
+                pending_audit_events=tuple(dict.fromkeys(pending_audit_events)),
+            )
+
+        l4_trace = PersonaL4Trace()
+        if first_l4 is not None:
+            warnings = (
+                (_l4_observe_warning(second_l4),)
+                if second_l4 is not None and second_l4.action == L4_OBSERVE
+                else ()
+            )
+            l4_trace = _l4_trace(
+                first_l4,
+                outcome=L4_RETRY if l4_requests_retry else first_l4.action,
+                retry=second_l4 if l4_requests_retry else None,
+                retry_taken=l4_requests_retry,
+                warnings=warnings,
+            )
         return _FinalizedReply(
             reply=retry_reply,
             l3_trace=final_l3_trace,
-            l4_trace=_l4_trace(
-                first,
-                outcome=L4_RETRY,
-                retry=second,
-                retry_taken=True,
-                warnings=warnings,
+            l4_trace=l4_trace,
+            repetition_trace=repetition_trace(
+                first_repetition,
+                retry=second_repetition,
+                outcome="retry" if second_repetition is not None else "bypass",
             ),
             audit_events=tuple(audit_events),
             pending_audit_events=tuple(dict.fromkeys(pending_audit_events)),
@@ -666,6 +784,7 @@ class PersonaSessionCore:
     ) -> AssembleReplyResult:
         """摘要：装配 prompt、注入记忆召回与情绪/语气策略并调用推理后端。"""
         config = expression_config or PersonaExpressionConfig()
+        raw_user_message = user_message
         active_signals = self._turn_signals(emotion_context, turn_signals)
         l3_application = self._apply_l3(conn, active_signals)
         final_l3_trace = l3_application.trace
@@ -700,6 +819,14 @@ class PersonaSessionCore:
                 ),
                 l3_trace=final_l3_trace,
                 l4_trace=identity_exit.l4_trace,
+                repetition_trace=_repetition_bypass_trace(
+                    enabled=config.cross_turn_repetition_guard_enabled,
+                    reason=(
+                        "protected_identity_reply"
+                        if config.cross_turn_repetition_guard_enabled
+                        else "guard_disabled"
+                    ),
+                ),
             )
 
         reply = backend.generate(
@@ -716,6 +843,7 @@ class PersonaSessionCore:
                 reply=reply,
                 history=history,
                 user_message=user_message,
+                raw_user_message=raw_user_message,
                 memory_block=combined_memory_block,
                 max_tokens=max_tokens,
                 emotion_context=emotion_context,
@@ -733,6 +861,10 @@ class PersonaSessionCore:
                 memory_block=combined_memory_block,
                 l3_trace=final_l3_trace,
                 identity_exit=identity_exit,
+                repetition_trace=_repetition_bypass_trace(
+                    enabled=config.cross_turn_repetition_guard_enabled,
+                    reason="l4_fail_closed",
+                ),
             )
         finalized = self._record_identity_fallthrough(finalized, identity_exit)
         return AssembleReplyResult(
@@ -745,6 +877,7 @@ class PersonaSessionCore:
             ),
             l3_trace=finalized.l3_trace,
             l4_trace=finalized.l4_trace,
+            repetition_trace=finalized.repetition_trace,
             audit_events=finalized.audit_events,
             pending_audit_events=finalized.pending_audit_events,
         )
@@ -768,6 +901,7 @@ class PersonaSessionCore:
     ) -> Iterator[dict[str, Any]]:
         """摘要：流式生成单轮回复，并在结束事件中返回审计后的最终正文。"""
         config = expression_config or PersonaExpressionConfig()
+        raw_user_message = user_message
         active_signals = self._turn_signals(emotion_context, turn_signals)
         l3_application = self._apply_l3(conn, active_signals)
         final_l3_trace = l3_application.trace
@@ -791,6 +925,14 @@ class PersonaSessionCore:
         yield {"recall": len(recalls)}
         if identity_exit.kind == "direct":
             assert identity_exit.reply is not None
+            repetition_trace = _repetition_bypass_trace(
+                enabled=config.cross_turn_repetition_guard_enabled,
+                reason=(
+                    "protected_identity_reply"
+                    if config.cross_turn_repetition_guard_enabled
+                    else "guard_disabled"
+                ),
+            )
             yield {"token": identity_exit.reply}
             yield {
                 "done": True,
@@ -798,10 +940,14 @@ class PersonaSessionCore:
                 "memory_recalls": recalls,
                 "l3_trace": final_l3_trace,
                 "l4_trace": identity_exit.l4_trace,
+                "repetition_trace": repetition_trace,
                 "pending_audit_events": (),
             }
             return
-        buffered = self.requires_audited_stream_buffering()
+        buffered = (
+            self.requires_audited_stream_buffering()
+            or config.cross_turn_repetition_guard_enabled
+        )
         chunks: list[str] = []
         for token in backend.generate_stream(
             system_prompt=system_prompt,
@@ -820,6 +966,7 @@ class PersonaSessionCore:
             reply=raw_reply,
             history=history,
             user_message=user_message,
+            raw_user_message=raw_user_message,
             memory_block=combined_memory_block,
             max_tokens=max_tokens,
             emotion_context=emotion_context,
@@ -842,6 +989,7 @@ class PersonaSessionCore:
             "memory_recalls": recalls,
             "l3_trace": finalized.l3_trace,
             "l4_trace": l4_trace,
+            "repetition_trace": finalized.repetition_trace,
             "audit_events": finalized.audit_events,
             "pending_audit_events": finalized.pending_audit_events,
         }
@@ -866,6 +1014,7 @@ class PersonaSessionCore:
         memory_block: str,
         l3_trace: PersonaL3Trace,
         identity_exit: _IdentityReplyExit,
+        repetition_trace: CrossTurnRepetitionTrace,
     ) -> AssembleReplyResult:
         """摘要：构造同步出口唯一允许的 L4 fail-close 结果。"""
         policy = self._l4_policy
@@ -880,6 +1029,7 @@ class PersonaSessionCore:
             memory_block=memory_block,
             l3_trace=l3_trace,
             l4_trace=PersonaL4Trace(enabled=True, warnings=tuple(warnings)),
+            repetition_trace=repetition_trace,
             fail_closed=True,
             error_code=PERSONA_L4_FAIL_CLOSED,
         )

@@ -12,6 +12,7 @@ import pytest
 from offline_companion.core.persona_session.expression import PersonaExpressionConfig
 from offline_companion.core.persona_session.repetition_guard import (
     CONFIRMATION_INTENT_MAX_CHARS,
+    CROSS_TURN_REPETITION_RUNTIME_THRESHOLD,
     CrossTurnRepetitionTrace,
     cross_turn_repetition_score,
     decide_cross_turn_repetition,
@@ -381,13 +382,33 @@ def test_restatement_question_beats_question_veto_but_not_negation() -> None:
     assert detect_confirmation_intent("不对，你是说先修打包吗？") is False
 
 
-def test_w3_p2_1a_has_no_runtime_wiring() -> None:
-    """摘要：P2-1a 只交付纯模块，session 与 A/B 配置面保持零接线。"""
+def test_w3_p2_1b_runtime_wiring_preserves_independent_guard_boundary() -> None:
+    """摘要：P2-1b 只新增独立复读门，不得把判定并入 L4 策略。"""
 
     session_source = SESSION_SOURCE.read_text(encoding="utf-8")
-    assert "repetition_guard" not in session_source
-    assert "cross_turn_repetition_guard" not in session_source
+    assert "from offline_companion.core.persona_session.repetition_guard import" in session_source
+    assert "cross_turn_repetition_guard_enabled" in session_source
+    assert "CrossTurnRepetitionTrace" in session_source
     assert set(PersonaExpressionConfig.__dataclass_fields__) == {
         "style_examples_enabled",
         "identity_near_prompt_enabled",
+        "cross_turn_repetition_guard_enabled",
     }
+
+
+def test_runtime_threshold_matches_artifact_and_stays_inside_mechanical_bounds() -> None:
+    """摘要：运行阈值等于意图口径字段，并位于产物分数集合机械导出的双界之间。"""
+
+    payload = json.loads(CALIBRATION.read_text(encoding="utf-8"))
+    intent_aware = payload["intent_aware"]
+    runtime_threshold = intent_aware["runtime_threshold"]
+    true_positive_ids = set(intent_aware["true_positive_ids"])
+    lower_bound = max(intent_aware["effective_negative_scores"].values())
+    upper_bound = min(
+        score
+        for pair_id, score in intent_aware["positive_scores"].items()
+        if pair_id in true_positive_ids
+    )
+
+    assert CROSS_TURN_REPETITION_RUNTIME_THRESHOLD == runtime_threshold
+    assert lower_bound < runtime_threshold < upper_bound

@@ -30,15 +30,17 @@ _IDENTITY_INTENT_PATTERNS = (
 )
 @dataclass(frozen=True)
 class PersonaExpressionConfig:
-    """摘要：W2 拟人表述 A/B 两臂开关。
+    """摘要：W2 拟人表述开关与 W3 跨轮复读门开关。
 
     参数：
         style_examples_enabled: 是否启用臂 A 风格锚点。
         identity_near_prompt_enabled: 是否启用臂 B 身份近端注入。
+        cross_turn_repetition_guard_enabled: 是否启用跨轮复读出口门。
     """
 
     style_examples_enabled: bool = False
     identity_near_prompt_enabled: bool = False
+    cross_turn_repetition_guard_enabled: bool = False
 
 
 @dataclass(frozen=True)

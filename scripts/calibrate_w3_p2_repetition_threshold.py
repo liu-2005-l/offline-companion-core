@@ -9,6 +9,11 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
@@ -16,6 +21,7 @@ if str(SRC) not in sys.path:
 
 from offline_companion.core.persona_session.repetition_guard import (
     CROSS_TURN_REPETITION_NGRAM_SIZE,
+    CROSS_TURN_REPETITION_RUNTIME_THRESHOLD,
     CrossTurnRepetitionComparison,
     cross_turn_repetition_score,
     decide_cross_turn_repetition,
@@ -327,6 +333,24 @@ def calibrate(data: dict[str, Any]) -> dict[str, CalibrationResult]:
     return {"strict": strict, "intent_aware": intent_aware}
 
 
+def _intent_aware_score_sets(data: dict[str, Any]) -> dict[str, dict[str, float]]:
+    """摘要：输出运行时阈值区间断言所需的意图口径分数集合。"""
+
+    positive_scores = {
+        str(pair["id"]): _score_pair(pair)
+        for pair in data["positive"]
+    }
+    effective_negative_scores = {
+        str(pair["id"]): _score_pair(pair)
+        for pair in data["negative"]
+        if not detect_confirmation_intent(str(pair["user_message"]))
+    }
+    return {
+        "positive_scores": positive_scores,
+        "effective_negative_scores": effective_negative_scores,
+    }
+
+
 def _print_result(
     fixture: Path,
     mode: str,
@@ -369,9 +393,14 @@ def main(argv: list[str] | None = None) -> int:
         _print_result(args.fixture, mode, result)
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
+        payload = {mode: asdict(result) for mode, result in results.items()}
+        payload["intent_aware"]["runtime_threshold"] = (
+            CROSS_TURN_REPETITION_RUNTIME_THRESHOLD
+        )
+        payload["intent_aware"].update(_intent_aware_score_sets(data))
         args.json_output.write_text(
             json.dumps(
-                {mode: asdict(result) for mode, result in results.items()},
+                payload,
                 ensure_ascii=False,
                 indent=2,
             )

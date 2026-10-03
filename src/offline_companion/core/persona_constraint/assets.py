@@ -15,7 +15,7 @@ import yaml
 
 from offline_companion.shared.runtime_paths import bundled_configs_dir, data_root, dev_repo_root
 
-PERSONA_CONSTRAINT_MANIFEST_SHA256 = "1195f76108c473275703e59c5fc7cc059e9bdca11b664abfd7c825c77d5d8fc8"
+PERSONA_CONSTRAINT_MANIFEST_SHA256 = "2f3a15a85c4cc6042b2bac08f22ba5fc64241f079589bb448bfae9967ee4c05f"
 PERSONA_CONSTRAINT_MANIFEST_RELATIVE_PATH = Path("configs") / "persona_constraint_corpus.yaml"
 PERSONA_CONSTRAINT_ASSET_ROOT_ENV = "OFFLINE_COMPANION_PERSONA_ASSET_ROOT"
 OCEAN_DIMENSION_ORDER = ("O", "C", "E", "A", "N")
@@ -119,6 +119,7 @@ class PersonaConstraintAssets:
     source_payloads: Mapping[str, Mapping[str, Any]]
     builtin_presets: tuple[BuiltinPersonaPreset, ...]
     reply_copy: Mapping[str, PersonaReplyCopy]
+    cross_turn_repetition_fallback: str
 
     def deterministic_reply(self, persona_id: str, kind: ReplyCopyKind) -> str | None:
         """摘要：仅为五个已验证内置人格查找确定性文案。
@@ -227,6 +228,15 @@ def _load_complete_root(root: Path) -> PersonaConstraintAssets:
 
     presets = _load_builtin_presets(manifest_meta, source_payloads)
     reply_copy = _load_reply_copy(source_payloads["reply_copy"], presets)
+    repetition_fallback = source_payloads["reply_copy"].get(
+        "cross_turn_repetition_fallback"
+    )
+    if (
+        not isinstance(repetition_fallback, str)
+        or not repetition_fallback.strip()
+        or repetition_fallback != repetition_fallback.strip()
+    ):
+        raise PersonaConstraintConfigError("cross_turn_repetition_fallback_invalid")
     return PersonaConstraintAssets(
         root=root,
         manifest_path=manifest_path,
@@ -236,6 +246,7 @@ def _load_complete_root(root: Path) -> PersonaConstraintAssets:
         source_payloads=MappingProxyType(source_payloads),
         builtin_presets=presets,
         reply_copy=reply_copy,
+        cross_turn_repetition_fallback=repetition_fallback,
     )
 
 

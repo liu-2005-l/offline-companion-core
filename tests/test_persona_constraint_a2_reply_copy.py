@@ -76,6 +76,7 @@ def test_t24_reply_copy_passes_all_five_one_time_audits() -> None:
         for persona_id in sorted(assets.reply_copy)
         for kind in REPLY_COPY_KINDS
     ]
+    texts.append(assets.cross_turn_repetition_fallback)
 
     assert len(examples) == 78
     assert all(text is not None for text in texts)
@@ -144,5 +145,23 @@ def test_t24_reply_copy_is_registered_in_the_published_hash_chain(tmp_path: Path
     shutil.copytree(REPO_ROOT / "configs", tmp_path / "configs")
     target = tmp_path / "configs" / "persona_constraint_reply_copy.yaml"
     target.write_text(target.read_text(encoding="utf-8") + "\n# tampered\n", encoding="utf-8")
+    with pytest.raises(PersonaConstraintConfigError, match="source_hash_mismatch:reply_copy"):
+        load_persona_constraint_assets(root_override=tmp_path)
+
+
+def test_cross_turn_repetition_fallback_character_tamper_is_rejected(
+    tmp_path: Path,
+) -> None:
+    """摘要：跨轮复读 fallback 的字符级篡改必须被发布哈希链拒绝。"""
+
+    shutil.copytree(REPO_ROOT / "configs", tmp_path / "configs")
+    target = tmp_path / "configs" / "persona_constraint_reply_copy.yaml"
+    payload = _load_yaml(target)
+    payload["cross_turn_repetition_fallback"] += "。"
+    target.write_text(
+        yaml.safe_dump(payload, allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
+
     with pytest.raises(PersonaConstraintConfigError, match="source_hash_mismatch:reply_copy"):
         load_persona_constraint_assets(root_override=tmp_path)
