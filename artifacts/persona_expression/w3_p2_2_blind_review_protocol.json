@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "version": "w3-p2-2-blind-protocol-v1",
+    "status": "preregistered_before_review",
+    "reviewer_count_required": 3,
+    "minimum_valid_judges": 3,
+    "invalid_below_minimum_action": "void_round_and_recruit_again"
+  },
+  "sources": {
+    "pre_a": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w2_arm_a_matrix.json",
+    "pre_a_sha256": "D94AD8166E4A05510EB97F0AB8448C243C7EE98A25639079D513A508E7D6A4E2",
+    "pre_b": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w2_arm_b_matrix.json",
+    "pre_b_sha256": "44CE078D0360027AFDDE684679508BA04DC9BAA1AFDA0DA16238EE554112DC15",
+    "post": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w3_p2_2_ab_matrix.json",
+    "post_sha256": "670AA3F6B3DE7E5500F059B13923BB85CACE8C38810CB2F72BC4FAC008926230"
+  },
+  "sealed_material": {
+    "packet": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w3_p2_2_blind_review.json",
+    "packet_sha256": "0C14789E68E7F3753F8AF0D2FEF61D26AD4E5552E6FF4BF51C48F2FCFB1F8B04",
+    "key": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w3_p2_2_blind_review_key.json",
+    "key_sha256": "7D8B8398EF372D21ABAC6FBDA2B11D15725227104B8DD5E40684D406B505CEE0"
+  },
+  "pre_unblind_checks": {
+    "expected_case_count": 50,
+    "all_preferences_completed": true,
+    "all_reasons_non_empty": true,
+    "packet_sha256_must_match": true,
+    "key_must_remain_unopened": true
+  },
+  "acceptance": {
+    "single_turn": "A/B repaired outputs must not lose to their pre-fix arm overall",
+    "multi_turn": "S16-S18 must not regress for either arm",
+    "mechanical_gate_is_independent": true
+  }
+}

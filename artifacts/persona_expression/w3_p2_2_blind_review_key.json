@@ -1,0 +1,259 @@
+{
+  "meta": {
+    "version": "w3-p2-2-blind-key-v1",
+    "seed_name": "seed42",
+    "shuffle_seed": 20261004
+  },
+  "mapping": [
+    {
+      "blind_id": "A-S01",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-S02",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-S03",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "A-S04",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-S05",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-S06",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-S07",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "A-S08",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-S09",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "A-S10",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "A-S11",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "A-S12",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "A-S13",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-S14",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-S15",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-S16-S18",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "A-M01",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-M02",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "A-M03",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-M04",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-M05",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-M06",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-M07",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "A-M08",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "A-M09-M10",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-S01",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-S02",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-S03",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-S04",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-S05",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-S06",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "B-S07",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-S08",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "B-S09",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-S10",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-S11",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-S12",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-S13",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-S14",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-S15",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "B-S16-S18",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-M01",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-M02",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-M03",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "B-M04",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "B-M05",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-M06",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "B-M07",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    },
+    {
+      "blind_id": "B-M08",
+      "option_a": "pre_fix",
+      "option_b": "repaired"
+    },
+    {
+      "blind_id": "B-M09-M10",
+      "option_a": "repaired",
+      "option_b": "pre_fix"
+    }
+  ]
+}

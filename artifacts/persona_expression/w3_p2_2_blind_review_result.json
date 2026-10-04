@@ -1,0 +1,1286 @@
+{
+  "meta": {
+    "version": "w3-p2-2-blind-result-v1",
+    "status": "failed",
+    "packet_sha256": "0C14789E68E7F3753F8AF0D2FEF61D26AD4E5552E6FF4BF51C48F2FCFB1F8B04",
+    "key_sha256": "7D8B8398EF372D21ABAC6FBDA2B11D15725227104B8DD5E40684D406B505CEE0",
+    "reviewer_count": 3,
+    "majority_rule": "three-seat categorical majority; prompt-side M09 contamination disclosed and separately sensitivity-checked"
+  },
+  "reviewer_validity": [
+    {
+      "reviewer": "Sagan",
+      "context": "clean_ai_without_project_context",
+      "count": 50,
+      "order_matches_packet": true,
+      "values_valid": true,
+      "reasons_non_empty": true,
+      "raw_distribution": {
+        "A": 11,
+        "B": 13,
+        "平手": 26
+      }
+    },
+    {
+      "reviewer": "Ramanujan",
+      "context": "clean_ai_without_project_context",
+      "count": 50,
+      "order_matches_packet": true,
+      "values_valid": true,
+      "reasons_non_empty": true,
+      "raw_distribution": {
+        "A": 11,
+        "B": 14,
+        "平手": 25
+      }
+    },
+    {
+      "reviewer": "prompt_side",
+      "context": "第三席（对话上下文在场，非无上下文席）。判定仅依据协议六条：事实与诚实边界 > 对话自然度 > 陪伴感 > 冗余；修复目标是不重复不强求升级。未触碰 key。",
+      "count": 50,
+      "order_matches_packet": true,
+      "values_valid": true,
+      "reasons_non_empty": true,
+      "raw_distribution": {
+        "A": 10,
+        "B": 13,
+        "平手": 27
+      }
+    }
+  ],
+  "majority": {
+    "overall": {
+      "repaired": 11,
+      "pre_fix": 14,
+      "tie": 25,
+      "no_consensus": 0
+    },
+    "arm_a": {
+      "repaired": 10,
+      "pre_fix": 14,
+      "tie": 1,
+      "no_consensus": 0
+    },
+    "arm_b": {
+      "repaired": 1,
+      "pre_fix": 0,
+      "tie": 24,
+      "no_consensus": 0
+    },
+    "arm_a_m09_contamination_adjusted": {
+      "repaired": 10,
+      "pre_fix": 13,
+      "tie": 1,
+      "no_consensus": 1
+    }
+  },
+  "acceptance": {
+    "single_turn_arm_a": {
+      "repaired": 10,
+      "pre_fix": 12,
+      "tie": 1,
+      "passed": false
+    },
+    "multi_turn_s16_arm_a": {
+      "votes": [
+        "B",
+        "B",
+        "B"
+      ],
+      "winner": "pre_fix",
+      "passed": false
+    },
+    "multi_turn_s16_arm_b": {
+      "votes": [
+        "平手",
+        "平手",
+        "平手"
+      ],
+      "winner": "tie",
+      "passed": true
+    },
+    "target_m09_arm_b": {
+      "votes": [
+        "A",
+        "A",
+        "A"
+      ],
+      "winner": "repaired",
+      "passed": true
+    },
+    "target_m09_arm_a_clean_seats": {
+      "votes": [
+        "A",
+        "B"
+      ],
+      "winner": "no_consensus"
+    }
+  },
+  "attribution": {
+    "pair_definition": "same arm + same seed42 + same case; W2 pre-fix versus P2-2 repaired",
+    "sm_text_equality": {
+      "pre_a_vs_post_a": "1/25",
+      "pre_b_vs_post_b": "24/25",
+      "post_a_vs_post_b": "24/25"
+    },
+    "original_gate_guard_triggers": [
+      "A-M09-M10",
+      "B-M09-M10"
+    ],
+    "classification": "cross_batch_source_confounding",
+    "guard_side_effect_supported": false,
+    "note": "A broad blind loss remains a product-level gate failure but is not causal evidence of guard regression."
+  },
+  "pair_results": [
+    {
+      "blind_id": "A-S01",
+      "arm": "A",
+      "case_id": "S01",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "A"
+        }
+      ],
+      "majority_option": "A",
+      "majority_source": "pre_fix"
+    },
+    {
+      "blind_id": "A-S02",
+      "arm": "A",
+      "case_id": "S02",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "B"
+        }
+      ],
+      "majority_option": "A",
+      "majority_source": "pre_fix"
+    },
+    {
+      "blind_id": "A-S03",
+      "arm": "A",
+      "case_id": "S03",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "A"
+        }
+      ],
+      "majority_option": "B",
+      "majority_source": "pre_fix"
+    },
+    {
+      "blind_id": "A-S04",
+      "arm": "A",
+      "case_id": "S04",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "A",
+      "majority_source": "pre_fix"
+    },
+    {
+      "blind_id": "A-S05",
+      "arm": "A",
+      "case_id": "S05",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "A"
+        }
+      ],
+      "majority_option": "A",
+      "majority_source": "pre_fix"
+    },
+    {
+      "blind_id": "A-S06",
+      "arm": "A",
+      "case_id": "S06",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "B"
+        }
+      ],
+      "majority_option": "B",
+      "majority_source": "repaired"
+    },
+    {
+      "blind_id": "A-S07",
+      "arm": "A",
+      "case_id": "S07",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "B"
+        }
+      ],
+      "majority_option": "B",
+      "majority_source": "pre_fix"
+    },
+    {
+      "blind_id": "A-S08",
+      "arm": "A",
+      "case_id": "S08",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "B"
+        }
+      ],
+      "majority_option": "B",
+      "majority_source": "repaired"
+    },
+    {
+      "blind_id": "A-S09",
+      "arm": "A",
+      "case_id": "S09",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "A-S10",
+      "arm": "A",
+      "case_id": "S10",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "B"
+        }
+      ],
+      "majority_option": "A",
+      "majority_source": "repaired"
+    },
+    {
+      "blind_id": "A-S11",
+      "arm": "A",
+      "case_id": "S11",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "B"
+        }
+      ],
+      "majority_option": "B",
+      "majority_source": "pre_fix"
+    },
+    {
+      "blind_id": "A-S12",
+      "arm": "A",
+      "case_id": "S12",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "A"
+        }
+      ],
+      "majority_option": "A",
+      "majority_source": "repaired"
+    },
+    {
+      "blind_id": "A-S13",
+      "arm": "A",
+      "case_id": "S13",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "A"
+        }
+      ],
+      "majority_option": "A",
+      "majority_source": "pre_fix"
+    },
+    {
+      "blind_id": "A-S14",
+      "arm": "A",
+      "case_id": "S14",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "B"
+        }
+      ],
+      "majority_option": "B",
+      "majority_source": "repaired"
+    },
+    {
+      "blind_id": "A-S15",
+      "arm": "A",
+      "case_id": "S15",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "A"
+        }
+      ],
+      "majority_option": "B",
+      "majority_source": "repaired"
+    },
+    {
+      "blind_id": "A-S16-S18",
+      "arm": "A",
+      "case_id": "S16-S18",
+      "scenario": "chat",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "B"
+        }
+      ],
+      "majority_option": "B",
+      "majority_source": "pre_fix"
+    },
+    {
+      "blind_id": "A-M01",
+      "arm": "A",
+      "case_id": "M01",
+      "scenario": "memory",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "A",
+      "majority_source": "pre_fix"
+    },
+    {
+      "blind_id": "A-M02",
+      "arm": "A",
+      "case_id": "M02",
+      "scenario": "memory",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "A"
+        }
+      ],
+      "majority_option": "B",
+      "majority_source": "pre_fix"
+    },
+    {
+      "blind_id": "A-M03",
+      "arm": "A",
+      "case_id": "M03",
+      "scenario": "memory",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "B"
+        }
+      ],
+      "majority_option": "A",
+      "majority_source": "pre_fix"
+    },
+    {
+      "blind_id": "A-M04",
+      "arm": "A",
+      "case_id": "M04",
+      "scenario": "memory",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "A"
+        }
+      ],
+      "majority_option": "B",
+      "majority_source": "repaired"
+    },
+    {
+      "blind_id": "A-M05",
+      "arm": "A",
+      "case_id": "M05",
+      "scenario": "memory",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "B"
+        }
+      ],
+      "majority_option": "B",
+      "majority_source": "repaired"
+    },
+    {
+      "blind_id": "A-M06",
+      "arm": "A",
+      "case_id": "M06",
+      "scenario": "memory",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "B"
+        }
+      ],
+      "majority_option": "B",
+      "majority_source": "repaired"
+    },
+    {
+      "blind_id": "A-M07",
+      "arm": "A",
+      "case_id": "M07",
+      "scenario": "memory",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "B"
+        }
+      ],
+      "majority_option": "B",
+      "majority_source": "repaired"
+    },
+    {
+      "blind_id": "A-M08",
+      "arm": "A",
+      "case_id": "M08",
+      "scenario": "memory",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "B"
+        }
+      ],
+      "majority_option": "B",
+      "majority_source": "pre_fix"
+    },
+    {
+      "blind_id": "A-M09-M10",
+      "arm": "A",
+      "case_id": "M09-M10",
+      "scenario": "memory",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "B"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "A"
+        }
+      ],
+      "majority_option": "A",
+      "majority_source": "pre_fix"
+    },
+    {
+      "blind_id": "B-S01",
+      "arm": "B",
+      "case_id": "S01",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S02",
+      "arm": "B",
+      "case_id": "S02",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S03",
+      "arm": "B",
+      "case_id": "S03",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S04",
+      "arm": "B",
+      "case_id": "S04",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S05",
+      "arm": "B",
+      "case_id": "S05",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S06",
+      "arm": "B",
+      "case_id": "S06",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S07",
+      "arm": "B",
+      "case_id": "S07",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S08",
+      "arm": "B",
+      "case_id": "S08",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S09",
+      "arm": "B",
+      "case_id": "S09",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S10",
+      "arm": "B",
+      "case_id": "S10",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S11",
+      "arm": "B",
+      "case_id": "S11",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S12",
+      "arm": "B",
+      "case_id": "S12",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S13",
+      "arm": "B",
+      "case_id": "S13",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S14",
+      "arm": "B",
+      "case_id": "S14",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S15",
+      "arm": "B",
+      "case_id": "S15",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-S16-S18",
+      "arm": "B",
+      "case_id": "S16-S18",
+      "scenario": "chat",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-M01",
+      "arm": "B",
+      "case_id": "M01",
+      "scenario": "memory",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-M02",
+      "arm": "B",
+      "case_id": "M02",
+      "scenario": "memory",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-M03",
+      "arm": "B",
+      "case_id": "M03",
+      "scenario": "memory",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-M04",
+      "arm": "B",
+      "case_id": "M04",
+      "scenario": "memory",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-M05",
+      "arm": "B",
+      "case_id": "M05",
+      "scenario": "memory",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-M06",
+      "arm": "B",
+      "case_id": "M06",
+      "scenario": "memory",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-M07",
+      "arm": "B",
+      "case_id": "M07",
+      "scenario": "memory",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-M08",
+      "arm": "B",
+      "case_id": "M08",
+      "scenario": "memory",
+      "option_texts_identical": true,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "平手"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "平手"
+        }
+      ],
+      "majority_option": "平手",
+      "majority_source": "tie"
+    },
+    {
+      "blind_id": "B-M09-M10",
+      "arm": "B",
+      "case_id": "M09-M10",
+      "scenario": "memory",
+      "option_texts_identical": false,
+      "votes": [
+        {
+          "reviewer": "Sagan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "Ramanujan",
+          "preferred": "A"
+        },
+        {
+          "reviewer": "prompt_side",
+          "preferred": "A"
+        }
+      ],
+      "majority_option": "A",
+      "majority_source": "repaired"
+    }
+  ]
+}

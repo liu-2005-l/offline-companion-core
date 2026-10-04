@@ -1,0 +1,65 @@
+{
+  "version": "w3-p2-2-validation-v1",
+  "cases": [
+    {
+      "id": "V01-V02",
+      "scenario": "memory",
+      "group": "V01-V02",
+      "turns": [
+        {
+          "id": "V01",
+          "user": "跟你说，我申请的交换项目录取了！"
+        },
+        {
+          "id": "V02",
+          "user": "你觉得我该去吗？"
+        }
+      ],
+      "focus": [
+        "new_information_response",
+        "short_context_continuity",
+        "cross_turn_repetition"
+      ]
+    },
+    {
+      "id": "V03-V04",
+      "scenario": "memory",
+      "group": "V03-V04",
+      "turns": [
+        {
+          "id": "V03",
+          "user": "今天领导说愿意让我转到新项目组。"
+        },
+        {
+          "id": "V04",
+          "user": "你说我要不要答应？"
+        }
+      ],
+      "focus": [
+        "new_information_response",
+        "short_context_continuity",
+        "cross_turn_repetition"
+      ]
+    },
+    {
+      "id": "V05-V06",
+      "scenario": "memory",
+      "group": "V05-V06",
+      "turns": [
+        {
+          "id": "V05",
+          "user": "朋友邀请我下个月一起合租，通勤会短很多。"
+        },
+        {
+          "id": "V06",
+          "user": "你觉得我该搬吗？"
+        }
+      ],
+      "focus": [
+        "new_information_response",
+        "short_context_continuity",
+        "cross_turn_repetition"
+      ]
+    }
+  ]
+}

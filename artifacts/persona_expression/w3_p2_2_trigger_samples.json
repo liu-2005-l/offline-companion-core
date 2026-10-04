@@ -1,0 +1,184 @@
+{
+  "meta": {
+    "version": "w3-p2-2-trigger-samples-v1",
+    "source": "artifacts\\persona_expression\\w3_p2_2_ab_matrix.json",
+    "source_sha256": "670AA3F6B3DE7E5500F059B13923BB85CACE8C38810CB2F72BC4FAC008926230",
+    "selection": "repetition_trace.first.action == retry",
+    "l4_joint_read_required": true
+  },
+  "acceptance": {
+    "triggered_count": 6,
+    "local_retry_passed": false,
+    "local_failures": [
+      {
+        "arm": "A",
+        "seed": "seed42",
+        "source": "validation",
+        "case_id": "V05-V06",
+        "turn_index": 1,
+        "first_score": 0.09090909090909091,
+        "retry_action": "retry",
+        "retry_score": 0.425531914893617,
+        "retry_below_0_02": false,
+        "guard_outcome": "fallback",
+        "guard_retry_taken": true,
+        "l4_outcome": "bypass"
+      },
+      {
+        "arm": "A",
+        "seed": "seed1337",
+        "source": "validation",
+        "case_id": "V01-V02",
+        "turn_index": 1,
+        "first_score": 0.21686746987951808,
+        "retry_action": "retry",
+        "retry_score": 0.2465753424657534,
+        "retry_below_0_02": false,
+        "guard_outcome": "fallback",
+        "guard_retry_taken": true,
+        "l4_outcome": "bypass"
+      },
+      {
+        "arm": "B",
+        "seed": "seed42",
+        "source": "validation",
+        "case_id": "V05-V06",
+        "turn_index": 1,
+        "first_score": 0.09090909090909091,
+        "retry_action": "retry",
+        "retry_score": 0.425531914893617,
+        "retry_below_0_02": false,
+        "guard_outcome": "fallback",
+        "guard_retry_taken": true,
+        "l4_outcome": "bypass"
+      },
+      {
+        "arm": "B",
+        "seed": "seed1337",
+        "source": "validation",
+        "case_id": "V01-V02",
+        "turn_index": 1,
+        "first_score": 0.21686746987951808,
+        "retry_action": "retry",
+        "retry_score": 0.2465753424657534,
+        "retry_below_0_02": false,
+        "guard_outcome": "fallback",
+        "guard_retry_taken": true,
+        "l4_outcome": "bypass"
+      }
+    ],
+    "arm_gates": {
+      "A": {
+        "seed_values": {
+          "seed42": 0.015477,
+          "seed1337": 0.02,
+          "seed2024": 0.0
+        },
+        "aggregate_mean": 0.011826,
+        "threshold": 0.0368,
+        "passed": true
+      },
+      "B": {
+        "seed_values": {
+          "seed42": 0.015477,
+          "seed1337": 0.02,
+          "seed2024": 0.0
+        },
+        "aggregate_mean": 0.011826,
+        "threshold": 0.0368,
+        "passed": true
+      }
+    },
+    "global_gate_passed": true,
+    "calibration_gap_count": 0,
+    "calibration_gaps_require_review": false,
+    "mechanical_status": "failed"
+  },
+  "triggered_samples": [
+    {
+      "arm": "A",
+      "seed": "seed42",
+      "source": "gate",
+      "case_id": "M09-M10",
+      "turn_index": 1,
+      "first_score": 0.24390243902439024,
+      "retry_action": "direct",
+      "retry_score": 0.016666666666666666,
+      "retry_below_0_02": true,
+      "guard_outcome": "retry",
+      "guard_retry_taken": true,
+      "l4_outcome": "bypass"
+    },
+    {
+      "arm": "A",
+      "seed": "seed42",
+      "source": "validation",
+      "case_id": "V05-V06",
+      "turn_index": 1,
+      "first_score": 0.09090909090909091,
+      "retry_action": "retry",
+      "retry_score": 0.425531914893617,
+      "retry_below_0_02": false,
+      "guard_outcome": "fallback",
+      "guard_retry_taken": true,
+      "l4_outcome": "bypass"
+    },
+    {
+      "arm": "A",
+      "seed": "seed1337",
+      "source": "validation",
+      "case_id": "V01-V02",
+      "turn_index": 1,
+      "first_score": 0.21686746987951808,
+      "retry_action": "retry",
+      "retry_score": 0.2465753424657534,
+      "retry_below_0_02": false,
+      "guard_outcome": "fallback",
+      "guard_retry_taken": true,
+      "l4_outcome": "bypass"
+    },
+    {
+      "arm": "B",
+      "seed": "seed42",
+      "source": "gate",
+      "case_id": "M09-M10",
+      "turn_index": 1,
+      "first_score": 0.24390243902439024,
+      "retry_action": "direct",
+      "retry_score": 0.016666666666666666,
+      "retry_below_0_02": true,
+      "guard_outcome": "retry",
+      "guard_retry_taken": true,
+      "l4_outcome": "bypass"
+    },
+    {
+      "arm": "B",
+      "seed": "seed42",
+      "source": "validation",
+      "case_id": "V05-V06",
+      "turn_index": 1,
+      "first_score": 0.09090909090909091,
+      "retry_action": "retry",
+      "retry_score": 0.425531914893617,
+      "retry_below_0_02": false,
+      "guard_outcome": "fallback",
+      "guard_retry_taken": true,
+      "l4_outcome": "bypass"
+    },
+    {
+      "arm": "B",
+      "seed": "seed1337",
+      "source": "validation",
+      "case_id": "V01-V02",
+      "turn_index": 1,
+      "first_score": 0.21686746987951808,
+      "retry_action": "retry",
+      "retry_score": 0.2465753424657534,
+      "retry_below_0_02": false,
+      "guard_outcome": "fallback",
+      "guard_retry_taken": true,
+      "l4_outcome": "bypass"
+    }
+  ],
+  "calibration_gaps": []
+}
