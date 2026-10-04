@@ -100,7 +100,7 @@ def build_identity_reminder(display_name: str, persona: Persona) -> str:
     return (
         f"{IDENTITY_REMINDER_HEADER}\n"
         f"本轮用户在问你的身份或性格。回答时必须保留当前自称：{display_name}。"
-        f"可以诚实承认自己是 AI，但不要滑向通用“语言模型/没有性格”腔；"
+        f"可以诚实承认自己是 AI，并具体说明自己的性格特点；"
         f"按当前人设用{persona_hint}的口吻回答。"
     )
 

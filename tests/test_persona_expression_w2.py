@@ -128,6 +128,8 @@ def test_arm_b_appends_ephemeral_reminder_without_persisting(tmp_path) -> None:
     assert result.expression_trace.identity_reminder_injected is True
     assert IDENTITY_REMINDER_HEADER in backend.user_messages[0]
     assert "助手一号" in backend.user_messages[0]
+    assert "滑向通用“语言模型/没有性格”腔" not in backend.user_messages[0]
+    assert "可以诚实承认自己是 AI，并具体说明自己的性格特点" in backend.user_messages[0]
     assert recent_messages(conn, "s1", limit=10) == []
 
 
