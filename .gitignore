@@ -59,6 +59,8 @@ AGENTS.md
 # 本地实验断点与互斥锁（终局矩阵单独显式归档）
 artifacts/persona_expression/w2_checkpoints/
 artifacts/persona_expression/w2_matrix.lock
+artifacts/persona_expression/w3_p2_2_checkpoints/
+artifacts/persona_expression/w3_p2_2.lock
 artifacts/persona_expression/w2_parallel_invalid/w2_arm_*_cases_seed*.json
 artifacts/persona_expression/w2_parallel_invalid/w2_arm_*_probe_seed*.json
 
