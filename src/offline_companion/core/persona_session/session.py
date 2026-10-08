@@ -321,6 +321,18 @@ class InferenceBackend(Protocol):
     ) -> Iterator[str]: ...
 
 
+class CandidateCaptureSink(Protocol):
+    """摘要：旁路接收出口候选与双门原始判定的最小协议。"""
+
+    def push(
+        self,
+        phase: str,
+        text: str,
+        l4_decision: PersonaL4Decision | None,
+        repetition_decision: CrossTurnRepetitionDecision | None,
+    ) -> None: ...
+
+
 @dataclass(frozen=True)
 class AssembleReplyResult:
     """摘要：单轮装配结果。"""
@@ -538,6 +550,7 @@ class PersonaSessionCore:
         initial_l3_trace: PersonaL3Trace,
         audit_arithmetic: bool,
         audit_event_mirror: Callable[[str, bool], bool] | None,
+        capture_sink: CandidateCaptureSink | None = None,
     ) -> _FinalizedReply:
         """摘要：依次完成算术审计与一次有界 L4 retry/fallback。"""
         final_l3_trace = initial_l3_trace
@@ -639,6 +652,8 @@ class PersonaSessionCore:
             else None
         )
         first_repetition = repetition_decision(audited_reply)
+        if capture_sink is not None:
+            capture_sink.push("first", audited_reply, first_l4, first_repetition)
         l4_requests_retry = first_l4 is not None and first_l4.action == L4_RETRY
         repetition_requests_retry = first_repetition.action == "retry"
 
@@ -685,6 +700,8 @@ class PersonaSessionCore:
             if first_repetition.action != "bypass"
             else None
         )
+        if capture_sink is not None:
+            capture_sink.push("retry", retry_reply, second_l4, second_repetition)
         repetition_failed = (
             second_repetition is not None and second_repetition.action == "retry"
         )
@@ -781,6 +798,7 @@ class PersonaSessionCore:
         expression_config: PersonaExpressionConfig | None = None,
         turn_signals: PersonaTurnSignals | None = None,
         audit_event_mirror: Callable[[str, bool], bool] | None = None,
+        capture_sink: CandidateCaptureSink | None = None,
     ) -> AssembleReplyResult:
         """摘要：装配 prompt、注入记忆召回与情绪/语气策略并调用推理后端。"""
         config = expression_config or PersonaExpressionConfig()
@@ -854,6 +872,7 @@ class PersonaSessionCore:
                 initial_l3_trace=final_l3_trace,
                 audit_arithmetic=audit_arithmetic,
                 audit_event_mirror=audit_event_mirror,
+                capture_sink=capture_sink,
             )
         except PersonaL4ExecutionError:
             return self._fail_closed_result(
@@ -898,6 +917,7 @@ class PersonaSessionCore:
         expression_config: PersonaExpressionConfig | None = None,
         turn_signals: PersonaTurnSignals | None = None,
         audit_event_mirror: Callable[[str, bool], bool] | None = None,
+        capture_sink: CandidateCaptureSink | None = None,
     ) -> Iterator[dict[str, Any]]:
         """摘要：流式生成单轮回复，并在结束事件中返回审计后的最终正文。"""
         config = expression_config or PersonaExpressionConfig()
@@ -977,6 +997,7 @@ class PersonaSessionCore:
             initial_l3_trace=final_l3_trace,
             audit_arithmetic=True,
             audit_event_mirror=audit_event_mirror,
+            capture_sink=capture_sink,
         )
         finalized = self._record_identity_fallthrough(finalized, identity_exit)
         l4_trace = replace(finalized.l4_trace, buffered=True) if buffered else finalized.l4_trace

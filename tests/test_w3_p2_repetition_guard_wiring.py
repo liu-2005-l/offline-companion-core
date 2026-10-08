@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from scripts.persona_runner_audit import CaptureSink
 
 import offline_companion.core.persona_session.session as persona_session_module
 from offline_companion.core.persona_constraint import (
@@ -125,6 +126,131 @@ def test_disabled_guard_still_emits_aggregateable_bypass_trace(tmp_path: Path) -
         reason="guard_disabled",
     )
     assert len(backend.system_prompts) == 1
+
+
+def test_capture_sink_is_read_only_and_none_path_never_pushes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """摘要：有无 sink 的装配结果逐字段一致，空旁路不得触发 push。"""
+
+    _assets, core, conn = _validated_runtime(tmp_path)
+    push_calls = 0
+    original_push = CaptureSink.push
+
+    def counted_push(self: CaptureSink, *args: Any, **kwargs: Any) -> None:
+        nonlocal push_calls
+        push_calls += 1
+        original_push(self, *args, **kwargs)
+
+    monkeypatch.setattr(CaptureSink, "push", counted_push)
+    without_sink = core.assemble_reply(
+        _QueueBackend([SAFE_REPLY]),
+        conn,
+        user_message="ordinary request",
+        history=_assistant_history(),
+        memory_enabled=False,
+        audit_arithmetic=False,
+        expression_config=_enabled_config(),
+        capture_sink=None,
+    )
+
+    assert push_calls == 0
+
+    sink = CaptureSink()
+    with_sink = core.assemble_reply(
+        _QueueBackend([SAFE_REPLY]),
+        conn,
+        user_message="ordinary request",
+        history=_assistant_history(),
+        memory_enabled=False,
+        audit_arithmetic=False,
+        expression_config=_enabled_config(),
+        capture_sink=sink,
+    )
+    captures = sink.drain()
+
+    assert with_sink == without_sink
+    assert push_calls == 1
+    assert len(captures) == 1
+    assert captures[0]["phase"] == "first"
+    assert captures[0]["text"] == SAFE_REPLY
+    assert captures[0]["l4_decision"] is not None
+    assert captures[0]["repetition_decision"] == with_sink.repetition_trace.first
+
+
+def test_capture_sink_records_first_and_retry_with_original_scores(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """摘要：共享 retry 的两次候选均保存双门 DTO 与判定原始分数。"""
+
+    _assets, core, conn = _validated_runtime(tmp_path)
+    first_decision = CrossTurnRepetitionDecision(
+        action="retry",
+        score=0.123456789,
+        threshold=0.09,
+        reason="threshold_exceeded",
+    )
+    retry_decision = CrossTurnRepetitionDecision(
+        action="direct",
+        score=0.012345678,
+        threshold=0.09,
+        reason="below_threshold",
+    )
+    decisions = iter((first_decision, retry_decision))
+    monkeypatch.setattr(
+        persona_session_module,
+        "decide_cross_turn_repetition",
+        lambda *args, **kwargs: next(decisions),
+    )
+    sink = CaptureSink()
+
+    result = core.assemble_reply(
+        _QueueBackend([PREVIOUS_REPLY, SAFE_RETRY_REPLY]),
+        conn,
+        user_message="ordinary request",
+        history=_assistant_history(),
+        memory_enabled=False,
+        audit_arithmetic=False,
+        expression_config=_enabled_config(),
+        capture_sink=sink,
+    )
+    captures = sink.drain()
+
+    assert result.reply == SAFE_RETRY_REPLY
+    assert [item["phase"] for item in captures] == ["first", "retry"]
+    assert all(item["l4_decision"] is not None for item in captures)
+    assert captures[0]["repetition_decision"] == first_decision
+    assert captures[1]["repetition_decision"] == retry_decision
+    assert captures[0]["repetition_decision"].score == 0.123456789
+    assert captures[1]["repetition_decision"].score == 0.012345678
+
+
+def test_capture_sink_direct_path_contains_only_first_candidate(
+    tmp_path: Path,
+) -> None:
+    """摘要：未消费重试槽位时 uniform capture 仍只记录 first。"""
+
+    _assets, core, conn = _validated_runtime(tmp_path)
+    sink = CaptureSink()
+
+    result = core.assemble_reply(
+        _QueueBackend([SAFE_REPLY]),
+        conn,
+        user_message="ordinary request",
+        history=_assistant_history(),
+        memory_enabled=False,
+        audit_arithmetic=False,
+        expression_config=_enabled_config(),
+        capture_sink=sink,
+    )
+    captures = sink.drain()
+
+    assert result.repetition_trace.retry_taken is False
+    assert len(captures) == 1
+    assert captures[0]["phase"] == "first"
+    assert captures[0]["text"] == SAFE_REPLY
 
 
 @pytest.mark.parametrize(
