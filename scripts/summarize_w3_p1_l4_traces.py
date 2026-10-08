@@ -95,7 +95,7 @@ def main() -> int:
     payload = json.loads(args.input.read_text(encoding="utf-8"))
     records = payload.get("records") if isinstance(payload, dict) else payload
     if not isinstance(records, list):
-        raise ValueError("trace archive must be a list or contain records list")
+        raise TypeError("trace archive must be a list or contain records list")
     summary = summarize_l4_records(records)
     rendered = json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     if args.output is None:
