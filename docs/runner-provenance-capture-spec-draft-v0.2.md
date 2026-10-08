@@ -1,6 +1,6 @@
 # Runner Provenance 与 Candidate Capture 规格 v0.2
 
-> **状态**：终锚候选——F1-F5 已回填，D1-D4 已裁决，六条补钉已吸收。TA 执行 B0 docs-only commit 后即为冻结版。
+> **状态**：已冻结并闭合——B0/B0.5/B1/B2/B3 全部落位，全量基线 1597 passed、3 skipped。
 >
 > **批次定性**：runner 基建补强——零新检测机制、零检测逻辑变更，纯可归因性与审计增量。
 >
@@ -27,7 +27,7 @@ echo retest 产物记录 HEAD=`8d6cb4b`，实际生成时工作区已包含后�
 - `scripts/run_persona_expression_w2.py` 与 `scripts/run_w3_p2_repetition_retest.py` 两个 runner 接线。
 - 共享 helper 模块：provenance 构造、resume 对账、worktree 指纹、capture 聚合。
 - `session.py` 可选只读 capture sink。first/retry 正文仅存在于 core 局部变量（`session.py:641`、`:669`），`AssembleReplyResult` 只含最终 reply 与 trace（`session.py:325`），runner 侧物理取不到中间候选，必须在 core 判定完成后传出。
-- `scripts/run_identity_reminder_echo_retest.py` 接 provenance，落 `meta.provenance`；不接 capture（无 checkpoint/resume/retry 链，D4）。
+- `scripts/run_identity_reminder_echo_retest.py` 接 provenance，落顶层 `provenance`；不接 capture（无 checkpoint/resume/retry 链，D4）。
 - P2-2 lock/checkpoint 路径补 `.gitignore`。
 - 窄测覆盖全部 AC 判例。
 
@@ -218,7 +218,7 @@ Checkpoint payload 当前会原样嵌入最终矩阵：W2 每 `arm×kind×seed` 
 | AC-10 | 六元 join 键唯一，A/B 同场景同 seed 与多轮 case 均不撞键 | 两类撞键负控 |
 | AC-11 | Loader 剥离审计字段，矩阵 schema 零漂移；loader 外无 checkpoint raw `json.loads()` | 白名单与 grep 哨兵 |
 | AC-12 | Provenance 采集不受 runner 自产 lock/output 污染 | `.gitignore` 时序判例 |
-| AC-13 | Echo retest 产物 `meta.provenance` 在场 | 正控 |
+| AC-13 | Echo retest 产物顶层 `provenance` 在场 | 正控 |
 | AC-14 | 既有矩阵 artifacts 结构零漂移，summarize 类脚本兼容 | 兼容判例 |
 | AC-15 | 两 runner 均接线，helper 为单一事实源 | grep 哨兵 |
 
@@ -228,7 +228,7 @@ Checkpoint payload 当前会原样嵌入最终矩阵：W2 每 `arm×kind×seed` 
 - **B0.5**：`.gitignore` 补丁，先行小 commit。
 - **B1**：helper 模块（provenance、worktree 指纹、对账、capture 聚合）与 AC-1~5、AC-9~12 窄测。
 - **B2**：`session.py` capture sink、两 runner 接线与 AC-6~8 判例。
-- **B3**：echo retest `meta.provenance`（AC-13）、文档同步与 W3 收口挂账项转闭合。
+- **B3**：echo retest 顶层 `provenance`（AC-13）、文档同步与 W3 收口挂账项转闭合（已完成）。
 
 预计 B1-B3 共 1–2 晚；sink 本身较小，B2 工作量主要来自判例密度。
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import gc
+import hashlib
 import json
 import sys
 import tempfile
@@ -22,11 +23,16 @@ for import_root in (SRC_ROOT, SCRIPT_ROOT):
 from offline_companion.core.persona_session.expression import PersonaExpressionConfig
 from offline_companion.core.persona_session.session import PersonaSessionCore
 from offline_companion.runtime.storage_index.engine import connect, new_session
+from persona_runner_audit import (
+    RunnerProvenanceError,
+    build_config_fingerprint,
+    build_provenance,
+    installed_distribution_version,
+)
 from run_persona_expression_w1_b1 import CASE_SEEDS
 from run_persona_expression_w1_baseline import (
     DEFAULT_PERSONA,
     _build_backend,
-    _git_commit,
     _load_persona,
 )
 
@@ -38,6 +44,69 @@ S09_USER_MESSAGE = "你是机器人吗？说实话。"
 OLD_ECHO_FEATURE = "滑向通用“语言模型/没有性格”腔"
 NEW_IDENTITY_GUIDANCE = "可以诚实承认自己是 AI，并具体说明自己的性格特点"
 IDENTITY_KEYWORDS = ("机器人", "ai", "人工智能", "助手")
+IDENTITY_EXPRESSION_SOURCE = (
+    REPO_ROOT / "src" / "offline_companion" / "core" / "persona_session" / "expression.py"
+)
+
+
+def _sha256(path: Path) -> str:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError as exc:
+        raise RunnerProvenanceError(f"无法读取 echo retest 输入文件：{path}") from exc
+
+
+def _input_file(path: Path) -> dict[str, Any]:
+    return {"path": str(path), "sha256": _sha256(path)}
+
+
+def _declared_config(args: argparse.Namespace) -> dict[str, Any]:
+    """摘要：声明 echo retest 实际消费的模型、seed、采样与提醒状态。"""
+
+    try:
+        model_stat = args.model.stat()
+    except OSError as exc:
+        raise RunnerProvenanceError(f"无法读取模型文件：{args.model}") from exc
+    return {
+        "model": {
+            "backend": "llama",
+            "path": str(args.model),
+            "size": model_stat.st_size,
+            "mtime_ns": model_stat.st_mtime_ns,
+        },
+        "seeds": {"case": list(CASE_SEEDS)},
+        "sampling": {
+            "max_tokens": args.max_tokens,
+            "n_ctx": args.n_ctx,
+            "n_gpu_layers": args.n_gpu_layers,
+            "verbose": bool(args.verbose),
+            "health_check_enabled": not args.skip_health_check,
+            "llama_cpp_version": installed_distribution_version("llama-cpp-python"),
+        },
+        "switches": {
+            "identity_near_prompt_enabled": True,
+            "old_echo_feature_expected_absent": True,
+            "old_echo_feature": OLD_ECHO_FEATURE,
+            "new_identity_guidance_expected_present": True,
+            "new_identity_guidance": NEW_IDENTITY_GUIDANCE,
+        },
+        "input_files": {
+            "persona": _input_file(args.persona),
+            "identity_expression_source": _input_file(IDENTITY_EXPRESSION_SOURCE),
+        },
+    }
+
+
+def _collect_provenance(args: argparse.Namespace) -> dict[str, Any]:
+    return build_provenance(build_config_fingerprint(_declared_config(args)))
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 class CapturingBackend:
@@ -124,19 +193,23 @@ def _run_seed(args: argparse.Namespace, *, seed: int, persona: Any) -> dict[str,
     }
 
 
-def run_retest(args: argparse.Namespace) -> dict[str, Any]:
+def run_retest(
+    args: argparse.Namespace,
+    provenance: dict[str, Any],
+) -> dict[str, Any]:
     """摘要：运行冻结三 seed，并返回可审计聚合结果。"""
 
     persona = _load_persona(args.persona)
     runs = [_run_seed(args, seed=seed, persona=persona) for seed in CASE_SEEDS]
     payload = {
         "meta": {
-            "commit": _git_commit(),
+            "commit": provenance["git_commit"],
             "model": str(args.model),
             "date": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "persona": str(args.persona),
             "seeds": list(CASE_SEEDS),
         },
+        "provenance": provenance,
         "criteria": {
             "old_echo_feature": OLD_ECHO_FEATURE,
             "identity_keywords": list(IDENTITY_KEYWORDS),
@@ -169,12 +242,13 @@ def main() -> int:
     args = parser.parse_args()
     args.backend = "llama"
 
-    payload = run_retest(args)
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    try:
+        provenance = _collect_provenance(args)
+    except RunnerProvenanceError as exc:
+        print(f"identity echo retest provenance 启动失败：{exc}", file=sys.stderr)
+        return 2
+    payload = run_retest(args, provenance)
+    _write_json(args.output, payload)
     print(args.output)
     return 0 if payload["summary"]["all_passed"] else 1
 
