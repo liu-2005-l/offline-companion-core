@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import gc
+import hashlib
 import json
 import os
 import statistics
@@ -43,6 +44,17 @@ from offline_companion.core.persona_session.persona_loader import (
     resolved_companion_display_name,
 )
 from persona_expression_metrics import calculate_metrics
+from persona_runner_audit import (
+    CaptureSink,
+    RunnerProvenanceError,
+    build_capture_row,
+    build_config_fingerprint,
+    build_provenance,
+    build_sidecar,
+    installed_distribution_version,
+    load_resume_state,
+    save_checkpoint,
+)
 from run_persona_expression_w1_b1 import (
     CASE_SEEDS,
     PROBE_SEEDS,
@@ -55,7 +67,6 @@ from run_persona_expression_w1_baseline import (
     DEFAULT_PROBE,
     _assert_memory_injection_live,
     _build_backend,
-    _git_commit,
     _load_persona,
     _run_case,
     _run_probe_seed,
@@ -65,6 +76,87 @@ DEFAULT_OUTPUT = REPO_ROOT / "artifacts" / "persona_expression" / "w2_three_arm_
 DEFAULT_CHECKPOINT_DIR = REPO_ROOT / "artifacts" / "persona_expression" / "w2_checkpoints"
 DEFAULT_LOCK_FILE = REPO_ROOT / "artifacts" / "persona_expression" / "w2_matrix.lock"
 W2_ARM_C_RETIRED = "w2_arm_c_retired"
+
+
+def _sha256(path: Path) -> str:
+    """摘要：计算 runner 输入文件的小写 SHA-256。"""
+
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError as exc:
+        raise RunnerProvenanceError(f"无法读取 runner 输入文件：{path}") from exc
+
+
+def _input_file(path: Path) -> dict[str, Any]:
+    return {"path": str(path), "sha256": _sha256(path)}
+
+
+def _model_descriptor(args: argparse.Namespace) -> dict[str, Any]:
+    if args.backend == "echo":
+        return {"backend": "echo", "path": "echo", "size": 0, "mtime_ns": 0}
+    if args.model is None:
+        raise RunnerProvenanceError("--backend llama 需要提供 --model")
+    try:
+        stat = args.model.stat()
+    except OSError as exc:
+        raise RunnerProvenanceError(f"无法读取模型文件：{args.model}") from exc
+    return {
+        "backend": "llama",
+        "path": str(args.model),
+        "size": stat.st_size,
+        "mtime_ns": stat.st_mtime_ns,
+    }
+
+
+def _llama_cpp_version(args: argparse.Namespace) -> str:
+    if args.backend == "echo":
+        return "not_applicable:echo"
+    return installed_distribution_version("llama-cpp-python")
+
+
+def _declared_config(args: argparse.Namespace) -> dict[str, Any]:
+    """摘要：声明 W2 实际消费的模型、采样、开关与输入文件配置。"""
+
+    return {
+        "model": _model_descriptor(args),
+        "seeds": {
+            "case": list(args.case_seeds),
+            "probe": list(args.probe_seeds),
+        },
+        "sampling": {
+            "max_tokens": args.max_tokens,
+            "n_ctx": args.n_ctx,
+            "n_gpu_layers": args.n_gpu_layers,
+            "verbose": bool(args.verbose),
+            "health_check_enabled": not args.skip_health_check,
+            "llama_cpp_version": _llama_cpp_version(args),
+        },
+        "switches": {
+            "arms": {arm: _arm_config(arm).__dict__ for arm in args.arms},
+            "skip_style_check": bool(args.skip_style_check),
+            "skip_memory_check": bool(args.skip_memory_check),
+            "skip_cases": bool(args.skip_cases),
+            "skip_probe": bool(args.skip_probe),
+        },
+        "input_files": {
+            "cases": _input_file(args.cases),
+            "probe": _input_file(args.probe),
+            "persona": _input_file(args.persona),
+        },
+    }
+
+
+def _collect_provenance(args: argparse.Namespace) -> dict[str, Any]:
+    return build_provenance(build_config_fingerprint(_declared_config(args)))
+
+
+def _candidate_path(matrix_path: Path) -> Path:
+    return matrix_path.with_name(f"{matrix_path.stem}.candidates.json")
+
+
+def _emit_resume_warnings(path: Path, warnings: list[str]) -> None:
+    for warning in warnings:
+        print(f"[W2] provenance warning {path}: {warning}", file=sys.stderr, flush=True)
 
 
 class W2ArmRetiredError(ValueError):
@@ -203,40 +295,86 @@ def _probe_summary(probe_runs: dict[str, dict[str, Any]], display_name: str) -> 
     }
 
 
-def _run_cases_for_arm_seed(args: argparse.Namespace, arm: str, seed: int) -> dict[str, Any]:
+def _run_cases_for_arm_seed(
+    args: argparse.Namespace,
+    arm: str,
+    seed: int,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     print(f"[W2] arm={arm} cases seed={seed} start", flush=True)
     cases_fixture = json.loads(args.cases.read_text(encoding="utf-8"))
     persona = _load_persona(args.persona)
     backend = _build_backend(args, seed=seed)
     config = _arm_config(arm)
+    captures: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix=f"oc-w2-{arm}-cases-{seed}-") as temp_dir:
         temp_root = Path(temp_dir)
-        case_results = [
-            _run_case(
-                case=case,
-                memory_bundle=list(cases_fixture.get("memory_bundle", [])),
-                persona=persona,
-                backend=backend,
-                temp_root=temp_root,
-                max_tokens=args.max_tokens,
-                expression_config=config,
+        case_results = []
+        for case in cases_fixture["cases"]:
+            scenario_id = str(case["id"])
+
+            def consume(
+                turn_index: int,
+                events: list[dict[str, Any]],
+                scenario_id: str = scenario_id,
+            ) -> None:
+                captures.append(
+                    build_capture_row(
+                        events,
+                        runner="w2",
+                        arm=arm,
+                        source_kind="case",
+                        seed=seed,
+                        scenario_id=scenario_id,
+                        turn_index=turn_index,
+                    )
+                )
+
+            case_results.append(
+                _run_case(
+                    case=case,
+                    memory_bundle=list(cases_fixture.get("memory_bundle", [])),
+                    persona=persona,
+                    backend=backend,
+                    temp_root=temp_root,
+                    max_tokens=args.max_tokens,
+                    expression_config=config,
+                    capture_sink_factory=CaptureSink,
+                    capture_consumer=consume,
+                )
             )
-            for case in cases_fixture["cases"]
-        ]
     payload = {"cases": case_results}
     payload["metrics"] = calculate_metrics(payload)
     del backend
     gc.collect()
     print(f"[W2] arm={arm} cases seed={seed} done", flush=True)
-    return payload
+    return payload, captures
 
 
-def _run_probe_for_arm_seed(args: argparse.Namespace, arm: str, seed: int) -> dict[str, Any]:
+def _run_probe_for_arm_seed(
+    args: argparse.Namespace,
+    arm: str,
+    seed: int,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     print(f"[W2] arm={arm} probe seed={seed} start", flush=True)
     probe_fixture = json.loads(args.probe.read_text(encoding="utf-8"))
     persona = _load_persona(args.persona)
     backend = _build_backend(args, seed=seed)
     config = _arm_config(arm)
+    captures: list[dict[str, Any]] = []
+
+    def consume(turn_index: int, events: list[dict[str, Any]]) -> None:
+        captures.append(
+            build_capture_row(
+                events,
+                runner="w2",
+                arm=arm,
+                source_kind="probe",
+                seed=seed,
+                scenario_id=f"probe-seed{seed}",
+                turn_index=turn_index,
+            )
+        )
+
     with tempfile.TemporaryDirectory(prefix=f"oc-w2-{arm}-probe-{seed}-") as temp_dir:
         result = _run_probe_seed(
             turns=probe_fixture["turns"],
@@ -246,11 +384,13 @@ def _run_probe_for_arm_seed(args: argparse.Namespace, arm: str, seed: int) -> di
             seed=seed,
             max_tokens=args.max_tokens,
             expression_config=config,
+            capture_sink_factory=CaptureSink,
+            capture_consumer=consume,
         )
     del backend
     gc.collect()
     print(f"[W2] arm={arm} probe seed={seed} done", flush=True)
-    return result
+    return result, captures
 
 
 def _checkpoint_path(args: argparse.Namespace, *, arm: str, kind: str, seed: int) -> Path:
@@ -291,24 +431,50 @@ def _exclusive_run_lock(path: Path):
         handle.close()
 
 
-def _load_or_run_cases(args: argparse.Namespace, arm: str, seed: int) -> dict[str, Any]:
+def _resume_checkpoint(
+    path: Path,
+    current_provenance: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]], str | None]:
+    state = load_resume_state(path, current_provenance)
+    _emit_resume_warnings(path, state["warnings"])
+    if not state["legacy"]:
+        save_checkpoint(
+            path,
+            state["payload"],
+            state["provenance"],
+            state["captures"],
+        )
+    return state["payload"], state["captures"], state["legacy_gap"]
+
+
+def _load_or_run_cases(
+    args: argparse.Namespace,
+    arm: str,
+    seed: int,
+    current_provenance: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]], str | None]:
     path = _checkpoint_path(args, arm=arm, kind="cases", seed=seed)
     if args.resume and path.is_file():
         print(f"[W2] arm={arm} cases seed={seed} resume {path}", flush=True)
-        return json.loads(path.read_text(encoding="utf-8"))
-    payload = _run_cases_for_arm_seed(args, arm, seed)
-    _write_json(path, payload)
-    return payload
+        return _resume_checkpoint(path, current_provenance)
+    payload, captures = _run_cases_for_arm_seed(args, arm, seed)
+    save_checkpoint(path, payload, current_provenance, captures)
+    return payload, captures, None
 
 
-def _load_or_run_probe(args: argparse.Namespace, arm: str, seed: int) -> dict[str, Any]:
+def _load_or_run_probe(
+    args: argparse.Namespace,
+    arm: str,
+    seed: int,
+    current_provenance: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]], str | None]:
     path = _checkpoint_path(args, arm=arm, kind="probe", seed=seed)
     if args.resume and path.is_file():
         print(f"[W2] arm={arm} probe seed={seed} resume {path}", flush=True)
-        return json.loads(path.read_text(encoding="utf-8"))
-    payload = _run_probe_for_arm_seed(args, arm, seed)
-    _write_json(path, payload)
-    return payload
+        return _resume_checkpoint(path, current_provenance)
+    payload, captures = _run_probe_for_arm_seed(args, arm, seed)
+    save_checkpoint(path, payload, current_provenance, captures)
+    return payload, captures, None
 
 
 def _assert_style_examples_live(args: argparse.Namespace) -> None:
@@ -337,8 +503,11 @@ def _assert_style_examples_live(args: argparse.Namespace) -> None:
             conn.close()
 
 
-def run_w2(args: argparse.Namespace) -> dict[str, Any]:
-    """摘要：运行仍受支持的 W2 A/B 矩阵并返回可落档 payload。"""
+def run_w2(
+    args: argparse.Namespace,
+    current_provenance: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]], list[str]]:
+    """摘要：运行 W2 A/B 矩阵并返回 payload、capture 与 legacy 缺口。"""
     persona = _load_persona(args.persona)
     display_name = resolved_companion_display_name(persona)
     cases_fixture = json.loads(args.cases.read_text(encoding="utf-8"))
@@ -354,13 +523,35 @@ def run_w2(args: argparse.Namespace) -> dict[str, Any]:
             list(cases_fixture.get("memory_bundle", [])),
         )
     arms: dict[str, Any] = {}
+    all_captures: list[dict[str, Any]] = []
+    legacy_gaps: list[str] = []
     for arm in args.arms:
         case_runs = {}
         if not args.skip_cases:
-            case_runs = {f"seed{seed}": _load_or_run_cases(args, arm, seed) for seed in args.case_seeds}
+            for seed in args.case_seeds:
+                payload, captures, legacy_gap = _load_or_run_cases(
+                    args,
+                    arm,
+                    seed,
+                    current_provenance,
+                )
+                case_runs[f"seed{seed}"] = payload
+                all_captures.extend(captures)
+                if legacy_gap is not None:
+                    legacy_gaps.append(legacy_gap)
         probe_runs = {}
         if not args.skip_probe:
-            probe_runs = {f"seed{seed}": _load_or_run_probe(args, arm, seed) for seed in args.probe_seeds}
+            for seed in args.probe_seeds:
+                payload, captures, legacy_gap = _load_or_run_probe(
+                    args,
+                    arm,
+                    seed,
+                    current_provenance,
+                )
+                probe_runs[f"seed{seed}"] = payload
+                all_captures.extend(captures)
+                if legacy_gap is not None:
+                    legacy_gaps.append(legacy_gap)
         arms[arm] = {
             "config": _arm_config(arm).__dict__,
             "case_runs": case_runs,
@@ -369,9 +560,9 @@ def run_w2(args: argparse.Namespace) -> dict[str, Any]:
             "probe_runs": probe_runs,
             "probe_summary": _probe_summary(probe_runs, display_name),
         }
-    return {
+    payload = {
         "meta": {
-            "commit": _git_commit(),
+            "commit": current_provenance["git_commit"],
             "model": args.backend if args.backend == "echo" else str(args.model),
             "date": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "case_seeds": list(args.case_seeds),
@@ -384,6 +575,16 @@ def run_w2(args: argparse.Namespace) -> dict[str, Any]:
         },
         "arms": arms,
     }
+    all_captures.sort(
+        key=lambda row: (
+            row["arm"],
+            row["source_kind"],
+            row["seed"],
+            row["scenario_id"],
+            row["turn_index"],
+        )
+    )
+    return payload, all_captures, legacy_gaps
 
 
 def main() -> int:
@@ -411,10 +612,23 @@ def main() -> int:
     parser.add_argument("--skip-cases", action="store_true")
     parser.add_argument("--skip-probe", action="store_true")
     args = parser.parse_args()
+    try:
+        provenance = _collect_provenance(args)
+    except RunnerProvenanceError as exc:
+        print(f"W2 provenance 启动失败：{exc}", file=sys.stderr)
+        return 2
     with _exclusive_run_lock(args.lock_file):
-        payload = run_w2(args)
+        payload, captures, legacy_gaps = run_w2(args, provenance)
         _write_json(args.output, payload)
+        sidecar = build_sidecar(
+            captures,
+            args.output,
+            args.output.read_bytes(),
+            ";".join(legacy_gaps) or None,
+        )
+        _write_json(_candidate_path(args.output), sidecar)
     print(args.output)
+    print(_candidate_path(args.output))
     return 0
 
 

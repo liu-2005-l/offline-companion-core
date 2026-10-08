@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import dataclasses
 import hashlib
 import importlib.metadata
 import json
@@ -360,6 +361,45 @@ def reconcile_resume(checkpoint: dict[str, Any], current: dict[str, Any]) -> dic
     return {"provenance": updated, "warnings": warnings, "legacy": False}
 
 
+def load_resume_state(path: Path, current: dict[str, Any]) -> dict[str, Any]:
+    """摘要：统一读取 checkpoint payload、capture 与 provenance 对账结果。
+
+    参数：
+        path: 待恢复 checkpoint 路径。
+        current: 当前运行 provenance。
+
+    返回值：
+        含 payload、captures、更新后 provenance、warnings 与 legacy 缺口的对象。
+
+    异常：
+        RunnerProvenanceError：checkpoint 审计段结构非法。
+    """
+
+    checkpoint = load_checkpoint_full(path)
+    payload = load_checkpoint_payload(path)
+    reconciled = reconcile_resume(checkpoint, current)
+    if reconciled["legacy"]:
+        return {
+            "payload": payload,
+            "captures": [],
+            "provenance": None,
+            "warnings": reconciled["warnings"],
+            "legacy": True,
+            "legacy_gap": f"legacy_checkpoint_without_capture:{path}",
+        }
+    captures = checkpoint.get("captures")
+    if not isinstance(captures, list):
+        raise RunnerProvenanceError(f"checkpoint captures 必须为列表：{path}")
+    return {
+        "payload": payload,
+        "captures": copy.deepcopy(captures),
+        "provenance": reconciled["provenance"],
+        "warnings": reconciled["warnings"],
+        "legacy": False,
+        "legacy_gap": None,
+    }
+
+
 class CaptureSink:
     """摘要：按单轮生命周期深拷贝保存 first/retry 候选事件。"""
 
@@ -403,6 +443,75 @@ class CaptureSink:
         drained = self._items
         self._items = []
         return drained
+
+
+def _decision_payload(decision: Any) -> dict[str, Any]:
+    if decision is None:
+        return {}
+    if dataclasses.is_dataclass(decision) and not isinstance(decision, type):
+        return dataclasses.asdict(decision)
+    if isinstance(decision, dict):
+        return copy.deepcopy(decision)
+    raise RunnerProvenanceError("capture decision 必须为 dataclass、对象或 None")
+
+
+def build_capture_row(
+    capture_events: list[dict[str, Any]],
+    *,
+    runner: str,
+    arm: str,
+    source_kind: str,
+    seed: int,
+    scenario_id: str,
+    turn_index: int,
+) -> dict[str, Any]:
+    """摘要：把单轮 first/retry 事件整形成冻结六元 join schema。
+
+    参数：
+        capture_events: ``CaptureSink.drain`` 返回的单轮事件。
+        runner: runner 稳定标识。
+        arm: A/B 臂标识。
+        source_kind: case/probe/validation 来源类型。
+        seed: 当前采样 seed。
+        scenario_id: 当前判例或 probe 标识。
+        turn_index: 判例内零基轮次。
+
+    返回值：
+        含六元 join 键、retry 标记及双阶段原始判定的 JSON 对象。
+    """
+
+    phases: dict[str, dict[str, Any]] = {}
+    for event in capture_events:
+        phase = str(event.get("phase") or "")
+        if phase not in {"first", "retry"} or phase in phases:
+            raise RunnerProvenanceError(f"capture phase 非法或重复：{phase}")
+        phases[phase] = event
+    if "first" not in phases:
+        raise RunnerProvenanceError("capture 缺少 first 阶段")
+
+    def render(phase: str) -> dict[str, Any]:
+        event = phases.get(phase)
+        if event is None:
+            return {}
+        return {
+            "text": str(event.get("text") or ""),
+            "l4_decision": _decision_payload(event.get("l4_decision")),
+            "repetition_decision": _decision_payload(
+                event.get("repetition_decision")
+            ),
+        }
+
+    return {
+        "runner": runner,
+        "arm": arm,
+        "source_kind": source_kind,
+        "seed": seed,
+        "scenario_id": scenario_id,
+        "turn_index": turn_index,
+        "retry_taken": "retry" in phases,
+        "first": render("first"),
+        "retry": render("retry"),
+    }
 
 
 def build_sidecar(

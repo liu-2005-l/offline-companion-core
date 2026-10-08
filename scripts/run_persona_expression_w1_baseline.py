@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -151,6 +152,8 @@ def _run_case(
     temp_root: Path,
     max_tokens: int,
     expression_config: PersonaExpressionConfig | None = None,
+    capture_sink_factory: Callable[[], Any] | None = None,
+    capture_consumer: Callable[[int, list[dict[str, Any]]], None] | None = None,
 ) -> dict[str, Any]:
     session_id = f"w1-{case['id']}"
     conn = connect(temp_root / f"{session_id}.db")
@@ -162,9 +165,10 @@ def _run_case(
         replies: list[str] = []
         turns_out: list[dict[str, Any]] = []
         recall_counts: list[int] = []
-        for turn in case["turns"]:
+        for turn_index, turn in enumerate(case["turns"]):
             user_message = str(turn["user"])
             history = recent_messages(conn, session_id, limit=20)
+            capture_sink = capture_sink_factory() if capture_sink_factory is not None else None
             result = core.assemble_reply(
                 backend,
                 conn,
@@ -173,7 +177,10 @@ def _run_case(
                 memory_enabled=True,
                 max_tokens=max_tokens,
                 expression_config=expression_config,
+                capture_sink=capture_sink,
             )
+            if capture_sink is not None and capture_consumer is not None:
+                capture_consumer(turn_index, capture_sink.drain())
             append_message(conn, session_id, "user", user_message, {"case_id": case["id"]})
             append_message(conn, session_id, "assistant", result.reply, {"case_id": case["id"]})
             replies.append(result.reply)
@@ -201,6 +208,8 @@ def _run_probe_seed(
     seed: int,
     max_tokens: int,
     expression_config: PersonaExpressionConfig | None = None,
+    capture_sink_factory: Callable[[], Any] | None = None,
+    capture_consumer: Callable[[int, list[dict[str, Any]]], None] | None = None,
 ) -> dict[str, Any]:
     session_id = f"w1-probe-seed{seed}"
     conn = connect(temp_root / f"{session_id}.db")
@@ -210,9 +219,10 @@ def _run_probe_seed(
         replies: list[dict[str, Any]] = []
         identity_probes: list[dict[str, Any]] = []
         expression_traces: list[dict[str, Any]] = []
-        for turn in turns:
+        for turn_index, turn in enumerate(turns):
             user_message = str(turn["user"])
             history = recent_messages(conn, session_id, limit=20)
+            capture_sink = capture_sink_factory() if capture_sink_factory is not None else None
             result = core.assemble_reply(
                 backend,
                 conn,
@@ -221,7 +231,10 @@ def _run_probe_seed(
                 memory_enabled=True,
                 max_tokens=max_tokens,
                 expression_config=expression_config,
+                capture_sink=capture_sink,
             )
+            if capture_sink is not None and capture_consumer is not None:
+                capture_consumer(turn_index, capture_sink.drain())
             append_message(conn, session_id, "user", user_message, {"probe_seed": seed})
             append_message(conn, session_id, "assistant", result.reply, {"probe_seed": seed})
             record = {
