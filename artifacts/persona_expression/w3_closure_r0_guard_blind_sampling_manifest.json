@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "version": "w3-closure-r0-guard-blind-sampling-manifest-v1",
+    "status": "sampled_before_review",
+    "protocol_anchor_commit": "95dcc16abd5f45edf59b54d8e1c1b1f7cc6e05fe",
+    "artifact_commit": "6eb1447f0576f5d2276a3abbf43ce55dbb4bf39a",
+    "generation_commit": "19cbef02b81a7d4fb65cb191e3e89d273aae6916",
+    "sampling_tool_path": "scripts/build_w3_closure_r0_guard_blind_review.py",
+    "sampling_tool_sha256": "9D2F4D68063602B359062A67147FA75D53FA92D8F2C9B9C850CB74F3C728F92E"
+  },
+  "protocol": {
+    "path": "artifacts/persona_expression/w3_closure_r0_guard_blind_protocol.json",
+    "sha256": "F13360D84963CCE8087F52004E695560EF678EA8A04F11B0C456B65BDD9066E1"
+  },
+  "sources": {
+    "w2_matrix": {
+      "path": "artifacts/persona_expression/w3_closure_r0_w2_ab_matrix.json",
+      "sha256": "790A9AF4ABE532EA6C40928A70B17A4DBA1E14B856A59F6C789B3FDB66B5D5C1",
+      "audit_path": "artifacts/persona_expression/w3_closure_r0_w2_ab_matrix.audit.json",
+      "audit_sha256": "D494DEF56015473509DA20A3B34FB11A74E63B91D19A2C45DBB37B432D146C49",
+      "audit_matrix_sha256": "5B0509D3A7A8BE55636DBBE1928522B17A8B9CE70772094AC8B1D935F41375C4",
+      "audit_hash_match_mode": "git_lf_to_generation_crlf"
+    },
+    "p2_matrix": {
+      "path": "artifacts/persona_expression/w3_closure_r0_p2_b_matrix.json",
+      "sha256": "A536FDDD717C4AEA4D2CF04AF37275FBA8C3A1027087149BA297FB80849B4CC4",
+      "audit_path": "artifacts/persona_expression/w3_closure_r0_p2_b_matrix.audit.json",
+      "audit_sha256": "7A11FCA06C2F3976702CFF881B0F741936DF0B9EAC9B642F782D44394A4DD7ED",
+      "audit_matrix_sha256": "78EC593C8A9C3024FEC42887B547947C3337C2E9E69D2A02B96431A233D45634",
+      "audit_hash_match_mode": "git_lf_to_generation_crlf"
+    }
+  },
+  "sample": {
+    "pair_count": 36,
+    "stratum_counts": {
+      "multi_turn_repair": 1,
+      "single_turn_no_spill": 35
+    },
+    "reviewer_count": 3
+  },
+  "packets": [
+    {
+      "reviewer": "prompt_side",
+      "path": "artifacts/persona_expression/w3_closure_r0_guard_blind_prompt_side.json",
+      "sha256": "B73C2C554E5BB176DD9D5E6C5821E57F7F6917CDAF08E4D063091F1CD41735B2",
+      "pair_count": 36
+    },
+    {
+      "reviewer": "context_free_ai_1",
+      "path": "artifacts/persona_expression/w3_closure_r0_guard_blind_context_free_ai_1.json",
+      "sha256": "4EE511B4316A82B9B909645433873BB5946342D77B715133CB0D95E3BEAF69B6",
+      "pair_count": 36
+    },
+    {
+      "reviewer": "context_free_ai_2",
+      "path": "artifacts/persona_expression/w3_closure_r0_guard_blind_context_free_ai_2.json",
+      "sha256": "E142A7FE9BE79FD2507F33164D12D3C978AE1C5A3C43F28D08D7065AACA5B1C3",
+      "pair_count": 36
+    }
+  ],
+  "sealed_key": {
+    "path": "artifacts/persona_expression/w3_closure_r0_guard_blind_key.json",
+    "sha256": "CFEA35358CE55095D7F548D3A25DFC11056672E0E026141FBFD8ED156865D71F",
+    "git_state_required": "untracked_and_gitignored_until_unblind"
+  },
+  "pre_unblind_checks": {
+    "all_packet_hashes_must_match": true,
+    "key_hash_must_match": true,
+    "all_reviewers_complete_all_pairs": true,
+    "key_must_remain_untracked": true
+  }
+}
