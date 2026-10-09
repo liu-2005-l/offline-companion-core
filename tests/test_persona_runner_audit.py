@@ -287,3 +287,87 @@ def test_load_checkpoint_payload_strips_new_wrapper_without_mutating_payload(tmp
         "captures",
         "payload",
     }
+
+
+def test_provenance_audit_preserves_each_checkpoint_resume_history(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """摘要：多 checkpoint 审计逐条保留新跑与两次中断续跑的独立历史。"""
+
+    fresh_path = tmp_path / "a-fresh.json"
+    resumed_path = tmp_path / "b-resumed.json"
+    initial = _provenance()
+    audit.save_checkpoint(fresh_path, {"cases": []}, initial, [])
+    audit.save_checkpoint(resumed_path, {"cases": []}, initial, [])
+
+    timestamps = iter(("2026-10-09T01:00:00Z", "2026-10-09T02:00:00Z"))
+    monkeypatch.setattr(audit, "_utc_now", lambda: next(timestamps))
+    first_resume = audit.load_resume_state(
+        resumed_path,
+        _provenance(commit="b" * 40, worktree="2" * 64),
+    )
+    audit.save_checkpoint(
+        resumed_path,
+        first_resume["payload"],
+        first_resume["provenance"],
+        first_resume["captures"],
+    )
+    second_resume = audit.load_resume_state(
+        resumed_path,
+        _provenance(commit="c" * 40, worktree="3" * 64),
+    )
+    audit.save_checkpoint(
+        resumed_path,
+        second_resume["payload"],
+        second_resume["provenance"],
+        second_resume["captures"],
+    )
+    matrix_path = tmp_path / "matrix.json"
+    matrix_path.write_bytes(b'{"meta":{}}\n')
+
+    document = audit.build_provenance_audit(
+        [resumed_path, fresh_path],
+        matrix_path,
+        matrix_path.read_bytes(),
+    )
+
+    assert document["audit_schema"] == 1
+    assert document["meta"]["checkpoint_count"] == 2
+    assert document["meta"]["provenance_complete"] is True
+    assert [Path(item["checkpoint_path"]).name for item in document["checkpoints"]] == [
+        "a-fresh.json",
+        "b-resumed.json",
+    ]
+    assert document["checkpoints"][0]["provenance"]["resumed_history"] == []
+    assert [
+        item["git_commit"]
+        for item in document["checkpoints"][1]["provenance"]["resumed_history"]
+    ] == ["b" * 40, "c" * 40]
+
+
+def test_provenance_audit_single_checkpoint_keeps_full_provenance(tmp_path) -> None:
+    """摘要：单 checkpoint 审计不压缩 provenance，配置与 resume 链原样在场。"""
+
+    checkpoint_path = tmp_path / "single.json"
+    provenance = _provenance()
+    audit.save_checkpoint(checkpoint_path, {"cases": []}, provenance, [])
+    matrix_path = tmp_path / "matrix.json"
+    matrix_path.write_bytes(b'{"meta":{}}\n')
+
+    document = audit.build_provenance_audit(
+        [checkpoint_path],
+        matrix_path,
+        matrix_path.read_bytes(),
+    )
+
+    assert document["audit_schema"] == audit.AUDIT_SCHEMA_VERSION == 1
+    assert document["checkpoints"] == [
+        {
+            "checkpoint_path": str(checkpoint_path),
+            "checkpoint_sha256": hashlib.sha256(checkpoint_path.read_bytes()).hexdigest(),
+            "checkpoint_schema": audit.PROVENANCE_SCHEMA_VERSION,
+            "legacy": False,
+            "provenance": provenance,
+        }
+    ]

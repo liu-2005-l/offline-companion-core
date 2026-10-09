@@ -43,6 +43,7 @@ from persona_runner_audit import (
     build_capture_row,
     build_config_fingerprint,
     build_provenance,
+    build_provenance_audit,
     build_sidecar,
     installed_distribution_version,
     load_resume_state,
@@ -157,6 +158,10 @@ def _collect_provenance(args: argparse.Namespace) -> dict[str, Any]:
 
 def _candidate_path(matrix_path: Path) -> Path:
     return matrix_path.with_name(f"{matrix_path.stem}.candidates.json")
+
+
+def _audit_path(matrix_path: Path) -> Path:
+    return matrix_path.with_name(f"{matrix_path.stem}.audit.json")
 
 
 def _emit_resume_warnings(path: Path, warnings: list[str]) -> None:
@@ -289,6 +294,14 @@ def _run_case(
 
 def _checkpoint_path(args: argparse.Namespace, arm: str, seed: int) -> Path:
     return args.checkpoint_dir / f"w3_p2_2_arm_{arm.lower()}_seed{seed}.json"
+
+
+def _checkpoint_paths(args: argparse.Namespace) -> list[Path]:
+    return [
+        _checkpoint_path(args, arm, seed)
+        for arm in args.arms
+        for seed in args.case_seeds
+    ]
 
 
 def _resume_checkpoint(
@@ -586,10 +599,17 @@ def main() -> int:
     with _exclusive_run_lock(args.lock_file):
         payload, captures, legacy_gaps = run_retest(args, provenance)
         _write_json(args.output, payload)
+        matrix_bytes = args.output.read_bytes()
+        provenance_audit = build_provenance_audit(
+            _checkpoint_paths(args),
+            args.output,
+            matrix_bytes,
+        )
+        _write_json(_audit_path(args.output), provenance_audit)
         sidecar = build_sidecar(
             captures,
             args.output,
-            args.output.read_bytes(),
+            matrix_bytes,
             ";".join(legacy_gaps) or None,
         )
         _write_json(_candidate_path(args.output), sidecar)
@@ -608,6 +628,7 @@ def main() -> int:
         }
         _write_json(args.trigger_output, trigger_payload)
     print(args.output)
+    print(_audit_path(args.output))
     print(_candidate_path(args.output))
     print(args.trigger_output)
     return 0

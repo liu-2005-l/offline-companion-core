@@ -51,6 +51,7 @@ from persona_runner_audit import (
     build_capture_row,
     build_config_fingerprint,
     build_provenance,
+    build_provenance_audit,
     build_sidecar,
     installed_distribution_version,
     load_resume_state,
@@ -165,6 +166,10 @@ def _collect_provenance(args: argparse.Namespace) -> dict[str, Any]:
 
 def _candidate_path(matrix_path: Path) -> Path:
     return matrix_path.with_name(f"{matrix_path.stem}.candidates.json")
+
+
+def _audit_path(matrix_path: Path) -> Path:
+    return matrix_path.with_name(f"{matrix_path.stem}.audit.json")
 
 
 def _emit_resume_warnings(path: Path, warnings: list[str]) -> None:
@@ -415,6 +420,22 @@ def _checkpoint_path(args: argparse.Namespace, *, arm: str, kind: str, seed: int
     return args.checkpoint_dir / f"w2_arm_{arm.lower()}_{kind}_seed{seed}.json"
 
 
+def _checkpoint_paths(args: argparse.Namespace) -> list[Path]:
+    paths: list[Path] = []
+    for arm in args.arms:
+        if not args.skip_cases:
+            paths.extend(
+                _checkpoint_path(args, arm=arm, kind="cases", seed=seed)
+                for seed in args.case_seeds
+            )
+        if not args.skip_probe:
+            paths.extend(
+                _checkpoint_path(args, arm=arm, kind="probe", seed=seed)
+                for seed in args.probe_seeds
+            )
+    return paths
+
+
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -638,14 +659,22 @@ def main() -> int:
     with _exclusive_run_lock(args.lock_file):
         payload, captures, legacy_gaps = run_w2(args, provenance)
         _write_json(args.output, payload)
+        matrix_bytes = args.output.read_bytes()
+        provenance_audit = build_provenance_audit(
+            _checkpoint_paths(args),
+            args.output,
+            matrix_bytes,
+        )
+        _write_json(_audit_path(args.output), provenance_audit)
         sidecar = build_sidecar(
             captures,
             args.output,
-            args.output.read_bytes(),
+            matrix_bytes,
             ";".join(legacy_gaps) or None,
         )
         _write_json(_candidate_path(args.output), sidecar)
     print(args.output)
+    print(_audit_path(args.output))
     print(_candidate_path(args.output))
     return 0
 

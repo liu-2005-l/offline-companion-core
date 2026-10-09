@@ -15,6 +15,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PROVENANCE_SCHEMA_VERSION = 1
+AUDIT_SCHEMA_VERSION = 1
 _CONFIG_SECTIONS = ("model", "seeds", "sampling", "switches", "input_files")
 _GIT_RECOVERY_HINT = "请在仓库根目录运行，并检查 git 可执行文件与仓库状态。"
 
@@ -540,4 +541,91 @@ def build_sidecar(
             "legacy_gap": legacy_gap,
         },
         "capture_rows": copy.deepcopy(capture_rows),
+    }
+
+
+def build_provenance_audit(
+    checkpoint_paths: list[Path],
+    matrix_path: Path,
+    matrix_bytes: bytes,
+) -> dict[str, Any]:
+    """摘要：把忽略目录中的逐 checkpoint provenance 固化为终态审计产物。
+
+    参数：
+        checkpoint_paths: 本次矩阵实际消费的 checkpoint 路径。
+        matrix_path: 对应终态矩阵路径。
+        matrix_bytes: 已落盘矩阵的原始字节。
+
+    返回值：
+        含独立 schema、矩阵锚与逐 checkpoint provenance/resume 链的对象。
+
+    异常：
+        RunnerProvenanceError：checkpoint 重复、缺失或审计段结构非法。
+    """
+
+    normalized_paths = sorted(Path(path) for path in checkpoint_paths)
+    if len(normalized_paths) != len(set(normalized_paths)):
+        raise RunnerProvenanceError("provenance audit checkpoint 路径不可重复")
+
+    checkpoints: list[dict[str, Any]] = []
+    provenance_complete = bool(normalized_paths)
+    for path in normalized_paths:
+        try:
+            checkpoint_bytes = path.read_bytes()
+        except OSError as exc:
+            raise RunnerProvenanceError(f"audit checkpoint 读取失败：{path}") from exc
+        checkpoint = load_checkpoint_full(path)
+        provenance = checkpoint.get("provenance")
+        if not isinstance(provenance, dict):
+            provenance_complete = False
+            checkpoints.append(
+                {
+                    "checkpoint_path": str(path),
+                    "checkpoint_sha256": hashlib.sha256(checkpoint_bytes).hexdigest(),
+                    "checkpoint_schema": None,
+                    "legacy": True,
+                    "provenance": None,
+                }
+            )
+            continue
+
+        checkpoint_schema = checkpoint.get("provenance_schema")
+        if checkpoint_schema != PROVENANCE_SCHEMA_VERSION:
+            raise RunnerProvenanceError(
+                f"checkpoint provenance schema 不受支持：{path}={checkpoint_schema}"
+            )
+        required = (
+            "git_commit",
+            "worktree_fingerprint",
+            "config_fingerprint",
+            "resumed_history",
+        )
+        missing = [key for key in required if key not in provenance or provenance[key] is None]
+        if missing:
+            raise RunnerProvenanceError(
+                f"checkpoint provenance 缺少审计字段：{path}:{','.join(missing)}"
+            )
+        if not isinstance(provenance["resumed_history"], list):
+            raise RunnerProvenanceError(
+                f"checkpoint resumed_history 必须为列表：{path}"
+            )
+        checkpoints.append(
+            {
+                "checkpoint_path": str(path),
+                "checkpoint_sha256": hashlib.sha256(checkpoint_bytes).hexdigest(),
+                "checkpoint_schema": checkpoint_schema,
+                "legacy": False,
+                "provenance": copy.deepcopy(provenance),
+            }
+        )
+
+    return {
+        "audit_schema": AUDIT_SCHEMA_VERSION,
+        "meta": {
+            "matrix_path": str(matrix_path),
+            "matrix_sha256": hashlib.sha256(matrix_bytes).hexdigest(),
+            "checkpoint_count": len(checkpoints),
+            "provenance_complete": provenance_complete,
+        },
+        "checkpoints": checkpoints,
     }

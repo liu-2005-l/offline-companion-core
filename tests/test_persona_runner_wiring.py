@@ -206,11 +206,22 @@ def test_p2_resume_keeps_old_capture_and_merges_new_seed(tmp_path: Path) -> None
         matrix_path.read_bytes(),
         ";".join(legacy_gaps) or None,
     )
+    provenance_audit = audit.build_provenance_audit(
+        p2_runner._checkpoint_paths(args),
+        matrix_path,
+        matrix_path.read_bytes(),
+    )
 
     assert old_capture in captures
     assert any(row["seed"] == 1337 for row in captures)
     assert sidecar["meta"]["capture_complete"] is True
     assert sidecar["meta"]["legacy_gap"] is None
+    by_seed = {
+        Path(item["checkpoint_path"]).stem: item
+        for item in provenance_audit["checkpoints"]
+    }
+    assert len(by_seed["w3_p2_2_arm_a_seed42"]["provenance"]["resumed_history"]) == 1
+    assert by_seed["w3_p2_2_arm_a_seed1337"]["provenance"]["resumed_history"] == []
 
 
 def test_capture_six_part_join_key_does_not_collide() -> None:
