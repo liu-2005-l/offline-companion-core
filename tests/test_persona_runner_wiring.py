@@ -9,6 +9,7 @@ from argparse import Namespace
 from pathlib import Path
 from typing import Any
 
+import pytest
 import scripts.persona_runner_audit as audit
 import scripts.run_persona_expression_w2 as w2_runner
 import scripts.run_w3_p2_repetition_retest as p2_runner
@@ -18,6 +19,46 @@ from offline_companion.core.persona_session.repetition_guard import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_r0_arm_configs_explicitly_pin_four_runner_combinations() -> None:
+    """摘要：R0 四组合显式钉死 guard 与身份提醒状态。"""
+
+    assert w2_runner._arm_config("A").__dict__ == {
+        "style_examples_enabled": True,
+        "identity_near_prompt_enabled": False,
+        "cross_turn_repetition_guard_enabled": False,
+    }
+    assert w2_runner._arm_config("B").__dict__ == {
+        "style_examples_enabled": True,
+        "identity_near_prompt_enabled": True,
+        "cross_turn_repetition_guard_enabled": False,
+    }
+    assert p2_runner._arm_config("A").__dict__ == {
+        "style_examples_enabled": True,
+        "identity_near_prompt_enabled": False,
+        "cross_turn_repetition_guard_enabled": True,
+    }
+    assert p2_runner._arm_config("B").__dict__ == {
+        "style_examples_enabled": True,
+        "identity_near_prompt_enabled": True,
+        "cross_turn_repetition_guard_enabled": True,
+    }
+
+
+@pytest.mark.parametrize("runner", [w2_runner, p2_runner])
+def test_r0_arm_config_rejects_inherited_dataclass_default(
+    monkeypatch: pytest.MonkeyPatch,
+    runner: Any,
+) -> None:
+    """摘要：runner 漏写任一配置键时拒绝依赖 dataclass 默认值。"""
+
+    declaration = dict(runner._ARM_CONFIG_DECLARATIONS["A"])
+    declaration.pop("cross_turn_repetition_guard_enabled")
+    monkeypatch.setitem(runner._ARM_CONFIG_DECLARATIONS, "A", declaration)
+
+    with pytest.raises(runner.RunnerProvenanceError, match="必须显式声明全部"):
+        runner._arm_config("A")
 
 
 def _provenance() -> dict[str, Any]:

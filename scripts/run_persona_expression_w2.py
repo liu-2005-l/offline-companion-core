@@ -17,6 +17,7 @@ import sys
 import tempfile
 import time
 from contextlib import contextmanager
+from dataclasses import fields
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -76,6 +77,18 @@ DEFAULT_OUTPUT = REPO_ROOT / "artifacts" / "persona_expression" / "w2_three_arm_
 DEFAULT_CHECKPOINT_DIR = REPO_ROOT / "artifacts" / "persona_expression" / "w2_checkpoints"
 DEFAULT_LOCK_FILE = REPO_ROOT / "artifacts" / "persona_expression" / "w2_matrix.lock"
 W2_ARM_C_RETIRED = "w2_arm_c_retired"
+_ARM_CONFIG_DECLARATIONS = {
+    "A": {
+        "style_examples_enabled": True,
+        "identity_near_prompt_enabled": False,
+        "cross_turn_repetition_guard_enabled": False,
+    },
+    "B": {
+        "style_examples_enabled": True,
+        "identity_near_prompt_enabled": True,
+        "cross_turn_repetition_guard_enabled": False,
+    },
+}
 
 
 def _sha256(path: Path) -> str:
@@ -180,16 +193,21 @@ def _is_l4_identity_cliff(reply: str, display_name: str) -> bool:
 
 
 def _arm_config(arm: str) -> PersonaExpressionConfig:
-    if arm == "A":
-        return PersonaExpressionConfig(style_examples_enabled=True)
-    if arm == "B":
-        return PersonaExpressionConfig(
-            style_examples_enabled=True,
-            identity_near_prompt_enabled=True,
-        )
     if arm == "C":
         raise W2ArmRetiredError(W2_ARM_C_RETIRED)
-    raise ValueError(f"未知 W2 arm: {arm}")
+    declaration = _ARM_CONFIG_DECLARATIONS.get(arm)
+    if declaration is None:
+        raise ValueError(f"未知 W2 arm: {arm}")
+    required = {field.name for field in fields(PersonaExpressionConfig)}
+    declared = set(declaration)
+    if declared != required:
+        missing = sorted(required - declared)
+        extra = sorted(declared - required)
+        raise RunnerProvenanceError(
+            f"W2 arm {arm} 必须显式声明全部 PersonaExpressionConfig 字段；"
+            f"missing={missing}, extra={extra}"
+        )
+    return PersonaExpressionConfig(**declaration)
 
 
 def _metric_distribution(case_runs: dict[str, dict[str, Any]]) -> dict[str, Any]:

@@ -10,7 +10,7 @@ import statistics
 import sys
 import tempfile
 import time
-from dataclasses import asdict
+from dataclasses import asdict, fields
 from pathlib import Path
 from typing import Any
 
@@ -72,6 +72,18 @@ DEFAULT_CHECKPOINT_DIR = (
 DEFAULT_LOCK_FILE = REPO_ROOT / "artifacts" / "persona_expression" / "w3_p2_2.lock"
 GLOBAL_GATE = 0.0368
 LOCAL_RETRY_GATE = 0.02
+_ARM_CONFIG_DECLARATIONS = {
+    "A": {
+        "style_examples_enabled": True,
+        "identity_near_prompt_enabled": False,
+        "cross_turn_repetition_guard_enabled": True,
+    },
+    "B": {
+        "style_examples_enabled": True,
+        "identity_near_prompt_enabled": True,
+        "cross_turn_repetition_guard_enabled": True,
+    },
+}
 
 
 def _input_file(path: Path) -> dict[str, Any]:
@@ -171,18 +183,19 @@ def _sha256(path: Path) -> str:
 def _arm_config(arm: str) -> PersonaExpressionConfig:
     """摘要：返回开启复读门的冻结 A/B 变体配置。"""
 
-    if arm == "A":
-        return PersonaExpressionConfig(
-            style_examples_enabled=True,
-            cross_turn_repetition_guard_enabled=True,
+    declaration = _ARM_CONFIG_DECLARATIONS.get(arm)
+    if declaration is None:
+        raise ValueError(f"未知 P2-2 arm: {arm}")
+    required = {field.name for field in fields(PersonaExpressionConfig)}
+    declared = set(declaration)
+    if declared != required:
+        missing = sorted(required - declared)
+        extra = sorted(declared - required)
+        raise RunnerProvenanceError(
+            f"P2-2 arm {arm} 必须显式声明全部 PersonaExpressionConfig 字段；"
+            f"missing={missing}, extra={extra}"
         )
-    if arm == "B":
-        return PersonaExpressionConfig(
-            style_examples_enabled=True,
-            identity_near_prompt_enabled=True,
-            cross_turn_repetition_guard_enabled=True,
-        )
-    raise ValueError(f"未知 P2-2 arm: {arm}")
+    return PersonaExpressionConfig(**declaration)
 
 
 def _run_case(
