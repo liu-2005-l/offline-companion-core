@@ -1,0 +1,290 @@
+{
+  "meta": {
+    "version": "w3-closure-r0-guard-blind-protocol-v1",
+    "status": "frozen_preregistered_before_sampling",
+    "frozen_on": "2026-10-09",
+    "purpose": "验证跨轮复读 guard 的修复方向与单轮零外溢",
+    "claim_scope": [
+      "structural_expectation_validation",
+      "descriptive_blind_aggregation"
+    ],
+    "excluded_claims": [
+      "statistical_significance",
+      "p4_r1_completion",
+      "threshold_recalibration",
+      "redline_movement"
+    ]
+  },
+  "protocol_separation": {
+    "protocol_a": "R0 guard 三态盲审；本协议",
+    "protocol_b": "P4 R1 N=40 强制二选一协议；等待正式抽样算法",
+    "protocol_b_canonical_source": "docs/p4-roster-kit.md",
+    "protocol_b_refs": [
+      "docs/p4-roster-kit.md:13",
+      "docs/p4-roster-kit.md:38",
+      "docs/p4-roster-kit.md:60",
+      "docs/p4-roster-kit.md:62",
+      "docs/p4-roster-kit.md:95"
+    ],
+    "seat_memory_isolation": "评审若已在协议 A 看过某个具体对子，不得在协议 B 中复判同一对子；改用未见材料的独立席。"
+  },
+  "frozen_sources": {
+    "generation_commit": "19cbef02b81a7d4fb65cb191e3e89d273aae6916",
+    "artifact_commit": "6eb1447f0576f5d2276a3abbf43ce55dbb4bf39a",
+    "w2_matrix": {
+      "path": "artifacts/persona_expression/w3_closure_r0_w2_ab_matrix.json",
+      "runner": "run_persona_expression_w2.py",
+      "arm": "B",
+      "cross_turn_repetition_guard_enabled": false,
+      "identity_near_prompt_enabled": true
+    },
+    "p2_matrix": {
+      "path": "artifacts/persona_expression/w3_closure_r0_p2_b_matrix.json",
+      "runner": "run_w3_p2_repetition_retest.py",
+      "arm": "B",
+      "cross_turn_repetition_guard_enabled": true,
+      "identity_near_prompt_enabled": true
+    },
+    "required_audit_condition": {
+      "generation_commit_matches": true,
+      "provenance_complete": true,
+      "config_matches_declared_pair": true
+    },
+    "eligible_source_kind": "case",
+    "excluded_sources": [
+      "arm_A",
+      "probe",
+      "validation_without_w2_counterpart",
+      "historical_cross_batch_outputs"
+    ]
+  },
+  "pair_contract": {
+    "join_key": [
+      "seed",
+      "scenario_id",
+      "turn_index"
+    ],
+    "must_match": [
+      "generation_commit",
+      "seed",
+      "scenario_id",
+      "turn_index",
+      "current_user_message_bytes",
+      "conversation_context_bytes_before_current_reply",
+      "identity_near_prompt_enabled"
+    ],
+    "only_intended_difference": "cross_turn_repetition_guard_enabled",
+    "pre_fix_side": "w2_arm_b_guard_off",
+    "repaired_side": "p2_arm_b_guard_on",
+    "arm_identity_visibility": "key_only"
+  },
+  "sample_construction": {
+    "multi_turn_repair": {
+      "eligibility": "turn_count > 1 and w2_reply_bytes != p2_reply_bytes",
+      "inclusion": "include_all",
+      "ordering": [
+        "M09-M10 first",
+        "S16-S18 second",
+        "then seed ascending",
+        "then turn_index ascending"
+      ],
+      "current_expected_count": 1,
+      "current_expected_keys": [
+        {
+          "seed": 42,
+          "scenario_id": "M09-M10",
+          "turn_index": 1
+        }
+      ]
+    },
+    "single_turn_no_spill": {
+      "eligibility": "turn_count == 1",
+      "mechanical_precondition": [
+        "all eligible W2/P2 reply bytes are identical",
+        "P2 repetition decision is bypass",
+        "P2 repetition reason is missing_previous_or_current_reply",
+        "retry_taken is false"
+      ],
+      "selection_unit": "scenario_id",
+      "selection_count_per_scenario": 1,
+      "selection_rule": "对每个 scenario_id，以 protocol_anchor_commit、scenario_id、seed、turn_index 拼接后计算 SHA-256，选择字典序最小者。",
+      "current_candidate_turn_count": 105,
+      "current_scenario_count": 35,
+      "current_scenario_ids": [
+        "S01",
+        "S02",
+        "S03",
+        "S04",
+        "S05",
+        "S06",
+        "S07",
+        "S08",
+        "S09",
+        "S10",
+        "S11",
+        "S12",
+        "S13",
+        "S14",
+        "S15",
+        "T01",
+        "T02",
+        "T03",
+        "T04",
+        "T05",
+        "T06",
+        "T07",
+        "T08",
+        "T09",
+        "T10",
+        "T11",
+        "T12",
+        "M01",
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07",
+        "M08"
+      ],
+      "current_sample_count": 35
+    },
+    "sample_size_formula": "N = count(all eligible differing multi-turn pairs) + count(distinct eligible single-turn scenario_id)",
+    "current_expected_n": 36,
+    "p4_n40_target_applies": false,
+    "abort_conditions": [
+      "source audit provenance incomplete",
+      "declared runner configuration mismatch",
+      "joined context bytes differ",
+      "any eligible single-turn pair is not byte-identical",
+      "any eligible single-turn P2 trace is not missing_previous_or_current_reply bypass"
+    ]
+  },
+  "preregistered_expectations": {
+    "single_turn_no_spill": {
+      "mechanical_expectation": "reply bytes identical",
+      "blind_expectation": "tie",
+      "interpretation": "guard 零外溢证据，同时作为评审席判平一致性校准。"
+    },
+    "multi_turn_repair": {
+      "mechanical_expectation": "guard-on output differs only where guard triggered",
+      "blind_expectation": "repaired wins",
+      "interpretation": "方向性修复证据，不外推统计显著性。"
+    },
+    "deviation_policy": {
+      "single_turn_source_difference": "封包前中止；先查 guard 意外触发、配置漂移、上下文不一致或 runner 构造错误。",
+      "single_turn_non_tie_vote_on_identical_text": "记为评审校准异常，不归因为产品差异。",
+      "multi_turn_pre_fix_win_or_tie": "逐项保留文本与理由，记为修复方向未获支持或收益不明确，不事后移动判据。",
+      "post_review_rule": "所有偏离预期终态的条目逐项归因，不用聚合结果覆盖单项异常。"
+    }
+  },
+  "review_protocol": {
+    "choices": [
+      "A",
+      "B",
+      "tie"
+    ],
+    "reviewer_count_required": 3,
+    "reviewers": [
+      {
+        "id": "prompt_side",
+        "context_status": "project_context_present",
+        "disclosure_required": true,
+        "judging_boundary": "预期终态仅用于解盲后对照，不作为评审输入；非平手判断仅依据匿名对子文本与 judging_priority。"
+      },
+      {
+        "id": "context_free_ai_1",
+        "context_status": "no_project_context"
+      },
+      {
+        "id": "context_free_ai_2",
+        "context_status": "no_project_context"
+      }
+    ],
+    "independence": "不得讨论、共享结果或查看其他席理由。",
+    "completion_requirement": "每席必须完成全部 N 对；不完整席整体无效并替换。",
+    "reason_requirement": "A/B 非平手选择必须填写理由；平手理由可选。",
+    "judging_priority": [
+      "事实与上下文承接",
+      "是否出现不必要跨轮复述",
+      "是否直接回应当前用户消息",
+      "自然度与陪伴感",
+      "是否出现模板腔或内部指令痕迹",
+      "无法区分或逐字相同时选择 tie"
+    ]
+  },
+  "blind_pack": {
+    "pair_fields": [
+      "pair_id",
+      "context",
+      "reply_A",
+      "reply_B"
+    ],
+    "key_fields": [
+      "pair_id",
+      "stratum",
+      "seed",
+      "scenario_id",
+      "turn_index",
+      "reply_A_source",
+      "reply_B_source"
+    ],
+    "forbidden_fields": [
+      "runner",
+      "arm",
+      "guard_enabled",
+      "pre_fix",
+      "repaired",
+      "seed",
+      "scenario_id",
+      "turn_index",
+      "stratum"
+    ],
+    "key_lifecycle": {
+      "path": "artifacts/persona_expression/w3_closure_r0_guard_blind_key.json",
+      "pre_unblind_git_state": "untracked_and_gitignored",
+      "repository_rule": "key 不得在解盲前进入 git；仅在完成哈希复核与解盲后随结果 commit 入库。",
+      "sampling_manifest_rule": "manifest 只记录现场计算的 packet/key SHA-256 与抽样元数据，不含映射内容，可在解盲前入库。"
+    },
+    "per_reviewer_position_rule": "按 reviewer_id 与 protocol_anchor_commit 独立排序；N=36 时每席严格保持两侧各 18 次。",
+    "pair_order_rule": "按 reviewer_id 与 protocol_anchor_commit 独立确定，不复用其他席顺序。"
+  },
+  "aggregation": {
+    "pair_level": "三席按 A/B/tie 多数决；三种选择各一票时记 split，不强制改判。",
+    "reported_totals": [
+      "每席 A/B/tie 分布",
+      "逐对多数结果",
+      "single_turn_no_spill 的 tie/split/non-tie 数",
+      "multi_turn_repair 的 repaired/pre_fix/tie/split 数",
+      "所有偏离预期项的逐项归因"
+    ],
+    "forbidden_statistics": [
+      "p_value",
+      "28_of_40_gate",
+      "significance_claim",
+      "threshold_recalibration"
+    ]
+  },
+  "hash_and_execution_order": {
+    "protocol_anchor_rule": "以首次包含本协议精确字节的 commit 作为 protocol_anchor_commit；协议文件不自填该 commit，避免自引用。",
+    "source_hash_rule": "抽样工具现场读取 artifact_commit 中的矩阵 blob 并计算 SHA-256，写入 sampling manifest；协议不人工预填 packet/key 哈希。",
+    "execution_order": [
+      "commit exact protocol bytes",
+      "record protocol_anchor_commit",
+      "validate source blobs and audit provenance",
+      "apply deterministic sample construction",
+      "generate three independently randomized packets and isolated key",
+      "compute packet/key SHA-256 mechanically",
+      "complete three reviews",
+      "recompute and verify packet hashes before unblinding",
+      "unblind mechanically",
+      "produce descriptive aggregation and deviation ledger"
+    ],
+    "review_before_sampling_forbidden": true,
+    "unblind_before_hash_verification_forbidden": true
+  },
+  "closure_report_observation": {
+    "required": true,
+    "text": "在 19cbef0 代码树下，guard-off 红源收窄为 seed42/M09-M10/turn_index=1 单点；历史 W2 B 主红 0.092412 未在当前树复现。该结果再次证明 W2 归档产物不可与当前代码树直接作因果对照，并加重 R1 重校必须等待 P4 正式材料与 roster 的理由。"
+  }
+}
