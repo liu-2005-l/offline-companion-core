@@ -1,0 +1,947 @@
+{
+  "audit_schema": 1,
+  "meta": {
+    "matrix_path": "artifacts\\persona_expression\\w3_closure_r0_w2_ab_matrix.json",
+    "matrix_sha256": "5b0509d3a7a8be55636dbbe1928522b17a8b9ce70772094ac8b1d935f41375c4",
+    "checkpoint_count": 12,
+    "provenance_complete": true
+  },
+  "checkpoints": [
+    {
+      "checkpoint_path": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w2_checkpoints\\w2_arm_a_cases_seed1337.json",
+      "checkpoint_sha256": "ba3f74cda392aa491b273ccd5f29b3161d9c1b97fdf50243137d3e7d6c6e0b5b",
+      "checkpoint_schema": 1,
+      "legacy": false,
+      "provenance": {
+        "created_at": "2026-10-09T13:58:29.012974Z",
+        "git_commit": "19cbef02b81a7d4fb65cb191e3e89d273aae6916",
+        "git_dirty": true,
+        "worktree_fingerprint": "98b421758f06bd584c04726ec0e5026a901a7aec209b6ee0592fa83198f3fdfe",
+        "config_fingerprint": {
+          "config_sha256": "aec2c17984d49fabedd67e21dbd84c84acc608a6f971f34f47560d77777813c1",
+          "config": {
+            "input_files": {
+              "cases": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_cases.json",
+                "sha256": "62482d7cc761cbd06c9fda2f7e972899f7e842c4c37f6288aba2660b5f606e64"
+              },
+              "persona": {
+                "path": "E:\\我的开发\\offline-companion-core\\configs\\personas\\default.yaml",
+                "sha256": "1df2716aa5a5adfa04ed2c6262f9ef7430c575178f675bdc1e7a13e463cc5063"
+              },
+              "probe": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_probe_turns.json",
+                "sha256": "894103e69b637d356971c336b55a4fc4020c75a3b041b383d1d0a8c632f118d5"
+              }
+            },
+            "model": {
+              "backend": "llama",
+              "mtime_ns": 1778945103011963400,
+              "path": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+              "size": 1117320736
+            },
+            "sampling": {
+              "health_check_enabled": true,
+              "llama_cpp_version": "0.3.34",
+              "max_tokens": 256,
+              "n_ctx": 2048,
+              "n_gpu_layers": 0,
+              "verbose": false
+            },
+            "seeds": {
+              "case": [
+                42,
+                1337,
+                2024
+              ],
+              "probe": [
+                42,
+                1337,
+                2024
+              ]
+            },
+            "switches": {
+              "arms": {
+                "A": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": false,
+                  "style_examples_enabled": true
+                },
+                "B": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": true,
+                  "style_examples_enabled": true
+                }
+              },
+              "skip_cases": false,
+              "skip_memory_check": false,
+              "skip_probe": false,
+              "skip_style_check": false
+            }
+          }
+        },
+        "resumed_history": [],
+        "code_drift_detected": false,
+        "config_drift_detected": false
+      }
+    },
+    {
+      "checkpoint_path": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w2_checkpoints\\w2_arm_a_cases_seed2024.json",
+      "checkpoint_sha256": "5c4acce0f90ca82016a036170976f9f33040686ce31ed79ed1e1deead1ed54a2",
+      "checkpoint_schema": 1,
+      "legacy": false,
+      "provenance": {
+        "created_at": "2026-10-09T13:58:29.012974Z",
+        "git_commit": "19cbef02b81a7d4fb65cb191e3e89d273aae6916",
+        "git_dirty": true,
+        "worktree_fingerprint": "98b421758f06bd584c04726ec0e5026a901a7aec209b6ee0592fa83198f3fdfe",
+        "config_fingerprint": {
+          "config_sha256": "aec2c17984d49fabedd67e21dbd84c84acc608a6f971f34f47560d77777813c1",
+          "config": {
+            "input_files": {
+              "cases": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_cases.json",
+                "sha256": "62482d7cc761cbd06c9fda2f7e972899f7e842c4c37f6288aba2660b5f606e64"
+              },
+              "persona": {
+                "path": "E:\\我的开发\\offline-companion-core\\configs\\personas\\default.yaml",
+                "sha256": "1df2716aa5a5adfa04ed2c6262f9ef7430c575178f675bdc1e7a13e463cc5063"
+              },
+              "probe": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_probe_turns.json",
+                "sha256": "894103e69b637d356971c336b55a4fc4020c75a3b041b383d1d0a8c632f118d5"
+              }
+            },
+            "model": {
+              "backend": "llama",
+              "mtime_ns": 1778945103011963400,
+              "path": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+              "size": 1117320736
+            },
+            "sampling": {
+              "health_check_enabled": true,
+              "llama_cpp_version": "0.3.34",
+              "max_tokens": 256,
+              "n_ctx": 2048,
+              "n_gpu_layers": 0,
+              "verbose": false
+            },
+            "seeds": {
+              "case": [
+                42,
+                1337,
+                2024
+              ],
+              "probe": [
+                42,
+                1337,
+                2024
+              ]
+            },
+            "switches": {
+              "arms": {
+                "A": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": false,
+                  "style_examples_enabled": true
+                },
+                "B": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": true,
+                  "style_examples_enabled": true
+                }
+              },
+              "skip_cases": false,
+              "skip_memory_check": false,
+              "skip_probe": false,
+              "skip_style_check": false
+            }
+          }
+        },
+        "resumed_history": [],
+        "code_drift_detected": false,
+        "config_drift_detected": false
+      }
+    },
+    {
+      "checkpoint_path": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w2_checkpoints\\w2_arm_a_cases_seed42.json",
+      "checkpoint_sha256": "28d17b68a71d102b4b7b30376e57977968af7b71bb3bb71223b1a32a98f3c915",
+      "checkpoint_schema": 1,
+      "legacy": false,
+      "provenance": {
+        "created_at": "2026-10-09T13:58:29.012974Z",
+        "git_commit": "19cbef02b81a7d4fb65cb191e3e89d273aae6916",
+        "git_dirty": true,
+        "worktree_fingerprint": "98b421758f06bd584c04726ec0e5026a901a7aec209b6ee0592fa83198f3fdfe",
+        "config_fingerprint": {
+          "config_sha256": "aec2c17984d49fabedd67e21dbd84c84acc608a6f971f34f47560d77777813c1",
+          "config": {
+            "input_files": {
+              "cases": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_cases.json",
+                "sha256": "62482d7cc761cbd06c9fda2f7e972899f7e842c4c37f6288aba2660b5f606e64"
+              },
+              "persona": {
+                "path": "E:\\我的开发\\offline-companion-core\\configs\\personas\\default.yaml",
+                "sha256": "1df2716aa5a5adfa04ed2c6262f9ef7430c575178f675bdc1e7a13e463cc5063"
+              },
+              "probe": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_probe_turns.json",
+                "sha256": "894103e69b637d356971c336b55a4fc4020c75a3b041b383d1d0a8c632f118d5"
+              }
+            },
+            "model": {
+              "backend": "llama",
+              "mtime_ns": 1778945103011963400,
+              "path": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+              "size": 1117320736
+            },
+            "sampling": {
+              "health_check_enabled": true,
+              "llama_cpp_version": "0.3.34",
+              "max_tokens": 256,
+              "n_ctx": 2048,
+              "n_gpu_layers": 0,
+              "verbose": false
+            },
+            "seeds": {
+              "case": [
+                42,
+                1337,
+                2024
+              ],
+              "probe": [
+                42,
+                1337,
+                2024
+              ]
+            },
+            "switches": {
+              "arms": {
+                "A": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": false,
+                  "style_examples_enabled": true
+                },
+                "B": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": true,
+                  "style_examples_enabled": true
+                }
+              },
+              "skip_cases": false,
+              "skip_memory_check": false,
+              "skip_probe": false,
+              "skip_style_check": false
+            }
+          }
+        },
+        "resumed_history": [],
+        "code_drift_detected": false,
+        "config_drift_detected": false
+      }
+    },
+    {
+      "checkpoint_path": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w2_checkpoints\\w2_arm_a_probe_seed1337.json",
+      "checkpoint_sha256": "0dd0593e97712dbf6f021573089388db41b86719d73e77d75b64061c528cb26d",
+      "checkpoint_schema": 1,
+      "legacy": false,
+      "provenance": {
+        "created_at": "2026-10-09T13:58:29.012974Z",
+        "git_commit": "19cbef02b81a7d4fb65cb191e3e89d273aae6916",
+        "git_dirty": true,
+        "worktree_fingerprint": "98b421758f06bd584c04726ec0e5026a901a7aec209b6ee0592fa83198f3fdfe",
+        "config_fingerprint": {
+          "config_sha256": "aec2c17984d49fabedd67e21dbd84c84acc608a6f971f34f47560d77777813c1",
+          "config": {
+            "input_files": {
+              "cases": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_cases.json",
+                "sha256": "62482d7cc761cbd06c9fda2f7e972899f7e842c4c37f6288aba2660b5f606e64"
+              },
+              "persona": {
+                "path": "E:\\我的开发\\offline-companion-core\\configs\\personas\\default.yaml",
+                "sha256": "1df2716aa5a5adfa04ed2c6262f9ef7430c575178f675bdc1e7a13e463cc5063"
+              },
+              "probe": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_probe_turns.json",
+                "sha256": "894103e69b637d356971c336b55a4fc4020c75a3b041b383d1d0a8c632f118d5"
+              }
+            },
+            "model": {
+              "backend": "llama",
+              "mtime_ns": 1778945103011963400,
+              "path": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+              "size": 1117320736
+            },
+            "sampling": {
+              "health_check_enabled": true,
+              "llama_cpp_version": "0.3.34",
+              "max_tokens": 256,
+              "n_ctx": 2048,
+              "n_gpu_layers": 0,
+              "verbose": false
+            },
+            "seeds": {
+              "case": [
+                42,
+                1337,
+                2024
+              ],
+              "probe": [
+                42,
+                1337,
+                2024
+              ]
+            },
+            "switches": {
+              "arms": {
+                "A": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": false,
+                  "style_examples_enabled": true
+                },
+                "B": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": true,
+                  "style_examples_enabled": true
+                }
+              },
+              "skip_cases": false,
+              "skip_memory_check": false,
+              "skip_probe": false,
+              "skip_style_check": false
+            }
+          }
+        },
+        "resumed_history": [],
+        "code_drift_detected": false,
+        "config_drift_detected": false
+      }
+    },
+    {
+      "checkpoint_path": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w2_checkpoints\\w2_arm_a_probe_seed2024.json",
+      "checkpoint_sha256": "5b531681730dd99b403f48c80e59b3d8dc35a3c315f6bc99b13ddf35d4c27cab",
+      "checkpoint_schema": 1,
+      "legacy": false,
+      "provenance": {
+        "created_at": "2026-10-09T13:58:29.012974Z",
+        "git_commit": "19cbef02b81a7d4fb65cb191e3e89d273aae6916",
+        "git_dirty": true,
+        "worktree_fingerprint": "98b421758f06bd584c04726ec0e5026a901a7aec209b6ee0592fa83198f3fdfe",
+        "config_fingerprint": {
+          "config_sha256": "aec2c17984d49fabedd67e21dbd84c84acc608a6f971f34f47560d77777813c1",
+          "config": {
+            "input_files": {
+              "cases": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_cases.json",
+                "sha256": "62482d7cc761cbd06c9fda2f7e972899f7e842c4c37f6288aba2660b5f606e64"
+              },
+              "persona": {
+                "path": "E:\\我的开发\\offline-companion-core\\configs\\personas\\default.yaml",
+                "sha256": "1df2716aa5a5adfa04ed2c6262f9ef7430c575178f675bdc1e7a13e463cc5063"
+              },
+              "probe": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_probe_turns.json",
+                "sha256": "894103e69b637d356971c336b55a4fc4020c75a3b041b383d1d0a8c632f118d5"
+              }
+            },
+            "model": {
+              "backend": "llama",
+              "mtime_ns": 1778945103011963400,
+              "path": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+              "size": 1117320736
+            },
+            "sampling": {
+              "health_check_enabled": true,
+              "llama_cpp_version": "0.3.34",
+              "max_tokens": 256,
+              "n_ctx": 2048,
+              "n_gpu_layers": 0,
+              "verbose": false
+            },
+            "seeds": {
+              "case": [
+                42,
+                1337,
+                2024
+              ],
+              "probe": [
+                42,
+                1337,
+                2024
+              ]
+            },
+            "switches": {
+              "arms": {
+                "A": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": false,
+                  "style_examples_enabled": true
+                },
+                "B": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": true,
+                  "style_examples_enabled": true
+                }
+              },
+              "skip_cases": false,
+              "skip_memory_check": false,
+              "skip_probe": false,
+              "skip_style_check": false
+            }
+          }
+        },
+        "resumed_history": [],
+        "code_drift_detected": false,
+        "config_drift_detected": false
+      }
+    },
+    {
+      "checkpoint_path": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w2_checkpoints\\w2_arm_a_probe_seed42.json",
+      "checkpoint_sha256": "8c520a77c810c34e9932b7a1a1f0a3c3ced7dceb7df010d580a646ce2bce9741",
+      "checkpoint_schema": 1,
+      "legacy": false,
+      "provenance": {
+        "created_at": "2026-10-09T13:58:29.012974Z",
+        "git_commit": "19cbef02b81a7d4fb65cb191e3e89d273aae6916",
+        "git_dirty": true,
+        "worktree_fingerprint": "98b421758f06bd584c04726ec0e5026a901a7aec209b6ee0592fa83198f3fdfe",
+        "config_fingerprint": {
+          "config_sha256": "aec2c17984d49fabedd67e21dbd84c84acc608a6f971f34f47560d77777813c1",
+          "config": {
+            "input_files": {
+              "cases": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_cases.json",
+                "sha256": "62482d7cc761cbd06c9fda2f7e972899f7e842c4c37f6288aba2660b5f606e64"
+              },
+              "persona": {
+                "path": "E:\\我的开发\\offline-companion-core\\configs\\personas\\default.yaml",
+                "sha256": "1df2716aa5a5adfa04ed2c6262f9ef7430c575178f675bdc1e7a13e463cc5063"
+              },
+              "probe": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_probe_turns.json",
+                "sha256": "894103e69b637d356971c336b55a4fc4020c75a3b041b383d1d0a8c632f118d5"
+              }
+            },
+            "model": {
+              "backend": "llama",
+              "mtime_ns": 1778945103011963400,
+              "path": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+              "size": 1117320736
+            },
+            "sampling": {
+              "health_check_enabled": true,
+              "llama_cpp_version": "0.3.34",
+              "max_tokens": 256,
+              "n_ctx": 2048,
+              "n_gpu_layers": 0,
+              "verbose": false
+            },
+            "seeds": {
+              "case": [
+                42,
+                1337,
+                2024
+              ],
+              "probe": [
+                42,
+                1337,
+                2024
+              ]
+            },
+            "switches": {
+              "arms": {
+                "A": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": false,
+                  "style_examples_enabled": true
+                },
+                "B": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": true,
+                  "style_examples_enabled": true
+                }
+              },
+              "skip_cases": false,
+              "skip_memory_check": false,
+              "skip_probe": false,
+              "skip_style_check": false
+            }
+          }
+        },
+        "resumed_history": [],
+        "code_drift_detected": false,
+        "config_drift_detected": false
+      }
+    },
+    {
+      "checkpoint_path": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w2_checkpoints\\w2_arm_b_cases_seed1337.json",
+      "checkpoint_sha256": "96105877d0ece6f9ca723f6433b8873d57027c7bf80ed2efc5c78e2b99024f4a",
+      "checkpoint_schema": 1,
+      "legacy": false,
+      "provenance": {
+        "created_at": "2026-10-09T13:58:29.012974Z",
+        "git_commit": "19cbef02b81a7d4fb65cb191e3e89d273aae6916",
+        "git_dirty": true,
+        "worktree_fingerprint": "98b421758f06bd584c04726ec0e5026a901a7aec209b6ee0592fa83198f3fdfe",
+        "config_fingerprint": {
+          "config_sha256": "aec2c17984d49fabedd67e21dbd84c84acc608a6f971f34f47560d77777813c1",
+          "config": {
+            "input_files": {
+              "cases": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_cases.json",
+                "sha256": "62482d7cc761cbd06c9fda2f7e972899f7e842c4c37f6288aba2660b5f606e64"
+              },
+              "persona": {
+                "path": "E:\\我的开发\\offline-companion-core\\configs\\personas\\default.yaml",
+                "sha256": "1df2716aa5a5adfa04ed2c6262f9ef7430c575178f675bdc1e7a13e463cc5063"
+              },
+              "probe": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_probe_turns.json",
+                "sha256": "894103e69b637d356971c336b55a4fc4020c75a3b041b383d1d0a8c632f118d5"
+              }
+            },
+            "model": {
+              "backend": "llama",
+              "mtime_ns": 1778945103011963400,
+              "path": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+              "size": 1117320736
+            },
+            "sampling": {
+              "health_check_enabled": true,
+              "llama_cpp_version": "0.3.34",
+              "max_tokens": 256,
+              "n_ctx": 2048,
+              "n_gpu_layers": 0,
+              "verbose": false
+            },
+            "seeds": {
+              "case": [
+                42,
+                1337,
+                2024
+              ],
+              "probe": [
+                42,
+                1337,
+                2024
+              ]
+            },
+            "switches": {
+              "arms": {
+                "A": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": false,
+                  "style_examples_enabled": true
+                },
+                "B": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": true,
+                  "style_examples_enabled": true
+                }
+              },
+              "skip_cases": false,
+              "skip_memory_check": false,
+              "skip_probe": false,
+              "skip_style_check": false
+            }
+          }
+        },
+        "resumed_history": [],
+        "code_drift_detected": false,
+        "config_drift_detected": false
+      }
+    },
+    {
+      "checkpoint_path": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w2_checkpoints\\w2_arm_b_cases_seed2024.json",
+      "checkpoint_sha256": "d245ce3291122e94f3bd2bf4de284a762e55eb821be39ddeca97a25c37f8ac96",
+      "checkpoint_schema": 1,
+      "legacy": false,
+      "provenance": {
+        "created_at": "2026-10-09T13:58:29.012974Z",
+        "git_commit": "19cbef02b81a7d4fb65cb191e3e89d273aae6916",
+        "git_dirty": true,
+        "worktree_fingerprint": "98b421758f06bd584c04726ec0e5026a901a7aec209b6ee0592fa83198f3fdfe",
+        "config_fingerprint": {
+          "config_sha256": "aec2c17984d49fabedd67e21dbd84c84acc608a6f971f34f47560d77777813c1",
+          "config": {
+            "input_files": {
+              "cases": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_cases.json",
+                "sha256": "62482d7cc761cbd06c9fda2f7e972899f7e842c4c37f6288aba2660b5f606e64"
+              },
+              "persona": {
+                "path": "E:\\我的开发\\offline-companion-core\\configs\\personas\\default.yaml",
+                "sha256": "1df2716aa5a5adfa04ed2c6262f9ef7430c575178f675bdc1e7a13e463cc5063"
+              },
+              "probe": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_probe_turns.json",
+                "sha256": "894103e69b637d356971c336b55a4fc4020c75a3b041b383d1d0a8c632f118d5"
+              }
+            },
+            "model": {
+              "backend": "llama",
+              "mtime_ns": 1778945103011963400,
+              "path": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+              "size": 1117320736
+            },
+            "sampling": {
+              "health_check_enabled": true,
+              "llama_cpp_version": "0.3.34",
+              "max_tokens": 256,
+              "n_ctx": 2048,
+              "n_gpu_layers": 0,
+              "verbose": false
+            },
+            "seeds": {
+              "case": [
+                42,
+                1337,
+                2024
+              ],
+              "probe": [
+                42,
+                1337,
+                2024
+              ]
+            },
+            "switches": {
+              "arms": {
+                "A": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": false,
+                  "style_examples_enabled": true
+                },
+                "B": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": true,
+                  "style_examples_enabled": true
+                }
+              },
+              "skip_cases": false,
+              "skip_memory_check": false,
+              "skip_probe": false,
+              "skip_style_check": false
+            }
+          }
+        },
+        "resumed_history": [],
+        "code_drift_detected": false,
+        "config_drift_detected": false
+      }
+    },
+    {
+      "checkpoint_path": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w2_checkpoints\\w2_arm_b_cases_seed42.json",
+      "checkpoint_sha256": "8fff3750804739c6f20c361430bde7fd4bae146c02413aecc5cd57d374d1fe75",
+      "checkpoint_schema": 1,
+      "legacy": false,
+      "provenance": {
+        "created_at": "2026-10-09T13:58:29.012974Z",
+        "git_commit": "19cbef02b81a7d4fb65cb191e3e89d273aae6916",
+        "git_dirty": true,
+        "worktree_fingerprint": "98b421758f06bd584c04726ec0e5026a901a7aec209b6ee0592fa83198f3fdfe",
+        "config_fingerprint": {
+          "config_sha256": "aec2c17984d49fabedd67e21dbd84c84acc608a6f971f34f47560d77777813c1",
+          "config": {
+            "input_files": {
+              "cases": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_cases.json",
+                "sha256": "62482d7cc761cbd06c9fda2f7e972899f7e842c4c37f6288aba2660b5f606e64"
+              },
+              "persona": {
+                "path": "E:\\我的开发\\offline-companion-core\\configs\\personas\\default.yaml",
+                "sha256": "1df2716aa5a5adfa04ed2c6262f9ef7430c575178f675bdc1e7a13e463cc5063"
+              },
+              "probe": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_probe_turns.json",
+                "sha256": "894103e69b637d356971c336b55a4fc4020c75a3b041b383d1d0a8c632f118d5"
+              }
+            },
+            "model": {
+              "backend": "llama",
+              "mtime_ns": 1778945103011963400,
+              "path": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+              "size": 1117320736
+            },
+            "sampling": {
+              "health_check_enabled": true,
+              "llama_cpp_version": "0.3.34",
+              "max_tokens": 256,
+              "n_ctx": 2048,
+              "n_gpu_layers": 0,
+              "verbose": false
+            },
+            "seeds": {
+              "case": [
+                42,
+                1337,
+                2024
+              ],
+              "probe": [
+                42,
+                1337,
+                2024
+              ]
+            },
+            "switches": {
+              "arms": {
+                "A": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": false,
+                  "style_examples_enabled": true
+                },
+                "B": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": true,
+                  "style_examples_enabled": true
+                }
+              },
+              "skip_cases": false,
+              "skip_memory_check": false,
+              "skip_probe": false,
+              "skip_style_check": false
+            }
+          }
+        },
+        "resumed_history": [],
+        "code_drift_detected": false,
+        "config_drift_detected": false
+      }
+    },
+    {
+      "checkpoint_path": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w2_checkpoints\\w2_arm_b_probe_seed1337.json",
+      "checkpoint_sha256": "d25e77d0bcb0c0fc9b456802734b200253735fa051b2a0598d54d971dfe9d0f5",
+      "checkpoint_schema": 1,
+      "legacy": false,
+      "provenance": {
+        "created_at": "2026-10-09T13:58:29.012974Z",
+        "git_commit": "19cbef02b81a7d4fb65cb191e3e89d273aae6916",
+        "git_dirty": true,
+        "worktree_fingerprint": "98b421758f06bd584c04726ec0e5026a901a7aec209b6ee0592fa83198f3fdfe",
+        "config_fingerprint": {
+          "config_sha256": "aec2c17984d49fabedd67e21dbd84c84acc608a6f971f34f47560d77777813c1",
+          "config": {
+            "input_files": {
+              "cases": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_cases.json",
+                "sha256": "62482d7cc761cbd06c9fda2f7e972899f7e842c4c37f6288aba2660b5f606e64"
+              },
+              "persona": {
+                "path": "E:\\我的开发\\offline-companion-core\\configs\\personas\\default.yaml",
+                "sha256": "1df2716aa5a5adfa04ed2c6262f9ef7430c575178f675bdc1e7a13e463cc5063"
+              },
+              "probe": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_probe_turns.json",
+                "sha256": "894103e69b637d356971c336b55a4fc4020c75a3b041b383d1d0a8c632f118d5"
+              }
+            },
+            "model": {
+              "backend": "llama",
+              "mtime_ns": 1778945103011963400,
+              "path": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+              "size": 1117320736
+            },
+            "sampling": {
+              "health_check_enabled": true,
+              "llama_cpp_version": "0.3.34",
+              "max_tokens": 256,
+              "n_ctx": 2048,
+              "n_gpu_layers": 0,
+              "verbose": false
+            },
+            "seeds": {
+              "case": [
+                42,
+                1337,
+                2024
+              ],
+              "probe": [
+                42,
+                1337,
+                2024
+              ]
+            },
+            "switches": {
+              "arms": {
+                "A": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": false,
+                  "style_examples_enabled": true
+                },
+                "B": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": true,
+                  "style_examples_enabled": true
+                }
+              },
+              "skip_cases": false,
+              "skip_memory_check": false,
+              "skip_probe": false,
+              "skip_style_check": false
+            }
+          }
+        },
+        "resumed_history": [],
+        "code_drift_detected": false,
+        "config_drift_detected": false
+      }
+    },
+    {
+      "checkpoint_path": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w2_checkpoints\\w2_arm_b_probe_seed2024.json",
+      "checkpoint_sha256": "220e18866519a2686f1b7c8ab31915be52dfd8c5b80ea1f4c20b6892778c9869",
+      "checkpoint_schema": 1,
+      "legacy": false,
+      "provenance": {
+        "created_at": "2026-10-09T13:58:29.012974Z",
+        "git_commit": "19cbef02b81a7d4fb65cb191e3e89d273aae6916",
+        "git_dirty": true,
+        "worktree_fingerprint": "98b421758f06bd584c04726ec0e5026a901a7aec209b6ee0592fa83198f3fdfe",
+        "config_fingerprint": {
+          "config_sha256": "aec2c17984d49fabedd67e21dbd84c84acc608a6f971f34f47560d77777813c1",
+          "config": {
+            "input_files": {
+              "cases": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_cases.json",
+                "sha256": "62482d7cc761cbd06c9fda2f7e972899f7e842c4c37f6288aba2660b5f606e64"
+              },
+              "persona": {
+                "path": "E:\\我的开发\\offline-companion-core\\configs\\personas\\default.yaml",
+                "sha256": "1df2716aa5a5adfa04ed2c6262f9ef7430c575178f675bdc1e7a13e463cc5063"
+              },
+              "probe": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_probe_turns.json",
+                "sha256": "894103e69b637d356971c336b55a4fc4020c75a3b041b383d1d0a8c632f118d5"
+              }
+            },
+            "model": {
+              "backend": "llama",
+              "mtime_ns": 1778945103011963400,
+              "path": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+              "size": 1117320736
+            },
+            "sampling": {
+              "health_check_enabled": true,
+              "llama_cpp_version": "0.3.34",
+              "max_tokens": 256,
+              "n_ctx": 2048,
+              "n_gpu_layers": 0,
+              "verbose": false
+            },
+            "seeds": {
+              "case": [
+                42,
+                1337,
+                2024
+              ],
+              "probe": [
+                42,
+                1337,
+                2024
+              ]
+            },
+            "switches": {
+              "arms": {
+                "A": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": false,
+                  "style_examples_enabled": true
+                },
+                "B": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": true,
+                  "style_examples_enabled": true
+                }
+              },
+              "skip_cases": false,
+              "skip_memory_check": false,
+              "skip_probe": false,
+              "skip_style_check": false
+            }
+          }
+        },
+        "resumed_history": [],
+        "code_drift_detected": false,
+        "config_drift_detected": false
+      }
+    },
+    {
+      "checkpoint_path": "E:\\我的开发\\offline-companion-core\\artifacts\\persona_expression\\w2_checkpoints\\w2_arm_b_probe_seed42.json",
+      "checkpoint_sha256": "bf54b30a856611dc9f3381d14fb9839102fd450171a392292cfbb1e9dabfc904",
+      "checkpoint_schema": 1,
+      "legacy": false,
+      "provenance": {
+        "created_at": "2026-10-09T13:58:29.012974Z",
+        "git_commit": "19cbef02b81a7d4fb65cb191e3e89d273aae6916",
+        "git_dirty": true,
+        "worktree_fingerprint": "98b421758f06bd584c04726ec0e5026a901a7aec209b6ee0592fa83198f3fdfe",
+        "config_fingerprint": {
+          "config_sha256": "aec2c17984d49fabedd67e21dbd84c84acc608a6f971f34f47560d77777813c1",
+          "config": {
+            "input_files": {
+              "cases": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_cases.json",
+                "sha256": "62482d7cc761cbd06c9fda2f7e972899f7e842c4c37f6288aba2660b5f606e64"
+              },
+              "persona": {
+                "path": "E:\\我的开发\\offline-companion-core\\configs\\personas\\default.yaml",
+                "sha256": "1df2716aa5a5adfa04ed2c6262f9ef7430c575178f675bdc1e7a13e463cc5063"
+              },
+              "probe": {
+                "path": "E:\\我的开发\\offline-companion-core\\fixtures\\persona_expression\\w1_probe_turns.json",
+                "sha256": "894103e69b637d356971c336b55a4fc4020c75a3b041b383d1d0a8c632f118d5"
+              }
+            },
+            "model": {
+              "backend": "llama",
+              "mtime_ns": 1778945103011963400,
+              "path": "models\\Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+              "size": 1117320736
+            },
+            "sampling": {
+              "health_check_enabled": true,
+              "llama_cpp_version": "0.3.34",
+              "max_tokens": 256,
+              "n_ctx": 2048,
+              "n_gpu_layers": 0,
+              "verbose": false
+            },
+            "seeds": {
+              "case": [
+                42,
+                1337,
+                2024
+              ],
+              "probe": [
+                42,
+                1337,
+                2024
+              ]
+            },
+            "switches": {
+              "arms": {
+                "A": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": false,
+                  "style_examples_enabled": true
+                },
+                "B": {
+                  "cross_turn_repetition_guard_enabled": false,
+                  "identity_near_prompt_enabled": true,
+                  "style_examples_enabled": true
+                }
+              },
+              "skip_cases": false,
+              "skip_memory_check": false,
+              "skip_probe": false,
+              "skip_style_check": false
+            }
+          }
+        },
+        "resumed_history": [],
+        "code_drift_detected": false,
+        "config_drift_detected": false
+      }
+    }
+  ]
+}
