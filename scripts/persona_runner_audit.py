@@ -465,6 +465,7 @@ def build_capture_row(
     seed: int,
     scenario_id: str,
     turn_index: int,
+    exit_shape: str | None = None,
 ) -> dict[str, Any]:
     """摘要：把单轮 first/retry 事件整形成冻结六元 join schema。
 
@@ -476,10 +477,27 @@ def build_capture_row(
         seed: 当前采样 seed。
         scenario_id: 当前判例或 probe 标识。
         turn_index: 判例内零基轮次。
+        exit_shape: 无模型候选时的确定性出口形态；当前仅允许 ``direct``。
 
     返回值：
         含六元 join 键、retry 标记及双阶段原始判定的 JSON 对象。
     """
+
+    base = {
+        "runner": runner,
+        "arm": arm,
+        "source_kind": source_kind,
+        "seed": seed,
+        "scenario_id": scenario_id,
+        "turn_index": turn_index,
+        "retry_taken": False,
+    }
+    if not capture_events:
+        if exit_shape != "direct":
+            raise RunnerProvenanceError("capture 缺少 first 阶段")
+        return {**base, "exit_shape": "direct"}
+    if exit_shape is not None:
+        raise RunnerProvenanceError("模型候选 capture 不得声明 exit_shape")
 
     phases: dict[str, dict[str, Any]] = {}
     for event in capture_events:
@@ -503,12 +521,7 @@ def build_capture_row(
         }
 
     return {
-        "runner": runner,
-        "arm": arm,
-        "source_kind": source_kind,
-        "seed": seed,
-        "scenario_id": scenario_id,
-        "turn_index": turn_index,
+        **base,
         "retry_taken": "retry" in phases,
         "first": render("first"),
         "retry": render("retry"),

@@ -247,15 +247,17 @@ def _run_case(
                 expression_config=expression_config,
                 capture_sink=capture_sink,
             )
+            capture_events = capture_sink.drain()
             captures.append(
                 build_capture_row(
-                    capture_sink.drain(),
+                    capture_events,
                     runner="p2_retest",
                     arm=arm,
                     source_kind=source_kind,
                     seed=seed,
                     scenario_id=str(case["id"]),
                     turn_index=turn_index,
+                    exit_shape="direct" if not capture_events else None,
                 )
             )
             append_message(conn, session_id, "user", user_message, {"case_id": case["id"]})

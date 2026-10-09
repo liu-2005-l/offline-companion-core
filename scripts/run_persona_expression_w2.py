@@ -349,6 +349,7 @@ def _run_cases_for_arm_seed(
                         seed=seed,
                         scenario_id=scenario_id,
                         turn_index=turn_index,
+                        exit_shape="direct" if not events else None,
                     )
                 )
 
@@ -395,6 +396,7 @@ def _run_probe_for_arm_seed(
                 seed=seed,
                 scenario_id=f"probe-seed{seed}",
                 turn_index=turn_index,
+                exit_shape="direct" if not events else None,
             )
         )
 

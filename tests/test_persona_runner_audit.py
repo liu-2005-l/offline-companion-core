@@ -260,6 +260,87 @@ def test_capture_sink_drains_and_builds_sidecar_from_persisted_matrix(tmp_path) 
     assert sidecar["capture_rows"] == captured
 
 
+def test_capture_row_marks_direct_exit_without_model_candidate() -> None:
+    """摘要：确定性 direct 出口只记形态，不伪造 first/retry 模型候选。"""
+
+    row = audit.build_capture_row(
+        [],
+        runner="w2",
+        arm="B",
+        source_kind="probe",
+        seed=42,
+        scenario_id="probe-seed42",
+        turn_index=9,
+        exit_shape="direct",
+    )
+
+    assert row == {
+        "runner": "w2",
+        "arm": "B",
+        "source_kind": "probe",
+        "seed": 42,
+        "scenario_id": "probe-seed42",
+        "turn_index": 9,
+        "retry_taken": False,
+        "exit_shape": "direct",
+    }
+    assert "first" not in row
+    assert "retry" not in row
+
+
+def test_capture_row_keeps_generated_candidate_shape_byte_for_byte() -> None:
+    """摘要：模型生成路径不新增 exit 字段，冻结 first/retry 行形态不漂移。"""
+
+    decision = CrossTurnRepetitionDecision(
+        action="direct",
+        score=0.0,
+        threshold=0.09,
+        reason="threshold_not_matched",
+    )
+    row = audit.build_capture_row(
+        [
+            {
+                "phase": "first",
+                "text": "模型候选",
+                "l4_decision": None,
+                "repetition_decision": decision,
+            }
+        ],
+        runner="w2",
+        arm="A",
+        source_kind="probe",
+        seed=42,
+        scenario_id="probe-seed42",
+        turn_index=0,
+    )
+
+    assert row == {
+        "runner": "w2",
+        "arm": "A",
+        "source_kind": "probe",
+        "seed": 42,
+        "scenario_id": "probe-seed42",
+        "turn_index": 0,
+        "retry_taken": False,
+        "first": {
+            "text": "模型候选",
+            "l4_decision": {},
+            "repetition_decision": {
+                "action": "direct",
+                "score": 0.0,
+                "threshold": 0.09,
+                "comparison": "gt",
+                "previous_ngrams": 0,
+                "current_ngrams": 0,
+                "reason": "threshold_not_matched",
+                "confirmation_intent": False,
+            },
+        },
+        "retry": {},
+    }
+    assert "exit_shape" not in row
+
+
 @pytest.mark.parametrize("content", ["{not-json", "[]"])
 def test_checkpoint_load_rejects_corrupt_or_non_object_root(tmp_path, content) -> None:
     """摘要：损坏 JSON 与非对象根节点均 fail-fast，不把错误推迟到矩阵聚合。"""
