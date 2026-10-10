@@ -1,0 +1,200 @@
+{
+  "meta": {
+    "version": "w3-closure-r0-guard-blind-review-v1",
+    "reviewer": "prompt_side",
+    "packet": "artifacts/persona_expression/w3_closure_r0_guard_blind_prompt_side.json",
+    "context_status": "project_context_present",
+    "disclosure": [
+      "评审读过协议全文，知道单轮预期 tie、多轮修复对预期 repaired 胜，以及 35 个单轮逐字节相同、1 个差异对的机械事实。",
+      "评审知道 M09-M10 是 guard 主红区，并认识「实习机会难得」「你打算怎么安排」两处历史复用短语；选择与预期同向，需由两席无上下文结果交叉验证。",
+      "非平手判断仅依据对子文本与 judging_priority；未请求或推断 key 内容与左右映射。"
+    ]
+  },
+  "results": [
+    {
+      "pair_id": "G022",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G027",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G016",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G009",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G020",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G023",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G018",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G019",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G011",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G007",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G032",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G028",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G031",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G005",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G015",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G001",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G029",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G006",
+      "choice": "A",
+      "reason": "B 逐字复用上一轮 assistant 原文「实习机会难得」与「你打算怎么安排？」两处，属判据第 2 级“不必要跨轮复述”的明文违反；A 以新表述回答“要不要去”（实习经历对求职的价值 + 决策归因于用户），承接同等事实且零复述。第 1 级事实承接两者等价，第 2 级分出胜负。"
+    },
+    {
+      "pair_id": "G035",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G030",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G021",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G036",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G026",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G008",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G033",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G034",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G010",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G013",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G017",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G014",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G025",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G002",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G004",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G024",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G003",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    },
+    {
+      "pair_id": "G012",
+      "choice": "tie",
+      "reason": "两臂逐字一致（instruction 第 6 级）。"
+    }
+  ],
+  "observations": [
+    "G001 Booth 过程描述错误，但两臂相同，不影响选择。",
+    "G012 对 0.1+0.2 的精确值回答不精确，但两臂相同，不影响选择。",
+    "G025/G029 在无预灌记忆条件下虚构记忆实体，但两臂相同，不影响选择；可作为未来检测域候选样本。"
+  ]
+}

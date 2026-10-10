@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "version": "w3-closure-r0-guard-pre-unblind-validation-v1",
+    "status": "valid_before_unblind",
+    "key_content_parsed": false,
+    "protocol_anchor_commit": "95dcc16abd5f45edf59b54d8e1c1b1f7cc6e05fe"
+  },
+  "reviewers": [
+    {
+      "reviewer": "prompt_side",
+      "pair_count": 36,
+      "choice_counts": {
+        "tie": 35,
+        "A": 1
+      },
+      "packet_path": "artifacts/persona_expression/w3_closure_r0_guard_blind_prompt_side.json",
+      "packet_sha256": "B73C2C554E5BB176DD9D5E6C5821E57F7F6917CDAF08E4D063091F1CD41735B2",
+      "review_path": "artifacts/persona_expression/w3_closure_r0_guard_blind_review_prompt_side.json",
+      "review_sha256": "D1C7BDC69AF2E72425C2E7CFCE2B26BB3BBAF0040A2140DC886E601071573B63"
+    },
+    {
+      "reviewer": "context_free_ai_1",
+      "pair_count": 36,
+      "choice_counts": {
+        "tie": 35,
+        "B": 1
+      },
+      "packet_path": "artifacts/persona_expression/w3_closure_r0_guard_blind_context_free_ai_1.json",
+      "packet_sha256": "4EE511B4316A82B9B909645433873BB5946342D77B715133CB0D95E3BEAF69B6",
+      "review_path": "artifacts/persona_expression/w3_closure_r0_guard_blind_review_context_free_ai_1.json",
+      "review_sha256": "22B3357444675691A07C83CA6DCB83E32FCB269C7801288346430DE7DF4D2A52"
+    },
+    {
+      "reviewer": "context_free_ai_2",
+      "pair_count": 36,
+      "choice_counts": {
+        "tie": 35,
+        "B": 1
+      },
+      "packet_path": "artifacts/persona_expression/w3_closure_r0_guard_blind_context_free_ai_2.json",
+      "packet_sha256": "E142A7FE9BE79FD2507F33164D12D3C978AE1C5A3C43F28D08D7065AACA5B1C3",
+      "review_path": "artifacts/persona_expression/w3_closure_r0_guard_blind_review_context_free_ai_2.json",
+      "review_sha256": "BB016E90423F3862CFF8159A833FF591EF214F897EC8F42963D43C5D150D3F0C"
+    }
+  ],
+  "sealed_key": {
+    "path": "artifacts/persona_expression/w3_closure_r0_guard_blind_key.json",
+    "sha256": "CFEA35358CE55095D7F548D3A25DFC11056672E0E026141FBFD8ED156865D71F",
+    "content_parsed": false
+  },
+  "all_packet_hashes_match": true,
+  "all_reviewers_complete": true,
+  "ready_to_unblind": true
+}

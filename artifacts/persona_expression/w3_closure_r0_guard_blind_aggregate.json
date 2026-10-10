@@ -1,0 +1,1120 @@
+{
+  "pairs": [
+    {
+      "pair_id": "G001",
+      "stratum": "single_turn_no_spill",
+      "seed": 1337,
+      "scenario_id": "T01",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G002",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "S06",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G003",
+      "stratum": "single_turn_no_spill",
+      "seed": 1337,
+      "scenario_id": "T06",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G004",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "S07",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G005",
+      "stratum": "single_turn_no_spill",
+      "seed": 42,
+      "scenario_id": "M07",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G006",
+      "stratum": "multi_turn_repair",
+      "seed": 42,
+      "scenario_id": "M09-M10",
+      "turn_index": 1,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "A",
+          "source_choice": "repaired",
+          "reason": "B 逐字复用上一轮 assistant 原文「实习机会难得」与「你打算怎么安排？」两处，属判据第 2 级“不必要跨轮复述”的明文违反；A 以新表述回答“要不要去”（实习经历对求职的价值 + 决策归因于用户），承接同等事实且零复述。第 1 级事实承接两者等价，第 2 级分出胜负。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "B",
+          "source_choice": "repaired",
+          "reason": "B 在说明实习经历对求职有帮助的同时，明确提出还需结合用户自己的兴趣和能力，较 A 直接断言“当然要去”更尊重用户的个人选择，也更贴合决策问题。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "B",
+          "source_choice": "repaired",
+          "reason": "B 在说明实习经历对求职有帮助的同时，明确提醒还要结合个人兴趣和能力判断，比 A 直接断言“当然要去”更审慎，也避免重复追问此前已问过的安排问题。"
+        }
+      ],
+      "majority": "repaired",
+      "expected": "repaired",
+      "conforms": true
+    },
+    {
+      "pair_id": "G007",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "S13",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G008",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "S12",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G009",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "M04",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G010",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "S15",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G011",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "M01",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G012",
+      "stratum": "single_turn_no_spill",
+      "seed": 1337,
+      "scenario_id": "T03",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G013",
+      "stratum": "single_turn_no_spill",
+      "seed": 42,
+      "scenario_id": "S14",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G014",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "S03",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G015",
+      "stratum": "single_turn_no_spill",
+      "seed": 1337,
+      "scenario_id": "S09",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G016",
+      "stratum": "single_turn_no_spill",
+      "seed": 1337,
+      "scenario_id": "M06",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G017",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "M02",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G018",
+      "stratum": "single_turn_no_spill",
+      "seed": 1337,
+      "scenario_id": "S01",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G019",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "S10",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G020",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "T11",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G021",
+      "stratum": "single_turn_no_spill",
+      "seed": 42,
+      "scenario_id": "T08",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G022",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "T05",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G023",
+      "stratum": "single_turn_no_spill",
+      "seed": 42,
+      "scenario_id": "S11",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G024",
+      "stratum": "single_turn_no_spill",
+      "seed": 1337,
+      "scenario_id": "M05",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G025",
+      "stratum": "single_turn_no_spill",
+      "seed": 1337,
+      "scenario_id": "M08",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G026",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "T12",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G027",
+      "stratum": "single_turn_no_spill",
+      "seed": 1337,
+      "scenario_id": "T04",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G028",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "T10",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G029",
+      "stratum": "single_turn_no_spill",
+      "seed": 42,
+      "scenario_id": "T09",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G030",
+      "stratum": "single_turn_no_spill",
+      "seed": 42,
+      "scenario_id": "T02",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G031",
+      "stratum": "single_turn_no_spill",
+      "seed": 42,
+      "scenario_id": "S02",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G032",
+      "stratum": "single_turn_no_spill",
+      "seed": 42,
+      "scenario_id": "S08",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G033",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "S05",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G034",
+      "stratum": "single_turn_no_spill",
+      "seed": 1337,
+      "scenario_id": "S04",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G035",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "M03",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    },
+    {
+      "pair_id": "G036",
+      "stratum": "single_turn_no_spill",
+      "seed": 2024,
+      "scenario_id": "T07",
+      "turn_index": 0,
+      "votes": [
+        {
+          "reviewer": "prompt_side",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两臂逐字一致（instruction 第 6 级）。"
+        },
+        {
+          "reviewer": "context_free_ai_1",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "A、B 文本逐字相同。"
+        },
+        {
+          "reviewer": "context_free_ai_2",
+          "blind_choice": "tie",
+          "source_choice": "tie",
+          "reason": "两段回复逐字相同，无法区分。"
+        }
+      ],
+      "majority": "tie",
+      "expected": "tie",
+      "conforms": true
+    }
+  ],
+  "summary": {
+    "pair_count": 36,
+    "strata": {
+      "single_turn_no_spill": {
+        "tie": 35
+      },
+      "multi_turn_repair": {
+        "repaired": 1
+      }
+    },
+    "conforming_pairs": 36,
+    "deviation_count": 0,
+    "statistical_significance_claimed": false
+  },
+  "deviation_ledger": [],
+  "meta": {
+    "version": "w3-closure-r0-guard-blind-aggregate-v1",
+    "status": "unblinded_descriptive_aggregation_complete",
+    "protocol_anchor_commit": "95dcc16abd5f45edf59b54d8e1c1b1f7cc6e05fe",
+    "pre_unblind_validation": "artifacts/persona_expression/w3_closure_r0_guard_blind_pre_unblind_validation.json",
+    "key_sha256": "CFEA35358CE55095D7F548D3A25DFC11056672E0E026141FBFD8ED156865D71F"
+  },
+  "reviewer_disclosures": {
+    "prompt_side": [
+      "评审读过协议全文，知道单轮预期 tie、多轮修复对预期 repaired 胜，以及 35 个单轮逐字节相同、1 个差异对的机械事实。",
+      "评审知道 M09-M10 是 guard 主红区，并认识「实习机会难得」「你打算怎么安排」两处历史复用短语；选择与预期同向，需由两席无上下文结果交叉验证。",
+      "非平手判断仅依据对子文本与 judging_priority；未请求或推断 key 内容与左右映射。"
+    ],
+    "context_free_ai_1": [],
+    "context_free_ai_2": []
+  },
+  "scope_observations": [
+    "G001 Booth 过程描述错误，但两臂相同，不影响选择。",
+    "G012 对 0.1+0.2 的精确值回答不精确，但两臂相同，不影响选择。",
+    "G025/G029 在无预灌记忆条件下虚构记忆实体，但两臂相同，不影响选择；可作为未来检测域候选样本。"
+  ]
+}

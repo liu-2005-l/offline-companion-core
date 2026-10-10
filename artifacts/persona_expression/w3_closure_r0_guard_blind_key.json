@@ -1,0 +1,986 @@
+{
+  "meta": {
+    "version": "w3-closure-r0-guard-blind-key-v1",
+    "protocol_anchor_commit": "95dcc16abd5f45edf59b54d8e1c1b1f7cc6e05fe"
+  },
+  "reviewers": {
+    "prompt_side": [
+      {
+        "pair_id": "G001",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "T01",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G002",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S06",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G003",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "T06",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G004",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S07",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G005",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "M07",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G006",
+        "stratum": "multi_turn_repair",
+        "seed": 42,
+        "scenario_id": "M09-M10",
+        "turn_index": 1,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G007",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S13",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G008",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S12",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G009",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "M04",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G010",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S15",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G011",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "M01",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G012",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "T03",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G013",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "S14",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G014",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S03",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G015",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "S09",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G016",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "M06",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G017",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "M02",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G018",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "S01",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G019",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S10",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G020",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T11",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G021",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "T08",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G022",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T05",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G023",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "S11",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G024",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "M05",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G025",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "M08",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G026",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T12",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G027",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "T04",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G028",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T10",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G029",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "T09",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G030",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "T02",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G031",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "S02",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G032",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "S08",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G033",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S05",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G034",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "S04",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G035",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "M03",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G036",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T07",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      }
+    ],
+    "context_free_ai_1": [
+      {
+        "pair_id": "G001",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "T01",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G002",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S06",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G003",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "T06",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G004",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S07",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G005",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "M07",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G006",
+        "stratum": "multi_turn_repair",
+        "seed": 42,
+        "scenario_id": "M09-M10",
+        "turn_index": 1,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G007",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S13",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G008",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S12",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G009",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "M04",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G010",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S15",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G011",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "M01",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G012",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "T03",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G013",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "S14",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G014",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S03",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G015",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "S09",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G016",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "M06",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G017",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "M02",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G018",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "S01",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G019",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S10",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G020",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T11",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G021",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "T08",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G022",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T05",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G023",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "S11",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G024",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "M05",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G025",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "M08",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G026",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T12",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G027",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "T04",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G028",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T10",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G029",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "T09",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G030",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "T02",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G031",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "S02",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G032",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "S08",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G033",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S05",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G034",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "S04",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G035",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "M03",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G036",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T07",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      }
+    ],
+    "context_free_ai_2": [
+      {
+        "pair_id": "G001",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "T01",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G002",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S06",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G003",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "T06",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G004",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S07",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G005",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "M07",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G006",
+        "stratum": "multi_turn_repair",
+        "seed": 42,
+        "scenario_id": "M09-M10",
+        "turn_index": 1,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G007",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S13",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G008",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S12",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G009",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "M04",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G010",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S15",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G011",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "M01",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G012",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "T03",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G013",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "S14",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G014",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S03",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G015",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "S09",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G016",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "M06",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G017",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "M02",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G018",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "S01",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G019",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S10",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G020",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T11",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G021",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "T08",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G022",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T05",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G023",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "S11",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G024",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "M05",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G025",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "M08",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G026",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T12",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G027",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "T04",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G028",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T10",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G029",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "T09",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G030",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "T02",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G031",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "S02",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G032",
+        "stratum": "single_turn_no_spill",
+        "seed": 42,
+        "scenario_id": "S08",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G033",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "S05",
+        "turn_index": 0,
+        "reply_A_source": "pre_fix",
+        "reply_B_source": "repaired"
+      },
+      {
+        "pair_id": "G034",
+        "stratum": "single_turn_no_spill",
+        "seed": 1337,
+        "scenario_id": "S04",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G035",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "M03",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      },
+      {
+        "pair_id": "G036",
+        "stratum": "single_turn_no_spill",
+        "seed": 2024,
+        "scenario_id": "T07",
+        "turn_index": 0,
+        "reply_A_source": "repaired",
+        "reply_B_source": "pre_fix"
+      }
+    ]
+  }
+}

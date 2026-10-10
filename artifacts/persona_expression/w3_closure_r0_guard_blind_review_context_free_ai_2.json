@@ -1,0 +1,190 @@
+{
+  "meta": {
+    "version": "w3-closure-r0-guard-blind-review-v1",
+    "reviewer": "context_free_ai_2",
+    "packet": "artifacts/persona_expression/w3_closure_r0_guard_blind_context_free_ai_2.json",
+    "context_status": "no_project_context"
+  },
+  "results": [
+    {
+      "pair_id": "G020",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G019",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G008",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G018",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G027",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G024",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G009",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G005",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G013",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G017",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G023",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G030",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G036",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G007",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G002",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G034",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G028",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G015",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G029",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G026",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G032",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G035",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G001",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G025",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G016",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G021",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G033",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G003",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G004",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G012",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G022",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G006",
+      "choice": "B",
+      "reason": "B 在说明实习经历对求职有帮助的同时，明确提醒还要结合个人兴趣和能力判断，比 A 直接断言“当然要去”更审慎，也避免重复追问此前已问过的安排问题。"
+    },
+    {
+      "pair_id": "G010",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G031",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G014",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    },
+    {
+      "pair_id": "G011",
+      "choice": "tie",
+      "reason": "两段回复逐字相同，无法区分。"
+    }
+  ]
+}
