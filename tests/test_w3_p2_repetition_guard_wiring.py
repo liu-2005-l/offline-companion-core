@@ -25,9 +25,12 @@ from offline_companion.core.persona_constraint import (
 )
 from offline_companion.core.persona_session.expression import PersonaExpressionConfig
 from offline_companion.core.persona_session.repetition_guard import (
+    CROSS_TURN_REPETITION_RUNTIME_COMPARISON,
+    CROSS_TURN_REPETITION_RUNTIME_THRESHOLD,
     CrossTurnRepetitionDecision,
 )
 from offline_companion.core.persona_session.session import PersonaSessionCore
+from offline_companion.runtime.inference_backend.mock import EchoBackend
 from offline_companion.runtime.storage_index.engine import connect, new_session
 from offline_companion.shared.types import MessageRow, Persona
 from offline_companion.shell.ui_host.conversation_orchestrator import ConversationOrchestrator
@@ -96,15 +99,14 @@ def _assistant_history(content: str = PREVIOUS_REPLY) -> list[MessageRow]:
     return [MessageRow(role="assistant", content=content, created_at=1.0, meta={})]
 
 
-def _enabled_config(*, identity: bool = False) -> PersonaExpressionConfig:
-    return PersonaExpressionConfig(
-        identity_near_prompt_enabled=identity,
-        cross_turn_repetition_guard_enabled=True,
-    )
+def _enabled_config() -> PersonaExpressionConfig:
+    return PersonaExpressionConfig(cross_turn_repetition_guard_enabled=True)
 
 
-def test_disabled_guard_still_emits_aggregateable_bypass_trace(tmp_path: Path) -> None:
-    """摘要：默认关闭时仍产出带首判定的 guard_disabled 轨迹。"""
+def test_explicitly_disabled_guard_still_emits_aggregateable_bypass_trace(
+    tmp_path: Path,
+) -> None:
+    """摘要：显式关闭时仍产出带首判定的 guard_disabled 轨迹。"""
 
     _assets, core, conn = _validated_runtime(tmp_path)
     backend = _QueueBackend([PREVIOUS_REPLY])
@@ -116,6 +118,9 @@ def test_disabled_guard_still_emits_aggregateable_bypass_trace(tmp_path: Path) -
         history=_assistant_history(),
         memory_enabled=False,
         audit_arithmetic=False,
+        expression_config=PersonaExpressionConfig(
+            cross_turn_repetition_guard_enabled=False
+        ),
     )
 
     assert result.reply == PREVIOUS_REPLY
@@ -126,6 +131,181 @@ def test_disabled_guard_still_emits_aggregateable_bypass_trace(tmp_path: Path) -
         reason="guard_disabled",
     )
     assert len(backend.system_prompts) == 1
+
+
+def test_default_guard_normal_flow(tmp_path: Path) -> None:
+    """摘要：默认配置下非复读候选直接流出。"""
+
+    _assets, core, conn = _validated_runtime(tmp_path)
+    backend = _QueueBackend([SAFE_REPLY])
+
+    result = core.assemble_reply(
+        backend,
+        conn,
+        user_message="ordinary request",
+        history=_assistant_history(),
+        memory_enabled=False,
+        audit_arithmetic=False,
+    )
+
+    assert result.reply == SAFE_REPLY
+    assert result.repetition_trace.enabled is True
+    assert result.repetition_trace.outcome == "direct"
+    assert len(backend.system_prompts) == 1
+
+
+def test_default_guard_fallback_flow(tmp_path: Path) -> None:
+    """摘要：默认配置下两次复读候选进入确定性 fallback。"""
+
+    assets, core, conn = _validated_runtime(tmp_path)
+    backend = _QueueBackend([PREVIOUS_REPLY, PREVIOUS_REPLY])
+
+    result = core.assemble_reply(
+        backend,
+        conn,
+        user_message="ordinary request",
+        history=_assistant_history(),
+        memory_enabled=False,
+        audit_arithmetic=False,
+    )
+
+    assert result.reply == assets.cross_turn_repetition_fallback
+    assert result.repetition_trace.outcome == "fallback"
+    assert result.repetition_trace.retry_taken is True
+    assert len(backend.system_prompts) == 2
+
+
+def test_default_guard_echo_backend_bypasses_without_previous_reply(
+    tmp_path: Path,
+) -> None:
+    """摘要：默认配置兼容 echo 场景并对单轮输入正确旁路。"""
+
+    _assets, core, conn = _validated_runtime(tmp_path)
+
+    result = core.assemble_reply(
+        EchoBackend("default-guard"),
+        conn,
+        user_message="ordinary request",
+        history=[],
+        memory_enabled=False,
+        audit_arithmetic=False,
+    )
+
+    assert result.reply == "[default-guard] ordinary request"
+    assert result.repetition_trace.enabled is True
+    assert result.repetition_trace.first.reason == "missing_previous_or_current_reply"
+    assert result.repetition_trace.outcome == "bypass"
+
+
+def test_default_guard_preserves_l4_retry_priority(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """摘要：默认配置继续与 L4 共用单个重试槽位。"""
+
+    _assets, core, conn = _validated_runtime(tmp_path)
+    backend = _QueueBackend([SAFE_REPLY, SAFE_RETRY_REPLY])
+    decisions = iter(
+        (
+            PersonaL4Decision(
+                action=L4_RETRY,
+                zone=L4_CAPABILITY_AND_FACT_DENIAL,
+                family="test_family",
+            ),
+            PersonaL4Decision(action=L4_DIRECT),
+        )
+    )
+    monkeypatch.setattr(
+        core,
+        "_resolve_l4_or_raise",
+        lambda *_args, **_kwargs: next(decisions),
+    )
+
+    result = core.assemble_reply(
+        backend,
+        conn,
+        user_message="ordinary request",
+        history=_assistant_history(),
+        memory_enabled=False,
+        audit_arithmetic=False,
+    )
+
+    assert result.reply == SAFE_RETRY_REPLY
+    assert result.l4_trace.outcome == L4_RETRY
+    assert result.repetition_trace.outcome == "retry"
+    assert len(backend.system_prompts) == 2
+
+
+def test_default_guard_honors_repetition_trigger(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """摘要：默认配置执行复读判定返回的 retry 动作。"""
+
+    _assets, core, conn = _validated_runtime(tmp_path)
+    decisions = iter(
+        (
+            CrossTurnRepetitionDecision(
+                action="retry",
+                score=0.2,
+                threshold=0.09,
+                comparison="gt",
+                reason="threshold_exceeded",
+            ),
+            CrossTurnRepetitionDecision(
+                action="direct",
+                score=0.0,
+                threshold=0.09,
+                comparison="gt",
+                reason="below_threshold",
+            ),
+        )
+    )
+    monkeypatch.setattr(
+        persona_session_module,
+        "decide_cross_turn_repetition",
+        lambda *_args, **_kwargs: next(decisions),
+    )
+
+    result = core.assemble_reply(
+        _QueueBackend([PREVIOUS_REPLY, SAFE_RETRY_REPLY]),
+        conn,
+        user_message="ordinary request",
+        history=_assistant_history(),
+        memory_enabled=False,
+        audit_arithmetic=False,
+    )
+
+    assert result.reply == SAFE_RETRY_REPLY
+    assert result.repetition_trace.retry_taken is True
+    assert result.repetition_trace.outcome == "retry"
+
+
+def test_production_default_guard_uses_calibrated_runtime_boundary(
+    tmp_path: Path,
+) -> None:
+    """摘要：生产默认配置以 0.09+gt 对已知复读 pair 触发重试。"""
+
+    _assets, core, conn = _validated_runtime(tmp_path)
+
+    result = core.assemble_reply(
+        _QueueBackend([PREVIOUS_REPLY, SAFE_RETRY_REPLY]),
+        conn,
+        user_message="ordinary request",
+        history=_assistant_history(),
+        memory_enabled=False,
+        audit_arithmetic=False,
+    )
+
+    first = result.repetition_trace.first
+    assert PersonaExpressionConfig().cross_turn_repetition_guard_enabled is True
+    assert CROSS_TURN_REPETITION_RUNTIME_THRESHOLD == 0.09
+    assert CROSS_TURN_REPETITION_RUNTIME_COMPARISON == "gt"
+    assert first.action == "retry"
+    assert first.threshold == CROSS_TURN_REPETITION_RUNTIME_THRESHOLD
+    assert first.comparison == CROSS_TURN_REPETITION_RUNTIME_COMPARISON
+    assert first.score is not None
+    assert first.score > first.threshold
 
 
 def test_capture_sink_is_read_only_and_none_path_never_pushes(
@@ -347,7 +527,7 @@ def test_raw_user_message_controls_exemption_before_identity_rewrite(
         history=_assistant_history(),
         memory_enabled=False,
         audit_arithmetic=False,
-        expression_config=_enabled_config(identity=True),
+        expression_config=_enabled_config(),
     )
 
     assert backend.user_messages[0] != "好的"
@@ -607,7 +787,7 @@ def test_stream_raw_split_and_meta_serialization_keep_independent_trace(
             user_message="好的",
             history=_assistant_history(),
             memory_enabled=False,
-            expression_config=_enabled_config(identity=True),
+            expression_config=_enabled_config(),
         )
     )
     trace = events[-1]["repetition_trace"]

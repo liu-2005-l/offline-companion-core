@@ -24,8 +24,8 @@ FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "persona_expres
 
 def test_w2_runner_rejects_retired_c_arm_but_keeps_a_and_b() -> None:
     """摘要：W2 runner 可启动，A/B 可用，C 臂返回稳定退役错误码。"""
-    assert w2_runner._arm_config("A").style_examples_enabled is True
-    assert w2_runner._arm_config("B").identity_near_prompt_enabled is True
+    assert w2_runner._arm_config("A").cross_turn_repetition_guard_enabled is False
+    assert w2_runner._arm_config("B").cross_turn_repetition_guard_enabled is False
     with pytest.raises(w2_runner.W2ArmRetiredError, match="w2_arm_c_retired"):
         w2_runner._arm_config("C")
 

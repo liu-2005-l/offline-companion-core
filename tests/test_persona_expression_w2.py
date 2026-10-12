@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 
 from offline_companion.core.persona_constraint import (
@@ -60,9 +61,28 @@ class CaptureBackend:
             return self.replies.pop(0)
         return self.replies[0]
 
+    def generate_stream(
+        self,
+        *,
+        system_prompt: str,
+        history: list[MessageRow],
+        user_message: str,
+        memory_block: str,
+        max_tokens: int = 256,
+    ) -> Iterator[str]:
+        """摘要：记录流式链最终输入并返回单个候选块。"""
 
-def test_arm_a_injects_style_examples_when_present(tmp_path) -> None:
-    """摘要：臂 A 从 persona.raw 注入风格锚点，防止假臂开跑。"""
+        yield self.generate(
+            system_prompt=system_prompt,
+            history=history,
+            user_message=user_message,
+            memory_block=memory_block,
+            max_tokens=max_tokens,
+        )
+
+
+def test_style_examples_are_injected_by_default_when_present(tmp_path) -> None:
+    """摘要：默认路径从 persona.raw 注入非空风格锚点。"""
     persona = _persona(
         style_examples=[
             {"user": "今天好累", "assistant": "累就先歇一会儿吧。"},
@@ -79,7 +99,6 @@ def test_arm_a_injects_style_examples_when_present(tmp_path) -> None:
         user_message="随便聊聊",
         history=[],
         memory_enabled=False,
-        expression_config=PersonaExpressionConfig(style_examples_enabled=True),
     )
 
     assert result.expression_trace.style_block_injected is True
@@ -87,8 +106,8 @@ def test_arm_a_injects_style_examples_when_present(tmp_path) -> None:
     assert "今天好累" in backend.system_prompts[0]
 
 
-def test_arm_a_missing_examples_silently_skips(tmp_path) -> None:
-    """摘要：无 style_examples 时臂 A 静默退化，不污染 baseline 行为。"""
+def test_missing_style_examples_are_skipped_by_default(tmp_path) -> None:
+    """摘要：默认路径遇到空风格样本时不追加空区块。"""
     persona = _persona()
     core = PersonaSessionCore(persona)
     conn = connect(tmp_path / "a-empty.db")
@@ -101,15 +120,14 @@ def test_arm_a_missing_examples_silently_skips(tmp_path) -> None:
         user_message="随便聊聊",
         history=[],
         memory_enabled=False,
-        expression_config=PersonaExpressionConfig(style_examples_enabled=True),
     )
 
     assert result.expression_trace.style_block_injected is False
     assert STYLE_BLOCK_HEADER not in backend.system_prompts[0]
 
 
-def test_arm_b_appends_ephemeral_reminder_without_persisting(tmp_path) -> None:
-    """摘要：臂 B 只把身份提醒追加到本轮消息，不写入会话历史。"""
+def test_identity_intent_appends_ephemeral_reminder_by_default(tmp_path) -> None:
+    """摘要：同步默认路径只把身份提醒追加到本轮消息。"""
     persona = _persona()
     core = PersonaSessionCore(persona)
     conn = connect(tmp_path / "b.db")
@@ -122,7 +140,6 @@ def test_arm_b_appends_ephemeral_reminder_without_persisting(tmp_path) -> None:
         user_message="你有什么样的个性？",
         history=[],
         memory_enabled=False,
-        expression_config=PersonaExpressionConfig(identity_near_prompt_enabled=True),
     )
 
     assert result.expression_trace.identity_reminder_injected is True
@@ -133,12 +150,56 @@ def test_arm_b_appends_ephemeral_reminder_without_persisting(tmp_path) -> None:
     assert recent_messages(conn, "s1", limit=10) == []
 
 
-def test_arm_c_runtime_surface_is_retired_while_arms_a_and_b_remain() -> None:
-    """摘要：旧 C 臂运行面退役，A/B 开关继续在场。"""
+def test_stream_identity_intent_appends_ephemeral_reminder_by_default(tmp_path) -> None:
+    """摘要：流式默认路径与同步路径使用同一身份意图提醒。"""
+
+    persona = _persona()
+    core = PersonaSessionCore(persona)
+    conn = connect(tmp_path / "stream-identity.db")
+    new_session(conn, "s1", persona.persona_id, title=None)
+    backend = CaptureBackend()
+
+    events = list(
+        core.assemble_reply_stream(
+            backend,
+            conn,
+            user_message="请介绍一下你自己",
+            history=[],
+            memory_enabled=False,
+        )
+    )
+
+    assert events[-1]["done"] is True
+    assert IDENTITY_REMINDER_HEADER in backend.user_messages[0]
+    assert "助手一号" in backend.user_messages[0]
+
+
+def test_non_identity_intent_does_not_append_reminder_by_default(tmp_path) -> None:
+    """摘要：身份意图条件继续否决普通消息的近端提醒。"""
+
+    persona = _persona()
+    core = PersonaSessionCore(persona)
+    conn = connect(tmp_path / "non-identity.db")
+    new_session(conn, "s1", persona.persona_id, title=None)
+    backend = CaptureBackend()
+
+    result = core.assemble_reply(
+        backend,
+        conn,
+        user_message="帮我算一下 7 乘 3",
+        history=[],
+        memory_enabled=False,
+    )
+
+    assert result.expression_trace.identity_reminder_injected is False
+    assert backend.user_messages == ["帮我算一下 7 乘 3"]
+
+
+def test_experimental_arm_switches_are_retired_with_c_arm_surface() -> None:
+    """摘要：人格表达配置只保留跨轮复读门开关。"""
+
     fields = PersonaExpressionConfig.__dataclass_fields__
     assert set(fields) == {
-        "style_examples_enabled",
-        "identity_near_prompt_enabled",
         "cross_turn_repetition_guard_enabled",
     }
     expression_source = (

@@ -59,17 +59,13 @@ def _run(metric: float, case: dict[str, object]) -> dict[str, object]:
     }
 
 
-def test_retest_configs_enable_guard_for_both_style_arms() -> None:
-    """摘要：A/B 均开启 style 与 guard，仅 B 开启身份近端提醒。"""
+def test_retest_configs_enable_guard_for_both_historical_arm_labels() -> None:
+    """摘要：历史 A/B 标签在开关退役后均只显式开启 guard。"""
 
     arm_a = _arm_config("A")
     arm_b = _arm_config("B")
 
-    assert arm_a.style_examples_enabled is True
-    assert arm_a.identity_near_prompt_enabled is False
     assert arm_a.cross_turn_repetition_guard_enabled is True
-    assert arm_b.style_examples_enabled is True
-    assert arm_b.identity_near_prompt_enabled is True
     assert arm_b.cross_turn_repetition_guard_enabled is True
 
 

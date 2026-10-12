@@ -80,13 +80,9 @@ DEFAULT_LOCK_FILE = REPO_ROOT / "artifacts" / "persona_expression" / "w2_matrix.
 W2_ARM_C_RETIRED = "w2_arm_c_retired"
 _ARM_CONFIG_DECLARATIONS = {
     "A": {
-        "style_examples_enabled": True,
-        "identity_near_prompt_enabled": False,
         "cross_turn_repetition_guard_enabled": False,
     },
     "B": {
-        "style_examples_enabled": True,
-        "identity_near_prompt_enabled": True,
         "cross_turn_repetition_guard_enabled": False,
     },
 }
@@ -198,6 +194,8 @@ def _is_l4_identity_cliff(reply: str, display_name: str) -> bool:
 
 
 def _arm_config(arm: str) -> PersonaExpressionConfig:
+    """摘要：返回历史 W2 臂标签显式钉死的 guard-off 配置。"""
+
     if arm == "C":
         raise W2ArmRetiredError(W2_ARM_C_RETIRED)
     declaration = _ARM_CONFIG_DECLARATIONS.get(arm)

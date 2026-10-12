@@ -457,6 +457,8 @@ def test_desktop_http_chat_and_clear(tmp_path) -> None:
 
 
 def test_desktop_http_chat_stream_returns_sse_events(tmp_path) -> None:
+    """摘要：默认 guard 缓冲候选后以单块 SSE 放行终态正文。"""
+
     rt = _runtime(tmp_path)
     rt.orchestrator.backend = _SplitStreamBackend("split")
     client = create_desktop_app(rt).test_client()
@@ -471,7 +473,7 @@ def test_desktop_http_chat_stream_returns_sse_events(tmp_path) -> None:
     events = _sse_payloads(response.text)
     assert events[0]["recall"] == 0
     assert events[0]["seq"] > 0
-    assert [event["token"] for event in events if "token" in event] == ["A", "B"]
+    assert [event["token"] for event in events if "token" in event] == ["AB"]
     assert events[-1]["done"] is True
     assert events[-1]["reply"] == "AB"
     assert events[-1]["message_id"]
@@ -484,7 +486,7 @@ def test_desktop_http_chat_stream_returns_sse_events(tmp_path) -> None:
 
 
 def test_desktop_http_stream_replaces_wrong_arithmetic_with_audited_reply(tmp_path) -> None:
-    """摘要：SSE 终态携带修正正文，数据库只持久化审计后的回复。"""
+    """摘要：默认 guard 缓冲时 SSE 与数据库均只放行审计后回复。"""
 
     rt = _runtime(tmp_path)
     backend = _ArithmeticStreamBackend()
@@ -497,7 +499,7 @@ def test_desktop_http_stream_replaces_wrong_arithmetic_with_audited_reply(tmp_pa
     )
 
     events = _sse_payloads(response.text)
-    assert [event["token"] for event in events if "token" in event] == ["按照 Booth 算法，7×3=77。"]
+    assert [event["token"] for event in events if "token" in event] == ["重新核算后，7×3=21。"]
     assert events[-1]["reply"] == "重新核算后，7×3=21。"
     assert "正确值 21" in backend.system_prompts[-1]
     assistant = recent_messages(rt.orchestrator.conn, "h1", limit=1)[0]
@@ -536,6 +538,8 @@ def test_desktop_http_no_cloud_booth_request_uses_deterministic_tool(tmp_path) -
 
 
 def test_desktop_http_stream_disconnect_persists_partial_and_replays_events(tmp_path) -> None:
+    """摘要：默认 guard 缓冲后的单块正文仍可按 SSE 事件断点回放。"""
+
     rt = _runtime(tmp_path)
     rt.orchestrator.backend = _SplitStreamBackend("split")
     client = create_desktop_app(rt).test_client()
@@ -556,8 +560,8 @@ def test_desktop_http_stream_disconnect_persists_partial_and_replays_events(tmp_
     replay = client.get(
         f"/api/sessions/h1/events?from_seq={recall_event['seq']}"
     ).get_json()
-    assert token_event["token"] == "A"
-    assert partial["content"] == "A"
+    assert token_event["token"] == "AB"
+    assert partial["content"] == "AB"
     assert partial["status"] == "partial"
     assert replay["events"] == [token_event]
     assert replay["latest_seq"] == token_event["seq"]

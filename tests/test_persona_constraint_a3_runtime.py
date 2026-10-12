@@ -259,7 +259,7 @@ def test_arithmetic_retry_reassembles_correction_prompt_even_when_event_mirror_f
 def test_warning_meta_is_consumed_once_by_next_generation(tmp_path) -> None:
     assets, persona, core, conn = _validated_runtime(tmp_path)
     backend = _QueueBackend(
-        ["7×3=77。", "重试仍声称 7×3=77。", "下一轮正常回复。", "第三轮正常回复。"]
+        ["7×3=77。", "重试仍声称 7×3=77。", "今晚早点休息吧。", "我会继续留意这件事。"]
     )
     orchestrator = ConversationOrchestrator(
         session_core=core,

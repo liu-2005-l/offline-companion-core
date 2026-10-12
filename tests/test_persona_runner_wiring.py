@@ -21,27 +21,19 @@ from offline_companion.core.persona_session.repetition_guard import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_r0_arm_configs_explicitly_pin_four_runner_combinations() -> None:
-    """摘要：R0 四组合显式钉死 guard 与身份提醒状态。"""
+def test_post_r0_arm_configs_explicitly_pin_guard_axis() -> None:
+    """摘要：历史 A/B 标签只保留 runner 显式钉死的 guard 轴。"""
 
     assert w2_runner._arm_config("A").__dict__ == {
-        "style_examples_enabled": True,
-        "identity_near_prompt_enabled": False,
         "cross_turn_repetition_guard_enabled": False,
     }
     assert w2_runner._arm_config("B").__dict__ == {
-        "style_examples_enabled": True,
-        "identity_near_prompt_enabled": True,
         "cross_turn_repetition_guard_enabled": False,
     }
     assert p2_runner._arm_config("A").__dict__ == {
-        "style_examples_enabled": True,
-        "identity_near_prompt_enabled": False,
         "cross_turn_repetition_guard_enabled": True,
     }
     assert p2_runner._arm_config("B").__dict__ == {
-        "style_examples_enabled": True,
-        "identity_near_prompt_enabled": True,
         "cross_turn_repetition_guard_enabled": True,
     }
 

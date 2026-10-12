@@ -84,7 +84,7 @@ def _declared_config(args: argparse.Namespace) -> dict[str, Any]:
             "llama_cpp_version": installed_distribution_version("llama-cpp-python"),
         },
         "switches": {
-            "identity_near_prompt_enabled": True,
+            "identity_reminder_mode": "identity_intent",
             "old_echo_feature_expected_absent": True,
             "old_echo_feature": OLD_ECHO_FEATURE,
             "new_identity_guidance_expected_present": True,
@@ -169,7 +169,7 @@ def _run_seed(args: argparse.Namespace, *, seed: int, persona: Any) -> dict[str,
                 history=[],
                 memory_enabled=False,
                 max_tokens=args.max_tokens,
-                expression_config=PersonaExpressionConfig(identity_near_prompt_enabled=True),
+                expression_config=PersonaExpressionConfig(),
             )
         finally:
             conn.close()

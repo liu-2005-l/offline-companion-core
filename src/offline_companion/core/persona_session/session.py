@@ -821,7 +821,7 @@ class PersonaSessionCore:
         display_name = self._resolved_companion_display_name(conn)
         identity_reminder = ""
         identity_reminder_injected = False
-        if config.identity_near_prompt_enabled and is_identity_intent(user_message):
+        if is_identity_intent(user_message):
             identity_reminder = build_identity_reminder(display_name, self.persona)
             user_message = append_ephemeral_identity_reminder(user_message, identity_reminder)
             identity_reminder_injected = True
@@ -937,7 +937,7 @@ class PersonaSessionCore:
             turn_signals=active_signals,
             _l3_application=l3_application,
         )
-        if config.identity_near_prompt_enabled and is_identity_intent(user_message):
+        if is_identity_intent(user_message):
             user_message = append_ephemeral_identity_reminder(
                 user_message,
                 build_identity_reminder(self._resolved_companion_display_name(conn), self.persona),
@@ -966,7 +966,10 @@ class PersonaSessionCore:
             return
         buffered = (
             self.requires_audited_stream_buffering()
-            or config.cross_turn_repetition_guard_enabled
+            or (
+                config.cross_turn_repetition_guard_enabled
+                and self._constraint_assets is not None
+            )
         )
         chunks: list[str] = []
         for token in backend.generate_stream(
@@ -1163,10 +1166,9 @@ class PersonaSessionCore:
         ]
         if skill_prompt.strip():
             prompt_parts.append(skill_prompt.strip())
-        if expression_config.style_examples_enabled:
-            style_block = build_style_examples_block(self.persona)
-            if style_block:
-                prompt_parts.append(style_block)
+        style_block = build_style_examples_block(self.persona)
+        if style_block:
+            prompt_parts.append(style_block)
         return "\n\n".join(prompt_parts) + (
             tone_instruction + emotion_instruction + format_hint
         )

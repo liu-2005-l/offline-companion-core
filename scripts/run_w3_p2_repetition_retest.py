@@ -75,13 +75,9 @@ GLOBAL_GATE = 0.0368
 LOCAL_RETRY_GATE = 0.02
 _ARM_CONFIG_DECLARATIONS = {
     "A": {
-        "style_examples_enabled": True,
-        "identity_near_prompt_enabled": False,
         "cross_turn_repetition_guard_enabled": True,
     },
     "B": {
-        "style_examples_enabled": True,
-        "identity_near_prompt_enabled": True,
         "cross_turn_repetition_guard_enabled": True,
     },
 }
@@ -186,7 +182,7 @@ def _sha256(path: Path) -> str:
 
 
 def _arm_config(arm: str) -> PersonaExpressionConfig:
-    """摘要：返回开启复读门的冻结 A/B 变体配置。"""
+    """摘要：返回历史 P2 臂标签显式钉死的 guard-on 配置。"""
 
     declaration = _ARM_CONFIG_DECLARATIONS.get(arm)
     if declaration is None:

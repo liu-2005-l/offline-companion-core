@@ -390,8 +390,6 @@ def test_w3_p2_1b_runtime_wiring_preserves_independent_guard_boundary() -> None:
     assert "cross_turn_repetition_guard_enabled" in session_source
     assert "CrossTurnRepetitionTrace" in session_source
     assert set(PersonaExpressionConfig.__dataclass_fields__) == {
-        "style_examples_enabled",
-        "identity_near_prompt_enabled",
         "cross_turn_repetition_guard_enabled",
     }
 
