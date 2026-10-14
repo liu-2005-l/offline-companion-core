@@ -58,6 +58,8 @@
 | **人格约束 W3-P2 因果表 v0.3（正式规格 §1）** | [`w3-p2-causality-table-draft.md`](./w3-p2-causality-table-draft.md) | — |
 | **人格约束 W3-P2-2 终态报告（失败裁决 + 降级处置完成）** | [`w3-p2-2-closure-report-draft.md`](./w3-p2-2-closure-report-draft.md) | — |
 | **人格约束 W3 收口批规格 v0.2（冻结）** | [`persona/w3-closure-batch-spec-draft.md`](./persona/w3-closure-batch-spec-draft.md) | — |
+| **人格约束 W3 C2b/C5 evidence-first audit（已闭合）** | [`persona/w3-closure-c2b-c5-audit.md`](./persona/w3-closure-c2b-c5-audit.md) | — |
+| **人格约束 W3 收口报告（R0 完成，R1 挂 P4）** | [`persona/w3-closure-report.md`](./persona/w3-closure-report.md) | — |
 | **Runner Provenance 与 Candidate Capture 规格 v0.2（冻结）** | [`runner-provenance-capture-spec-draft-v0.2.md`](./runner-provenance-capture-spec-draft-v0.2.md) | — |
 | **人格约束 P4 外部盲判 Roster 即跑包 v0.2** | [`p4-roster-kit.md`](./p4-roster-kit.md) | — |
 | **流式卡片 B0-B4 契约与实现规格（已收口）** | [`streaming-card-b0-contract-spec.md`](./streaming-card-b0-contract-spec.md) | — |

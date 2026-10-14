@@ -131,3 +131,38 @@ Q6 判例面	补 1 条生产默认集成判例	PersonaExpressionConfig() 默认�
 阻断×3	C3-0 吸收	runner :565/:517、.gitignore:60、persona_runner_audit.py:220/:517
 §6 送达记档
 v0.1（2026-10-08 23:05 前后 send_file）回执成功但未落 TA repo——"方案已出 ≠ 对方已有"第四次发作。按纪律不重发旧版，Q1–Q6 裁决直接升进本版。冻结动作以 TA 回报本文件落 repo 在场为前置。
+
+§7 实现期勘误与闭合（2026-10-13）
+
+本节只追加执行事实，不回写或改写冻结版历史条款。
+
+### 7.1 流式缓冲挂点推论变更
+
+C1 把 `cross_turn_repetition_guard_enabled` 的生产默认值翻为 `true` 时，流式缓冲判定不能直接写成“默认 guard 开启即缓冲”。跨轮复读门依赖 persona constraint assets；无资产会话无法执行该门，若仍缓冲只会把原有真流改成无收益的延迟路径。因此实现采用：
+
+`requires_audited_stream_buffering() or (cross_turn_repetition_guard_enabled and constraint_assets is not None)`。
+
+该变更不进入 guard detector、decision、retry、fallback 或 L4 内部，只修正组装层的流式放行条件。实现期行为矩阵如下：
+
+| 会话形态 | C1 前生产默认 | C1 后生产默认 | 裁决 |
+| --- | --- | --- | --- |
+| A4 托管且 L4 policy 在场 | 缓冲 | 缓冲 | 既有审计缓冲不变 |
+| 非 A4 托管、constraint assets 在场 | guard 默认关，真流 | guard 默认开，缓冲 | guard 可执行，按 C1 目标新增审计缓冲 |
+| constraint assets 缺席 | 真流 | 真流 | guard 不可执行，不因默认翻转引入空缓冲 |
+| W2 runner 显式 guard=false | 真流或由 A4 条件决定 | 同左 | 显式 R0 口径不受默认值翻转影响 |
+| P2 runner 显式 guard=true | 有 assets 时缓冲 | 同左 | 显式 R0 口径不受默认值翻转影响 |
+
+因此，默认翻转前后的非目标组合保持原行为；唯一新增缓冲发生在“资产在场且 guard 实际可执行”的目标组合。该推论变更由 `5c07c96` 落地，并由正常流、fallback、echo、L4 联动、repetition 触发和生产默认集成判例覆盖。
+
+### 7.2 C2b / C5 终裁回写
+
+- **C2b：无需进一步改动。** 当前树 `5c07c96` 的三 seed spot check 为 `3/3 passed`，旧特征串计数为 `0`；结构断言、专用回显负控与生成面证据同向。证据见 `docs/persona/w3-closure-c2b-c5-audit.md` 与 `artifacts/persona_expression/w3_closure_c2b_identity_echo_spot_check.json`。
+- **C5-L4：扩域，另立新批。** 去向锚 `W3-C5-L4-DYNAMIC-IDENTITY`：增加生成自称与运行时 display name 的动态一致性比较，并覆盖“文本交互中却否认可说话”的能力自相矛盾；正常 AI/机器人自称保持负控。
+- **C5-A3：扩域，另立新批。** 去向锚 `W3-C5-A3-GENERATED-REMINDER-LINT`：把代码生成的 near-end reminder 纳入 lint 输入面，覆盖旧提示工程元话术及等价表达；正常用户可见自述保持负控。
+- 两个 C5 去向均进入 `docs/CHANGELOG.md` 的 v1.9.x 候选池；本收口批未修改 L4、A3 lint、提醒文案或 guard 判定逻辑。
+
+### 7.3 R0 / R1 边界与 C6 终态
+
+- R0 已完成：产物绑定 `19cbef0`，逐 checkpoint audit provenance 在场；36 对盲审中 35 个单轮零外溢对全平，唯一多轮差异对三席均选择 repaired，偏差台账为 `0`，且不声明统计显著性。
+- R1 未完成：4-gram 红线 `0.0368` 的正式重校仍受 P4 roster 阻断；本批没有移动红线，也不得把 R0 描述性证据写成 R1 阈值裁决终态。
+- C6 总结见 `docs/persona/w3-closure-report.md`。报告闭合后，案例库记忆链路三合一批进入下一串行入口：profile 冲突检测、语义去重校准、v1.8 embedding 复用验证。

@@ -4,6 +4,17 @@
 
 ---
 
+## v1.9.x · 2026-10-13（W3 人格约束收口）
+
+### 收口与审计
+- 完成 W3 收口批：以当前代码树的 R0 guard-off/on 单变量对照、逐 checkpoint audit provenance 和 36 对三席盲审闭合跨轮复读门证据链；35 个单轮对全平、唯一多轮差异对一致选择 repaired，偏差台账为零且不声明统计显著性。
+- 将跨轮复读 guard 以 intent-aware `0.09 + gt` 默认上主干，退役 `style_examples_enabled` / `identity_near_prompt_enabled` 两个历史表达开关；身份提醒继续只按 identity intent 注入，style block 保持非空才追加，无资产会话不因默认翻转失去真流。
+- C2b 当前树 evidence-first audit 以“无需进一步改动”闭合；R0 已完成但 R1 的 4-gram 红线重校仍挂 P4 roster，`0.0368` 未移动，不把描述性结构证据冒充 R1 阈值裁决终态。
+
+### v1.9.x 候选池裁决
+- **保留 `W3-C5-L4-DYNAMIC-IDENTITY`：动态身份一致性扩域**。触发源为 W2 历史“声明自称与运行时 display name 不一致”及“文本交互中却否认可说话”；后续批需增加语义级动态比较，以两条历史形态为正控，并保持“我是 AI，不过我叫助手一号”与正常 AI/机器人自称为负控。本项不回写当前 L4 pattern-based gate，也不阻塞 W3 收口。
+- **保留 `W3-C5-A3-GENERATED-REMINDER-LINT`：代码生成提醒 lint 扩域**。后续批需把 near-end reminder 纳入明确 lint 输入面，并以旧提示工程元话术及等价表达为正控、正常“我是 AI，并具体说明性格”自述为负控；只补判例而不扩扫描输入面与规则不算闭合。本项不回写 C2b“无需进一步改动”的当前输出面结论。
+
 ## v1.9.0 · 2026-09-24（流式卡片）
 
 ### 实验与基础设施
